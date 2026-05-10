@@ -1,0 +1,102 @@
+// (c) TradingViewProject
+// Indicator V1.007 — visual với regime detection
+// Plot: 3 MA + ATR trail + ADX panel + BB squeeze indicator
+// (Library import sau khi publish: import TradingViewProject/strategy_mtt_lib/1 as mtt)
+//
+//@version=5
+indicator("indicator_MTT_v1.007", shorttitle="MTT v1.007", overlay=true)
+
+// ----- INPUTS -----
+grp_ma = "MA"
+ma_type   = input.string("EMA", "Type", options=["SMA","EMA","WMA","HMA","DEMA","TEMA"], group=grp_ma)
+fast_len  = input.int(20,  "Fast",   minval=5,  group=grp_ma)
+med_len   = input.int(50,  "Medium", minval=10, group=grp_ma)
+slow_len  = input.int(100, "Slow",   minval=20, group=grp_ma)
+
+grp_r = "Regime detection (V1.007)"
+adx_len   = input.int(14,    "ADX length", minval=5, group=grp_r)
+adx_th    = input.float(20.0, "ADX threshold (sideway gate)", minval=10, maxval=50, group=grp_r)
+bb_len    = input.int(20,    "BB length", minval=5, group=grp_r)
+bb_mult   = input.float(2.0, "BB stdev mult", minval=1, group=grp_r)
+bb_sq_th  = input.float(5.0, "BB width % squeeze threshold", minval=1, group=grp_r)
+
+grp_ui = "Display"
+show_fill   = input.bool(true, "Tô nền vùng stack", group=grp_ui)
+show_trail  = input.bool(true, "Plot ATR trail (sim)", group=grp_ui)
+atr_mult    = input.float(2.5, "ATR mult", group=grp_ui)
+show_table  = input.bool(true, "Bảng trạng thái", group=grp_ui)
+
+// ----- MA -----
+ma(t, l) =>
+    switch t
+        "SMA"  => ta.sma(close, l)
+        "EMA"  => ta.ema(close, l)
+        "WMA"  => ta.wma(close, l)
+        "HMA"  => ta.hma(close, l)
+        "DEMA" => 2 * ta.ema(close, l) - ta.ema(ta.ema(close, l), l)
+        "TEMA" => 3 * (ta.ema(close, l) - ta.ema(ta.ema(close, l), l)) + ta.ema(ta.ema(ta.ema(close, l), l), l)
+        =>        ta.sma(close, l)
+
+mf = ma(ma_type, fast_len)
+mm = ma(ma_type, med_len)
+ms = ma(ma_type, slow_len)
+
+bull = mf > mm and mm > ms
+bear = mf < mm and mm < ms
+
+// ----- ADX -----
+up_move   = ta.change(high)
+down_move = -ta.change(low)
+plus_dm   = up_move > down_move and up_move > 0 ? up_move : 0.0
+minus_dm  = down_move > up_move and down_move > 0 ? down_move : 0.0
+tr_       = ta.tr
+atr_v     = ta.rma(tr_, adx_len)
+plus_di   = 100 * ta.rma(plus_dm,  adx_len) / atr_v
+minus_di  = 100 * ta.rma(minus_dm, adx_len) / atr_v
+dx        = 100 * math.abs(plus_di - minus_di) / (plus_di + minus_di)
+adx       = ta.rma(dx, adx_len)
+trending  = adx > adx_th
+
+// ----- BB squeeze -----
+basis = ta.sma(close, bb_len)
+dev   = bb_mult * ta.stdev(close, bb_len)
+bb_w_pct = 100 * (2 * dev) / basis
+bb_squeeze = bb_w_pct < bb_sq_th
+
+// ----- ATR trail (visual sim) -----
+atr14 = ta.atr(14)
+trail_long = bull ? close - atr_mult * atr14 : na
+
+// ----- PLOTS -----
+p_f = plot(mf, color=color.blue,   title="Fast")
+p_m = plot(mm, color=color.orange, title="Medium")
+p_s = plot(ms, color=color.red,    title="Slow", linewidth=2)
+fill_color = show_fill and bull ? color.new(color.green, 80) : show_fill and bear ? color.new(color.red, 80) : na
+fill(p_f, p_s, color=fill_color, title="Stack Zone")
+plot(show_trail ? trail_long : na, color=color.fuchsia, style=plot.style_linebr, linewidth=1, title="ATR Trail (sim)")
+
+// Regime background: tô vàng nhạt khi sideway (ADX < threshold)
+bgcolor(not trending ? color.new(color.yellow, 90) : na, title="Sideway warning")
+bgcolor(bb_squeeze   ? color.new(color.aqua, 92)   : na, title="BB Squeeze")
+
+// ----- TABLE -----
+var table info = table.new(position.top_right, 2, 6, border_width=1)
+if show_table and barstate.islast
+    state = bull ? "BULL" : bear ? "BEAR" : "NEUTRAL"
+    state_color = bull ? color.green : bear ? color.red : color.gray
+    regime = trending ? "TRENDING" : "SIDEWAY"
+    regime_color = trending ? color.green : color.orange
+
+    table.cell(info, 0, 0, "Stack",  bgcolor=color.new(state_color, 30), text_color=color.white)
+    table.cell(info, 1, 0, state,    bgcolor=color.new(state_color, 30), text_color=color.white)
+    table.cell(info, 0, 1, "Regime", bgcolor=color.new(regime_color, 30), text_color=color.white)
+    table.cell(info, 1, 1, regime + " (ADX " + str.tostring(math.round(adx)) + ")", bgcolor=color.new(regime_color, 30), text_color=color.white)
+    table.cell(info, 0, 2, "BB width %")
+    table.cell(info, 1, 2, str.tostring(math.round(bb_w_pct, 2)) + (bb_squeeze ? " ⚠️ SQ" : ""))
+    table.cell(info, 0, 3, "MA Type")
+    table.cell(info, 1, 3, ma_type + " " + str.tostring(fast_len) + "/" + str.tostring(med_len) + "/" + str.tostring(slow_len))
+    table.cell(info, 0, 4, "ATR(14)")
+    table.cell(info, 1, 4, str.tostring(math.round(atr14, 2)))
+    can_trade = trending and not bb_squeeze
+    table.cell(info, 0, 5, "Entry gate")
+    table.cell(info, 1, 5, can_trade ? "OPEN ✓" : "BLOCKED ✗", bgcolor=can_trade ? color.new(color.green, 60) : color.new(color.red, 60))

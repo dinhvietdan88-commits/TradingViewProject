@@ -1,14 +1,16 @@
 // (c) TradingViewProject
-// Pine Library — Logic chung cho V1.005+
-// Sau khi Publish on TradingView, import bằng:
-//   import TradingViewProject/strategy_mtt_lib/1 as mtt
+// Pine Library — Logic chung V1.005 → V1.007
+//
+// V1.005: ma(), stack_signals(), profile_qty_pct(), bear_to_neutral_breakout()
+// V1.006: slope_up/down(), volume_ok(), atr_trail_long/short()
+// V1.007: adx_value(), regime_trending(), bb_width_pct(), vol_expanding(),
+//         time_stop_hit(), dynamic_atr_mult()
 //
 //@version=5
 library("strategy_mtt_lib", overlay=true)
 
 // ============================================================================
-// MA helper — chọn loại MA động
-// type: "SMA" | "EMA" | "WMA" | "HMA" | "DEMA" | "TEMA"
+// MA helper
 // ============================================================================
 export ma(simple string mtype, simple int len, series float src) =>
     switch mtype
@@ -21,8 +23,7 @@ export ma(simple string mtype, simple int len, series float src) =>
         =>        ta.sma(src, len)
 
 // ============================================================================
-// Stack signals — vùng xếp tầng MA
-// returns: [bull_stack, bear_stack, bull_start, bull_end, bear_start, bear_end]
+// Stack signals
 // ============================================================================
 export stack_signals(series float fast, series float med, series float slow) =>
     bull_stack = fast > med and med > slow
@@ -34,27 +35,102 @@ export stack_signals(series float fast, series float med, series float slow) =>
     [bull_stack, bear_stack, bull_start, bull_end, bear_start, bear_end]
 
 // ============================================================================
-// Profile sizing — qty% theo profile
-// profile: "Spot" | "Margin" | "Futures"
-// V1.005 default: Spot 10 / Margin 20 / Futures 10
+// V1.006 FILTERS
+// ============================================================================
+export slope_up(series float ma, simple int lookback) =>
+    ma > ma[lookback]
+
+export slope_down(series float ma, simple int lookback) =>
+    ma < ma[lookback]
+
+export volume_ok(simple int sma_len, simple float mult) =>
+    volume > ta.sma(volume, sma_len) * mult
+
+// ATR trailing stop cho LONG. Returns [trail_level, hit_signal]
+export atr_trail_long(series bool in_position, simple int atr_len, simple float mult) =>
+    var float trail = na
+    atr = ta.atr(atr_len)
+    if in_position
+        new_trail = close - mult * atr
+        trail := na(trail) ? new_trail : math.max(trail, new_trail)
+    else
+        trail := na
+    hit = in_position and not na(trail) and low <= trail
+    [trail, hit]
+
+export atr_trail_short(series bool in_position, simple int atr_len, simple float mult) =>
+    var float trail = na
+    atr = ta.atr(atr_len)
+    if in_position
+        new_trail = close + mult * atr
+        trail := na(trail) ? new_trail : math.min(trail, new_trail)
+    else
+        trail := na
+    hit = in_position and not na(trail) and high >= trail
+    [trail, hit]
+
+// ============================================================================
+// V1.007 REGIME / VOLATILITY / TIME FILTERS
+// ============================================================================
+
+// ADX calculation (Wilder's)
+export adx_value(simple int len) =>
+    up_move    = ta.change(high)
+    down_move  = -ta.change(low)
+    plus_dm    = up_move > down_move and up_move > 0 ? up_move : 0.0
+    minus_dm   = down_move > up_move and down_move > 0 ? down_move : 0.0
+    tr         = ta.tr
+    atr_       = ta.rma(tr, len)
+    plus_di    = 100 * ta.rma(plus_dm,  len) / atr_
+    minus_di   = 100 * ta.rma(minus_dm, len) / atr_
+    dx         = 100 * math.abs(plus_di - minus_di) / (plus_di + minus_di)
+    ta.rma(dx, len)
+
+// Regime: trending nếu ADX > threshold (block entry khi sideway)
+export regime_trending(simple int adx_len, simple float adx_threshold) =>
+    adx_value(adx_len) > adx_threshold
+
+// Bollinger band width as % of basis (low = squeeze = sideway)
+export bb_width_pct(simple int bb_len, simple float bb_mult) =>
+    basis = ta.sma(close, bb_len)
+    dev   = bb_mult * ta.stdev(close, bb_len)
+    upper = basis + dev
+    lower = basis - dev
+    100 * (upper - lower) / basis
+
+// Volatility expanding: ATR hiện tại > ATR[lookback]
+export vol_expanding(simple int atr_len, simple int lookback) =>
+    atr_now = ta.atr(atr_len)
+    atr_now > atr_now[lookback]
+
+// Time-based stop: trả về true nếu đã hold > max_bars mà chưa profit
+export time_stop_hit(series bool in_position, series int entry_bar, simple int max_bars, series float entry_price) =>
+    bars_held = in_position ? bar_index - entry_bar : 0
+    not_profit = in_position and close <= entry_price  // long: chưa profit nếu close <= entry
+    in_position and bars_held >= max_bars and not_profit
+
+// Dynamic ATR multiplier: tăng mult khi DD rolling cao
+// (Khi đang trong DD lớn → trail wider để tránh bị shake out)
+export dynamic_atr_mult(simple float base_mult, simple float dd_threshold_pct, simple float dd_extra_mult) =>
+    eq = strategy.equity
+    var float peak_eq = eq
+    peak_eq := math.max(peak_eq, eq)
+    dd_pct = peak_eq > 0 ? 100 * (peak_eq - eq) / peak_eq : 0
+    dd_pct > dd_threshold_pct ? base_mult + dd_extra_mult : base_mult
+
+// ============================================================================
+// Profile sizing
 // ============================================================================
 export profile_qty_pct(simple string profile, simple float spot_pct, simple float margin_pct, simple float futures_pct) =>
     profile == "Spot"   ? spot_pct
      : profile == "Margin" ? margin_pct
      : futures_pct
 
-export profile_qty_default(simple string profile) =>
-    profile_qty_pct(profile, 10.0, 20.0, 10.0)
-
-// ============================================================================
-// Position sizing helper — số contract theo % equity
-// ============================================================================
 export size_by_pct(series float equity_now, simple float qty_pct, series float price) =>
     (equity_now * qty_pct / 100.0) / price
 
 // ============================================================================
 // Reusable signal: BREAK-OUT LONG khi bear stack vừa kết thúc
-// (phát hiện trong B4v2F — tín hiệu market flip từ downtrend → neutral/bull)
 // ============================================================================
 export bear_to_neutral_breakout(series bool bear_stack) =>
     not bear_stack and bear_stack[1]
