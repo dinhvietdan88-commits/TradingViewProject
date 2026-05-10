@@ -1,0 +1,101 @@
+// (c) TradingViewProject
+// Strategy B.006 — Short Only + 3 filters: slope_down + volume + ATR trailing
+// + Breakout Long signal (alert only, không trade)
+//
+//@version=5
+strategy("strategy_MTT_v1.B006 (Short Only + Filters)",
+     shorttitle="B.006 S+F",
+     overlay=true,
+     initial_capital=100000,
+     default_qty_type=strategy.percent_of_equity,
+     default_qty_value=10,
+     commission_type=strategy.commission.percent,
+     commission_value=0.075,
+     slippage=2,
+     pyramiding=0,
+     calc_on_every_tick=false,
+     process_orders_on_close=true)
+
+grp_p = "Trading Profile"
+profile  = input.string("Futures", "Profile", options=["Margin","Futures"], group=grp_p)
+override_qty = input.bool(false, "Override profile qty %", group=grp_p)
+manual_qty   = input.float(10.0, "Manual qty %", minval=1.0, maxval=500.0, group=grp_p)
+
+grp_ma = "MA"
+ma_type  = input.string("EMA", "Type", options=["SMA","EMA","WMA","HMA","DEMA","TEMA"], group=grp_ma)
+fast_len = input.int(20,  "Fast",   minval=5,  group=grp_ma)
+med_len  = input.int(50,  "Medium", minval=10, group=grp_ma)
+slow_len = input.int(100, "Slow",   minval=20, group=grp_ma)
+
+grp_f = "Filters (V1.006)"
+use_slope  = input.bool(true,  "Slope filter DOWN", group=grp_f)
+slope_lb   = input.int(20,    "Slope lookback",  minval=5,  group=grp_f)
+use_volume = input.bool(true,  "Volume filter", group=grp_f)
+vol_len    = input.int(50,    "Volume SMA len", minval=10, group=grp_f)
+vol_mult   = input.float(1.0, "Volume multiplier", minval=0.5, step=0.1, group=grp_f)
+use_trail  = input.bool(true,  "ATR trailing stop", group=grp_f)
+atr_len    = input.int(14,    "ATR length",  minval=5,  group=grp_f)
+atr_mult   = input.float(2.5, "ATR multiplier", minval=1.0, step=0.1, group=grp_f)
+
+ma(t, l) =>
+    switch t
+        "SMA"  => ta.sma(close, l)
+        "EMA"  => ta.ema(close, l)
+        "WMA"  => ta.wma(close, l)
+        "HMA"  => ta.hma(close, l)
+        "DEMA" => 2 * ta.ema(close, l) - ta.ema(ta.ema(close, l), l)
+        "TEMA" => 3 * (ta.ema(close, l) - ta.ema(ta.ema(close, l), l)) + ta.ema(ta.ema(ta.ema(close, l), l), l)
+        =>        ta.sma(close, l)
+
+mf = ma(ma_type, fast_len)
+mm = ma(ma_type, med_len)
+ms = ma(ma_type, slow_len)
+
+bear = mf < mm and mm < ms
+bear_start = bear and not bear[1]
+bear_end   = not bear and bear[1]
+
+// V1.006 FILTERS
+slope_ok = not use_slope  or mm < mm[slope_lb]
+vol_ok   = not use_volume or volume > ta.sma(volume, vol_len) * vol_mult
+entry_ok = bear_start and slope_ok and vol_ok
+
+// ATR trailing for short
+atr = ta.atr(atr_len)
+in_pos = strategy.position_size < 0
+var float trail = na
+if in_pos
+    new_trail = close + atr_mult * atr
+    trail := na(trail) ? new_trail : math.min(trail, new_trail)
+else
+    trail := na
+trail_hit = use_trail and in_pos and not na(trail) and high >= trail
+
+margin_pct  = 20.0
+futures_pct = 10.0
+qty_pct = override_qty ? manual_qty : (profile == "Margin" ? margin_pct : futures_pct)
+qc = (strategy.equity * qty_pct / 100.0) / close
+
+if entry_ok
+    strategy.entry("SHORT", strategy.short, qty=qc, comment="Bear+Filters")
+if bear_end
+    strategy.close("SHORT", comment="Bear End")
+if trail_hit
+    strategy.close("SHORT", comment="ATR Trail Hit")
+
+// Breakout Long signal (no trade)
+breakout_long = bear_end
+alertcondition(breakout_long, title="Breakout Long Signal", message="Bear stack ended → potential long break-out")
+
+// Visuals
+p_f = plot(mf, color=color.blue,   title="Fast")
+p_m = plot(mm, color=color.orange, title="Medium")
+p_s = plot(ms, color=color.red,    title="Slow", linewidth=2)
+fill(p_f, p_s, color=bear ? color.new(color.red, 80) : na, title="Bear Zone")
+plot(use_trail and in_pos ? trail : na, color=color.fuchsia, style=plot.style_linebr, linewidth=2, title="ATR Trail")
+
+plotshape(entry_ok,    title="Entry S",  style=shape.triangledown, location=location.abovebar, color=color.new(color.red,0),    size=size.tiny, text="S")
+plotshape(bear_start and not entry_ok, title="Filtered", style=shape.xcross, location=location.abovebar, color=color.new(color.gray,0), size=size.tiny)
+plotshape(bear_end,    title="Bear End", style=shape.xcross,       location=location.belowbar, color=color.new(color.red,30),   size=size.tiny)
+plotshape(trail_hit,   title="Trail",    style=shape.diamond,      location=location.belowbar, color=color.new(color.fuchsia,0), size=size.small, text="T")
+plotshape(breakout_long, title="BO",     style=shape.diamond,      location=location.belowbar, color=color.new(color.aqua,0),    size=size.small, text="BO")
