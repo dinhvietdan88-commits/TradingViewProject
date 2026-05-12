@@ -1,0 +1,14 @@
+[2026-05-10 18:18:12] [INFO] -------------------------------------------------------------
+[2026-05-10 18:18:12] [INFO] AUTOMATED REPLAY TEST START
+[2026-05-10 18:18:12] [INFO] -------------------------------------------------------------
+[2026-05-10 18:18:12] [INFO] Symbol: BINANCE:BTCUSDT | Timeframe: 240 | Speed: 3x
+[2026-05-10 18:18:12] [INFO] Period: 2024-01-01 to 2026-05-10
+[2026-05-10 18:18:12] [INFO] Log: C:\Users\Admin\TradingViewProject\reports\replay_test_20260510_181812.log
+[2026-05-10 18:18:12] [INFO] Results: C:\Users\Admin\TradingViewProject\reports\replay_test_20260510_181812.json
+[2026-05-10 18:18:12] [INFO] 
+[2026-05-10 18:18:12] [INFO] Replay test automation initialized.
+[2026-05-10 18:18:12] [INFO] Proceeding with setup...
+[2026-05-10 18:18:12] [INFO] 
+[2026-05-10 18:18:12] [INFO] Checking TradingView CDP connection...
+[2026-05-10 18:18:14] [ERROR] ERROR: TradingView CDP not responding on port 9222
+[2026-05-10 18:18:14] [ERROR] Ensure TradingView is running with: --remote-debugging-port=9222

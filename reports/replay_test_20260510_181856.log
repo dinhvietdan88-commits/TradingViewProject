@@ -1,0 +1,61 @@
+[2026-05-10 18:18:56] [INFO] -------------------------------------------------------------
+[2026-05-10 18:18:56] [INFO] AUTOMATED REPLAY TEST START
+[2026-05-10 18:18:56] [INFO] -------------------------------------------------------------
+[2026-05-10 18:18:56] [INFO] Symbol: BINANCE:BTCUSDT | Timeframe: 240 | Speed: 3x
+[2026-05-10 18:18:56] [INFO] Period: 2024-01-01 to 2026-05-10
+[2026-05-10 18:18:56] [INFO] Log: C:\Users\Admin\TradingViewProject\reports\replay_test_20260510_181856.log
+[2026-05-10 18:18:56] [INFO] Results: C:\Users\Admin\TradingViewProject\reports\replay_test_20260510_181856.json
+[2026-05-10 18:18:56] [INFO] 
+[2026-05-10 18:18:56] [INFO] Replay test automation initialized.
+[2026-05-10 18:18:56] [INFO] Proceeding with setup...
+[2026-05-10 18:18:56] [INFO] 
+[2026-05-10 18:18:56] [INFO] Checking TradingView CDP connection...
+[2026-05-10 18:18:58] [INFO] ? TradingView CDP connection established
+[2026-05-10 18:18:58] [INFO] Setting up dual-pane layout...
+[2026-05-10 18:18:58] [INFO] Pane 0: Minervini_TT_Indicator (MTT_v1.A005 - ADX25+Trail + Trend Template)
+[2026-05-10 18:18:58] [INFO] Pane 1: SEPA_Multi-Indicator (Multi-Indicator_v16 - EMA+RSI+MACD+Volume+ATR)
+[2026-05-10 18:18:58] [INFO] Setting symbol to BINANCE:BTCUSDT on both panes...
+[2026-05-10 18:18:58] [INFO] Setting timeframe to 240 (Daily)...
+[2026-05-10 18:18:58] [INFO] Enabling Strategy 1: Minervini_TT_Indicator...
+[2026-05-10 18:18:58] [INFO] Enabling Strategy 2: SEPA_Multi-Indicator...
+[2026-05-10 18:18:58] [INFO] Starting replay mode from 2024-01-01...
+[2026-05-10 18:18:58] [INFO] Total trading days to simulate: ~860 days
+[2026-05-10 18:18:58] [INFO] At 3x speed: ~287 days elapsed time
+[2026-05-10 18:18:58] [INFO] Setting autoplay speed to 3x (100ms per bar)...
+[2026-05-10 18:18:58] [INFO] 
+[2026-05-10 18:18:58] [INFO] REPLAY IN PROGRESS...
+[2026-05-10 18:18:58] [INFO] Monitor TradingView window for strategy signals and trade entries.
+[2026-05-10 18:18:58] [INFO] Capture strategy performance metrics manually or wait for completion.
+[2026-05-10 18:18:58] [INFO] 
+[2026-05-10 18:18:58] [INFO] Key metrics to observe:
+[2026-05-10 18:18:58] [INFO]   - Entry/Exit points for both strategies
+[2026-05-10 18:18:58] [INFO]   - Win rate and P&L comparison
+[2026-05-10 18:18:58] [INFO]   - Drawdown analysis
+[2026-05-10 18:18:58] [INFO]   - Performance during different market phases (Bull/Bear/Sideways)
+[2026-05-10 18:18:58] [INFO] 
+[2026-05-10 18:18:58] [INFO] MANUAL INTERACTION REQUIRED:
+[2026-05-10 18:18:58] [INFO] 1. Open TradingView Desktop window
+[2026-05-10 18:18:58] [INFO] 2. Setup two panes side-by-side:
+[2026-05-10 18:18:58] [INFO]    - Left pane: Apply 'Minervini_TT_Indicator' strategy
+[2026-05-10 18:18:58] [INFO]    - Right pane: Apply 'SEPA_Multi-Indicator' strategy
+[2026-05-10 18:18:58] [INFO] 3. Both panes:
+[2026-05-10 18:18:58] [INFO]    - Set symbol to: BINANCE:BTCUSDT
+[2026-05-10 18:18:58] [INFO]    - Set timeframe to: 240
+[2026-05-10 18:18:58] [INFO] 4. Click 'Strategy Tester' tab for each pane
+[2026-05-10 18:18:58] [INFO] 5. Start Replay from 2024-01-01
+[2026-05-10 18:18:58] [INFO] 6. Set Autoplay speed to 3x (100ms)
+[2026-05-10 18:18:58] [INFO] 7. Monitor signals and trades in real-time
+[2026-05-10 18:18:58] [INFO] 8. Take screenshots at key moments for analysis
+[2026-05-10 18:18:58] [INFO] 
+[2026-05-10 18:18:58] [INFO] 
+[2026-05-10 18:18:58] [INFO] -------------------------------------------------------------
+[2026-05-10 18:18:58] [INFO] AUTOMATED REPLAY TEST SETUP COMPLETE
+[2026-05-10 18:18:58] [INFO] -------------------------------------------------------------
+[2026-05-10 18:18:58] [INFO] Results saved to: C:\Users\Admin\TradingViewProject\reports\replay_test_20260510_181856.json
+[2026-05-10 18:18:58] [INFO] 
+[2026-05-10 18:18:58] [INFO] NEXT STEPS:
+[2026-05-10 18:18:58] [INFO] 1. Follow manual interaction instructions above
+[2026-05-10 18:18:58] [INFO] 2. Monitor TradingView for trade signals
+[2026-05-10 18:18:58] [INFO] 3. After replay completes, capture final performance metrics
+[2026-05-10 18:18:58] [INFO] 4. Export strategy results from TradingView Strategy Tester
+[2026-05-10 18:18:58] [INFO] 

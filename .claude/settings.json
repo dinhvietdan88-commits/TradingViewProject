@@ -4,7 +4,17 @@
       "Bash(gh auth *)",
       "PowerShell(gh --version 2>&1)",
       "PowerShell(gh auth status 2>&1)",
-      "PowerShell(winget install --id GitHub.cli --accept-source-agreements --accept-package-agreements --silent 2>&1)"
+      "PowerShell(winget install --id GitHub.cli --accept-source-agreements --accept-package-agreements --silent 2>&1)",
+      "mcp__tradingview__chart_set_visible_range",
+      "mcp__tradingview__pine_save",
+      "mcp__tradingview__pine_open",
+      "mcp__tradingview__pine_get_source",
+      "PowerShell($pid9222 = \\(Get-NetTCPConnection -LocalPort 9222 -ErrorAction SilentlyContinue | Select-Object -First 1\\).OwningProcess; if \\($pid9222\\) { Get-Process -Id $pid9222 | Select-Object ProcessName, Id, Path } else { 'No process on port 9222' })",
+      "PowerShell($conn = Get-NetTCPConnection -LocalPort 9222 -ErrorAction SilentlyContinue; if \\($conn\\) { $conn | Format-Table LocalAddress, LocalPort, State, OwningProcess; foreach \\($c in $conn\\) { try { $p = Get-Process -Id $c.OwningProcess -ErrorAction Stop; Write-Output \\(\"PID {0} = {1} \\({2}\\)\" -f $p.Id, $p.ProcessName, $p.Path\\) } catch { Write-Output \\(\"PID {0}: {1}\" -f $c.OwningProcess, $_.Exception.Message\\) } } } else { Write-Output 'No TCP connections on 9222' })",
+      "Skill(tv-start)",
+      "Skill(tv-start:*)",
+      "PowerShell($paths = @\\('C:\\\\Users\\\\Admin\\\\TradingViewProject\\\\.claude\\\\worktrees\\\\priceless-panini-538c69\\\\scripts\\\\launch_tv_windows.ps1', 'C:\\\\Users\\\\Admin\\\\TradingViewProject\\\\scripts\\\\launch_tv_windows.ps1'\\); $script = $paths | Where-Object { Test-Path $_ } | Select-Object -First 1; if \\($script\\) { & $script } else { Write-Host 'launch_tv_windows.ps1 not found' })",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:9222/json/version)"
     ]
   }
 }

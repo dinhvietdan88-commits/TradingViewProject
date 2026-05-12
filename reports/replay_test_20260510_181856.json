@@ -1,0 +1,54 @@
+{
+    "endDate":  "2026-05-10",
+    "symbol":  "BINANCE:BTCUSDT",
+    "stats":  [
+
+              ],
+    "strategies":  [
+                       {
+                           "PaneIndex":  0,
+                           "Name":  "Minervini_TT_Indicator",
+                           "Version":  "Version1.1",
+                           "Description":  "MTT_v1.A005 - ADX25+Trail + Trend Template"
+                       },
+                       {
+                           "PaneIndex":  1,
+                           "Name":  "SEPA_Multi-Indicator",
+                           "Version":  "Version1",
+                           "Description":  "Multi-Indicator_v16 - EMA+RSI+MACD+Volume+ATR"
+                       }
+                   ],
+    "startDate":  "2024-01-01",
+    "events":  [
+                   {
+                       "message":  "Configured 2-pane layout for strategy comparison",
+                       "timestamp":  "2026-05-10T18:18:58.3657760+07:00",
+                       "type":  "setup"
+                   },
+                   {
+                       "timestamp":  "2026-05-10T18:18:58.3697728+07:00",
+                       "type":  "strategies_enabled"
+                   },
+                   {
+                       "timestamp":  "2026-05-10T18:18:58.3787892+07:00",
+                       "startDate":  "2024-01-01",
+                       "totalDays":  860,
+                       "type":  "replay_started",
+                       "endDate":  "2026-05-10"
+                   },
+                   {
+                       "instructions":  [
+                                            "Setup dual-pane layout with both strategies",
+                                            "Set symbol: BINANCE:BTCUSDT",
+                                            "Set timeframe: 240",
+                                            "Start replay: 2024-01-01 to 2026-05-10",
+                                            "Speed: 3x (100ms per bar)"
+                                        ],
+                       "timestamp":  "2026-05-10T18:18:58.4002124+07:00",
+                       "type":  "manual_interaction_required"
+                   }
+               ],
+    "timestamp":  "20260510_181856",
+    "speed":  3,
+    "timeframe":  "240"
+}
