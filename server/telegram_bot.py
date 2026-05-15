@@ -1813,15 +1813,26 @@ async def cmd_login(update, context):
             expires_at=otp.expires_at.isoformat(),
         )
 
-        # Build login URL
         dashboard_url = auth_cfg.dashboard_url.rstrip("/")
-        login_url = f"{dashboard_url}/auth/callback?code={otp.code}"
+        if not dashboard_url.startswith("http://") and not dashboard_url.startswith("https://"):
+            dashboard_url = f"http://{dashboard_url}"
+            
+        # ⚠️ BỘ LỌC CỦA TELEGRAM: Telegram tự động chặn KHÔNG CHO CLICK vào các link có chứa "localhost" hoặc "127.0.0.1".
+        # Sử dụng Regex để thay thế linh hoạt mọi trường hợp localhost/127.0.0.1 thành 127.0.0.1.nip.io
+        import re
+        safe_dashboard_url = re.sub(r'(://)(localhost|127\.0\.0\.1)(:?\d*)', r'\g<1>127.0.0.1.nip.io\g<3>', dashboard_url, flags=re.IGNORECASE)
+        
+        login_url = f"{safe_dashboard_url}/auth/callback?code={otp.code}"
 
-        from notifier import sanitize_for_telegram_html
-        msg = sanitize_for_telegram_html(
+        # ⚠️ DO NOT pass through sanitize_for_telegram_html — the message
+        # is pre-built with valid Telegram HTML tags. That function escapes
+        # < > first, which destroys <b>, <a href=...>, <code> tags.
+        msg = (
             f"🔐 <b>Dashboard Login</b>\n\n"
             f"Click link sau để đăng nhập Dashboard:\n"
-            f"<a href='{login_url}'>🚀 Mở Dashboard</a>\n\n"
+            f'<a href="{login_url}">🚀 Mở Dashboard</a>\n\n'
+            f"🔗 <b>Link trực tiếp (nếu không bấm được Mở Dashboard):</b>\n"
+            f"{login_url}\n\n"
             f"⚠️ Link hết hạn sau <b>5 phút</b> và chỉ dùng được 1 lần.\n"
             f"<code>{otp.code}</code>"
         )

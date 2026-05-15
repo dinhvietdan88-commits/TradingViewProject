@@ -89,8 +89,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if _is_public_path(path):
             return await call_next(request)
 
+        # ── Lazy-resolve AuthService (supports test injection after startup) ──
+        # add_middleware() runs at import time before lifespan, so app.state
+        # may not be populated yet. Always prefer the live app.state value.
+        auth_service = getattr(request.app.state, "auth_service", None) or self.auth_service
+
         # ── No auth service configured: open access mode ──────────
-        if self.auth_service is None:
+        if auth_service is None:
             return await call_next(request)
 
         # ── Check if DASHBOARD_TOKEN is empty → open access ───────
@@ -102,14 +107,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         # ── Auth cascade ──────────────────────────────────────────
         # 1. Try Bearer token
-        user = self._check_bearer(request)
+        user = self._check_bearer(request, auth_service)
         if user is not None:
             request.state.user = user
             request.state.auth_method = "bearer"
             return await call_next(request)
 
         # 2. Try session cookie
-        session_result = self._check_session(request)
+        session_result = self._check_session(request, auth_service)
         if session_result is not None:
             session, needs_refresh = session_result
             request.state.user = {
@@ -123,15 +128,18 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
             # Selective refresh (only within 1hr of expiry)
             if needs_refresh:
-                response = self._refresh_cookie(response, session)
+                response = self._refresh_cookie(response, session, auth_service)
 
             return response
 
         # 3. Unauthenticated
         return self._unauthenticated_response(request, path)
 
-    def _check_bearer(self, request: Request) -> Optional[dict]:
+    def _check_bearer(self, request: Request, auth_service=None) -> Optional[dict]:
         """Check Authorization: Bearer header."""
+        svc = auth_service or self.auth_service
+        if svc is None:
+            return None
         auth_header = request.headers.get("authorization", "")
         if not auth_header.startswith("Bearer "):
             return None
@@ -140,18 +148,21 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if not token:
             return None
 
-        if self.auth_service.verify_bearer_token(token):
+        if svc.verify_bearer_token(token):
             return {"auth_type": "bearer", "token_verified": True}
 
         return None
 
-    def _check_session(self, request: Request):
+    def _check_session(self, request: Request, auth_service=None):
         """Check tg_session cookie.
 
         Returns:
             (SessionData, needs_refresh: bool) if valid.
             None if invalid/missing.
         """
+        svc = auth_service or self.auth_service
+        if svc is None:
+            return None
         from auth.models import (
             TokenExpiredError,
             TokenInvalidError,
@@ -163,20 +174,23 @@ class AuthMiddleware(BaseHTTPMiddleware):
             return None
 
         try:
-            session = self.auth_service.verify_session_token(token)
-            needs_refresh = self.auth_service.should_refresh(session)
+            session = svc.verify_session_token(token)
+            needs_refresh = svc.should_refresh(session)
             return (session, needs_refresh)
         except (TokenInvalidError, TokenExpiredError, SessionMaxLifetimeError) as e:
             log.debug(f"Session cookie invalid: {e}")
             return None
 
-    def _refresh_cookie(self, response: Response, session) -> Response:
+    def _refresh_cookie(self, response: Response, session, auth_service=None) -> Response:
         """Attach refreshed session cookie to response."""
         from auth.models import SessionMaxLifetimeError
+        svc = auth_service or self.auth_service
+        if svc is None:
+            return response
 
         try:
-            refreshed = self.auth_service.refresh_session(session)
-            new_token = self.auth_service.create_session_token(refreshed)
+            refreshed = svc.refresh_session(session)
+            new_token = svc.create_session_token(refreshed)
 
             # Set cookie with security flags
             response.set_cookie(
@@ -198,12 +212,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         return response
 
-    def _cookie_max_age(self) -> Optional[int]:
+    def _cookie_max_age(self, auth_service=None) -> Optional[int]:
         """Calculate cookie max-age from config."""
-        if self.auth_service.config.session_expiry_hours is None:
-            # Never expire → 7 days (absolute max)
+        svc = auth_service or self.auth_service
+        if svc is None:
+            return None
+        if svc.config.session_expiry_hours is None:
             return 7 * 24 * 3600
-        return self.auth_service.config.session_expiry_hours * 3600
+        return svc.config.session_expiry_hours * 3600
 
     def _unauthenticated_response(self, request: Request, path: str) -> Response:
         """Return appropriate response for unauthenticated requests."""
