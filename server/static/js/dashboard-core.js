@@ -20,16 +20,16 @@ const headers = () => ({ 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'ap
 
 // ═══ AUTH ═══
 async function checkAuth() {
-  // 1. Try open-access (DASHBOARD_TOKEN empty on server)
+  // 1. Try session cookie (tg_session) — transparent, server validates
   try {
-    const res = await fetch('/trades?limit=1');
+    const res = await fetch('/trades?limit=1', { credentials: 'same-origin' });
     if (res.ok) {
       document.getElementById('loginOverlay').style.display = 'none';
       return true;
     }
   } catch(e) {}
 
-  // 2. Try saved token
+  // 2. Try saved Bearer token (backward compatible)
   if (TOKEN) {
     try {
       const res = await fetch('/trades?limit=1', { headers: headers() });
@@ -43,9 +43,19 @@ async function checkAuth() {
     } catch(e) {}
   }
 
-  // 3. Show login
+  // 3. Show login overlay (or redirect to /auth/login)
+  // If server redirected to /auth/login, the browser will follow 302 automatically.
+  // This handles the case where login overlay is present in dashboard.html
   document.getElementById('loginOverlay').style.display = 'flex';
   return false;
+}
+
+function handleLogout() {
+  // Clear Bearer token
+  TOKEN = '';
+  localStorage.removeItem('tv_token');
+  // Navigate to logout endpoint (clears session cookie server-side)
+  window.location.href = '/auth/logout';
 }
 
 async function handleLogin() {

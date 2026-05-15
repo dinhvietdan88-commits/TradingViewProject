@@ -78,6 +78,32 @@ CREATE TABLE IF NOT EXISTS exchange_health (
     error_msg   TEXT,
     updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS auth_codes (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    code        TEXT    NOT NULL UNIQUE,
+    telegram_id INTEGER NOT NULL,
+    username    TEXT,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    expires_at  TEXT    NOT NULL,
+    used        INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_codes_code ON auth_codes(code);
+CREATE INDEX IF NOT EXISTS idx_auth_codes_tg   ON auth_codes(telegram_id);
+
+CREATE TABLE IF NOT EXISTS auth_sessions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id  TEXT    NOT NULL UNIQUE,
+    telegram_id INTEGER NOT NULL,
+    username    TEXT,
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    expires_at  TEXT,
+    active      INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_sid ON auth_sessions(session_id);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_tg  ON auth_sessions(telegram_id);
 """
 
 
@@ -134,3 +160,114 @@ from data.query_service import (  # noqa: E402, F401
     get_brief_by_id,
     get_db_counts,
 )
+
+
+# ═══════════════════════════════════════════════════════════════
+# AUTH HELPERS (synchronous — used by auth routes)
+# ═══════════════════════════════════════════════════════════════
+
+import sqlite3
+
+
+def _sync_conn():
+    """Get a synchronous SQLite connection for auth operations."""
+    return sqlite3.connect(config.DB_PATH)
+
+
+def get_auth_code(code: str) -> Optional[Dict[str, Any]]:
+    """Fetch a one-time auth code record."""
+    conn = _sync_conn()
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            "SELECT code, telegram_id, username, created_at, expires_at, used "
+            "FROM auth_codes WHERE code = ?",
+            (code,),
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def store_auth_code(
+    code: str, telegram_id: int, username: Optional[str],
+    created_at: str, expires_at: str,
+) -> None:
+    """Store a new one-time auth code."""
+    conn = _sync_conn()
+    try:
+        conn.execute(
+            "INSERT INTO auth_codes (code, telegram_id, username, created_at, expires_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (code, telegram_id, username, created_at, expires_at),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def mark_auth_code_used(code: str) -> None:
+    """Mark a one-time code as used."""
+    conn = _sync_conn()
+    try:
+        conn.execute("UPDATE auth_codes SET used = 1 WHERE code = ?", (code,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def store_auth_session(
+    session_id: str, telegram_id: int, username: Optional[str],
+    created_at: str, expires_at: Optional[str],
+) -> None:
+    """Store a new auth session."""
+    conn = _sync_conn()
+    try:
+        conn.execute(
+            "INSERT INTO auth_sessions (session_id, telegram_id, username, created_at, expires_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (session_id, telegram_id, username, created_at, expires_at),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def delete_auth_session(session_id: str) -> None:
+    """Deactivate a session."""
+    conn = _sync_conn()
+    try:
+        conn.execute(
+            "UPDATE auth_sessions SET active = 0 WHERE session_id = ?",
+            (session_id,),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def delete_all_user_sessions(telegram_id: int) -> int:
+    """Deactivate all sessions for a user. Returns count of affected rows."""
+    conn = _sync_conn()
+    try:
+        cursor = conn.execute(
+            "UPDATE auth_sessions SET active = 0 WHERE telegram_id = ? AND active = 1",
+            (telegram_id,),
+        )
+        conn.commit()
+        return cursor.rowcount
+    finally:
+        conn.close()
+
+
+def cleanup_expired_auth_codes() -> int:
+    """Delete expired auth codes (housekeeping)."""
+    conn = _sync_conn()
+    try:
+        cursor = conn.execute(
+            "DELETE FROM auth_codes WHERE expires_at < datetime('now')"
+        )
+        conn.commit()
+        return cursor.rowcount
+    finally:
+        conn.close()

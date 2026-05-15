@@ -1769,6 +1769,94 @@ async def _report_auto_send_loop() -> None:
         await asyncio.sleep(60)
 
 
+# ── P10: Dashboard Login/Logout Commands ─────────────────────────────────
+
+async def cmd_login(update, context):
+    """Generate a one-time dashboard login link.
+
+    Authorization-first: checks allowed users BEFORE generating code.
+    """
+    user = update.effective_user
+    if not user:
+        await update.message.reply_text("❌ Không xác định được user.")
+        return
+
+    try:
+        from auth.auth_config import AuthConfig
+        from auth.service import AuthService
+        import database as db
+        import config
+
+        auth_cfg = AuthConfig()
+        auth_svc = AuthService(auth_cfg)
+
+        # Authorization check FIRST (before generating any code)
+        if not auth_cfg.is_user_allowed(user.id):
+            await update.message.reply_text(
+                "🚫 Bạn không có quyền truy cập Dashboard.\n"
+                "Liên hệ admin để được thêm vào danh sách cho phép."
+            )
+            return
+
+        # Generate one-time code
+        otp = auth_svc.generate_login_code(
+            telegram_id=user.id,
+            username=user.username,
+        )
+
+        # Store code in DB
+        db.store_auth_code(
+            code=otp.code,
+            telegram_id=otp.telegram_id,
+            username=otp.username,
+            created_at=otp.created_at.isoformat(),
+            expires_at=otp.expires_at.isoformat(),
+        )
+
+        # Build login URL
+        dashboard_url = auth_cfg.dashboard_url.rstrip("/")
+        login_url = f"{dashboard_url}/auth/callback?code={otp.code}"
+
+        from notifier import sanitize_for_telegram_html
+        msg = sanitize_for_telegram_html(
+            f"🔐 <b>Dashboard Login</b>\n\n"
+            f"Click link sau để đăng nhập Dashboard:\n"
+            f"<a href='{login_url}'>🚀 Mở Dashboard</a>\n\n"
+            f"⚠️ Link hết hạn sau <b>5 phút</b> và chỉ dùng được 1 lần.\n"
+            f"<code>{otp.code}</code>"
+        )
+        await update.message.reply_text(msg, parse_mode="HTML", disable_web_page_preview=True)
+        log.info(f"🔐 Login code generated for user {user.id} (@{user.username})")
+
+    except Exception as e:
+        log.error(f"cmd_login error: {e}", exc_info=True)
+        await update.message.reply_text(f"❌ Login thất bại: {e}")
+
+
+async def cmd_logout(update, context):
+    """Invalidate all dashboard sessions for the current user."""
+    user = update.effective_user
+    if not user:
+        await update.message.reply_text("❌ Không xác định được user.")
+        return
+
+    try:
+        import database as db
+        count = db.delete_all_user_sessions(user.id)
+        if count > 0:
+            await update.message.reply_text(
+                f"✅ Đã huỷ <b>{count}</b> phiên đăng nhập Dashboard.\n"
+                f"Bạn sẽ cần /login lại để truy cập.",
+                parse_mode="HTML",
+            )
+        else:
+            await update.message.reply_text("Không có phiên nào đang hoạt động.")
+        log.info(f"🔐 All sessions invalidated for user {user.id} (count={count})")
+    except Exception as e:
+        log.error(f"cmd_logout error: {e}", exc_info=True)
+        await update.message.reply_text(f"❌ Logout thất bại: {e}")
+
+
 # ── Bot Lifecycle ──────────────────────────────────────────────
 
 _bot_thread_lock = threading.Lock()
@@ -1860,6 +1948,8 @@ def start_bot():
                     BotCommand("rag",       "Hỏi Minervini AI Knowledge Base"),
                     BotCommand("trades",    "Lịch sử giao dịch [N]"),
                     BotCommand("report",    "Báo cáo ngày [YYYY-MM-DD]"),
+                    BotCommand("login",     "Đăng nhập Dashboard"),
+                    BotCommand("logout",    "Huỷ phiên Dashboard"),
                 ]
                 await application.bot.set_my_commands(commands)
 
@@ -1897,6 +1987,9 @@ def start_bot():
             app.add_handler(CommandHandler("rag",       cmd_rag))
             app.add_handler(CommandHandler("trades",    cmd_trades))
             app.add_handler(CommandHandler("report",    cmd_report))
+            # ── P10: Dashboard auth commands ─────────────────────────────
+            app.add_handler(CommandHandler("login",     cmd_login))
+            app.add_handler(CommandHandler("logout",    cmd_logout))
 
             from telegram.ext import MessageHandler, filters
             app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_text))

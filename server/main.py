@@ -71,6 +71,20 @@ async def lifespan(app: FastAPI):
     await database.init_db()
     log.info("Database ready.")
 
+    # ── P10: Initialize Auth Service ──────────────────────────────────────────
+    try:
+        from auth.auth_config import AuthConfig
+        from auth.service import AuthService
+        auth_cfg = AuthConfig()
+        auth_svc = AuthService(auth_cfg)
+        app.state.auth_service = auth_svc
+        log.info(f"Auth: ✅ Initialized (allowed_users={len(auth_cfg.allowed_users)}, "
+                 f"expiry={auth_cfg.session_expiry_hours or 'never'}h, "
+                 f"widget={'ON' if auth_cfg.widget_enabled else 'OFF'})")
+    except Exception as auth_err:
+        log.warning(f"Auth: ⚠️ Init failed ({auth_err}). Dashboard auth disabled.")
+        app.state.auth_service = None
+
     # ── Phase 4: Register EventBus components (triggers @bus.on() decorators) ──
     import processor.signal_processor  # noqa: F401 — @bus.on(SignalReceived)
     import engine.trade_engine          # noqa: F401 — @bus.on(SignalValidated)
@@ -142,6 +156,14 @@ app = FastAPI(
 # ── WebhookGateway router (Component 8/8) ────────────────────────────────────
 app.include_router(_webhook_router)
 
+# ── P10: Auth router ─────────────────────────────────────────────────────────
+from auth.routes import auth_router as _auth_router
+app.include_router(_auth_router)
+
+# ── P10: AuthMiddleware (replaces legacy dashboard_auth_middleware) ───────────
+from auth.middleware import AuthMiddleware
+app.add_middleware(AuthMiddleware, auth_service=getattr(app.state, 'auth_service', None))
+
 # Mount static files
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -172,32 +194,13 @@ async def ip_whitelist_middleware(request: Request, call_next):
     return await call_next(request)
 
 
-# ═══ DASHBOARD AUTH MIDDLEWARE ════════════════════════════════
-@app.middleware("http")
-async def dashboard_auth_middleware(request: Request, call_next):
-    """Bearer-token auth for /api/* endpoints.
+# ═══ DASHBOARD AUTH MIDDLEWARE (P10: Replaced by AuthMiddleware) ═══════════
+# Legacy middleware replaced by auth.AuthMiddleware which supports both
+# Bearer tokens (backward compatible) and Telegram session cookies.
+# See server/auth/ package for full implementation.
 
-    SEC-005 fix: Removed ?token= query-param fallback. Token MUST be sent via
-    Authorization header only. Query params appear in access logs (plaintext leak).
-    Skip auth for: webhook, health check, static files, dashboard HTML, root, screenshots.
-    """
-    path = request.url.path
-    skip_paths = ("/webhook", "/tv_health_check", "/health", "/api/system/status", "/static", "/dashboard", "/")
-    if not config.DASHBOARD_TOKEN or path in skip_paths or path.startswith("/static") \
-            or path.startswith("/api/vision/screenshot/"):
-        return await call_next(request)
+# Initialize AuthMiddleware after app creation (below)
 
-    if path.startswith("/api/") or path.startswith("/trades"):
-        auth_header = request.headers.get("Authorization", "")
-        # SEC-005: Header-only auth — never accept token via query param to prevent log leaks
-        token = auth_header[7:] if auth_header.startswith("Bearer ") else ""
-
-        if not secrets.compare_digest(token, config.DASHBOARD_TOKEN):
-            return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"error": "Invalid or missing Authorization header"},
-            )
-    return await call_next(request)
 
 
 # ═══ HEALTH CHECK (Sprint 7.3) ════════════════════════════════

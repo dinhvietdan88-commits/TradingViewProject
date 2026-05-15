@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔐 Đăng nhập Dashboard — Sovereign Trading Node</title>
+    <meta name="description" content="Đăng nhập Dashboard thông qua Telegram Bot">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0f0f23;
+            --bg-card: rgba(30, 30, 60, 0.85);
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --text-primary: #e2e8f0;
+            --text-muted: #94a3b8;
+            --accent: #818cf8;
+            --accent-glow: rgba(129, 140, 248, 0.15);
+            --success: #34d399;
+            --warn: #fbbf24;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Animated gradient background */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background:
+                radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(59, 130, 246, 0.04) 0%, transparent 50%);
+            animation: bgShift 15s ease-in-out infinite alternate;
+            z-index: -1;
+        }
+
+        @keyframes bgShift {
+            0% { opacity: 0.8; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.05); }
+        }
+
+        .login-container {
+            width: 100%; max-width: 440px; padding: 1rem;
+        }
+
+        .login-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            padding: 2.5rem;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+            text-align: center;
+            animation: cardIn 0.5s ease-out;
+        }
+
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo-icon {
+            font-size: 3rem;
+            margin-bottom: 0.75rem;
+            display: block;
+            filter: drop-shadow(0 0 12px var(--accent-glow));
+        }
+
+        h1 {
+            font-size: 1.5rem; font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #818cf8, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem; line-height: 1.5;
+            margin-bottom: 2rem;
+        }
+
+        /* Steps */
+        .steps { text-align: left; margin-bottom: 2rem; }
+
+        .step {
+            display: flex; align-items: flex-start; gap: 0.75rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .step:last-child { border-bottom: none; }
+
+        .step-number {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: var(--accent-glow);
+            border: 1px solid rgba(129, 140, 248, 0.3);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 600;
+            color: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            font-size: 0.88rem; line-height: 1.5; color: var(--text-muted);
+        }
+        .step-text code {
+            background: rgba(129, 140, 248, 0.12);
+            padding: 0.15em 0.4em;
+            border-radius: 4px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.82rem;
+            color: var(--accent);
+        }
+
+        /* Divider */
+        .divider {
+            display: flex; align-items: center; gap: 1rem;
+            margin: 1.5rem 0;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+        .divider::before, .divider::after {
+            content: ''; flex: 1; height: 1px; background: var(--border-subtle);
+        }
+
+        /* Token input fallback */
+        .token-group { margin-bottom: 1.5rem; }
+        .token-group label {
+            display: block; text-align: left;
+            font-size: 0.8rem; color: var(--text-muted);
+            margin-bottom: 0.4rem;
+        }
+        .token-input {
+            width: 100%; padding: 0.75rem 1rem;
+            background: rgba(15, 15, 35, 0.8);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .token-input:focus { border-color: var(--accent); }
+        .token-input::placeholder { color: rgba(148, 163, 184, 0.4); }
+
+        .btn-primary {
+            width: 100%; padding: 0.8rem;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border: none; border-radius: 10px;
+            color: #fff; font-weight: 600; font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25);
+        }
+
+        .error-msg {
+            display: none;
+            color: #f87171;
+            font-size: 0.82rem;
+            margin-top: 0.5rem;
+            text-align: left;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 1.5rem;
+            font-size: 0.75rem;
+            color: rgba(148, 163, 184, 0.5);
+        }
+
+        /* Widget container */
+        #telegramWidget {
+            margin: 1rem 0;
+            display: flex; justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <span class="logo-icon">🔐</span>
+            <h1>Sovereign Trading Node</h1>
+            <p class="subtitle">
+                Đăng nhập Dashboard bằng Telegram Bot<br>
+                hoặc Bearer Token
+            </p>
+
+            <!-- Steps -->
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-text">
+                        Mở Telegram Bot và gửi lệnh <code>/login</code>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-text">
+                        Click link đăng nhập mà Bot gửi cho bạn
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-text">
+                        Bạn sẽ được tự động đăng nhập Dashboard ✨
+                    </div>
+                </div>
+            </div>
+
+            <!-- Telegram Widget (if enabled) -->
+            <div id="telegramWidget"></div>
+
+            <div class="divider">hoặc dùng Token</div>
+
+            <!-- Token fallback -->
+            <div class="token-group">
+                <label for="loginToken">Bearer Token</label>
+                <input type="password"
+                       id="loginToken"
+                       class="token-input"
+                       placeholder="Nhập Dashboard Token..."
+                       autocomplete="off">
+                <div class="error-msg" id="loginError"></div>
+            </div>
+
+            <button class="btn-primary" id="loginBtn" onclick="handleTokenLogin()">
+                Đăng nhập bằng Token
+            </button>
+
+            <p class="footer">Sovereign Trading Node v7.6</p>
+        </div>
+    </div>
+
+    <script>
+        async function handleTokenLogin() {
+            const token = document.getElementById('loginToken').value.trim();
+            if (!token) return;
+            const errEl = document.getElementById('loginError');
+
+            try {
+                const res = await fetch('/trades?limit=1', {
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                });
+                if (res.ok) {
+                    localStorage.setItem('tv_token', token);
+                    window.location.href = '{{NEXT_URL}}';
+                } else {
+                    errEl.style.display = 'block';
+                    errEl.textContent = 'Token không hợp lệ. Kiểm tra lại.';
+                }
+            } catch(e) {
+                errEl.style.display = 'block';
+                errEl.textContent = 'Không thể kết nối server.';
+            }
+        }
+
+        // Enter key submits
+        document.getElementById('loginToken').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleTokenLogin();
+        });
+    </script>
+</body>
+</html>

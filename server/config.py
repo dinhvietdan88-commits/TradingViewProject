@@ -143,6 +143,19 @@ REPORT_SEND_TIME = os.getenv("REPORT_SEND_TIME", "22:00")  # HH:MM, ICT (UTC+7)
 # Simple bearer token for dashboard API. Set in .env to protect endpoints.
 DASHBOARD_TOKEN = os.getenv("DASHBOARD_TOKEN", "")
 
+# ── P10: Telegram Dashboard Authentication ────────────────────────────────
+# HMAC signing key for session tokens (≥32 chars; auto-generated if missing)
+AUTH_SECRET_KEY = os.getenv("AUTH_SECRET_KEY", "")
+# Comma-separated Telegram user IDs allowed to access dashboard
+# Falls back to TELEGRAM_CHAT_ID if not set
+TELEGRAM_ALLOWED_USERS = os.getenv("TELEGRAM_ALLOWED_USERS", "")
+# Session duration in hours (0=never expire, 1-720, default=24)
+SESSION_EXPIRY_HOURS = os.getenv("SESSION_EXPIRY_HOURS", "24")
+# Base URL for dashboard (used in login callback URLs)
+DASHBOARD_URL = os.getenv("DASHBOARD_URL", f"http://localhost:{PORT}")
+# Enable Telegram Login Widget (alternative to /login bot command)
+TELEGRAM_LOGIN_WIDGET = os.getenv("TELEGRAM_LOGIN_WIDGET", "false").lower() == "true"
+
 # Server start time (for uptime calculation)
 import time as _time
 SERVER_START_TIME = _time.time()
