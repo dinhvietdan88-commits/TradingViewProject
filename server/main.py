@@ -224,6 +224,10 @@ app = FastAPI(
 # ── WebhookGateway router (Component 8/8) ────────────────────────────────────
 app.include_router(_webhook_router)
 
+# ── FX Tactix subsystem (no-code Pine generator) ─────────────────────────────
+from fx_tactix import router as _fx_tactix_router
+app.include_router(_fx_tactix_router)
+
 # ── P10: Auth router ─────────────────────────────────────────────────────────
 from auth.routes import auth_router as _auth_router
 app.include_router(_auth_router)

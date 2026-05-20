@@ -43,3 +43,6 @@ refactor_styles.py
 
 # Kiro IDE
 .kiro/
+
+# FX Tactix generated Pine scripts (user reviews before committing)
+pine/v2/generated/
