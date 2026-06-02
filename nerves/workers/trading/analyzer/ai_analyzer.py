@@ -261,6 +261,34 @@ async def process_validated_signal(event: SignalValidated) -> None:
         if sl_match and not sl_val: sl_val = sl_match.group(1).replace(",", "")
         if tp_match and not tp_val: tp_val = tp_match.group(1).replace(",", "")
 
+    # BUG-05 fix: Directional validation of AI-extracted SL/TP.
+    # Vision AI / RAG text may output SL/TP using BUY-side convention
+    # regardless of the actual trade direction. Swap if mismatched.
+    if sl_val and tp_val and event.price:
+        try:
+            _sl = float(str(sl_val).replace(",", ""))
+            _tp = float(str(tp_val).replace(",", ""))
+            _entry = float(event.price)
+            if _entry > 0 and _sl > 0 and _tp > 0:
+                if event.action.lower() == "sell":
+                    # SELL: SL should be ABOVE entry, TP should be BELOW entry
+                    if _sl < _entry and _tp > _entry:
+                        log.warning(
+                            f"AIAnalyzer: BUG-05 SL/TP direction mismatch for SELL {event.symbol}. "
+                            f"Swapping SL={sl_val}↔TP={tp_val}"
+                        )
+                        sl_val, tp_val = tp_val, sl_val
+                elif event.action.lower() == "buy":
+                    # BUY: SL should be BELOW entry, TP should be ABOVE entry
+                    if _sl > _entry and _tp < _entry:
+                        log.warning(
+                            f"AIAnalyzer: BUG-05 SL/TP direction mismatch for BUY {event.symbol}. "
+                            f"Swapping SL={sl_val}↔TP={tp_val}"
+                        )
+                        sl_val, tp_val = tp_val, sl_val
+        except (ValueError, TypeError):
+            pass  # Non-numeric SL/TP values — leave as-is
+
     # ── Step 6: Emit AnalysisComplete → NotificationHub ──────
     log.info(
         f"AIAnalyzer: Analysis complete for #{event.signal_id} {symbol} — "

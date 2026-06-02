@@ -346,6 +346,29 @@ async def execute_trade(event: TradeApproved) -> None:
     except Exception as exc:
         log.warning(f"TradeEngine: Failed to verify slippage: {exc}")
 
+    # ── BUG-05 fix: Directional SL/TP Sanity Check ─────────
+    # Vision AI / RAG text extraction may output SL/TP using BUY-side convention
+    # even for SELL trades. Detect and swap if the direction is wrong.
+    if sl_price is not None and tp_price is not None and entry_price > 0:
+        if action.upper() == "BUY":
+            # BUY: SL should be BELOW entry, TP should be ABOVE entry
+            if sl_price > entry_price and tp_price < entry_price:
+                log.warning(
+                    f"TradeEngine: BUG-05 SL/TP direction mismatch for BUY {event.symbol}! "
+                    f"SL={sl_price:.4f} > entry={entry_price:.4f}, "
+                    f"TP={tp_price:.4f} < entry={entry_price:.4f}. Swapping SL↔TP."
+                )
+                sl_price, tp_price = tp_price, sl_price
+        else:  # SELL
+            # SELL: SL should be ABOVE entry, TP should be BELOW entry
+            if sl_price < entry_price and tp_price > entry_price:
+                log.warning(
+                    f"TradeEngine: BUG-05 SL/TP direction mismatch for SELL {event.symbol}! "
+                    f"SL={sl_price:.4f} < entry={entry_price:.4f}, "
+                    f"TP={tp_price:.4f} > entry={entry_price:.4f}. Swapping SL↔TP."
+                )
+                sl_price, tp_price = tp_price, sl_price
+
     try:
         # ── Execute smart order (MARKET + OCO) ───────────────
         result = await adapter.execute_smart_order(
