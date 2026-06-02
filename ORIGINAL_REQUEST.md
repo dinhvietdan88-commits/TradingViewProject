@@ -700,5 +700,10 @@ Please update your briefing, task checklists, and current plan to reflect this p
 
 Please adjust the project orchestrator's focus accordingly. Let me know once you have updated the plan.
 
+## Follow-up — 2026-06-02T22:44:33Z
+
+Hi Swarm, the user has refined the focus. We need to concentrate strictly on the Cross-Server Integration Test (Server A -> C). Please proceed to implement the integration test file at `nerves/workers/trading/tests/integration/test_server_a_c_integration.py` based on the template from `.agents/explorer_server_c/analysis.md`, run the tests, verify the confidence edge cases (49, 50, 51) and ACK DB status updates, and run the victory audit. Let me know when you start the implementation.
+
+
 
 
