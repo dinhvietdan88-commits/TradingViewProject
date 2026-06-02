@@ -88,13 +88,16 @@ def setup_logging(
     # Remove any pre-existing handlers (prevents duplicate output on re-call)
     root.handlers.clear()
 
-    # ── Console handler — always INFO, always human-readable ──────────────────
+    # ── Console handler ───────────────────────────────────────────────────────
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)
-    console.setFormatter(logging.Formatter(
-        "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%H:%M:%S",
-    ))
+    if json_format:
+        console.setFormatter(StructuredFormatter())
+    else:
+        console.setFormatter(logging.Formatter(
+            "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            datefmt="%H:%M:%S",
+        ))
     root.addHandler(console)
 
     # ── Rotating file handler ─────────────────────────────────────────────────

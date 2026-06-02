@@ -33,6 +33,164 @@ import rag
 # The module lives in server/workers/ alongside this file.
 from workers.ai_circuit_breaker import llm_breaker  # noqa: E402
 from logging_config import setup_logging
+from fastapi import FastAPI, Request, Response
+from workers.liveness_monitor import _get_servers
+
+app = FastAPI(title="Server C Health Server")
+
+@app.get("/health")
+async def get_health():
+    # 1. Liveness Status A and B
+    liveness_status_server_a = "unhealthy"
+    liveness_status_server_b = "unhealthy"
+    try:
+        servers = _get_servers()
+        for s in servers:
+            if "SERVER_A" in s.name.upper():
+                liveness_status_server_a = "healthy" if s.is_healthy else "unhealthy"
+            elif "SERVER_B" in s.name.upper():
+                liveness_status_server_b = "healthy" if s.is_healthy else "unhealthy"
+    except Exception as e:
+        log.warning(f"Error reading liveness status: {e}")
+
+    # 2. Disk Usage Pct
+    disk_usage_pct = 0.0
+    try:
+        import shutil
+        total, used, free = shutil.disk_usage("/")
+        disk_usage_pct = round((used / total) * 100, 1)
+    except Exception as e:
+        log.warning(f"Error checking disk usage: {e}")
+
+    # 3. NTP clock drift
+    ntp_clock_drift_ms = 0.0
+    ntp_clock_drift_detail = {}
+    try:
+        from workers.ntp_monitor import last_drift_results
+        ntp_clock_drift_detail = last_drift_results
+        drifts = [v["drift_ms"] for v in last_drift_results.values() if v.get("drift_ms") is not None]
+        if drifts:
+            ntp_clock_drift_ms = float(max(drifts))
+    except Exception as e:
+        log.warning(f"Error checking NTP clock drift: {e}")
+
+    # 4. Circuit Breaker Status
+    circuit_breaker_status = "closed"
+    try:
+        circuit_breaker_status = llm_breaker.state.value
+    except Exception as e:
+        log.warning(f"Error checking circuit breaker status: {e}")
+
+    return {
+        "liveness_status_server_a": liveness_status_server_a,
+        "liveness_status_server_b": liveness_status_server_b,
+        "disk_usage_pct": disk_usage_pct,
+        "ntp_clock_drift_ms": ntp_clock_drift_ms,
+        "ntp_clock_drift_detail": ntp_clock_drift_detail,
+        "circuit_breaker_status": circuit_breaker_status
+    }
+
+@app.get("/metrics")
+async def get_metrics(request: Request):
+    accept_header = request.headers.get("accept", "")
+    
+    # Check liveness status
+    la_val = 0.0
+    lb_val = 0.0
+    try:
+        servers = _get_servers()
+        for s in servers:
+            if "SERVER_A" in s.name.upper():
+                la_val = 1.0 if s.is_healthy else 0.0
+            elif "SERVER_B" in s.name.upper():
+                lb_val = 1.0 if s.is_healthy else 0.0
+    except Exception as e:
+        log.warning(f"Error reading liveness status for metrics: {e}")
+        
+    # Disk usage
+    disk_usage_pct = 0.0
+    try:
+        import shutil
+        total, used, free = shutil.disk_usage("/")
+        disk_usage_pct = round((used / total) * 100, 1)
+    except Exception as e:
+        log.warning(f"Error checking disk usage for metrics: {e}")
+        
+    # NTP drift
+    max_drift = 0.0
+    try:
+        from workers.ntp_monitor import last_drift_results
+        drifts = [v["drift_ms"] for v in last_drift_results.values() if v.get("drift_ms") is not None]
+        if drifts:
+            max_drift = float(max(drifts))
+    except Exception as e:
+        log.warning(f"Error checking NTP drift for metrics: {e}")
+        
+    # Circuit state
+    cb_val = 0.0
+    try:
+        cb_state_str = llm_breaker.state.value
+        if cb_state_str == "closed":
+            cb_val = 0.0
+        elif cb_state_str == "half_open":
+            cb_val = 0.5
+        else: # open
+            cb_val = 1.0
+    except Exception as e:
+        log.warning(f"Error checking circuit state for metrics: {e}")
+        
+    successes = 0
+    failures = 0
+    fallbacks = 0
+    try:
+        successes = llm_breaker.total_successes
+        failures = llm_breaker.total_failures
+        fallbacks = llm_breaker.total_fallbacks
+    except Exception as e:
+        log.warning(f"Error checking breaker counters for metrics: {e}")
+        
+    metrics_data = {
+        "liveness_status_server_a": la_val,
+        "liveness_status_server_b": lb_val,
+        "disk_usage_pct": disk_usage_pct,
+        "ntp_clock_drift_ms": max_drift,
+        "circuit_breaker_state": cb_val,
+        "llm_breaker_successes_total": float(successes),
+        "llm_breaker_failures_total": float(failures),
+        "llm_breaker_fallbacks_total": float(fallbacks)
+    }
+    
+    if "application/json" in accept_header:
+        return metrics_data
+        
+    # Return Prometheus formatted gauge text
+    lines = [
+        "# HELP liveness_status_server_a Liveness status of Server A (1.0 = healthy, 0.0 = unhealthy)",
+        "# TYPE liveness_status_server_a gauge",
+        f"liveness_status_server_a {la_val}",
+        "# HELP liveness_status_server_b Liveness status of Server B (1.0 = healthy, 0.0 = unhealthy)",
+        "# TYPE liveness_status_server_b gauge",
+        f"liveness_status_server_b {lb_val}",
+        "# HELP disk_usage_pct Disk usage percentage of root partition",
+        "# TYPE disk_usage_pct gauge",
+        f"disk_usage_pct {disk_usage_pct}",
+        "# HELP ntp_clock_drift_ms NTP clock drift in milliseconds",
+        "# TYPE ntp_clock_drift_ms gauge",
+        f"ntp_clock_drift_ms {max_drift}",
+        "# HELP circuit_breaker_state Circuit breaker state (0.0 = closed, 0.5 = half_open, 1.0 = open)",
+        "# TYPE circuit_breaker_state gauge",
+        f"circuit_breaker_state {cb_val}",
+        "# HELP llm_breaker_successes_total Total successful LLM calls",
+        "# TYPE llm_breaker_successes_total counter",
+        f"llm_breaker_successes_total {successes}",
+        "# HELP llm_breaker_failures_total Total failed LLM calls",
+        "# TYPE llm_breaker_failures_total counter",
+        f"llm_breaker_failures_total {failures}",
+        "# HELP llm_breaker_fallbacks_total Total LLM circuit breaker fallbacks",
+        "# TYPE llm_breaker_fallbacks_total counter",
+        f"llm_breaker_fallbacks_total {fallbacks}"
+    ]
+    return Response(content="\n".join(lines) + "\n", media_type="text/plain")
 
 
 log = logging.getLogger(__name__)
@@ -152,6 +310,10 @@ class VpsAnalyzerWorker:
 
         Runs until cancelled.
         """
+        # Logging configuration based on environment variable LOG_JSON_FORMAT
+        json_format = os.getenv("LOG_JSON_FORMAT", "false").lower() == "true" or getattr(config, "LOG_JSON_FORMAT", False)
+        setup_logging(json_format=json_format)
+
         log.info(
             f"[VpsAnalyzer] V2 Starting (consumer={self.consumer_id}, "
             f"long_poll_timeout={self.LONG_POLL_TIMEOUT}s, "
@@ -160,7 +322,11 @@ class VpsAnalyzerWorker:
 
         # Initialize vector database
         try:
-            await rag.init_vector_db()
+            db_ok = await rag.init_vector_db()
+            if db_ok:
+                log.info("[VpsAnalyzer] RAG vector database initialized and seeded successfully.")
+            else:
+                log.error("[VpsAnalyzer] RAG vector database failed to initialize.")
         except Exception as exc:
             log.error(f"[VpsAnalyzer] Failed to initialize RAG vector database: {exc}")
 
@@ -171,33 +337,90 @@ class VpsAnalyzerWorker:
         except Exception as exc:
             log.warning(f"[VpsAnalyzer] Could not wire circuit-breaker alert: {exc}")
 
-        while True:
+        # Start APScheduler jobs
+        try:
+            from scheduler import start_scheduler
+            start_scheduler()
+            log.info("[VpsAnalyzer] APScheduler started.")
+        except Exception as exc:
+            log.error(f"[VpsAnalyzer] Failed to start scheduler: {exc}")
+
+        # Start uvicorn health server in background
+        import uvicorn
+        config_uv = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
+        server = uvicorn.Server(config_uv)
+        server_task = asyncio.create_task(server.serve())
+        log.info("[VpsAnalyzer] Health and metrics server started on port 8000.")
+
+        # Setup graceful shutdown signal handling
+        import signal
+        self._shutdown_event = asyncio.Event()
+        loop = asyncio.get_running_loop()
+
+        def handle_signal(sig, frame):
+            sig_name = "SIGINT"
+            if sig == signal.SIGTERM:
+                sig_name = "SIGTERM"
+            elif hasattr(signal, "SIGBREAK") and sig == signal.SIGBREAK:
+                sig_name = "SIGBREAK"
+            log.warning(f"Caught signal {sig_name}. Triggering graceful shutdown...")
+            loop.call_soon_threadsafe(self._shutdown_event.set)
+
+        signals_to_catch = [signal.SIGINT, signal.SIGTERM]
+        if hasattr(signal, "SIGBREAK"):
+            signals_to_catch.append(signal.SIGBREAK)
+
+        for sig in signals_to_catch:
+            try:
+                signal.signal(sig, handle_signal)
+            except Exception as e:
+                log.warning(f"Could not register signal handler for {sig}: {e}")
+
+        while not self._shutdown_event.is_set():
             try:
                 # poll_and_analyze() wraps _long_poll + _analyze_signal_v2
-                # Tests can mock poll_and_analyze directly.
-                analyzed_list = await self.poll_and_analyze()
-                async def process_analyzed(analyzed: Dict[str, Any]):
-                    queue_id = analyzed.get("queue_id")
-                    try:
-                        if analyzed.get("approved"):
-                            fwd = await self.forward_to_server_b(analyzed["trade_payload"])
-                            if fwd.get("success"):
-                                await self._ack_signal(queue_id, "executed")
+                # Since poll_and_analyze is an async call that might take 30s (long polling),
+                # we run it as a task and await it along with the shutdown event.
+                poll_task = asyncio.create_task(self.poll_and_analyze())
+                
+                shutdown_task = asyncio.create_task(self._shutdown_event.wait())
+                done, pending = await asyncio.wait(
+                    {poll_task, shutdown_task},
+                    return_when=asyncio.FIRST_COMPLETED
+                )
+                
+                # Cancel pending tasks immediately to prevent dangling tasks in the event loop
+                for t in pending:
+                    t.cancel()
+                
+                if self._shutdown_event.is_set():
+                    break
+                    
+                if poll_task in done:
+                    analyzed_list = poll_task.result()
+                    
+                    async def process_analyzed(analyzed: Dict[str, Any]):
+                        queue_id = analyzed.get("queue_id")
+                        try:
+                            if analyzed.get("approved"):
+                                fwd = await self.forward_to_server_b(analyzed["trade_payload"])
+                                if fwd.get("success"):
+                                    await self._ack_signal(queue_id, "executed")
+                                else:
+                                    err = fwd.get("error", "Server B execution failed")
+                                    await self._ack_signal(queue_id, "failed", err)
                             else:
-                                err = fwd.get("error", "Server B execution failed")
-                                await self._ack_signal(queue_id, "failed", err)
-                        else:
-                            reason = analyzed.get("reason", "")
-                            if reason:
-                                await self._ack_signal(queue_id, "rejected", reason)
-                            else:
-                                await self._ack_signal(queue_id, "rejected")
-                    except Exception as exc:
-                        log.exception(f"[VpsAnalyzer] Error processing #{queue_id}: {exc}")
-                        await self._ack_signal(queue_id, "failed", str(exc)[:200])
+                                reason = analyzed.get("reason", "")
+                                if reason:
+                                    await self._ack_signal(queue_id, "rejected", reason)
+                                else:
+                                    await self._ack_signal(queue_id, "rejected")
+                        except Exception as exc:
+                            log.exception(f"[VpsAnalyzer] Error processing #{queue_id}: {exc}")
+                            await self._ack_signal(queue_id, "failed", str(exc)[:200])
 
-                if analyzed_list:
-                    await asyncio.gather(*(process_analyzed(a) for a in analyzed_list))
+                    if analyzed_list:
+                        await asyncio.gather(*(process_analyzed(a) for a in analyzed_list))
 
             except asyncio.CancelledError:
                 log.info("[VpsAnalyzer] Daemon loop cancelled. Shutting down.")
@@ -206,7 +429,44 @@ class VpsAnalyzerWorker:
                 log.exception(f"[VpsAnalyzer] Unexpected error in run loop: {exc}")
                 await asyncio.sleep(self.BACKOFF_ON_ERROR_SEC)
 
+        print("[DEBUG] Starting graceful shutdown cleanup...", flush=True)
+        log.info("[VpsAnalyzer] Starting graceful shutdown cleanup...")
+        
+        # Stop scheduler
+        try:
+            from scheduler import stop_scheduler
+            print("[DEBUG] Stopping scheduler...", flush=True)
+            stop_scheduler()
+            print("[DEBUG] Scheduler stopped.", flush=True)
+        except Exception as e:
+            log.warning(f"[VpsAnalyzer] Error stopping scheduler: {e}")
+            
+        # Stop uvicorn server task
+        print("[DEBUG] Setting server.should_exit = True...", flush=True)
+        server.should_exit = True
+        print("[DEBUG] Cancelling server_task...", flush=True)
+        server_task.cancel()
+        try:
+            print("[DEBUG] Awaiting server_task...", flush=True)
+            await server_task
+            print("[DEBUG] Awaited server_task.", flush=True)
+        except asyncio.CancelledError:
+            print("[DEBUG] Caught CancelledError for server_task.", flush=True)
+            pass
+        log.info("[VpsAnalyzer] Health server stopped.")
+        
+        # Close ClientSession
+        print("[DEBUG] Closing ClientSession...", flush=True)
         await self.close()
+        print("[DEBUG] ClientSession closed.", flush=True)
+        
+        # Flush logs
+        print("[DEBUG] Shutting down logging...", flush=True)
+        logging.shutdown()
+        print("[DEBUG] Logging shut down.", flush=True)
+        
+        log.info("[VpsAnalyzer] Shutdown complete.")
+        print("[DEBUG] Shutdown complete.", flush=True)
 
     # ── Signal analysis ───────────────────────────────────────────────────────
 
@@ -738,7 +998,8 @@ class VpsAnalyzerWorker:
 
 
 if __name__ == "__main__":
-    setup_logging()
+    json_format = os.getenv("LOG_JSON_FORMAT", "false").lower() == "true" or getattr(config, "LOG_JSON_FORMAT", False)
+    setup_logging(json_format=json_format)
     # Trigger deployment and check Server C clean state
     worker = VpsAnalyzerWorker()
     asyncio.run(worker.run())

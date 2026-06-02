@@ -36,6 +36,7 @@ CHECK_TIMEOUT_SEC  = 5.0
 
 # Health URLs — same as liveness_monitor to avoid extra env var clutter
 _SERVER_URLS: dict = {}
+last_drift_results: dict = {}
 
 
 def _get_server_urls() -> dict:
@@ -116,6 +117,8 @@ async def check_clock_drift() -> dict:
                 log.warning(f"[NtpMonitor] {name} error: {exc}")
                 results[name] = {"drift_ms": None, "ok": False}
 
+    last_drift_results.clear()
+    last_drift_results.update(results)
     return results
 
 
