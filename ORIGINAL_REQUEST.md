@@ -663,3 +663,42 @@ Implement proper capture of SIGTERM and SIGINT signals in `vps_analyzer.py` and 
 ### Documentation Check
 - [ ] Comprehensive System Design document exists in the project's documentation folder (`docs/`) detailing the architecture of the 3-server pipeline, the sequence diagram of signal analysis, and security configurations.
 
+## Follow-up — 2026-06-03T05:38:40+07:00
+
+Implement three types of advanced tests for the TradingViewProject system: Cross-Server Integration Test (Server A -> Consumer C -> RAG Analyze -> Server B), Confidence Edge Case Test (Auto-rejection behavior around confidence score 50), and Exchange Routing Fallback Recovery Test (when both Primary and Fallback servers are unavailable).
+
+Working directory: c:\Users\pesil\working\mj_trading\TradingViewProject
+Integrity mode: development
+
+## Requirements
+
+### R1. Cross-Server Integration Test
+Implement a comprehensive cross-server integration test that covers the end-to-end signal flow: Signal received at Server A -> Consumer on C pulls the signal -> RAG analyze -> Forward to Server B using mock servers.
+
+### R2. Confidence Edge Case Test
+Implement verification for confidence score filtering, specifically targeting edge cases (e.g., scores 49, 50, and 51) where the auto-rejection threshold is set to 50.
+
+### R3. Fallback Routing & Recovery Test
+Implement testing for exchange routing failure scenarios, specifically verifying recovery behavior when both Primary and Fallback exchanges (e.g., Server B) are temporarily down and subsequently recover.
+
+### R4. End-to-End Duplicate Signals Test
+Implement end-to-end checks to detect and properly handle duplicate signals sharing the same price and timestamp.
+
+## Acceptance Criteria
+
+### Integration Test Success
+- [ ] Integration test suite executes successfully, showcasing a signal traversing Server A, Consumer C (with local ChromaDB/RAG query), and routing to Server B.
+- [ ] Edge cases for confidence scores (49, 50, 51) are tested, proving that scores < 50 are rejected and >= 50 are accepted.
+- [ ] Recovery mechanism is tested and verified when Primary + Fallback exchanges are down and recover.
+- [ ] E2E duplicate detection prevents redundant order placements/signals at the end of the pipeline.
+
+## Follow-up — 2026-06-02T22:39:38Z
+
+Hi team, the user has requested to refine our focus. We should now concentrate primarily on the "Cross-Server Integration Test (Server A -> C)".
+
+Please update your briefing, task checklists, and current plan to reflect this priority. We want to test the full pipeline from Server A (VBS) to Server C (VpsAnalyzerWorker) including the long-poll, processing (RAG, validation, confidence edge cases), and ACK flow.
+
+Please adjust the project orchestrator's focus accordingly. Let me know once you have updated the plan.
+
+
+
