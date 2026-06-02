@@ -1,0 +1,172 @@
+name: CI Pull Request Pipeline
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # ── 0. CHANGE DETECTION ────────────────────────────────────────────
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Check for changes
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            code:
+              - 'nerves/workers/trading/**'
+              - 'vbs/**'
+              - 'Dockerfile'
+              - 'pine/**'
+              - '.github/workflows/**'
+
+  # ── 1A. LINT & SECURITY (Fast ~15s — zero pip install) ───────────
+  ci-lint-security:
+    name: Lint & Security Scan
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Create server symlink
+        run: ln -s nerves/workers/trading server
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Code Linting (Ruff)
+        run: pipx run ruff check server/ --exit-zero
+
+      - name: Security AST Scan
+        run: |
+          cd server
+          python -m security.cli scan || echo "Warning: Review security scan report"
+
+  # ── 1B. ORGANIZED TEST SUITE (2 Parallel Runners) ──────────────────
+  ci-tests:
+    name: "Test: ${{ matrix.stage }}"
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - stage: "Fast (Unit + Integration + System)"
+            paths: "tests/unit/ tests/property/ tests/integration/ __auto_root__"
+            parallel: true
+            install-browser: false
+          - stage: "Browser (E2E + Security)"
+            paths: "tests/e2e/ tests/security/"
+            parallel: false
+            install-browser: true
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      # Hash source code to bypass if test already passed for identical code
+      - name: Compute code hash for test cache
+        id: code-hash
+        run: |
+          CODE_HASH=$(find nerves/workers/trading -type f -name '*.py' | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+          echo "hash=$CODE_HASH" >> $GITHUB_OUTPUT
+
+      - name: Check test result cache
+        id: test-cache
+        uses: actions/cache@v5
+        with:
+          path: .test-passed
+          key: test-passed-${{ matrix.stage }}-${{ steps.code-hash.outputs.hash }}
+
+      - name: Skip tests (cache hit)
+        if: steps.test-cache.outputs.cache-hit == 'true'
+        run: echo "⚡ [${{ matrix.stage }}] Tests already passed for this code hash."
+
+      - name: Create server symlink
+        if: steps.test-cache.outputs.cache-hit != 'true'
+        run: ln -s nerves/workers/trading server
+
+      - name: Set up Python 3.11
+        if: steps.test-cache.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install uv (fast pip)
+        if: steps.test-cache.outputs.cache-hit != 'true'
+        run: pip install uv
+
+      - name: Cache uv packages
+        if: steps.test-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Install Dependencies
+        if: steps.test-cache.outputs.cache-hit != 'true'
+        run: |
+          uv pip install --system -r server/requirements.txt
+          uv pip install --system -r server/requirements-test.txt
+
+      - name: Cache Playwright browsers
+        if: steps.test-cache.outputs.cache-hit != 'true' && matrix.install-browser == true
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright Chromium Browser
+        if: steps.test-cache.outputs.cache-hit != 'true' && steps.playwright-cache.outputs.cache-hit != 'true' && matrix.install-browser == true
+        run: python -m playwright install chromium
+
+      - name: "Run Tests: ${{ matrix.stage }}"
+        if: steps.test-cache.outputs.cache-hit != 'true'
+        env:
+          VPS_BUFFER_ENABLED: "false"
+          CHROMA_REMOTE: "false"
+        run: |
+          cd server
+          # Resolve test paths (expand __auto_root__ to root-level test files)
+          RAW_PATHS="${{ matrix.paths }}"
+          if echo "$RAW_PATHS" | grep -q '__auto_root__'; then
+            ROOT_FILES=$(find tests/ -maxdepth 1 -name 'test_*.py' | sort | tr '\n' ' ')
+            TEST_PATHS=$(echo "$RAW_PATHS" | sed "s|__auto_root__|$ROOT_FILES|")
+          else
+            TEST_PATHS="$RAW_PATHS"
+          fi
+
+          # Auto-count tests
+          COUNT=$(python -m pytest $TEST_PATHS --collect-only -q 2>/dev/null | tail -1 | grep -oP '\d+(?= tests?)' || echo "?")
+          echo "🧪 [${{ matrix.stage }}] Running $COUNT tests"
+
+          # Run with or without parallelism
+          if [ "${{ matrix.parallel }}" = "true" ]; then
+            python -m pytest $TEST_PATHS -x -n auto --dist worksteal --tb=short -q
+          else
+            python -m pytest $TEST_PATHS -x --tb=short -q
+          fi
+
+      - name: Mark tests passed for cache
+        if: steps.test-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .test-passed
+          echo "${{ steps.code-hash.outputs.hash }}" > .test-passed/hash.txt
+          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .test-passed/timestamp.txt
