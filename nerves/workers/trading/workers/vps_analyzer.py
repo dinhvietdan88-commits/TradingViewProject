@@ -376,6 +376,9 @@ class VpsAnalyzerWorker:
             except Exception as e:
                 log.warning(f"Could not register signal handler for {sig}: {e}")
 
+        # Create shutdown waiter ONCE outside loop to prevent task leak
+        shutdown_task = asyncio.create_task(self._shutdown_event.wait())
+
         while not self._shutdown_event.is_set():
             try:
                 # poll_and_analyze() wraps _long_poll + _analyze_signal_v2
@@ -383,15 +386,18 @@ class VpsAnalyzerWorker:
                 # we run it as a task and await it along with the shutdown event.
                 poll_task = asyncio.create_task(self.poll_and_analyze())
                 
-                shutdown_task = asyncio.create_task(self._shutdown_event.wait())
                 done, pending = await asyncio.wait(
                     {poll_task, shutdown_task},
                     return_when=asyncio.FIRST_COMPLETED
                 )
                 
-                # Cancel pending tasks immediately to prevent dangling tasks in the event loop
-                for t in pending:
-                    t.cancel()
+                # Cancel only the poll_task if shutdown was triggered
+                if poll_task in pending:
+                    poll_task.cancel()
+                    try:
+                        await poll_task
+                    except asyncio.CancelledError:
+                        pass
                 
                 if self._shutdown_event.is_set():
                     break
@@ -420,7 +426,19 @@ class VpsAnalyzerWorker:
                             await self._ack_signal(queue_id, "failed", str(exc)[:200])
 
                     if analyzed_list:
-                        await asyncio.gather(*(process_analyzed(a) for a in analyzed_list))
+                        # return_exceptions=True prevents one failed signal from
+                        # crashing the entire batch (was causing crash loop)
+                        results = await asyncio.gather(
+                            *(process_analyzed(a) for a in analyzed_list),
+                            return_exceptions=True,
+                        )
+                        # Log any individual failures without crashing the loop
+                        for i, result in enumerate(results):
+                            if isinstance(result, Exception):
+                                qid = analyzed_list[i].get("queue_id", "?") if i < len(analyzed_list) else "?"
+                                log.error(
+                                    f"[VpsAnalyzer] process_analyzed #{qid} failed: {result}"
+                                )
 
             except asyncio.CancelledError:
                 log.info("[VpsAnalyzer] Daemon loop cancelled. Shutting down.")
