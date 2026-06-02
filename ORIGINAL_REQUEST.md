@@ -621,3 +621,45 @@ Save the resulting master plan document as a clean, structured Markdown file at:
 
 ### Validation
 - [ ] The generated Markdown file has valid links, syntax, and follows standard knowledge base formatting.
+
+## Follow-up — 2026-06-02T00:09:32Z
+
+Deep analysis, system design, and implementation/verification of Server C (AI Core) gaps including a FastAPI HTTP health endpoint, automated ChromaDB seeding, structured JSON logging, metrics collection, and graceful shutdown handling.
+
+Working directory: `C:\Users\pesil\working\mj_trading\TradingViewProject\nerves\workers\trading`
+Integrity mode: benchmark
+
+## Requirements
+
+### R1. System Design & Knowledge Base Documentation
+Create detailed architecture design, API specs, and a knowledge base under `docs/` summarizing the decentralized 3-server system design, interaction sequence diagrams, and security model.
+
+### R2. FastAPI HTTP Health Server on Server C
+Implement a FastAPI app running on Server C (port 8000) that exposes a `/health` endpoint returning a structured JSON status report including:
+- Liveness check results of Server A & B.
+- Disk usage and log directory space usage.
+- NTP clock drift status (verified against A & B).
+- Circuit Breaker current state (CLOSED, OPEN, HALF_OPEN) and failure metrics.
+
+### R3. Automated ChromaDB Seeding
+Implement a reliable initialization and data seeding process that ensures knowledge chunks (from `docs/knowledge/trading_wizard/chunks/`) are successfully loaded and upserted into ChromaDB upon startup, even when running in remote mode.
+
+### R4. Structured JSON Logging & Metrics Export
+Implement structured JSON formatting for all core worker logs (analyzer, monitors). Expose prometheus-style or JSON-formatted operational metrics (LLM latency, RAG query latency, signal count, circuit breaker transitions).
+
+### R5. Graceful Shutdown Handling
+Implement proper capture of SIGTERM and SIGINT signals in `vps_analyzer.py` and monitoring workers. Ensure any active async network sessions (aiohttp sessions) are cleanly closed, pending files flushed, and shutdown status logged.
+
+## Verification & Acceptance Criteria
+
+### Automated Tests & Checks
+- [ ] A script `verify_server_c_gaps.py` exists in the `scripts/` directory to run verification.
+- [ ] Running `verify_server_c_gaps.py` automatically checks and confirms:
+  - FastAPI health server is reachable and `/health` returns status `200` with JSON keys: `status`, `liveness_monitors`, `disk_usage`, `clock_drift`, `circuit_breaker`.
+  - ChromaDB remote/local client successfully connects and retrieves the loaded `minervini_knowledge` collection count (should be >0).
+  - Logs are written in valid JSON format.
+  - Sending SIGTERM to the analyzer worker results in a log entry confirming graceful shutdown.
+
+### Documentation Check
+- [ ] Comprehensive System Design document exists in the project's documentation folder (`docs/`) detailing the architecture of the 3-server pipeline, the sequence diagram of signal analysis, and security configurations.
+
