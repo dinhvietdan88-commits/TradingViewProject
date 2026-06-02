@@ -239,6 +239,17 @@ function renderAnalysisTable(trades, total, limit, offset) {
       <td style="font-family:var(--mono)">${t.executed_price || '—'}</td>
       <td style="color:${pnl >= 0 ? 'var(--buy)' : 'var(--sell)'}; font-family:var(--mono)">${pnl !== null && pnl !== undefined ? (pnl >= 0 ? '+' : '') + pnl.toFixed(2) : '—'}</td>
       <td><span class="badge ${status === 'FILLED' ? 'badge-ok' : status === 'REJECTED' ? 'badge-fail' : 'badge-warn'}">${status}</span></td>
+      <td>
+        <button class="qbtn btn-sm-3" style="padding: 2px 6px; font-size: 0.72rem;" 
+                onclick="openInVisualizer({
+                  direction: '${side === 'BUY' ? 'long' : 'short'}',
+                  entryPrice: ${t.executed_price || 0},
+                  slPrice: ${t.stop_loss_price || 0},
+                  tpPrice: ${t.take_profit_price || 0},
+                  atrValue: ${t.symbol.toUpperCase().includes('ETH') ? 15.0 : (t.symbol.toUpperCase().includes('SOL') ? 0.8 : 95.93)},
+                  symbol: '${t.symbol}'
+                })">📐 Visualize</button>
+      </td>
     </tr>`;
   }).join('');
 

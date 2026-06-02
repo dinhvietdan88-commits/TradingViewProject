@@ -115,6 +115,7 @@ function switchTab(name) {
   if (name === 'trade-analysis') loadTradeAnalysis();
   if (name === 'status') loadSystemStatus();
   if (name === 'scanner') {} // load on button click
+  if (typeof window.onTabChange === 'function') window.onTabChange(name);
 }
 
 // ═══ API FETCH ═══

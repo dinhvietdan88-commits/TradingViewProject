@@ -139,7 +139,7 @@
   <button class="tab-btn" data-tab="trade-analysis" onclick="switchTab('trade-analysis')">📊 Analysis</button>
   <button class="tab-btn" data-tab="scanner" onclick="switchTab('scanner')">📋 Scanner</button>
   <button class="tab-btn" data-tab="status" onclick="switchTab('status')">⚡ System</button>
-  <a class="tab-btn" href="/static/metadata_visualizer.html" target="_blank" style="text-decoration:none;display:flex;align-items:center;">📐 Visualizer ↗</a>
+  <button class="tab-btn" data-tab="visualizer" onclick="switchTab('visualizer')">📐 Visualizer</button>
 </nav>
 
 <main class="container">
@@ -163,25 +163,29 @@
             <span class="live-dot-wrap"><span class="live-dot"></span> LIVE</span>
           </div>
           <div class="ticker-grid" id="tickerGrid">
-            <div class="ticker-card" id="ticker-BTCUSDT">
+            <div class="ticker-card" id="ticker-BTCUSDT" style="position: relative;">
               <div class="ticker-sym">BTCUSDT</div>
               <div class="ticker-price" id="tp-BTCUSDT">—</div>
               <div class="ticker-chg" id="tc-BTCUSDT">—</div>
+              <button class="qbtn" style="position: absolute; top: 6px; right: 6px; padding: 2px 6px; font-size: 0.68rem; height: auto;" onclick="visualizeLiveTickerSymbol('BTCUSDT', event)" title="Visualize Risk Management">📐</button>
             </div>
-            <div class="ticker-card" id="ticker-ETHUSDT">
+            <div class="ticker-card" id="ticker-ETHUSDT" style="position: relative;">
               <div class="ticker-sym">ETHUSDT</div>
               <div class="ticker-price" id="tp-ETHUSDT">—</div>
               <div class="ticker-chg" id="tc-ETHUSDT">—</div>
+              <button class="qbtn" style="position: absolute; top: 6px; right: 6px; padding: 2px 6px; font-size: 0.68rem; height: auto;" onclick="visualizeLiveTickerSymbol('ETHUSDT', event)" title="Visualize Risk Management">📐</button>
             </div>
-            <div class="ticker-card" id="ticker-SOLUSDT">
+            <div class="ticker-card" id="ticker-SOLUSDT" style="position: relative;">
               <div class="ticker-sym">SOLUSDT</div>
               <div class="ticker-price" id="tp-SOLUSDT">—</div>
               <div class="ticker-chg" id="tc-SOLUSDT">—</div>
+              <button class="qbtn" style="position: absolute; top: 6px; right: 6px; padding: 2px 6px; font-size: 0.68rem; height: auto;" onclick="visualizeLiveTickerSymbol('SOLUSDT', event)" title="Visualize Risk Management">📐</button>
             </div>
-            <div class="ticker-card" id="ticker-BNBUSDT">
+            <div class="ticker-card" id="ticker-BNBUSDT" style="position: relative;">
               <div class="ticker-sym">BNBUSDT</div>
               <div class="ticker-price" id="tp-BNBUSDT">—</div>
               <div class="ticker-chg" id="tc-BNBUSDT">—</div>
+              <button class="qbtn" style="position: absolute; top: 6px; right: 6px; padding: 2px 6px; font-size: 0.68rem; height: auto;" onclick="visualizeLiveTickerSymbol('BNBUSDT', event)" title="Visualize Risk Management">📐</button>
             </div>
           </div>
         </section>
@@ -761,6 +765,7 @@
             <div>
               <div class="cs-verdict-sym" id="csVerdictSym">—</div>
               <div class="cs-verdict-val" id="csVerdictVal">—</div>
+              <button class="qbtn qbtn-scan" style="margin-top: 8px; padding: 4px 10px; font-size: 0.75rem;" onclick="visualizeCSCapture(event)">📐 Open Visualizer</button>
             </div>
             <div class="cs-conf-ring">
               <svg viewBox="0 0 44 44" class="cs-conf-svg">
@@ -947,11 +952,11 @@
           <thead>
             <tr>
               <th>#</th><th>Time</th><th>Symbol</th><th>Side</th>
-              <th>Score</th><th>Qty</th><th>Price</th><th>P&L</th><th>Status</th>
+              <th>Score</th><th>Qty</th><th>Price</th><th>P&L</th><th>Status</th><th>Actions</th>
             </tr>
           </thead>
           <tbody id="taTradesBody">
-            <tr><td colspan="9"><div class="empty-state"><div class="icon">📊</div><h3>Apply filters to load</h3></div></td></tr>
+            <tr><td colspan="10"><div class="empty-state"><div class="icon">📊</div><h3>Apply filters to load</h3></div></td></tr>
           </tbody>
         </table>
       </div>
@@ -1025,6 +1030,524 @@
     </section>
   </div>
 
+  <!-- ═══ TAB: VISUALIZER ═══ -->
+  <div id="tab-visualizer" class="tab-panel">
+    
+    <!-- Scoped Visualizer Styles -->
+    <style>
+      .vis-grid {
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        gap: 24px;
+        align-items: start;
+        margin-top: 12px;
+      }
+      @media (max-width: 968px) {
+        .vis-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .vis-form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .vis-form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .vis-input-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .vis-slider-container {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .vis-slider-header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+      .vis-slider-header span.val {
+        font-family: var(--font-mono);
+        color: #ffffff;
+        font-weight: 500;
+      }
+      .vis-presets-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .vis-workspace-panel {
+        display: grid;
+        grid-template-rows: 1fr auto;
+        gap: 20px;
+      }
+      .vis-chart-panel {
+        position: relative;
+        height: 480px;
+        background: rgba(10, 15, 30, 0.45);
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.4);
+      }
+      .vis-svg {
+        width: 100%;
+        height: 100%;
+      }
+      .vis-grid-line {
+        stroke: rgba(148, 163, 184, 0.04);
+        stroke-dasharray: 4;
+      }
+      .vis-level-line {
+        stroke-width: 2px;
+        transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .vis-entry-line {
+        stroke: #ffffff;
+        stroke-dasharray: 3 3;
+      }
+      .vis-sl-line {
+        stroke: var(--accent-red);
+      }
+      .vis-tp-line {
+        stroke: var(--buy);
+      }
+      .vis-trail-line {
+        stroke: var(--accent-orange);
+        stroke-dasharray: 5 4;
+      }
+      .vis-zone-rect {
+        transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .vis-sl-zone {
+        fill: rgba(239, 68, 68, 0.08);
+      }
+      .vis-tp-zone {
+        fill: rgba(16, 185, 129, 0.08);
+      }
+      .vis-trail-zone {
+        fill: rgba(245, 158, 11, 0.04);
+      }
+      .vis-price-text {
+        font-family: var(--font-mono);
+        font-size: 0.72rem;
+        font-weight: 600;
+        fill: #ffffff;
+        alignment-baseline: middle;
+        transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .vis-price-text.sl {
+        fill: #f87171;
+      }
+      .vis-price-text.tp {
+        fill: #34d399;
+      }
+      .vis-price-text.trail {
+        fill: #fb923c;
+      }
+      .vis-level-label {
+        font-family: var(--font-ui);
+        font-size: 0.75rem;
+        font-weight: 500;
+        fill: #cbd5e1;
+        alignment-baseline: middle;
+        transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .vis-level-label.sl {
+        fill: var(--accent-red);
+        font-weight: 600;
+      }
+      .vis-level-label.tp {
+        fill: var(--buy);
+        font-weight: 600;
+      }
+      .vis-math-card {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr;
+        gap: 24px;
+      }
+      @media (max-width: 768px) {
+        .vis-math-card {
+          grid-template-columns: 1fr;
+        }
+      }
+      .vis-math-box {
+        background: rgba(10, 15, 30, 0.3);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .vis-math-title {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .vis-math-step {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.04);
+        padding-bottom: 8px;
+      }
+      .vis-math-step:last-child {
+        border: none;
+        padding-bottom: 0;
+      }
+      .vis-math-formula {
+        font-family: var(--font-mono);
+        font-size: 0.85rem;
+        color: #cbd5e1;
+        font-weight: 500;
+      }
+      .vis-math-formula span.highlight {
+        color: var(--accent-orange);
+        font-weight: 600;
+      }
+      .vis-math-formula span.val-sl {
+        color: var(--accent-red);
+        font-weight: 600;
+      }
+      .vis-math-formula span.val-tp {
+        color: var(--buy);
+        font-weight: 600;
+      }
+      .vis-math-desc {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
+      .vis-params-display {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .vis-param-pill {
+        background: rgba(30, 41, 59, 0.3);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .vis-param-lbl {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+      }
+      .vis-param-val {
+        font-family: var(--font-mono);
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #ffffff;
+      }
+      .vis-pulsar {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        position: absolute;
+        animation: visPulsate 2s infinite ease-in-out;
+      }
+      .vis-pulsar.entry {
+        background: #ffffff;
+        box-shadow: 0 0 12px #ffffff;
+      }
+      @keyframes visPulsate {
+        0% { transform: scale(0.9); opacity: 0.6; }
+        50% { transform: scale(1.4); opacity: 1; box-shadow: 0 0 16px currentColor; }
+        100% { transform: scale(0.9); opacity: 0.6; }
+      }
+      .vis-alert-banner {
+        background: rgba(245, 158, 11, 0.08);
+        border: 1px dashed rgba(245, 158, 11, 0.3);
+        border-radius: 8px;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.78rem;
+        color: #f59e0b;
+      }
+      .vis-alert-banner .icon {
+        font-size: 1.1rem;
+      }
+      .vis-sig-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 8px;
+        background: rgba(255,255,255,0.02);
+        border: 1px solid rgba(255,255,255,0.04);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        margin-bottom: 2px;
+      }
+      .vis-sig-item:hover {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border-color: rgba(0, 212, 170, 0.25) !important;
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), 0 0 8px rgba(0, 212, 170, 0.05);
+      }
+      .vis-sig-item:active {
+        transform: translateX(2px);
+      }
+      .editor-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+    </style>
+
+    <div class="vis-grid">
+      <!-- LEFT COLUMN: INPUTS & PRESETS -->
+      <section class="glass-section vis-form">
+        <div>
+          <div class="section-title">📝 Parse Indicator Metadata</div>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; margin-bottom: 12px;">
+            Dán đoạn metadata alert (JSON hoặc Python dict) từ webhook chỉ báo.
+          </p>
+        </div>
+
+        <!-- Premium Code Editor styled container with Mac Controls -->
+        <div class="code-editor" style="display: flex; flex-direction: column; background: #08090d; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; overflow: hidden; margin-bottom: 14px; box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 0 15px rgba(0,212,170,0.05);">
+          <div class="editor-header" style="display: flex; gap: 6px; padding: 8px 12px; background: #050608; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: center;">
+            <span class="editor-dot" style="background: #ff5f56;"></span>
+            <span class="editor-dot" style="background: #ffbd2e;"></span>
+            <span class="editor-dot" style="background: #27c93f;"></span>
+            <span style="flex: 1; text-align: center; font-size: 0.7rem; color: rgba(255,255,255,0.3); font-weight: 500;">alert_metadata.json</span>
+          </div>
+          <div style="display: flex;">
+            <div class="line-numbers" style="padding: 12px 8px; background: #050608; color: rgba(255,255,255,0.2); text-align: right; user-select: none; border-right: 1px solid rgba(255,255,255,0.05); min-width: 32px; line-height: 1.5; font-size: 0.72rem;">
+              1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9
+            </div>
+            <textarea id="visRawMetadata" style="flex: 1; padding: 12px; background: transparent; border: none; color: #00d4aa; outline: none; resize: none; height: 160px; line-height: 1.5; font-family: inherit; font-size: inherit; text-shadow: 0 0 5px rgba(0,212,170,0.1);">{
+  "symbol": "BTCUSDT",
+  "direction": "short",
+  "atr_value": "95.9298",
+  "sl": "0",
+  "tp": "0",
+  "rrr_ratio": "3.5",
+  "sl_mode": "ATR",
+  "tp_mode": "Fixed RRR",
+  "trail_stop": "0"
+}</textarea>
+          </div>
+        </div>
+
+        <button class="qbtn qbtn-trade" onclick="parseVisMetadata()" style="height: 38px; font-weight: 600; width: 100%; justify-content: center; margin-bottom: 12px; border-color: rgba(0,212,170,0.4); color: var(--accent2);">
+          ⚡ Parse & Apply Metadata
+        </button>
+
+        <div>
+          <div class="section-title mb-6">Presets</div>
+          <div class="vis-presets-row" style="margin-bottom: 12px;">
+            <button class="preset-chip active" onclick="loadVisPreset('vbs_short_btc')">VBS Short (BTC)</button>
+            <button class="preset-chip" onclick="loadVisPreset('vbs_long_btc')">VBS Long (BTC)</button>
+            <button class="preset-chip" onclick="loadVisPreset('vbs_long_eth')">ETH Long (Beta 1.25)</button>
+            <button class="preset-chip" onclick="loadVisPreset('vbs_short_sol')">SOL Short (Beta 1.6)</button>
+          </div>
+        </div>
+
+        <!-- 📡 Server Recorded Signals Feed -->
+        <div>
+          <div class="section-title mb-6" style="display: flex; align-items: center; justify-content: space-between;">
+            <span>📡 Server Recorded Signals</span>
+            <button class="qbtn" style="padding: 2px 8px; font-size: 0.68rem; height: auto;" onclick="refreshVisSignals(event)">Refresh</button>
+          </div>
+          <div id="visRecentSignals" class="vis-signals-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; padding-right: 4px; border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; background: rgba(0,0,0,0.2); padding: 8px;">
+            <div style="font-size: 0.72rem; color: var(--text-muted); text-align: center; padding: 12px;">Loading signals...</div>
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top: 10px;">📐 Risk Configuration</div>
+
+        <div class="vis-input-row" style="margin-bottom: 8px;">
+          <div class="vis-form-group">
+            <label for="visDirection">Direction</label>
+            <select id="visDirection" class="form-input" onchange="updateVisCalculation()">
+              <option value="short">SHORT (Bán)</option>
+              <option value="long">LONG (Mua)</option>
+            </select>
+          </div>
+          <div class="vis-form-group">
+            <label for="visEntryPriceInput">Entry Price ($)</label>
+            <input id="visEntryPriceInput" type="number" class="form-input" value="72704.49" step="0.01" oninput="syncEntryInputToSlider()">
+          </div>
+        </div>
+
+        <div class="vis-slider-container">
+          <div class="vis-slider-header">
+            <label for="visEntryPrice">Entry Price Drag</label>
+            <span class="val" id="visValEntryPrice">$72,704.49</span>
+          </div>
+          <input id="visEntryPrice" type="range" min="65000" max="80000" value="72704.49" step="0.01" oninput="syncEntrySliderToInput()">
+        </div>
+
+        <div class="vis-slider-container">
+          <div class="vis-slider-header">
+            <label for="visAtrValue">ATR Value (Volatility)</label>
+            <span class="val" id="visValAtr">95.93</span>
+          </div>
+          <input id="visAtrValue" type="range" min="10" max="1500" value="95.93" step="0.01" oninput="updateVisCalculation()">
+        </div>
+
+        <div class="vis-slider-container">
+          <div class="vis-slider-header">
+            <label for="visSlMultiplier">SL ATR Multiplier</label>
+            <span class="val" id="visValSlMul">2.0x</span>
+          </div>
+          <input id="visSlMultiplier" type="range" min="1.0" max="5.0" value="2.0" step="0.1" oninput="updateVisCalculation()">
+        </div>
+
+        <div class="vis-slider-container">
+          <div class="vis-slider-header">
+            <label for="visRrrRatio">Risk-to-Reward Ratio (RRR)</label>
+            <span class="val" id="visValRrr">3.5:1</span>
+          </div>
+          <input id="visRrrRatio" type="range" min="1.0" max="10.0" value="3.5" step="0.1" oninput="updateVisCalculation()">
+        </div>
+
+        <div class="vis-slider-container">
+          <div class="vis-slider-header">
+            <label for="visTrailMultiplier">Chandelier TS Multiplier</label>
+            <span class="val" id="visValTrailMul">3.0x</span>
+          </div>
+          <input id="visTrailMultiplier" type="range" min="1.5" max="6.0" value="3.0" step="0.1" oninput="updateVisCalculation()">
+        </div>
+
+        <div class="vis-form-group" style="flex-direction: row; align-items: center; gap: 8px;">
+          <input id="visShowTrail" type="checkbox" checked onchange="updateVisCalculation()" style="width: 16px; height: 16px; cursor: pointer;">
+          <label for="visShowTrail" style="cursor: pointer; user-select: none;">Hiển thị Chandelier Trailing Stop</label>
+        </div>
+
+        <div class="vis-alert-banner">
+          <span class="icon">🛡️</span>
+          <div>
+            <strong>Minervini Rule:</strong> Stop Loss cap 8% (scaled up to 13% for high beta assets).
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: INTERACTIVE VISUALIZER -->
+      <div class="vis-workspace-panel">
+        <section class="glass-section" style="padding: 0; overflow: hidden; border-radius: 16px; border: 1px solid var(--border);">
+          <div class="section-header" style="border-bottom: 1px solid var(--border); padding: 12px 18px; margin-bottom: 0;">
+            <div class="section-title" style="display: flex; align-items: center; gap: 8px;">
+              <span>📈 Live Visualizer Chart</span>
+              <span id="visSymbolBadge" style="font-family: var(--mono); font-size: 0.78rem; background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 4px; color: var(--accent2);">BTCUSDT</span>
+            </div>
+            <span id="visStateBadge" class="state-badge short" style="margin-left: auto;">Short Setup</span>
+          </div>
+          
+          <div class="vis-chart-panel" style="height: 480px; position: relative; background: #0a0b10;">
+            <div id="visLiveChart" style="width:100%;height:100%;position:relative;">
+              <canvas id="visOverlayCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- MATHEMATICAL BREAKDOWN -->
+        <section class="glass-section vis-math-card">
+          <!-- CALCULATION BOX -->
+          <div class="vis-math-box">
+            <div class="vis-math-title">⚙️ Risk metrics breakdown</div>
+            
+            <div class="vis-params-display">
+              <div class="vis-param-pill">
+                <span class="vis-param-lbl">Vol (ATR)</span>
+                <span class="vis-param-val" id="visPAtr">$95.93</span>
+              </div>
+              <div class="vis-param-pill">
+                <span class="vis-param-lbl">Risk distance (1R)</span>
+                <span class="vis-param-val" id="visPRiskDist">$191.86</span>
+              </div>
+              <div class="vis-param-pill">
+                <span class="vis-param-lbl">Reward distance</span>
+                <span class="vis-param-val" id="visPRewardDist">$671.51</span>
+              </div>
+              <div class="vis-param-pill">
+                <span class="vis-param-lbl">Stop Loss %</span>
+                <span class="vis-param-val" id="visPSlPct" style="color: var(--accent-red);">0.26%</span>
+              </div>
+              <div class="vis-param-pill" id="visPTrailPill">
+                <span class="vis-param-lbl">Trailing Stop (TS)</span>
+                <span class="vis-param-val" id="visPTrailDist" style="color: var(--accent-orange);">$287.79</span>
+              </div>
+              <div class="vis-param-pill" id="visPTrailPctPill" style="align-self: center;">
+                <span class="vis-param-lbl">TS Distance %</span>
+                <span class="vis-param-val" id="visPTrailPct" style="color: var(--accent-orange);">0.40%</span>
+              </div>
+            </div>
+            
+            <div class="vis-param-pill" style="grid-column: span 2; margin-top: 4px;">
+              <span class="vis-param-lbl">Real-time Risk-to-Reward Ratio</span>
+              <span class="vis-param-val" style="color: var(--accent-orange); display: flex; align-items: center; gap: 8px;">
+                <span>1 : <span id="visPRrr">3.5</span></span>
+                <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">(Minervini standard >= 2.0)</span>
+              </span>
+            </div>
+          </div>
+
+          <!-- FORMULA BOX -->
+          <div class="vis-math-box">
+            <div class="vis-math-title">🧠 ATR Risk Engine Math</div>
+            
+            <div class="vis-math-step">
+              <span class="vis-math-formula">
+                Risk (1R) = ATR (<span class="highlight" id="visFAtr">95.93</span>) &times; Multiplier (<span class="highlight" id="visFMul">2.0</span>) = <span class="highlight" id="visFRisk">191.86</span>
+              </span>
+              <span class="vis-math-desc">Tính toán độ rộng khoảng cắt lỗ dựa trên biến động thực tế (Average True Range).</span>
+            </div>
+
+            <div class="vis-math-step">
+              <span class="vis-math-formula" id="visFSlFormula">
+                Stop Loss = Price + Risk = 72704.49 + 191.86 = <span class="val-sl" id="visFSl">72896.35</span>
+              </span>
+              <span class="vis-math-desc" id="visFSlDesc">Với vị thế SHORT, Stop Loss được đặt CAO hơn Giá vào lệnh để bảo vệ nguồn vốn.</span>
+            </div>
+
+            <div class="vis-math-step">
+              <span class="vis-math-formula">
+                Reward = Risk (<span class="highlight" id="visFRisk2">191.86</span>) &times; RRR (<span class="highlight" id="visFRrr">3.5</span>) = <span class="highlight" id="visFReward">671.51</span>
+              </span>
+              <span class="vis-math-desc">Mục tiêu lợi nhuận được khóa theo bội số R:R (Risk-to-Reward Ratio).</span>
+            </div>
+
+            <div class="vis-math-step">
+              <span class="vis-math-formula" id="visFTpFormula">
+                Take Profit = Price - Reward = 72704.49 - 671.51 = <span class="val-tp" id="visFTp">72032.98</span>
+              </span>
+              <span class="vis-math-desc" id="visFTpDesc">Với vị thế SHORT, Take Profit được đặt DƯỚI Giá vào lệnh.</span>
+            </div>
+
+            <div class="vis-math-step" style="display: flex;">
+              <span class="vis-math-formula" id="visFTrailFormula">
+                Chandelier Trail Stop = Price + (ATR &times; trail_mul) = <span class="val-tp" id="visFTrail">72992.28</span>
+              </span>
+              <span class="vis-math-desc">Điểm dịch chuyển dừng lỗ (Chandelier Trailing Stop) bảo toàn lợi nhuận khi giá đi đúng hướng.</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+  </div>
 </main>
 
 <script src="https://unpkg.com/lightweight-charts@4/dist/lightweight-charts.standalone.production.js"></script>
@@ -1034,5 +1557,6 @@
 <script src="/static/js/dashboard-analysis.js?v=20260529d"></script>
 <script src="/static/js/dashboard-features.js?v=20260529d"></script>
 <script src="/static/js/dashboard-signals.js?v=20260529d"></script>
+<script src="/static/js/dashboard-visualizer.js?v=20260602"></script>
 </body>
 </html>

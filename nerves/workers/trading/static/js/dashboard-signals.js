@@ -285,7 +285,7 @@ function renderSignalCardHtml(s) {
   }
 
   return `
-  <div class="sig-card ${typeClass}${urgent ? ' sig-card-urgent' : ''}">
+  <div class="sig-card ${typeClass}${urgent ? ' sig-card-urgent' : ''}" id="sig-hist-${s.id}">
     <div class="sig-card-header">
       <div class="sig-card-left">
         <span class="sig-type-badge">${typeEmoji} ${s.signal_type.toUpperCase()}</span>
@@ -304,6 +304,9 @@ function renderSignalCardHtml(s) {
         <span class="sig-price">${price}</span>
         ${atr}
         ${tradeBtnHtml}
+        <button class="sig-trade-btn" style="background: rgba(108,99,255,0.12); border-color: rgba(108,99,255,0.3); color: var(--accent); margin-left: 6px; padding: 4px 10px; height: auto;" onclick="visualizeSignalCard('${s.id}', event)">
+          📐 Visualize
+        </button>
       </div>
       ${recExitHtml}
       <div class="sig-conf-row">
@@ -385,6 +388,11 @@ function renderHistoricalSignalCardHtml(s) {
         ${conditions ? `<div class="sig-conditions" style="margin-top: 8px; margin-bottom: 4px;">${conditions}</div>` : ''}
         ${atr ? `<div style="margin-top: 6px;"><span class="sig-meta-tag">ATR ${s.metadata.atr_value}</span></div>` : ''}
         ${recExitHtml}
+        <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
+          <button class="sig-trade-btn" style="background: rgba(108,99,255,0.12); border-color: rgba(108,99,255,0.3); color: var(--accent); padding: 4px 12px; font-size: 0.75rem; height: auto;" onclick="visualizeSignalCard('${s.id}', event)">
+            📐 Visualize Risk
+          </button>
+        </div>
       </div>
     </div>
   </div>`;
@@ -504,6 +512,9 @@ function renderSignalGroupCardHtml(symbol, exchangeMap) {
     <div class="sig-group-card ${borderClass}" id="sig-group-${symbol}">
       <div class="sig-group-header">
         <span class="sig-symbol">${escHtml(symbol)}</span>
+        <button class="sig-trade-btn" style="background: rgba(108,99,255,0.12); border-color: rgba(108,99,255,0.3); color: var(--accent); margin-left: 10px; padding: 2px 8px; height: auto; font-size: 0.72rem;" onclick="visualizeSignalCard('${symbol}', event)" title="Visualize Risk Management">
+          📐 Visualize
+        </button>
         <div class="sig-exchange-tabs">
           ${tabsHtml}
         </div>
