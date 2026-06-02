@@ -8,7 +8,6 @@ and mocked RAG functions. No real network or AI calls are made.
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
-from aiohttp import ClientResponseError
 
 import config
 
@@ -17,6 +16,19 @@ import config
 def mock_rag_init():
     with patch("rag.init_vector_db", new_callable=AsyncMock, return_value=True):
         yield
+
+
+@pytest.fixture(autouse=True)
+def mock_uvicorn_serve():
+    with patch("uvicorn.Server.serve", new_callable=AsyncMock) as mock_serve:
+        yield mock_serve
+
+
+@pytest.fixture(autouse=True)
+def mock_scheduler_start_stop():
+    with patch("scheduler.start_scheduler") as mock_start, \
+         patch("scheduler.stop_scheduler") as mock_stop:
+        yield mock_start, mock_stop
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
@@ -894,4 +906,156 @@ async def test_calculate_position_size_with_atr():
         config.MAX_QUOTE_QTY = original_max
         config.STOP_LOSS_PCT = original_sl_pct
         config.TAKE_PROFIT_PCT = original_tp_pct
+
+
+# ── V2 Integration Features Tests ──────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_health_endpoint_healthy():
+    """/health endpoint returns correct JSON structure and values."""
+    from workers.vps_analyzer import app
+    from httpx import AsyncClient
+    from workers.liveness_monitor import ServerHealth
+    
+    servers_mock = [
+        ServerHealth(name="SERVER_A", url="", is_healthy=True),
+        ServerHealth(name="SERVER_B", url="", is_healthy=True)
+    ]
+    
+    with patch("workers.vps_analyzer._get_servers", return_value=servers_mock), \
+         patch("workers.ntp_monitor.last_drift_results", {"server_a": {"drift_ms": 1.5}, "server_b": {"drift_ms": 2.1}}), \
+         patch("shutil.disk_usage", return_value=(1000, 400, 600)):
+         
+        import httpx
+        transport = httpx.ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            response = await ac.get("/health")
+            
+        assert response.status_code == 200
+        data = response.json()
+        assert data["liveness_status_server_a"] == "healthy"
+        assert data["liveness_status_server_b"] == "healthy"
+        assert data["disk_usage_pct"] == 40.0
+        assert data["ntp_clock_drift_ms"] == 2.1
+        assert data["circuit_breaker_status"] == "closed"
+
+
+@pytest.mark.asyncio
+async def test_health_endpoint_unhealthy_servers():
+    """/health endpoint correctly reports unhealthy status for Server A/B."""
+    from workers.vps_analyzer import app
+    from httpx import AsyncClient
+    from workers.liveness_monitor import ServerHealth
+    
+    servers_mock = [
+        ServerHealth(name="SERVER_A", url="", is_healthy=False),
+        ServerHealth(name="SERVER_B", url="", is_healthy=False)
+    ]
+    
+    with patch("workers.vps_analyzer._get_servers", return_value=servers_mock), \
+         patch("workers.ntp_monitor.last_drift_results", {}), \
+         patch("shutil.disk_usage", return_value=(1000, 400, 600)):
+         
+        import httpx
+        transport = httpx.ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            response = await ac.get("/health")
+            
+        assert response.status_code == 200
+        data = response.json()
+        assert data["liveness_status_server_a"] == "unhealthy"
+        assert data["liveness_status_server_b"] == "unhealthy"
+        assert data["disk_usage_pct"] == 40.0
+        assert data["ntp_clock_drift_ms"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_metrics_endpoint_json():
+    """/metrics returns JSON data if Accept header requests application/json."""
+    from workers.vps_analyzer import app
+    from httpx import AsyncClient
+    from workers.liveness_monitor import ServerHealth
+    
+    servers_mock = [
+        ServerHealth(name="SERVER_A", url="", is_healthy=True),
+        ServerHealth(name="SERVER_B", url="", is_healthy=False)
+    ]
+    
+    with patch("workers.vps_analyzer._get_servers", return_value=servers_mock), \
+         patch("workers.ntp_monitor.last_drift_results", {"server_a": {"drift_ms": 3.4}}), \
+         patch("shutil.disk_usage", return_value=(100, 35, 65)):
+         
+        import httpx
+        transport = httpx.ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            response = await ac.get("/metrics", headers={"accept": "application/json"})
+            
+        assert response.status_code == 200
+        data = response.json()
+        assert data["liveness_status_server_a"] == 1.0
+        assert data["liveness_status_server_b"] == 0.0
+        assert data["disk_usage_pct"] == 35.0
+        assert data["ntp_clock_drift_ms"] == 3.4
+        assert data["circuit_breaker_state"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_metrics_endpoint_prometheus_text():
+    """/metrics returns Prometheus gauge format by default."""
+    from workers.vps_analyzer import app
+    from httpx import AsyncClient
+    from workers.liveness_monitor import ServerHealth
+    
+    servers_mock = [
+        ServerHealth(name="SERVER_A", url="", is_healthy=True),
+        ServerHealth(name="SERVER_B", url="", is_healthy=False)
+    ]
+    
+    with patch("workers.vps_analyzer._get_servers", return_value=servers_mock), \
+         patch("workers.ntp_monitor.last_drift_results", {"server_a": {"drift_ms": 3.4}}), \
+         patch("shutil.disk_usage", return_value=(100, 35, 65)):
+         
+        import httpx
+        transport = httpx.ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            response = await ac.get("/metrics")
+            
+        assert response.status_code == 200
+        text = response.text
+        assert "# HELP liveness_status_server_a" in text
+        assert "liveness_status_server_a 1.0" in text
+        assert "liveness_status_server_b 0.0" in text
+        assert "disk_usage_pct 35.0" in text
+        assert "ntp_clock_drift_ms 3.4" in text
+        assert "circuit_breaker_state 0.0" in text
+
+
+@pytest.mark.asyncio
+async def test_run_startup_sequences():
+    """run() initializes database, starts scheduler, starts health server, and configures logging."""
+    from workers.vps_analyzer import VpsAnalyzerWorker
+    
+    worker = VpsAnalyzerWorker()
+    worker.poll_interval = 0
+    
+    # We will trigger the shutdown event immediately to exit the run loop
+    async def mock_poll():
+        worker._shutdown_event.set()
+        return []
+        
+    worker.poll_and_analyze = mock_poll
+    
+    with patch("rag.init_vector_db", new_callable=AsyncMock, return_value=True) as mock_db, \
+         patch("scheduler.start_scheduler") as mock_start_sched, \
+         patch("scheduler.stop_scheduler") as mock_stop_sched, \
+         patch("workers.vps_analyzer.setup_logging") as mock_setup_log, \
+         patch("uvicorn.Server.serve", new_callable=AsyncMock) as mock_uv_serve:
+         
+        await worker.run()
+        
+        mock_db.assert_called_once()
+        mock_start_sched.assert_called_once()
+        mock_stop_sched.assert_called_once()
+        mock_setup_log.assert_called()
+        mock_uv_serve.assert_called_once()
 

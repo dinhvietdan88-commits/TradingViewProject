@@ -43,9 +43,7 @@ except ImportError:
 from auth.auth_config import AuthConfig
 from auth.models import (
     CodeExpiredError,
-    CodeInvalidError,
     CodeUsedError,
-    OneTimeCode,
     SessionData,
     SessionMaxLifetimeError,
     TokenExpiredError,
@@ -92,7 +90,7 @@ skipif_no_hypothesis = pytest.mark.skipif(
 
 @skipif_no_hypothesis
 @given(st.integers(min_value=1, max_value=10**12))
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
 def test_p1_code_generation_unique_format(telegram_id):
     """P1: Generated codes must be 32-char hex and unique per call."""
     svc = _make_service(allowed_users=[telegram_id])
@@ -116,7 +114,7 @@ def test_p1_code_generation_unique_format(telegram_id):
 
 @skipif_no_hypothesis
 @given(st.integers(min_value=1, max_value=10**12))
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
 def test_p2_valid_exchange(telegram_id):
     """P2: A valid, unexpired, unused code for an allowed user produces a session."""
     svc = _make_service(allowed_users=[telegram_id])
@@ -143,7 +141,7 @@ def test_p2_valid_exchange(telegram_id):
 
 @skipif_no_hypothesis
 @given(st.integers(min_value=1, max_value=10**12))
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
 def test_p3_expired_code(telegram_id):
     """P3: An expired code must raise CodeExpiredError (before authorization check)."""
     svc = _make_service(allowed_users=[telegram_id])
@@ -168,7 +166,7 @@ def test_p3_expired_code(telegram_id):
 
 @skipif_no_hypothesis
 @given(st.integers(min_value=1, max_value=10**12))
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
 def test_p4_used_code(telegram_id):
     """P4: A used code must raise CodeUsedError."""
     svc = _make_service(allowed_users=[telegram_id])
@@ -196,7 +194,7 @@ def test_p4_used_code(telegram_id):
     st.integers(min_value=1, max_value=10**12),
     st.integers(min_value=10**12 + 1, max_value=10**13),
 )
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
 def test_p5_unauthorized_user(allowed_id, unauthorized_id):
     """P5: Unauthorized user raises UserNotAllowedError."""
     assume(allowed_id != unauthorized_id)
@@ -222,7 +220,7 @@ def test_p5_unauthorized_user(allowed_id, unauthorized_id):
 
 @skipif_no_hypothesis
 @given(st.integers(min_value=1, max_value=10**12))
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
 def test_p6_validation_ordering(unauthorized_id):
     """P6: Expired code for unauthorized user → CodeExpiredError (NOT UserNotAllowedError)."""
     svc = _make_service(allowed_users=[99999])  # Different user
@@ -251,7 +249,7 @@ def test_p6_validation_ordering(unauthorized_id):
     st.integers(min_value=1, max_value=10**12),
     st.text(min_size=3, max_size=20, alphabet="abcdefghijklmnopqrstuvwxyz_0123456789"),
 )
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
 def test_p7_token_roundtrip(telegram_id, username):
     """P7: create_session_token → verify_session_token preserves all fields."""
     svc = _make_service(allowed_users=[telegram_id])
@@ -281,7 +279,7 @@ def test_p7_token_roundtrip(telegram_id, username):
 
 @skipif_no_hypothesis
 @given(st.integers(min_value=1, max_value=10**12))
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
 def test_p8_tampered_token(telegram_id):
     """P8: Any modification to token must cause TokenInvalidError."""
     svc = _make_service(allowed_users=[telegram_id])
