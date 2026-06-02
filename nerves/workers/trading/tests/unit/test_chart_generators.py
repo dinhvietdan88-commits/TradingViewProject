@@ -69,7 +69,27 @@ class TestChartGenerators(unittest.TestCase):
 import pytest
 from utils.chart_generator_lw import generate_chart_lw
 
+# SCAR-003: Playwright tests must not run in non-browser CI runners
+def _playwright_available():
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["python", "-m", "playwright", "install", "--dry-run"],
+            capture_output=True, timeout=5
+        )
+        # If chromium binary exists, it's available
+        from pathlib import Path
+        import sys
+        if sys.platform == "win32":
+            return True  # Local Windows dev always has it
+        # On Linux CI, check if chromium_headless_shell exists
+        cache_dir = Path.home() / ".cache" / "ms-playwright"
+        return any(cache_dir.glob("chromium*/chrome-headless-shell*")) if cache_dir.exists() else False
+    except Exception:
+        return False
+
 @pytest.mark.asyncio
+@pytest.mark.skipif(not _playwright_available(), reason="Playwright browsers not installed (run in Browser runner)")
 async def test_playwright_generator():
     mock_ohlcv = [
         {"time": 1716240000000 + i * 3600000, "open": 100 + i, "high": 105 + i, "low": 98 + i, "close": 102 + i, "volume": 1000 * i}
