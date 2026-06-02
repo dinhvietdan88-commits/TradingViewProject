@@ -389,6 +389,36 @@ Dựa trên tín hiệu trên và quy tắc của Minervini trong Knowledge Base
 Trả lời NGẮN GỌN, súc tích (dưới 200 từ), dùng emoji để dễ đọc trên Telegram."""
 
     try:
+        # ── agy CLI via bridge (Server C host sidecar) ──
+        if provider == "agy":
+            from agy_harness import AgyHarness
+            harness = AgyHarness(
+                bridge_url=getattr(config, "AGY_BRIDGE_URL", "http://host.docker.internal:9100"),
+                timeout_sec=getattr(config, "AGY_TIMEOUT_SEC", 25),
+                model=getattr(config, "AGY_MODEL", "gemini-2.5-flash"),
+            )
+            try:
+                result = await harness.analyze(prompt)
+                if result.success:
+                    log.info(
+                        f"RAG: agy CLI generated advice for {symbol} ({action}) "
+                        f"[{result.latency_ms:.0f}ms]"
+                    )
+                    return result.advice
+                else:
+                    log.warning(
+                        f"RAG: agy CLI failed ({result.error}). "
+                        f"Falling back to gemini..."
+                    )
+                    provider = "gemini"  # fall through to gemini direct
+            except Exception as e:
+                log.warning(
+                    f"RAG: agy harness error ({e}). Falling back to gemini..."
+                )
+                provider = "gemini"
+            finally:
+                await harness.close()
+
         if provider == "antigravity":
             from google.antigravity import Agent, LocalAgentConfig
             model_name = getattr(config, "CLAUDE_CLI_MODEL", "") or "gemini-2.5-flash"

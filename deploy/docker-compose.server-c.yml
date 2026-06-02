@@ -58,7 +58,12 @@ services:
       - SERVER_B_SECRET=${SERVER_B_SECRET}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - AI_PROVIDER=${AI_PROVIDER:-anthropic}
+      - ANTIGRAVITY_API_KEY=${ANTIGRAVITY_API_KEY}
+      - AI_PROVIDER=${AI_PROVIDER:-agy}
+      # agy CLI bridge — FastAPI sidecar on Server C host
+      - AGY_BRIDGE_URL=http://host.docker.internal:9100
+      - AGY_TIMEOUT_SEC=${AGY_TIMEOUT_SEC:-25}
+      - AGY_MODEL=${AGY_MODEL:-gemini-2.5-flash}
       - RISK_PER_TRADE=${RISK_PER_TRADE:-0.02}
       - STOP_LOSS_PCT=${STOP_LOSS_PCT:-0.08}
       # V2 Hardening — Logging & Monitoring
@@ -74,6 +79,10 @@ services:
       - LIVENESS_ALERT_AFTER_FAILURES=${LIVENESS_ALERT_AFTER_FAILURES:-2}
     networks:
       - analyzer
+    # Map host.docker.internal → Docker host IP
+    # Required for analyzer container to reach agy-bridge on host :9100
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test:
         - "CMD"

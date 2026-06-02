@@ -97,7 +97,7 @@ CHROMA_SERVER_PORT = int(os.getenv("CHROMA_SERVER_PORT", "8000"))
 # Anthropic (Claude) API Key — dùng cho bước Generation trong RAG
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
-# AI Provider: "anthropic" | "gemini" | "antigravity" | "claude_cli"
+# AI Provider: "agy" | "anthropic" | "gemini" | "antigravity" | "claude_cli"
 AI_PROVIDER = os.getenv("AI_PROVIDER", "antigravity").lower()
 
 # ── Claude SDK Integration (P9) ───────────────────────────────────────────
@@ -119,6 +119,15 @@ CLAUDE_CONTEXT_DEPTH = int(os.getenv("CLAUDE_CONTEXT_DEPTH", "5"))
 CLAUDE_MAX_CONTEXT_TOKENS = int(os.getenv("CLAUDE_MAX_CONTEXT_TOKENS", "50000"))
 # [DEPRECATED] Fallback flag — no-op (SDK is the only path; kept for backward compat)
 CLAUDE_CLI_FALLBACK_SDK = os.getenv("CLAUDE_CLI_FALLBACK_SDK", "true").lower() == "true"
+
+# ── agy CLI Bridge (Server C Host Sidecar) ─────────────────────────────────
+# agy CLI runs on the Docker host as a systemd service (agy-bridge).
+# The Docker analyzer container calls the bridge over HTTP.
+# Auth: ANTIGRAVITY_API_KEY bypasses OAuth (preferred for headless servers).
+# SCAR-005: agy --print requires PTY wrapper (handled by bridge).
+AGY_BRIDGE_URL = os.getenv("AGY_BRIDGE_URL", "http://host.docker.internal:9100")
+AGY_TIMEOUT_SEC = int(os.getenv("AGY_TIMEOUT_SEC", "25"))
+AGY_MODEL = os.getenv("AGY_MODEL", "gemini-2.5-flash")
 
 # Gemini API Key (Fallback if not using Vertex AI)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
