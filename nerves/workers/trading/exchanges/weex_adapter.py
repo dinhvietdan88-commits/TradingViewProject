@@ -393,6 +393,23 @@ class WeexAdapter:
             else:
                 entry_result = await self.place_market_order(symbol_clean, side_upper, base_qty=qty)
 
+            # Get actual fill price from entry
+            exec_qty = float(entry_result.get("executedQty", qty))
+            if order_type.upper() == "LIMIT" and exec_qty == 0:
+                exec_qty = qty
+            cum_quote = float(entry_result.get("cummulativeQuoteQty", cost))
+            fill_price = cum_quote / exec_qty if exec_qty > 0 else entry_price
+
+            # Recalculate SL/TP from actual fill price
+            if abs(fill_price - entry_price) > 0.01:
+                price_diff = fill_price - entry_price
+                sl_price += price_diff
+                tp_price += price_diff
+
+                risk_params.entry_price = fill_price
+                risk_params.stop_loss_price = sl_price
+                risk_params.take_profit_price = tp_price
+
             exit_side = "SELL" if side_upper == "BUY" else "BUY"
             stop_limit = sl_price * 0.995 if exit_side == "SELL" else sl_price * 1.005
             
