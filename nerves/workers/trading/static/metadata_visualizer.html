@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minervini SEPA — ATR Risk Visualizer</title>
+  <meta name="description" content="Visualizer for TradingView Indicator Alerts and ATR-based Risk Management">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-dark: #070a13;
+      --bg-card: rgba(15, 23, 42, 0.65);
+      --border-color: rgba(148, 163, 184, 0.12);
+      --text-main: #e2e8f0;
+      --text-muted: #64748b;
+      --primary: #3b82f6;
+      --primary-glow: rgba(59, 130, 246, 0.35);
+      --green: #10b981;
+      --green-bg: rgba(16, 185, 129, 0.08);
+      --green-border: rgba(16, 185, 129, 0.25);
+      --red: #ef4444;
+      --red-bg: rgba(239, 68, 68, 0.08);
+      --red-border: rgba(239, 68, 68, 0.25);
+      --amber: #f59e0b;
+      --purple: #8b5cf6;
+      --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 0%, #111827 0%, #030712 100%);
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      overflow-x: hidden;
+    }
+
+    /* HEADER */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      box-shadow: 0 0 20px var(--primary-glow);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .brand-text h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(to right, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-text p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-secondary {
+      background: rgba(30, 41, 59, 0.5);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(30, 41, 59, 0.8);
+      border-color: rgba(148, 163, 184, 0.25);
+    }
+
+    /* GRID LAYOUT */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 24px;
+      flex: 1;
+    }
+
+    @media (max-width: 968px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* GLASS CARD */
+    .glass-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #94a3b8;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+      padding-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* INPUTS & TEXTAREA */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: #cbd5e1;
+    }
+
+    textarea {
+      width: 100%;
+      height: 120px;
+      background: rgba(10, 15, 30, 0.8);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: #38bdf8;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      padding: 10px;
+      resize: none;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.15);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      border: none;
+      color: #ffffff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-input {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: #ffffff;
+      padding: 8px 12px;
+      font-size: 0.88rem;
+      outline: none;
+      font-family: var(--font-mono);
+    }
+
+    .form-input:focus {
+      border-color: var(--primary);
+    }
+
+    select.form-input {
+      font-family: var(--font-ui);
+      cursor: pointer;
+    }
+
+    .slider-container {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .slider-header span.val {
+      font-family: var(--font-mono);
+      color: #ffffff;
+      font-weight: 500;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(148, 163, 184, 0.15);
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--primary);
+      cursor: pointer;
+      transition: transform 0.1s ease;
+      box-shadow: 0 0 8px var(--primary-glow);
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    /* PRESETS */
+    .presets-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .preset-chip {
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid var(--border-color);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      color: #94a3b8;
+      transition: all 0.2s ease;
+    }
+
+    .preset-chip:hover {
+      border-color: var(--primary);
+      color: #ffffff;
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    .preset-chip.active {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: var(--primary);
+      color: #ffffff;
+    }
+
+    /* VISUALIZATION PANEL */
+    .visualizer-workspace {
+      display: grid;
+      grid-template-rows: 1fr auto;
+      gap: 20px;
+    }
+
+    .chart-panel {
+      position: relative;
+      height: 480px;
+      background: rgba(10, 15, 30, 0.45);
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.4);
+    }
+
+    /* SVG ELEMENTS */
+    svg.visual-canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .grid-line {
+      stroke: rgba(148, 163, 184, 0.04);
+      stroke-dasharray: 4;
+    }
+
+    .level-line {
+      stroke-width: 2px;
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .entry-line {
+      stroke: #ffffff;
+      stroke-dasharray: 3 3;
+    }
+
+    .sl-line {
+      stroke: var(--red);
+    }
+
+    .tp-line {
+      stroke: var(--green);
+    }
+
+    .zone-rect {
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .sl-zone {
+      fill: var(--red-bg);
+    }
+
+    .tp-zone {
+      fill: var(--green-bg);
+    }
+
+    .price-text {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      fill: #ffffff;
+      alignment-baseline: middle;
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .price-text.sl {
+      fill: #f87171;
+    }
+
+    .price-text.tp {
+      fill: #34d399;
+    }
+
+    .level-label {
+      font-family: var(--font-ui);
+      font-size: 0.75rem;
+      font-weight: 500;
+      fill: #cbd5e1;
+      alignment-baseline: middle;
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .level-label.sl {
+      fill: #ef4444;
+      font-weight: 600;
+    }
+
+    .level-label.tp {
+      fill: #10b981;
+      font-weight: 600;
+    }
+
+    /* MATHEMATICS CARD */
+    .math-card {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 768px) {
+      .math-card {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .math-box {
+      background: rgba(10, 15, 30, 0.3);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .math-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .math-step {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.04);
+      padding-bottom: 8px;
+    }
+
+    .math-step:last-child {
+      border: none;
+      padding-bottom: 0;
+    }
+
+    .math-formula {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      font-weight: 500;
+    }
+
+    .math-formula span.highlight {
+      color: var(--amber);
+      font-weight: 600;
+    }
+
+    .math-formula span.val-sl {
+      color: var(--red);
+      font-weight: 600;
+    }
+
+    .math-formula span.val-tp {
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    .math-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* STATE BADGES */
+    .state-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .state-badge.short {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .state-badge.long {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .params-display-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .param-pill {
+      background: rgba(30, 41, 59, 0.3);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .param-lbl {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .param-val {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    /* GLOWING PULSAR */
+    .pulsar {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      position: absolute;
+      animation: pulsate 2s infinite ease-in-out;
+    }
+
+    .pulsar.entry {
+      background: #ffffff;
+      box-shadow: 0 0 12px #ffffff;
+    }
+
+    @keyframes pulsate {
+      0% { transform: scale(0.9); opacity: 0.6; }
+      50% { transform: scale(1.4); opacity: 1; box-shadow: 0 0 16px currentColor; }
+      100% { transform: scale(0.9); opacity: 0.6; }
+    }
+
+    .alert-banner {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px dashed rgba(245, 158, 11, 0.3);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.78rem;
+      color: #f59e0b;
+    }
+
+    .alert-banner .icon {
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <div class="logo">⚡</div>
+      <div class="brand-text">
+        <h1>Minervini SEPA</h1>
+        <p>Sovereign Risk Management Visualizer • v7.6</p>
+      </div>
+    </div>
+    <div class="nav-links">
+      <a href="/static/dashboard.html" class="btn-secondary">🏠 Back to Dashboard</a>
+    </div>
+  </header>
+
+  <!-- DASHBOARD GRID -->
+  <div class="dashboard-grid">
+    
+    <!-- LEFT COLUMN: INPUTS & PRESETS -->
+    <div class="glass-card" style="gap: 20px;">
+      
+      <div>
+        <div class="card-title">📝 Parse Indicator Metadata</div>
+        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">
+          Paste raw metadata payload (JSON or Python dict string) from TradingView alerts.
+        </p>
+      </div>
+
+      <div class="form-group">
+        <textarea id="rawMetadata" placeholder="{'direction': 'short', 'atr_value': '95.9298016285', ...}"></textarea>
+      </div>
+
+      <button class="btn-primary" onclick="parseAndApplyMetadata()">
+        ⚡ Parse & Apply Metadata
+      </button>
+
+      <div>
+        <div class="card-title">Presets</div>
+        <div class="presets-row" style="margin-top: 8px;">
+          <button class="preset-chip active" onclick="loadPreset('vbs_short')">VBS Short (BTC)</button>
+          <button class="preset-chip" onclick="loadPreset('vbs_long')">VBS Long (BTC)</button>
+          <button class="preset-chip" onclick="loadPreset('eth_long')">ETH Long (Beta 1.25)</button>
+          <button class="preset-chip" onclick="loadPreset('sol_short')">SOL Short (Beta 1.6)</button>
+        </div>
+      </div>
+
+      <div class="card-title">📐 Risk Configuration</div>
+
+      <div class="input-row">
+        <div class="form-group">
+          <label for="direction">Direction</label>
+          <select id="direction" class="form-input" onchange="updateCalculation()">
+            <option value="short">SHORT (Bán)</option>
+            <option value="long">LONG (Mua)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="entryPrice">Entry Price ($)</label>
+          <input id="entryPrice" type="number" class="form-input" value="72704.49" step="10" oninput="updateCalculation()">
+        </div>
+      </div>
+
+      <div class="slider-container">
+        <div class="slider-header">
+          <label for="atrValue">ATR Value (Volatility)</label>
+          <span class="val" id="valAtr">95.93</span>
+        </div>
+        <input id="atrValue" type="range" min="10" max="1500" value="95.93" step="0.01" oninput="updateCalculation()">
+      </div>
+
+      <div class="slider-container">
+        <div class="slider-header">
+          <label for="slMultiplier">SL ATR Multiplier</label>
+          <span class="val" id="valSlMul">2.0x</span>
+        </div>
+        <input id="slMultiplier" type="range" min="1.0" max="5.0" value="2.0" step="0.1" oninput="updateCalculation()">
+      </div>
+
+      <div class="slider-container">
+        <div class="slider-header">
+          <label for="rrrRatio">Risk-to-Reward Ratio (RRR)</label>
+          <span class="val" id="valRrr">3.5:1</span>
+        </div>
+        <input id="rrrRatio" type="range" min="1.0" max="10.0" value="3.5" step="0.1" oninput="updateCalculation()">
+      </div>
+
+      <div class="alert-banner">
+        <span class="icon">🛡️</span>
+        <div>
+          <strong>Minervini Rule:</strong> Maximum Stop Loss capped at 8% (scaled up to 13% for high beta assets like SOL).
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: INTERACTIVE VISUALIZER -->
+    <div class="visualizer-workspace">
+      
+      <!-- INTERACTIVE SVG CHART -->
+      <div class="glass-card" style="padding: 16px;">
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>📊 Interactive Setup Diagram</span>
+          <span id="stateBadge" class="state-badge short">Short Setup</span>
+        </div>
+        
+        <div class="chart-panel">
+          <svg class="visual-canvas" id="svgCanvas" viewBox="0 0 800 480" preserveAspectRatio="none">
+            <!-- Grid Lines -->
+            <line x1="0" y1="80" x2="800" y2="80" class="grid-line" />
+            <line x1="0" y1="160" x2="800" y2="160" class="grid-line" />
+            <line x1="0" y1="240" x2="800" y2="240" class="grid-line" />
+            <line x1="0" y1="320" x2="800" y2="320" class="grid-line" />
+            <line x1="0" y1="400" x2="800" y2="400" class="grid-line" />
+            
+            <!-- Stop Loss Zone -->
+            <rect id="slZone" x="50" y="80" width="600" height="80" class="zone-rect sl-zone" />
+            
+            <!-- Take Profit Zone -->
+            <rect id="tpZone" x="50" y="240" width="600" height="160" class="zone-rect tp-zone" />
+            
+            <!-- Level Lines -->
+            <line id="slLine" x1="50" y1="160" x2="650" y2="160" class="level-line sl-line" />
+            <line id="entryLine" x1="50" y1="240" x2="650" y2="240" class="level-line entry-line" />
+            <line id="tpLine" x1="50" y1="400" x2="650" y2="400" class="level-line tp-line" />
+            
+            <!-- Ruler & Brackets -->
+            <path id="slBracket" d="M 680,160 L 690,160 L 690,240 L 680,240" stroke="#f87171" stroke-width="1.5" fill="none" />
+            <path id="tpBracket" d="M 680,240 L 690,240 L 690,400 L 680,400" stroke="#34d399" stroke-width="1.5" fill="none" />
+            
+            <!-- Labels -->
+            <text id="lblSlPrice" x="60" y="145" class="price-text sl">$72,896.35</text>
+            <text x="60" y="125" class="level-label sl">STOP LOSS (Vùng cắt lỗ)</text>
+            
+            <text id="lblEntryPrice" x="60" y="225" class="price-text">$72,704.49</text>
+            <text x="60" y="205" class="level-label" style="fill: #ffffff;">ENTRY (Điểm vào lệnh)</text>
+            
+            <text id="lblTpPrice" x="60" y="385" class="price-text tp">$72,032.98</text>
+            <text x="60" y="365" class="level-label tp">TAKE PROFIT (Vùng chốt lời)</text>
+            
+            <!-- Bracket Labels -->
+            <text id="lblSlDiff" x="705" y="200" class="price-text sl" style="alignment-baseline: middle;">-191.86 (-0.26%)</text>
+            <text id="lblSlRDescription" x="705" y="215" class="level-label" style="font-size: 0.65rem;">1.0 R (Rủi ro)</text>
+            
+            <text id="lblTpDiff" x="705" y="320" class="price-text tp" style="alignment-baseline: middle;">+671.51 (+0.92%)</text>
+            <text id="lblTpRDescription" x="705" y="335" class="level-label" style="font-size: 0.65rem;">3.5 R (Lợi nhuận)</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- MATHEMATICAL BREAKDOWN -->
+      <div class="glass-card math-card">
+        
+        <!-- CALCULATION BOX -->
+        <div class="math-box">
+          <div class="math-title">⚙️ Risk metrics breakdown</div>
+          
+          <div class="params-display-grid">
+            <div class="param-pill">
+              <span class="param-lbl">Vol (ATR)</span>
+              <span class="param-val" id="pAtr">$95.93</span>
+            </div>
+            <div class="param-pill">
+              <span class="param-lbl">Risk distance (1R)</span>
+              <span class="param-val" id="pRiskDist">$191.86</span>
+            </div>
+            <div class="param-pill">
+              <span class="param-lbl">Reward distance</span>
+              <span class="param-val" id="pRewardDist">$671.51</span>
+            </div>
+            <div class="param-pill">
+              <span class="param-lbl">Stop Loss %</span>
+              <span class="param-val" id="pSlPct" style="color: var(--red);">0.26%</span>
+            </div>
+          </div>
+          
+          <div class="param-pill" style="grid-column: span 2; margin-top: 4px;">
+            <span class="param-lbl">Real-time Risk-to-Reward Ratio</span>
+            <span class="param-val" style="color: var(--amber); display: flex; align-items: center; gap: 8px;">
+              <span>1 : <span id="pRrr">3.5</span></span>
+              <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">(Minervini standard >= 2.0)</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- FORMULA BOX -->
+        <div class="math-box">
+          <div class="math-title">🧠 ATR Risk Engine Math</div>
+          
+          <div class="math-step">
+            <span class="math-formula">
+              Risk (1R) = ATR (<span class="highlight" id="fAtr">95.93</span>) &times; Multiplier (<span class="highlight" id="fMul">2.0</span>) = <span class="highlight" id="fRisk">191.86</span>
+            </span>
+            <span class="math-desc">Tính toán độ rộng khoảng cắt lỗ dựa trên biến động thực tế (Average True Range).</span>
+          </div>
+
+          <div class="math-step">
+            <span class="math-formula" id="fSlFormula">
+              Stop Loss = Price + Risk = 72704.49 + 191.86 = <span class="val-sl" id="fSl">72896.35</span>
+            </span>
+            <span class="math-desc" id="fSlDesc">Với vị thế SHORT, Stop Loss được đặt CAO hơn Giá vào lệnh để bảo vệ nguồn vốn.</span>
+          </div>
+
+          <div class="math-step">
+            <span class="math-formula">
+              Reward = Risk (<span class="highlight" id="fRisk2">191.86</span>) &times; RRR (<span class="highlight" id="fRrr">3.5</span>) = <span class="highlight" id="fReward">671.51</span>
+            </span>
+            <span class="math-desc">Mục tiêu lợi nhuận được khóa theo bội số R:R (Risk-to-Reward Ratio).</span>
+          </div>
+
+          <div class="math-step">
+            <span class="math-formula" id="fTpFormula">
+              Take Profit = Price - Reward = 72704.49 - 671.51 = <span class="val-tp" id="fTp">72032.98</span>
+            </span>
+            <span class="math-desc" id="fTpDesc">Với vị thế SHORT, Take Profit được đặt DƯỚI Giá vào lệnh.</span>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // Initial metadata parsed
+    let activeMetadata = {
+      direction: 'short',
+      atr_value: 95.9298016285,
+      sl: 0,
+      tp: 0,
+      rrr_ratio: 3.5,
+      sl_mode: 'ATR',
+      tp_mode: 'Fixed RRR',
+      trail_stop: 0
+    };
+
+    // Default presets
+    const PRESETS = {
+      vbs_short: {
+        direction: 'short',
+        entryPrice: 72704.49,
+        atr_value: 95.9298,
+        sl_multiplier: 2.0,
+        rrr_ratio: 3.5
+      },
+      vbs_long: {
+        direction: 'long',
+        entryPrice: 72704.49,
+        atr_value: 95.9298,
+        sl_multiplier: 2.0,
+        rrr_ratio: 3.5
+      },
+      eth_long: {
+        direction: 'long',
+        entryPrice: 3450.00,
+        atr_value: 120.50,
+        sl_multiplier: 2.5,
+        rrr_ratio: 4.0
+      },
+      sol_short: {
+        direction: 'short',
+        entryPrice: 165.20,
+        atr_value: 8.45,
+        sl_multiplier: 3.2,
+        rrr_ratio: 4.0
+      }
+    };
+
+    // Default metadata text
+    const defaultText = `{\n  "direction": "short",\n  "atr_value": "95.9298016285",\n  "sl": "0",\n  "tp": "0",\n  "rrr_ratio": "3.5",\n  "sl_mode": "ATR",\n  "tp_mode": "Fixed RRR",\n  "trail_stop": "0"\n}`;
+    document.getElementById('rawMetadata').value = defaultText;
+
+    function loadPreset(name) {
+      const preset = PRESETS[name];
+      if (!preset) return;
+
+      document.querySelectorAll('.preset-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.textContent.toLowerCase().includes(name.split('_')[0]));
+      });
+
+      document.getElementById('direction').value = preset.direction;
+      document.getElementById('entryPrice').value = preset.entryPrice;
+      document.getElementById('atrValue').value = preset.atr_value;
+      document.getElementById('slMultiplier').value = preset.sl_multiplier;
+      document.getElementById('rrrRatio').value = preset.rrr_ratio;
+
+      // Update metadata raw display text
+      const newMeta = {
+        direction: preset.direction,
+        atr_value: preset.atr_value.toString(),
+        sl: "0",
+        tp: "0",
+        rrr_ratio: preset.rrr_ratio.toString(),
+        sl_mode: "ATR",
+        tp_mode: "Fixed RRR",
+        trail_stop: "0"
+      };
+      document.getElementById('rawMetadata').value = JSON.stringify(newMeta, null, 2);
+
+      updateCalculation();
+    }
+
+    function parseAndApplyMetadata() {
+      const rawText = document.getElementById('rawMetadata').value.trim();
+      if (!rawText) return;
+
+      try {
+        // Handle Python dictionary string single-quote conversion
+        let cleanText = rawText
+          .replace(/'/g, '"') // Replace single quotes with double quotes
+          .replace(/True/g, 'true')
+          .replace(/False/g, 'false')
+          .replace(/None/g, 'null');
+
+        const parsed = JSON.parse(cleanText);
+        
+        // Sync values to UI
+        if (parsed.direction) {
+          document.getElementById('direction').value = parsed.direction.toLowerCase();
+        }
+        
+        if (parsed.atr_value) {
+          document.getElementById('atrValue').value = parseFloat(parsed.atr_value);
+        }
+
+        if (parsed.rrr_ratio) {
+          document.getElementById('rrrRatio').value = parseFloat(parsed.rrr_ratio);
+        }
+
+        // Apply default multiplier if it matches symbol config or leave current
+        // For BTC, default is 2.0, SOL is 3.2, ETH is 2.5
+        const price = parseFloat(document.getElementById('entryPrice').value);
+        if (price > 50000) {
+          document.getElementById('slMultiplier').value = 2.0; // BTC
+        } else if (price > 1000) {
+          document.getElementById('slMultiplier').value = 2.5; // ETH
+        } else {
+          document.getElementById('slMultiplier').value = 3.2; // SOL/Other
+        }
+
+        updateCalculation();
+        
+        // Alert user
+        alert("✅ Metadata parsed and applied successfully!");
+      } catch (e) {
+        alert("❌ Error parsing metadata: " + e.message + "\nMake sure it is valid JSON or a standard Python dict.");
+      }
+    }
+
+    function updateCalculation() {
+      // Gather inputs
+      const direction = document.getElementById('direction').value;
+      const entryPrice = parseFloat(document.getElementById('entryPrice').value) || 0;
+      const atrValue = parseFloat(document.getElementById('atrValue').value) || 0;
+      const slMultiplier = parseFloat(document.getElementById('slMultiplier').value) || 2.0;
+      const rrrRatio = parseFloat(document.getElementById('rrrRatio').value) || 3.5;
+
+      // Update labels in slider controls
+      document.getElementById('valAtr').textContent = atrValue.toFixed(2);
+      document.getElementById('valSlMul').textContent = slMultiplier.toFixed(1) + 'x';
+      document.getElementById('valRrr').textContent = rrrRatio.toFixed(1) + ':1';
+
+      // Computations
+      const risk = atrValue * slMultiplier;
+      const reward = risk * rrrRatio;
+      
+      let slPrice = 0;
+      let tpPrice = 0;
+
+      if (direction === 'short') {
+        slPrice = entryPrice + risk;
+        tpPrice = entryPrice - reward;
+      } else {
+        slPrice = entryPrice - risk;
+        tpPrice = entryPrice + reward;
+      }
+
+      const slPct = (risk / entryPrice) * 100;
+      const tpPct = (reward / entryPrice) * 100;
+
+      // Update metrics panel
+      document.getElementById('pAtr').textContent = '$' + atrValue.toFixed(2);
+      document.getElementById('pRiskDist').textContent = '$' + risk.toFixed(2);
+      document.getElementById('pRewardDist').textContent = '$' + reward.toFixed(2);
+      document.getElementById('pSlPct').textContent = slPct.toFixed(2) + '%';
+      document.getElementById('pRrr').textContent = rrrRatio.toFixed(1);
+
+      // Verify SL Cap warning
+      const hardCap = entryPrice > 50000 ? 8.0 : (entryPrice > 1000 ? 10.0 : 13.0);
+      const isClamped = slPct > hardCap;
+      const pSlPctEl = document.getElementById('pSlPct');
+      if (isClamped) {
+        pSlPctEl.style.color = '#f59e0b';
+        pSlPctEl.title = `SL exceeds ${hardCap}% cap and will be CLAMPED by Trade Engine!`;
+      } else {
+        pSlPctEl.style.color = 'var(--red)';
+        pSlPctEl.title = '';
+      }
+
+      // Update formulas panel
+      document.getElementById('fAtr').textContent = atrValue.toFixed(4);
+      document.getElementById('fMul').textContent = slMultiplier.toFixed(1);
+      document.getElementById('fRisk').textContent = risk.toFixed(4);
+      document.getElementById('fRisk2').textContent = risk.toFixed(4);
+      document.getElementById('fRrr').textContent = rrrRatio.toFixed(1);
+      document.getElementById('fReward').textContent = reward.toFixed(4);
+
+      // Formulas equations
+      if (direction === 'short') {
+        document.getElementById('fSlFormula').innerHTML = `Stop Loss = Price + Risk = ${entryPrice.toFixed(2)} + ${risk.toFixed(2)} = <span class="val-sl">${slPrice.toFixed(2)}</span>`;
+        document.getElementById('fSlDesc').textContent = 'Với vị thế SHORT, Stop Loss được đặt CAO hơn Giá vào lệnh để bảo vệ nguồn vốn.';
+        
+        document.getElementById('fTpFormula').innerHTML = `Take Profit = Price - Reward = ${entryPrice.toFixed(2)} - ${reward.toFixed(2)} = <span class="val-tp">${tpPrice.toFixed(2)}</span>`;
+        document.getElementById('fTpDesc').textContent = 'Với vị thế SHORT, Take Profit được đặt DƯỚI Giá vào lệnh.';
+        
+        document.getElementById('stateBadge').textContent = 'Short Setup';
+        document.getElementById('stateBadge').className = 'state-badge short';
+      } else {
+        document.getElementById('fSlFormula').innerHTML = `Stop Loss = Price - Risk = ${entryPrice.toFixed(2)} - ${risk.toFixed(2)} = <span class="val-sl">${slPrice.toFixed(2)}</span>`;
+        document.getElementById('fSlDesc').textContent = 'Với vị thế LONG, Stop Loss được đặt THẤP hơn Giá vào lệnh để giới hạn thua lỗ.';
+        
+        document.getElementById('fTpFormula').innerHTML = `Take Profit = Price + Reward = ${entryPrice.toFixed(2)} + ${reward.toFixed(2)} = <span class="val-tp">${tpPrice.toFixed(2)}</span>`;
+        document.getElementById('fTpDesc').textContent = 'Với vị thế LONG, Take Profit được đặt TRÊN Giá vào lệnh.';
+
+        document.getElementById('stateBadge').textContent = 'Long Setup';
+        document.getElementById('stateBadge').className = 'state-badge long';
+      }
+
+      // Update SVG Canvas
+      updateSvgCanvas(direction, entryPrice, slPrice, tpPrice, risk, reward, slPct, tpPct);
+    }
+
+    function updateSvgCanvas(direction, entry, sl, tp, risk, reward, slPct, tpPct) {
+      const svg = document.getElementById('svgCanvas');
+      
+      // We will map values to Y coordinates in our 800x480 SVG.
+      // Entry is always at Y = 240 (middle).
+      // We scale the height of the risk and reward zones proportionally.
+      const entryY = 240;
+      
+      // Calculate a scale factor: we want the total span (risk + reward) to occupy about 280 pixels
+      const totalSpanVal = risk + reward;
+      const totalSpanPx = 280;
+      const pxPerVal = totalSpanPx / totalSpanVal;
+
+      let slY, tpY;
+      
+      if (direction === 'short') {
+        // Short: SL is higher, so it goes UP in Y space (lower pixel value)
+        slY = entryY - (risk * pxPerVal);
+        // TP is lower, so it goes DOWN in Y space (higher pixel value)
+        tpY = entryY + (reward * pxPerVal);
+      } else {
+        // Long: SL is lower, so it goes DOWN in Y space (higher pixel value)
+        slY = entryY + (risk * pxPerVal);
+        // TP is higher, so it goes UP in Y space (lower pixel value)
+        tpY = entryY - (reward * pxPerVal);
+      }
+
+      // Ensure levels are bounded so they don't clip off the screen
+      slY = Math.max(50, Math.min(430, slY));
+      tpY = Math.max(50, Math.min(430, tpY));
+
+      // Update Lines
+      document.getElementById('entryLine').setAttribute('y1', entryY);
+      document.getElementById('entryLine').setAttribute('y2', entryY);
+      
+      document.getElementById('slLine').setAttribute('y1', slY);
+      document.getElementById('slLine').setAttribute('y2', slY);
+
+      document.getElementById('tpLine').setAttribute('y1', tpY);
+      document.getElementById('tpLine').setAttribute('y2', tpY);
+
+      // Update Zones (rectangles)
+      const slZone = document.getElementById('slZone');
+      const tpZone = document.getElementById('tpZone');
+
+      if (direction === 'short') {
+        // SL zone is between slY and entryY
+        slZone.setAttribute('y', slY);
+        slZone.setAttribute('height', entryY - slY);
+        
+        // TP zone is between entryY and tpY
+        tpZone.setAttribute('y', entryY);
+        tpZone.setAttribute('height', tpY - entryY);
+      } else {
+        // SL zone is between entryY and slY
+        slZone.setAttribute('y', entryY);
+        slZone.setAttribute('height', slY - entryY);
+        
+        // TP zone is between tpY and entryY
+        tpZone.setAttribute('y', tpY);
+        tpZone.setAttribute('height', entryY - tpY);
+      }
+
+      // Update Brackets (paths)
+      const slBracket = document.getElementById('slBracket');
+      const tpBracket = document.getElementById('tpBracket');
+
+      slBracket.setAttribute('d', `M 660,${slY} L 670,${slY} L 670,${entryY} L 660,${entryY}`);
+      tpBracket.setAttribute('d', `M 660,${entryY} L 670,${entryY} L 670,${tpY} L 660,${tpY}`);
+
+      // Update Text labels
+      document.getElementById('lblEntryPrice').textContent = '$' + entry.toLocaleString(undefined, {minimumFractionDigits: 2});
+      
+      document.getElementById('lblSlPrice').textContent = '$' + sl.toLocaleString(undefined, {minimumFractionDigits: 2});
+      document.getElementById('lblSlPrice').setAttribute('y', slY - 15);
+      document.getElementById('lblSlPrice').previousElementSibling.setAttribute('y', slY - 35); // label
+
+      document.getElementById('lblTpPrice').textContent = '$' + tp.toLocaleString(undefined, {minimumFractionDigits: 2});
+      document.getElementById('lblTpPrice').setAttribute('y', tpY - 15);
+      document.getElementById('lblTpPrice').previousElementSibling.setAttribute('y', tpY - 35); // label
+
+      // Bracket texts
+      const slDiffText = document.getElementById('lblSlDiff');
+      const tpDiffText = document.getElementById('lblTpDiff');
+
+      const slMidY = (slY + entryY) / 2;
+      const tpMidY = (tpY + entryY) / 2;
+
+      slDiffText.setAttribute('y', slMidY - 8);
+      slDiffText.nextElementSibling.setAttribute('y', slMidY + 10);
+      slDiffText.textContent = `${direction === 'short' ? '+' : '-'}${risk.toFixed(2)} (${slPct.toFixed(2)}%)`;
+
+      tpDiffText.setAttribute('y', tpMidY - 8);
+      tpDiffText.nextElementSibling.setAttribute('y', tpMidY + 10);
+      tpDiffText.textContent = `${direction === 'short' ? '-' : '+'}${reward.toFixed(2)} (${tpPct.toFixed(2)}%)`;
+    }
+
+    // Initialize on load
+    updateCalculation();
+  </script>
+</body>
+</html>

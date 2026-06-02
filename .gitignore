@@ -69,3 +69,4 @@ project.tar.gz
 signal_queue.db
 nerves/workers/trading/logs/trading.log
 logs/simulation_*.log
+test_trades.log
