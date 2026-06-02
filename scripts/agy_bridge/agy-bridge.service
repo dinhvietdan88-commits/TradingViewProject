@@ -1,0 +1,43 @@
+[Unit]
+Description=agy-bridge: Antigravity CLI HTTP bridge for Docker containers
+Documentation=https://github.com/dinhvietdan88-commits/TradingViewProject
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=opt_admin
+Group=opt_admin
+WorkingDirectory=/opt/trading/agy-bridge
+
+# Run with uvicorn — 2 workers for concurrent requests
+ExecStart=/usr/bin/python3 -m uvicorn server:app --host 127.0.0.1 --port 9100 --workers 2
+
+# Restart on failure with backoff
+Restart=on-failure
+RestartSec=5
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=agy-bridge
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/opt_admin/.gemini
+PrivateTmp=true
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+Environment=AGY_BRIDGE_PORT=9100
+Environment=AGY_DEFAULT_TIMEOUT=25
+Environment=AGY_DEFAULT_MODEL=gemini-2.5-flash
+# agy binary path (adjust if installed elsewhere)
+Environment=AGY_BINARY_PATH=/usr/local/bin/agy
+
+[Install]
+WantedBy=multi-user.target
