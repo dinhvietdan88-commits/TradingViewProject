@@ -19,6 +19,7 @@ os.environ.setdefault("BINANCE_DRY_RUN", "true")
 
 
 from binance_client import BinanceClient, OrderResult
+from unittest.mock import AsyncMock
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -227,6 +228,55 @@ class TestSmartOrder:
         assert result.success is True
         # Cost should not exceed 95% of $10,000
         assert result.risk.cost <= 10000 * 0.95 + 0.01
+
+    @pytest.mark.asyncio
+    async def test_smart_order_dynamic_atr_prices(self, client):
+        """Verify smart order execution with dynamic ATR-based SL/TP prices."""
+        # Explicitly pass dynamic sl_price and tp_price (e.g. from ATR calculation)
+        result = await client.execute_smart_order(
+            symbol="BTCUSDT",
+            side="BUY",
+            entry_price=67500.0,
+            sl_price=67400.0,
+            tp_price=67750.0,
+        )
+
+        assert result.success is True
+        assert result.risk.stop_loss_price == 67400.0
+        assert result.risk.take_profit_price == 67750.0
+        # R:R = (67750 - 67500) / (67500 - 67400) = 250 / 100 = 2.5
+        assert result.risk.risk_reward_ratio == 2.5
+
+    @pytest.mark.asyncio
+    async def test_smart_order_slippage_adjustment(self, client, mocker):
+        """Verify Stop-Loss and Take-Profit values are shifted by slippage."""
+        # Mock place_market_order to return a different fill price
+        # If entry_price was 100.0, but fill price was 102.0 (slippage = +2.0)
+        # SL and TP must shift up by +2.0 to keep the risk distance constant.
+        mocker.patch.object(client, "place_market_order", new_callable=AsyncMock, return_value={
+            "orderId": "DRY-MOCK-ENTRY",
+            "executedQty": "2.0",
+            "cummulativeQuoteQty": "204.0",  # fill price = 204 / 2 = 102.0
+            "status": "FILLED",
+            "_dry_run": True
+        })
+
+        result = await client.execute_smart_order(
+            symbol="BTCUSDT",
+            side="BUY",
+            entry_price=100.0,
+            sl_price=90.0,
+            tp_price=125.0,
+            order_type="MARKET"
+        )
+
+        assert result.success is True
+        # Actual fill price is 102.0
+        assert result.risk.entry_price == 102.0
+        # SL must be shifted: 90.0 + 2.0 = 92.0
+        assert result.risk.stop_loss_price == 92.0
+        # TP must be shifted: 125.0 + 2.0 = 127.0
+        assert result.risk.take_profit_price == 127.0
 
 
 # ═══════════════════════════════════════════════════════════════

@@ -83,7 +83,8 @@ async def test_r1_slippage_greater_than_05_percent_switches_to_limit():
     with patch("exchanges.router.get_router") as mock_get_router, \
          patch("engine.trade_engine.database") as mock_db, \
          patch("aiosqlite.connect", return_value=mock_conn), \
-         patch("asyncio.create_task") as mock_create_task:
+         patch("asyncio.create_task") as mock_create_task, \
+         patch("engine.regime_switcher.get_market_regime", AsyncMock(return_value="TRENDING")):
 
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = adapter
@@ -141,7 +142,8 @@ async def test_r1_slippage_less_than_05_percent_stays_market():
 
     with patch("exchanges.router.get_router") as mock_get_router, \
          patch("engine.trade_engine.database") as mock_db, \
-         patch("aiosqlite.connect", return_value=mock_conn):
+         patch("aiosqlite.connect", return_value=mock_conn), \
+         patch("engine.regime_switcher.get_market_regime", AsyncMock(return_value="TRENDING")):
 
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = adapter
@@ -227,7 +229,8 @@ async def test_r2_atr_based_sl_tp_and_sizing():
 
     with patch("exchanges.router.get_router") as mock_get_router, \
          patch("engine.trade_engine.database") as mock_db, \
-         patch("aiosqlite.connect", return_value=mock_conn):
+         patch("aiosqlite.connect", return_value=mock_conn), \
+         patch("engine.regime_switcher.get_market_regime", AsyncMock(return_value="TRENDING")):
 
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = adapter
