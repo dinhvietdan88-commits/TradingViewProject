@@ -82,7 +82,7 @@ jobs:
         include:
           - stage: "Fast (Unit + Integration + System)"
             paths: "tests/unit/ tests/property/ tests/integration/ __auto_root__"
-            parallel: false
+            parallel: true
             install-browser: false
           - stage: "Browser (E2E + Security)"
             paths: "tests/e2e/ tests/security/"
