@@ -218,7 +218,8 @@ async def test_bear_end_tactical_sizing_breakout():
     with patch("exchanges.router.get_router") as mock_get_router, \
          patch("engine.trade_engine.database") as mock_db, \
          patch("aiosqlite.connect", return_value=mock_conn), \
-         patch("analysis.fetch_candles_with_retry", AsyncMock(return_value=mock_candles_1h)):
+         patch("analysis.fetch_candles_with_retry", AsyncMock(return_value=mock_candles_1h)), \
+         patch("engine.regime_switcher.get_market_regime", AsyncMock(return_value="TRENDING")):
 
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = mock_client
