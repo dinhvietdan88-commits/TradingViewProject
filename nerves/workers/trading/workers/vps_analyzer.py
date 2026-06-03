@@ -39,6 +39,11 @@ from workers.liveness_monitor import _get_servers
 
 app = FastAPI(title="Server C Health Server")
 
+@app.on_event("startup")
+async def startup_event():
+    import rag
+    await rag.init_vector_db()
+
 @app.get("/health")
 async def get_health():
     # 1. Liveness Status A and B
@@ -768,6 +773,9 @@ class VpsAnalyzerWorker:
                     "approved": False,
                     "reason": "AI analysis rejected signal" if is_rejected else "AI analysis did not approve signal",
                     "analysis_mode": analysis_mode,
+                    "symbol": symbol,
+                    "action": action,
+                    "price": price_val,
                 }
 
         # ── Position sizing ────────────────────────────────────────────────────
@@ -782,6 +790,9 @@ class VpsAnalyzerWorker:
                 "approved": False,
                 "reason": f"Programmatic guardrail: Trend Template score {tt_score}/8 is below minimum threshold (5/8)",
                 "analysis_mode": analysis_mode,
+                "symbol": symbol,
+                "action": action,
+                "price": price_val,
             }
 
         # 2. Stop-Loss > 8%
@@ -792,6 +803,9 @@ class VpsAnalyzerWorker:
                     "approved": False,
                     "reason": f"Programmatic guardrail: Stop Loss risk {risk_pct:.2f}% exceeds maximum threshold (8%)",
                     "analysis_mode": analysis_mode,
+                    "symbol": symbol,
+                    "action": action,
+                    "price": price_val,
                 }
 
         trade_payload = {
