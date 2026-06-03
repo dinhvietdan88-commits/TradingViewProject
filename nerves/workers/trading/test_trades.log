@@ -1,0 +1,74 @@
+2026-06-03 07:18:19,989 [INFO] root:132 — Logging configured: level=INFO, file=test_trades.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-03 07:18:19,990 [INFO] workers.vps_analyzer:317 — [VpsAnalyzer] V2 Starting (consumer=server-c-analyzer, long_poll_timeout=30s, circuit_threshold=3)
+2026-06-03 07:18:53,966 [WARNING] huggingface_hub.utils._http:904 — Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+2026-06-03 07:18:54,301 [INFO] sentence_transformers.base.model:992 — Loading SentenceTransformer model from sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2.
+2026-06-03 07:19:05,218 [INFO] rag:206 — RAG: Vector DB đã có 43 vectors. Bỏ qua re-embedding.
+2026-06-03 07:19:05,218 [INFO] workers.vps_analyzer:327 — [VpsAnalyzer] RAG vector database initialized and seeded successfully.
+2026-06-03 07:19:05,506 [INFO] apscheduler.scheduler:507 — Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-06-03 07:19:05,506 [INFO] scheduler:122 — [Scheduler] TradingView CDP Keepalive scheduled every 5 minutes
+2026-06-03 07:19:05,507 [INFO] scheduler:146 — [Scheduler] BRIEF_ENABLED=false — no scheduled brief
+2026-06-03 07:19:05,510 [INFO] apscheduler.scheduler:1090 — Added job "TradingView CDP Keepalive Check" to job store "default"
+2026-06-03 07:19:05,510 [INFO] apscheduler.scheduler:214 — Scheduler started
+2026-06-03 07:19:05,510 [INFO] scheduler:221 — [Scheduler] APScheduler started ✅
+2026-06-03 07:19:05,510 [INFO] workers.vps_analyzer:344 — [VpsAnalyzer] APScheduler started.
+2026-06-03 07:19:05,511 [INFO] workers.vps_analyzer:353 — [VpsAnalyzer] Health and metrics server started on port 8000.
+2026-06-03 07:19:05,512 [INFO] workers.vps_analyzer:444 — [VpsAnalyzer] Daemon loop cancelled. Shutting down.
+2026-06-03 07:19:05,513 [INFO] workers.vps_analyzer:451 — [VpsAnalyzer] Starting graceful shutdown cleanup...
+2026-06-03 07:19:05,513 [INFO] scheduler:229 — [Scheduler] APScheduler stopped
+2026-06-03 07:19:05,514 [INFO] workers.vps_analyzer:474 — [VpsAnalyzer] Health server stopped.
+2026-06-03 07:19:05,516 [INFO] workers.vps_analyzer:486 — [VpsAnalyzer] Shutdown complete.
+2026-06-03 07:19:05,517 [INFO] apscheduler.scheduler:245 — Scheduler has been shut down
+2026-06-03 07:19:05,530 [INFO] root:132 — Logging configured: level=INFO, file=test_trades.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-03 07:19:05,531 [INFO] workers.vps_analyzer:317 — [VpsAnalyzer] V2 Starting (consumer=server-c-analyzer, long_poll_timeout=30s, circuit_threshold=3)
+2026-06-03 07:19:05,729 [INFO] rag:206 — RAG: Vector DB đã có 43 vectors. Bỏ qua re-embedding.
+2026-06-03 07:19:05,729 [INFO] workers.vps_analyzer:327 — [VpsAnalyzer] RAG vector database initialized and seeded successfully.
+2026-06-03 07:19:05,730 [INFO] apscheduler.scheduler:507 — Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-06-03 07:19:05,730 [INFO] scheduler:122 — [Scheduler] TradingView CDP Keepalive scheduled every 5 minutes
+2026-06-03 07:19:05,730 [INFO] scheduler:146 — [Scheduler] BRIEF_ENABLED=false — no scheduled brief
+2026-06-03 07:19:05,731 [INFO] apscheduler.scheduler:1090 — Added job "TradingView CDP Keepalive Check" to job store "default"
+2026-06-03 07:19:05,731 [INFO] apscheduler.scheduler:214 — Scheduler started
+2026-06-03 07:19:05,731 [INFO] scheduler:221 — [Scheduler] APScheduler started ✅
+2026-06-03 07:19:05,731 [INFO] workers.vps_analyzer:344 — [VpsAnalyzer] APScheduler started.
+2026-06-03 07:19:05,732 [INFO] workers.vps_analyzer:353 — [VpsAnalyzer] Health and metrics server started on port 8000.
+2026-06-03 07:19:05,733 [INFO] workers.vps_analyzer:444 — [VpsAnalyzer] Daemon loop cancelled. Shutting down.
+2026-06-03 07:19:05,733 [INFO] workers.vps_analyzer:451 — [VpsAnalyzer] Starting graceful shutdown cleanup...
+2026-06-03 07:19:05,733 [INFO] scheduler:229 — [Scheduler] APScheduler stopped
+2026-06-03 07:19:05,734 [INFO] workers.vps_analyzer:474 — [VpsAnalyzer] Health server stopped.
+2026-06-03 07:19:05,735 [INFO] workers.vps_analyzer:486 — [VpsAnalyzer] Shutdown complete.
+2026-06-03 07:19:05,736 [INFO] apscheduler.scheduler:245 — Scheduler has been shut down
+2026-06-03 07:19:05,749 [INFO] root:132 — Logging configured: level=INFO, file=test_trades.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-03 07:19:05,749 [INFO] workers.vps_analyzer:317 — [VpsAnalyzer] V2 Starting (consumer=server-c-analyzer, long_poll_timeout=30s, circuit_threshold=3)
+2026-06-03 07:19:06,006 [INFO] rag:206 — RAG: Vector DB đã có 43 vectors. Bỏ qua re-embedding.
+2026-06-03 07:19:06,006 [INFO] workers.vps_analyzer:327 — [VpsAnalyzer] RAG vector database initialized and seeded successfully.
+2026-06-03 07:19:06,007 [INFO] apscheduler.scheduler:507 — Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-06-03 07:19:06,007 [INFO] scheduler:122 — [Scheduler] TradingView CDP Keepalive scheduled every 5 minutes
+2026-06-03 07:19:06,008 [INFO] scheduler:146 — [Scheduler] BRIEF_ENABLED=false — no scheduled brief
+2026-06-03 07:19:06,008 [INFO] apscheduler.scheduler:1090 — Added job "TradingView CDP Keepalive Check" to job store "default"
+2026-06-03 07:19:06,008 [INFO] apscheduler.scheduler:214 — Scheduler started
+2026-06-03 07:19:06,009 [INFO] scheduler:221 — [Scheduler] APScheduler started ✅
+2026-06-03 07:19:06,009 [INFO] workers.vps_analyzer:344 — [VpsAnalyzer] APScheduler started.
+2026-06-03 07:19:06,010 [INFO] workers.vps_analyzer:353 — [VpsAnalyzer] Health and metrics server started on port 8000.
+2026-06-03 07:19:06,012 [INFO] workers.vps_analyzer:444 — [VpsAnalyzer] Daemon loop cancelled. Shutting down.
+2026-06-03 07:19:06,013 [INFO] workers.vps_analyzer:451 — [VpsAnalyzer] Starting graceful shutdown cleanup...
+2026-06-03 07:19:06,014 [INFO] scheduler:229 — [Scheduler] APScheduler stopped
+2026-06-03 07:19:06,015 [INFO] workers.vps_analyzer:474 — [VpsAnalyzer] Health server stopped.
+2026-06-03 07:19:06,017 [INFO] workers.vps_analyzer:486 — [VpsAnalyzer] Shutdown complete.
+2026-06-03 07:19:06,018 [INFO] apscheduler.scheduler:245 — Scheduler has been shut down
+2026-06-03 07:19:06,035 [INFO] root:132 — Logging configured: level=INFO, file=test_trades.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-03 07:19:06,036 [INFO] workers.vps_analyzer:317 — [VpsAnalyzer] V2 Starting (consumer=server-c-analyzer, long_poll_timeout=30s, circuit_threshold=3)
+2026-06-03 07:19:06,344 [INFO] rag:206 — RAG: Vector DB đã có 43 vectors. Bỏ qua re-embedding.
+2026-06-03 07:19:06,344 [INFO] workers.vps_analyzer:327 — [VpsAnalyzer] RAG vector database initialized and seeded successfully.
+2026-06-03 07:19:06,345 [INFO] apscheduler.scheduler:507 — Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-06-03 07:19:06,345 [INFO] scheduler:122 — [Scheduler] TradingView CDP Keepalive scheduled every 5 minutes
+2026-06-03 07:19:06,345 [INFO] scheduler:146 — [Scheduler] BRIEF_ENABLED=false — no scheduled brief
+2026-06-03 07:19:06,346 [INFO] apscheduler.scheduler:1090 — Added job "TradingView CDP Keepalive Check" to job store "default"
+2026-06-03 07:19:06,346 [INFO] apscheduler.scheduler:214 — Scheduler started
+2026-06-03 07:19:06,346 [INFO] scheduler:221 — [Scheduler] APScheduler started ✅
+2026-06-03 07:19:06,346 [INFO] workers.vps_analyzer:344 — [VpsAnalyzer] APScheduler started.
+2026-06-03 07:19:06,347 [INFO] workers.vps_analyzer:353 — [VpsAnalyzer] Health and metrics server started on port 8000.
+2026-06-03 07:19:06,349 [INFO] workers.vps_analyzer:444 — [VpsAnalyzer] Daemon loop cancelled. Shutting down.
+2026-06-03 07:19:06,349 [INFO] workers.vps_analyzer:451 — [VpsAnalyzer] Starting graceful shutdown cleanup...
+2026-06-03 07:19:06,350 [INFO] scheduler:229 — [Scheduler] APScheduler stopped
+2026-06-03 07:19:06,350 [INFO] workers.vps_analyzer:474 — [VpsAnalyzer] Health server stopped.
+2026-06-03 07:19:06,352 [INFO] workers.vps_analyzer:486 — [VpsAnalyzer] Shutdown complete.
+2026-06-03 07:19:06,353 [INFO] apscheduler.scheduler:245 — Scheduler has been shut down

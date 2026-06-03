@@ -1,0 +1,65 @@
+2026-06-03 09:36:33,951 [INFO] root:132 — Logging configured: level=INFO, file=test_trades.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-03 09:36:33,952 [INFO] workers.vps_analyzer:317 — [VpsAnalyzer] V2 Starting (consumer=server-c-analyzer, long_poll_timeout=5s, circuit_threshold=3)
+2026-06-03 09:36:33,953 [INFO] workers.vps_analyzer:327 — [VpsAnalyzer] RAG vector database initialized and seeded successfully.
+2026-06-03 09:36:33,955 [INFO] workers.vps_analyzer:344 — [VpsAnalyzer] APScheduler started.
+2026-06-03 09:36:33,957 [INFO] workers.vps_analyzer:353 — [VpsAnalyzer] Health and metrics server started on port 8000.
+2026-06-03 09:36:33,995 [INFO] workers.vps_analyzer:287 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited 0s)
+2026-06-03 09:36:33,996 [INFO] workers.vps_analyzer:521 — [VpsAnalyzer] Analysing #1: BTCUSDT buy @ 60000.0
+2026-06-03 09:36:33,997 [INFO] workers.vps_analyzer:558 — [VpsAnalyzer] AI advice #1 (conf=85%): Strong BUY signal. approved...
+2026-06-03 09:36:33,998 [INFO] workers.vps_analyzer:638 — [VpsAnalyzer] #1 APPROVED [ai]: BTCUSDT buy qty=0.00416667 sl=55200.0 tp=72000.0 conf=85%
+2026-06-03 09:36:33,998 [INFO] workers.vps_analyzer:846 — [VpsAnalyzer] Attempting LOCAL execution: http://server-b-mock/api/execute-trade
+2026-06-03 09:36:34,000 [INFO] workers.vps_analyzer:855 — [VpsAnalyzer] LOCAL executed: BTCUSDT buy
+2026-06-03 09:36:34,020 [INFO] workers.vps_analyzer:939 — [VpsAnalyzer] ACK #1 → executed
+2026-06-03 09:36:34,455 [INFO] workers.vps_analyzer:451 — [VpsAnalyzer] Starting graceful shutdown cleanup...
+2026-06-03 09:36:34,457 [INFO] workers.vps_analyzer:474 — [VpsAnalyzer] Health server stopped.
+2026-06-03 09:36:34,458 [INFO] workers.vps_analyzer:486 — [VpsAnalyzer] Shutdown complete.
+2026-06-03 09:36:34,555 [INFO] database:65 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-492\test_confidence_edge_cases_49_0\test_vbs.db
+2026-06-03 09:36:34,574 [INFO] database:165 — VBS Queue Signal #1 stored: buy ETHUSDT (expires at 2026-06-03 06:36:34)
+2026-06-03 09:36:34,601 [INFO] workers.vps_analyzer:287 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited 0s)
+2026-06-03 09:36:34,602 [INFO] workers.vps_analyzer:521 — [VpsAnalyzer] Analysing #1: ETHUSDT buy @ 3000.0
+2026-06-03 09:36:34,603 [INFO] workers.vps_analyzer:558 — [VpsAnalyzer] AI advice #1 (conf=49%): Strong BUY signal. approved...
+2026-06-03 09:36:34,603 [INFO] workers.vps_analyzer:638 — [VpsAnalyzer] #1 APPROVED [ai]: ETHUSDT buy qty=0.08333333 sl=2760.0 tp=3600.0 conf=49%
+2026-06-03 09:36:34,699 [INFO] database:65 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-492\test_confidence_edge_cases_50_0\test_vbs.db
+2026-06-03 09:36:34,719 [INFO] database:165 — VBS Queue Signal #1 stored: buy ETHUSDT (expires at 2026-06-03 06:36:34)
+2026-06-03 09:36:34,745 [INFO] workers.vps_analyzer:287 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited 0s)
+2026-06-03 09:36:34,746 [INFO] workers.vps_analyzer:521 — [VpsAnalyzer] Analysing #1: ETHUSDT buy @ 3000.0
+2026-06-03 09:36:34,747 [INFO] workers.vps_analyzer:558 — [VpsAnalyzer] AI advice #1 (conf=50%): Strong BUY signal. approved...
+2026-06-03 09:36:34,748 [INFO] workers.vps_analyzer:638 — [VpsAnalyzer] #1 APPROVED [ai]: ETHUSDT buy qty=0.08333333 sl=2760.0 tp=3600.0 conf=50%
+2026-06-03 09:36:34,847 [INFO] database:65 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-492\test_confidence_edge_cases_51_0\test_vbs.db
+2026-06-03 09:36:34,867 [INFO] database:165 — VBS Queue Signal #1 stored: buy ETHUSDT (expires at 2026-06-03 06:36:34)
+2026-06-03 09:36:34,898 [INFO] workers.vps_analyzer:287 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited 0s)
+2026-06-03 09:36:34,899 [INFO] workers.vps_analyzer:521 — [VpsAnalyzer] Analysing #1: ETHUSDT buy @ 3000.0
+2026-06-03 09:36:34,900 [INFO] workers.vps_analyzer:558 — [VpsAnalyzer] AI advice #1 (conf=51%): Strong BUY signal. approved...
+2026-06-03 09:36:34,902 [INFO] workers.vps_analyzer:638 — [VpsAnalyzer] #1 APPROVED [ai]: ETHUSDT buy qty=0.08333333 sl=2760.0 tp=3600.0 conf=51%
+2026-06-03 09:36:35,006 [INFO] database:65 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-492\test_confidence_edge_cases_49_1\test_vbs.db
+2026-06-03 09:36:35,030 [INFO] database:165 — VBS Queue Signal #1 stored: buy ETHUSDT (expires at 2026-06-03 06:36:35)
+2026-06-03 09:36:35,061 [INFO] workers.vps_analyzer:287 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited 0s)
+2026-06-03 09:36:35,063 [INFO] workers.vps_analyzer:521 — [VpsAnalyzer] Analysing #1: ETHUSDT buy @ 3000.0
+2026-06-03 09:36:35,063 [INFO] workers.vps_analyzer:578 — [VpsAnalyzer] ⚡ Circuit OPEN → Algorithmic for #1
+2026-06-03 09:36:35,162 [INFO] database:65 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-492\test_confidence_edge_cases_50_1\test_vbs.db
+2026-06-03 09:36:35,181 [INFO] database:165 — VBS Queue Signal #1 stored: buy ETHUSDT (expires at 2026-06-03 06:36:35)
+2026-06-03 09:36:35,208 [INFO] workers.vps_analyzer:287 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited 0s)
+2026-06-03 09:36:35,210 [INFO] workers.vps_analyzer:521 — [VpsAnalyzer] Analysing #1: ETHUSDT buy @ 3000.0
+2026-06-03 09:36:35,211 [INFO] workers.vps_analyzer:578 — [VpsAnalyzer] ⚡ Circuit OPEN → Algorithmic for #1
+2026-06-03 09:36:35,321 [INFO] database:65 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-492\test_confidence_edge_cases_51_1\test_vbs.db
+2026-06-03 09:36:35,339 [INFO] database:165 — VBS Queue Signal #1 stored: buy ETHUSDT (expires at 2026-06-03 06:36:35)
+2026-06-03 09:36:35,370 [INFO] workers.vps_analyzer:287 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited 0s)
+2026-06-03 09:36:35,371 [INFO] workers.vps_analyzer:521 — [VpsAnalyzer] Analysing #1: ETHUSDT buy @ 3000.0
+2026-06-03 09:36:35,372 [INFO] workers.vps_analyzer:578 — [VpsAnalyzer] ⚡ Circuit OPEN → Algorithmic for #1
+2026-06-03 09:36:35,373 [INFO] workers.vps_analyzer:638 — [VpsAnalyzer] #1 APPROVED [algorithmic]: ETHUSDT buy qty=0.08333333 sl=2760.0 tp=3600.0 conf=51%
+2026-06-03 09:36:35,466 [INFO] database:65 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-492\test_fallback_routing_and_reco0\test_vbs.db
+2026-06-03 09:36:35,468 [INFO] workers.vps_analyzer:846 — [VpsAnalyzer] Attempting LOCAL execution: http://local-execute/api/execute-trade
+2026-06-03 09:36:35,469 [INFO] workers.vps_analyzer:855 — [VpsAnalyzer] LOCAL executed: BTCUSDT buy
+2026-06-03 09:36:35,472 [INFO] workers.vps_analyzer:846 — [VpsAnalyzer] Attempting LOCAL execution: http://local-execute/api/execute-trade
+2026-06-03 09:36:35,473 [WARNING] workers.vps_analyzer:868 — [VpsAnalyzer] LOCAL offline/error: Connection refused. Falling back to Server B.
+2026-06-03 09:36:35,476 [INFO] workers.vps_analyzer:887 — [VpsAnalyzer] Forwarding to Server B: http://server-b-execute/api/execute-trade
+2026-06-03 09:36:35,476 [INFO] workers.vps_analyzer:894 — [VpsAnalyzer] Server B accepted: BTCUSDT buy
+2026-06-03 09:36:35,479 [INFO] workers.vps_analyzer:846 — [VpsAnalyzer] Attempting LOCAL execution: http://local-execute/api/execute-trade
+2026-06-03 09:36:35,479 [WARNING] workers.vps_analyzer:868 — [VpsAnalyzer] LOCAL offline/error: Connection refused. Falling back to Server B.
+2026-06-03 09:36:35,482 [INFO] workers.vps_analyzer:887 — [VpsAnalyzer] Forwarding to Server B: http://server-b-execute/api/execute-trade
+2026-06-03 09:36:35,483 [ERROR] workers.vps_analyzer:902 — [VpsAnalyzer] Server B rejected (HTTP 500): {'detail': 'Server B down'}
+2026-06-03 09:36:35,483 [INFO] workers.vps_analyzer:846 — [VpsAnalyzer] Attempting LOCAL execution: http://local-execute/api/execute-trade
+2026-06-03 09:36:35,485 [INFO] workers.vps_analyzer:855 — [VpsAnalyzer] LOCAL executed: BTCUSDT buy
+2026-06-03 09:36:35,576 [INFO] database:65 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-492\test_end_to_end_duplicate_sign0\test_vbs.db
+2026-06-03 09:36:35,597 [INFO] database:165 — VBS Queue Signal #1 stored: buy SOLUSDT (expires at 2026-06-03 06:36:35)
+2026-06-03 09:36:35,608 [INFO] router:83 — VBS Dedup: SOLUSDT buy @ 150.0 is duplicate of #1 (within 5s window)

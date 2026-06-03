@@ -224,15 +224,25 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build and Push Execution & Analyzer Images
+      - name: Build and Push Execution Image
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
+          target: runtime-execution
           push: true
-          tags: |
-            ghcr.io/dinhvietdan88-commits/tradingbot-analyzer:latest
-            ghcr.io/dinhvietdan88-commits/tradingbot-execution:latest
+          tags: ghcr.io/dinhvietdan88-commits/tradingbot-execution:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and Push Analyzer Image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          target: runtime-analyzer
+          push: true
+          tags: ghcr.io/dinhvietdan88-commits/tradingbot-analyzer:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -249,7 +259,20 @@ jobs:
           vuln-type: 'os,library'
           severity: 'CRITICAL'
 
-      - name: Run Trivy vulnerability scanner on Runtime Image
+      - name: Run Trivy vulnerability scanner on Execution Image
+        uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: 'ghcr.io/dinhvietdan88-commits/tradingbot-execution:latest'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+
+      - name: Run Trivy vulnerability scanner on Analyzer Image
         uses: aquasecurity/trivy-action@v0.36.0
         env:
           TRIVY_USERNAME: ${{ github.actor }}

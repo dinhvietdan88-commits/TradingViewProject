@@ -1,72 +1,85 @@
 # ════════════════════════════════════════════════════════════════
 # Minervini AI Trading Bot — Docker Image
-# Sprint 7.3: Production Deployment
-# ════════════════════════════════════════════════════════════════
-# Build:  docker build -t trading-bot .
-# Run:    docker compose up -d
+# Split-Image Architecture: Phase 6.5
 # ════════════════════════════════════════════════════════════════
 
-# ── Stage 1: Builder ──────────────────────────────────────────
-FROM python:3.11-slim AS builder
-
+# ── Stage 1: Builder Base ─────────────────────────────────────
+FROM python:3.11-slim AS builder-base
 WORKDIR /build
-
-# Install build deps (some Python packages need gcc)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc g++ && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first (Docker layer cache)
+# ── Stage 2: Builder Execution ────────────────────────────────
+FROM builder-base AS builder-execution
+COPY nerves/workers/trading/requirements-execution.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --prefix=/install -r requirements-execution.txt
+
+# ── Stage 3: Builder Analyzer ─────────────────────────────────
+FROM builder-base AS builder-analyzer
 COPY nerves/workers/trading/requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install torch --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --no-cache-dir --prefix=/install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --prefix=/install torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --prefix=/install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
 
-
-# ── Stage 2: Runtime ─────────────────────────────────────────
-FROM python:3.11-slim AS runtime
-
-# Labels
+# ── Stage 4: Runtime Base ──────────────────────────────────────
+FROM python:3.11-slim AS runtime-base
 LABEL maintainer="PessiloGroup" \
       version="7.3" \
-      description="Minervini AI Trading Bot — TradingView Webhook + Binance OCO"
-
-# Create non-root user
+      description="Minervini AI Trading Bot — Multi-stage Split Image"
 RUN groupadd -r trader && useradd -r -g trader -d /app -s /sbin/nologin trader
-
 WORKDIR /app
-
-# Copy Python packages from builder
-COPY --from=builder /install /usr/local
-
-# Copy application code
-COPY nerves/workers/trading/ ./
-COPY docs/knowledge/ /app/knowledge/
-
-# Create directories for persistent data
 RUN mkdir -p /app/data /app/screenshots /app/logs && \
     chown -R trader:trader /app
-
-# Environment defaults (override via .env or docker-compose)
 ENV HOST=0.0.0.0 \
-    PORT=5000 \
     DB_PATH=/app/data/trades.db \
     LOG_FILE=/app/logs/trades.log \
-    CHROMA_DB_PATH=/app/data/chroma_db \
-    KNOWLEDGE_DIR=/app/knowledge/trading_wizard/chunks \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Expose port
-EXPOSE 5000
+# ── Stage 5: Runtime Execution ─────────────────────────────────
+FROM runtime-base AS runtime-execution
+COPY --from=builder-execution /install /usr/local
+COPY nerves/workers/trading/ ./
+RUN chown -R trader:trader /app
+ENV PORT=5002
+EXPOSE 5002
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5002/health')" || exit 1
+USER trader
+CMD ["python", "-m", "uvicorn", "execution_server:app", \
+     "--host", "0.0.0.0", \
+     "--port", "5002", \
+     "--workers", "1", \
+     "--log-level", "info", \
+     "--access-log"]
 
-# Health check (Docker native)
+# ── Stage 6: Runtime Analyzer ──────────────────────────────────
+FROM runtime-base AS runtime-analyzer
+COPY --from=builder-analyzer /install /usr/local
+COPY nerves/workers/trading/ ./
+COPY docs/knowledge/ /app/knowledge/
+RUN chown -R trader:trader /app
+ENV PORT=8000 \
+    CHROMA_DB_PATH=/app/data/chroma_db \
+    KNOWLEDGE_DIR=/app/knowledge/trading_wizard/chunks
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+USER trader
+CMD ["python", "workers/vps_analyzer.py"]
+
+# ── Stage 7: Runtime Dev/Legacy (Default) ─────────────────────
+# Inherits from runtime-analyzer to keep all AI/ML libs and knowledge base,
+# but runs main:app on port 5000 for 100% backward compatibility.
+FROM runtime-analyzer AS runtime
+ENV PORT=5000 \
+    CHROMA_DB_PATH=/app/data/chroma_db \
+    KNOWLEDGE_DIR=/app/knowledge/trading_wizard/chunks
+EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
-
-# Switch to non-root user
-USER trader
-
-# Run with uvicorn (production)
 CMD ["python", "-m", "uvicorn", "main:app", \
      "--host", "0.0.0.0", \
      "--port", "5000", \

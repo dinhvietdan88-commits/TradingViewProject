@@ -381,6 +381,10 @@ async def serve_js_nocache(filename: str):
 # Mount static files (AFTER specific routes so /static/js/* route wins)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
+# Mount reports files (for backtests, sizing and validation analysis)
+REPORTS_DIR = Path(__file__).parent.parent / "reports"
+app.mount("/reports", StaticFiles(directory=str(REPORTS_DIR)), name="reports")
+
 # ═══ MIDDLEWARE: IP WHITELISTING ══════════════════════════════
 # SEC-001 fix: Use the RIGHTMOST entry of X-Forwarded-For (appended by our
 # trusted reverse proxy) instead of the FIRST entry (attacker-controlled).
