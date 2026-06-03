@@ -28,7 +28,8 @@
       "Bash(claude -p --help)"
     ],
     "additionalDirectories": [
-      "c:\\Users\\Admin\\TradingViewProject\\.claude\\skills"
+      "c:\\Users\\Admin\\TradingViewProject\\.claude\\skills",
+      "/home/botuser/trading-bot/.claude/skills"
     ]
   }
 }
