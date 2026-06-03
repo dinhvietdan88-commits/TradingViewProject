@@ -452,13 +452,13 @@ jobs:
       - name: Scan SSH Host Keys
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.SERVER_C_IP }} >> ~/.ssh/known_hosts || true
+          ssh-keyscan -p ${{ secrets.SSH_PORT_C || 22 }} -H ${{ secrets.SERVER_C_IP }} >> ~/.ssh/known_hosts || true
 
       - name: Pre-check SSH connectivity
         id: ssh_check_c
         run: |
           echo "🔌 Testing SSH to Server C..."
-          if ssh -o ConnectTimeout=10 -o BatchMode=yes botuser@${{ secrets.SERVER_C_IP }} "echo ok" 2>/dev/null; then
+          if ssh -p ${{ secrets.SSH_PORT_C || 22 }} -o ConnectTimeout=10 -o BatchMode=yes botuser@${{ secrets.SERVER_C_IP }} "echo ok" 2>/dev/null; then
             echo "reachable=true" >> $GITHUB_OUTPUT
             echo "✅ Server C reachable"
           else
@@ -474,7 +474,7 @@ jobs:
           GH_ACTOR: ${{ github.actor }}
         run: |
           echo "🚀 Deploying Server C..."
-          ssh botuser@${{ secrets.SERVER_C_IP }} "GH_TOKEN='$GH_TOKEN' GH_ACTOR='$GH_ACTOR' bash -s" << 'EOF'
+          ssh -p ${{ secrets.SSH_PORT_C || 22 }} botuser@${{ secrets.SERVER_C_IP }} "GH_TOKEN='$GH_TOKEN' GH_ACTOR='$GH_ACTOR' bash -s" << 'EOF'
             set -e
             DEPLOY_DIR="/opt/trading-bot"
             [ ! -d "$DEPLOY_DIR/.git" ] && DEPLOY_DIR="/home/botuser/trading-bot"
@@ -536,7 +536,7 @@ jobs:
         if: failure() && steps.deploy_c.outcome == 'failure' && steps.ssh_check_c.outputs.reachable == 'true'
         run: |
           echo "⚠️ Checking if rollback is needed..."
-          ssh botuser@${{ secrets.SERVER_C_IP }} 'bash -s' << 'EOF'
+          ssh -p ${{ secrets.SSH_PORT_C || 22 }} botuser@${{ secrets.SERVER_C_IP }} 'bash -s' << 'EOF'
             DEPLOY_DIR="/opt/trading-bot"
             [ ! -d "$DEPLOY_DIR/.git" ] && DEPLOY_DIR="/home/botuser/trading-bot"
             cd "$DEPLOY_DIR"
