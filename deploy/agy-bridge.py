@@ -88,9 +88,102 @@ class CircuitBreaker:
         }
 
 
+# ── CLI Health Tracker (Adaptive Strategy Gate) ──────────────────
+
+@dataclass
+class CliHealthTracker:
+    """Tracks CLI latency and failure rate to decide strategy.
+
+    Adaptive Strategy:
+      - CLI healthy  → sequential (save tokens, ~0 extra latency)
+      - CLI degraded → parallel race (burn 2x tokens, save ~8s latency)
+
+    Degraded conditions (ANY triggers parallel):
+      1. Rolling avg latency > latency_threshold_ms
+      2. Recent failure rate > failure_rate_threshold
+      3. Last N calls ALL failed (consecutive failures)
+
+    SCAR-007b: Only burn 2x tokens when CLI is actually struggling.
+    """
+    window_size: int = 10            # rolling window of recent calls
+    latency_threshold_ms: float = 18000.0   # 18s = CLI is sluggish
+    failure_rate_threshold: float = 0.4     # 40% failure rate
+    consecutive_fail_trigger: int = 2       # 2 consecutive fails → parallel
+
+    _latencies: list = field(default_factory=list, init=False)
+    _outcomes: list = field(default_factory=list, init=False)  # True=success, False=fail
+    _consecutive_failures: int = field(default=0, init=False)
+
+    def record(self, success: bool, latency_ms: float = 0.0):
+        """Record a CLI call result."""
+        self._outcomes.append(success)
+        if success:
+            self._latencies.append(latency_ms)
+            self._consecutive_failures = 0
+        else:
+            self._consecutive_failures += 1
+
+        # Trim to window
+        if len(self._outcomes) > self.window_size:
+            self._outcomes = self._outcomes[-self.window_size:]
+        if len(self._latencies) > self.window_size:
+            self._latencies = self._latencies[-self.window_size:]
+
+    @property
+    def is_degraded(self) -> bool:
+        """True if CLI is struggling → should use parallel strategy."""
+        # No data yet → first call, use sequential (give CLI a chance)
+        if not self._outcomes:
+            return False
+
+        # Check consecutive failures
+        if self._consecutive_failures >= self.consecutive_fail_trigger:
+            return True
+
+        # Check failure rate
+        if len(self._outcomes) >= 3:
+            fail_rate = self._outcomes.count(False) / len(self._outcomes)
+            if fail_rate >= self.failure_rate_threshold:
+                return True
+
+        # Check avg latency
+        if self._latencies:
+            avg = sum(self._latencies) / len(self._latencies)
+            if avg > self.latency_threshold_ms:
+                return True
+
+        return False
+
+    @property
+    def strategy(self) -> str:
+        return "parallel" if self.is_degraded else "sequential"
+
+    @property
+    def info(self) -> dict:
+        avg_lat = (sum(self._latencies) / len(self._latencies)) if self._latencies else 0
+        fail_rate = (
+            self._outcomes.count(False) / len(self._outcomes)
+            if self._outcomes else 0
+        )
+        return {
+            "strategy": self.strategy,
+            "degraded": self.is_degraded,
+            "avg_latency_ms": round(avg_lat, 1),
+            "failure_rate": round(fail_rate, 3),
+            "consecutive_failures": self._consecutive_failures,
+            "samples": len(self._outcomes),
+            "thresholds": {
+                "latency_ms": self.latency_threshold_ms,
+                "failure_rate": self.failure_rate_threshold,
+                "consecutive_fails": self.consecutive_fail_trigger,
+            },
+        }
+
+
 # ── Global State ─────────────────────────────────────────────────
 
 cb = CircuitBreaker()
+cli_health = CliHealthTracker()
 AGY_PATH: Optional[str] = None
 PTY_MODE: str = "direct"  # "pty" or "direct"
 BIND_HOST = os.environ.get("AGY_BRIDGE_HOST", "0.0.0.0")
@@ -305,106 +398,190 @@ async def _run_sdk(prompt: str, model: str) -> dict:
         return {"success": False, "error": f"SDK error: {str(e)[:200]}"}
 
 
-# ── Race Strategy: CLI + SDK ─────────────────────────────────────
+# ── Adaptive Strategy: Sequential ↔ Parallel ─────────────────────
+# SCAR-007b: Pure sequential saves tokens but adds +8s latency on CLI fail.
+# Pure parallel saves latency but burns 2x tokens every request.
+# Adaptive: use CLI health metrics to auto-switch between the two.
+#   CLI healthy  → sequential (1x tokens, ~0 extra latency)
+#   CLI degraded → parallel race (2x tokens, saves ~8s on failover)
+
+async def _run_sequential(prompt: str, model: str, timeout_sec: int,
+                           has_cli: bool, has_sdk: bool) -> dict:
+    """Sequential: CLI first → SDK only if CLI fails."""
+    cli_result = None
+
+    if has_cli:
+        try:
+            cli_result = await _run_cli(prompt, timeout_sec)
+        except Exception as e:
+            cli_result = {"success": False, "error": f"CLI exception: {e}"}
+
+        # Record health
+        cli_health.record(
+            success=cli_result.get("success", False),
+            latency_ms=cli_result.get("latency_ms", 0),
+        )
+
+        if cli_result.get("success"):
+            log.info(f"[sequential] CLI OK ({cli_result['latency_ms']:.0f}ms)")
+            return cli_result
+
+        log.warning(f"[sequential] CLI failed: {cli_result.get('error', '?')}")
+        if not has_sdk:
+            return cli_result
+
+    # SDK fallback
+    log.info("[sequential] Falling back to SDK...")
+    try:
+        sdk_result = await _run_sdk(prompt, model)
+    except Exception as e:
+        sdk_result = {"success": False, "error": f"SDK exception: {e}"}
+
+    if sdk_result.get("success"):
+        cli_err = cli_result.get('error', 'N/A')[:60] if cli_result else "no CLI"
+        log.info(f"[sequential] SDK fallback OK ({sdk_result['latency_ms']:.0f}ms) — CLI: {cli_err}")
+        return sdk_result
+
+    cli_err = cli_result.get('error', '?')[:80] if cli_result else "no binary"
+    return {
+        "success": False,
+        "error": f"All failed: CLI={cli_err}; SDK={sdk_result.get('error','?')[:80]}",
+    }
+
+
+async def _run_parallel(prompt: str, model: str, timeout_sec: int,
+                         has_cli: bool, has_sdk: bool) -> dict:
+    """Parallel race: both fire simultaneously, first success wins.
+    Used only when CLI is degraded (high latency / failures)."""
+
+    tasks = {}
+    if has_cli:
+        tasks["cli"] = asyncio.create_task(_run_cli(prompt, timeout_sec))
+    if has_sdk:
+        tasks["sdk"] = asyncio.create_task(_run_sdk(prompt, model))
+
+    if not tasks:
+        return {"success": False, "error": "No providers available"}
+
+    # Wait for first completion
+    done, pending = await asyncio.wait(
+        tasks.values(), return_when=asyncio.FIRST_COMPLETED,
+    )
+
+    # Check if any completed task succeeded
+    winner = None
+    winner_name = None
+    for name, task in tasks.items():
+        if task in done:
+            result = task.result()
+            if result.get("success"):
+                winner = result
+                winner_name = name
+                break
+
+    if winner:
+        # Cancel remaining tasks
+        for name, task in tasks.items():
+            if task in pending:
+                task.cancel()
+                try:
+                    await task
+                except (asyncio.CancelledError, Exception):
+                    pass
+
+        # Record CLI health if CLI participated
+        if "cli" in tasks:
+            cli_task = tasks["cli"]
+            if cli_task in done:
+                cli_result = cli_task.result()
+                cli_health.record(
+                    success=cli_result.get("success", False),
+                    latency_ms=cli_result.get("latency_ms", 0),
+                )
+            else:
+                # CLI was still pending when SDK won → CLI is slow
+                cli_health.record(success=False)
+
+        log.info(
+            f"[parallel] {winner_name} won ({winner['latency_ms']:.0f}ms) "
+            f"— health: {cli_health.strategy}"
+        )
+        return winner
+
+    # First completed task failed — wait for remaining
+    for task in pending:
+        try:
+            result = await asyncio.wait_for(task, timeout=5)
+            if result.get("success"):
+                # Record CLI health
+                if "cli" in tasks:
+                    cli_task = tasks["cli"]
+                    cli_r = cli_task.result() if cli_task.done() else {"success": False}
+                    cli_health.record(
+                        success=cli_r.get("success", False),
+                        latency_ms=cli_r.get("latency_ms", 0),
+                    )
+                log.info(f"[parallel] late winner ({result['latency_ms']:.0f}ms)")
+                return result
+        except (asyncio.TimeoutError, asyncio.CancelledError, Exception):
+            pass
+
+    # All failed
+    cli_health.record(success=False)
+    errors = []
+    for name, task in tasks.items():
+        if task.done():
+            r = task.result()
+            errors.append(f"{name}={r.get('error','?')[:60]}")
+    return {"success": False, "error": f"All failed: {'; '.join(errors)}"}
+
 
 async def _run_agy(prompt: str, model: str, timeout_sec: int) -> dict:
-    """Race agy CLI vs google-genai SDK — fastest successful response wins.
+    """Adaptive strategy dispatcher.
 
-    Strategy:
-      1. Check response cache first (5min TTL)
-      2. Launch both CLI and SDK simultaneously
-      3. Return whichever succeeds first, cancel the other
-      4. Cache the winning response
+    Checks CLI health metrics (rolling window) to decide:
+      - Sequential (healthy CLI) → save tokens
+      - Parallel (degraded CLI) → save latency
+
+    Always checks cache first (0 tokens, <100ms).
     """
     # ── Cache check ──────────────────────────────────────────────
     cached = _get_cached(prompt)
     if cached:
         return cached
 
-    # ── Parallel race ────────────────────────────────────────────
-    tasks = {}
-    if AGY_PATH:
-        tasks["cli"] = asyncio.create_task(_run_cli(prompt, timeout_sec))
-    
+    has_cli = bool(AGY_PATH)
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("ANTIGRAVITY_API_KEY")
-    if api_key:
-        tasks["sdk"] = asyncio.create_task(_run_sdk(prompt, model))
+    has_sdk = bool(api_key)
 
-    if not tasks:
+    if not has_cli and not has_sdk:
         return {"success": False, "error": "No agy binary and no API key available"}
 
-    # ── CLI-preferred race strategy ──────────────────────────────
-    # Both providers run in parallel, but CLI is PRIMARY:
-    #   - Always wait for CLI result (up to timeout)
-    #   - Only use SDK if CLI fails/timeout
-    #   - SDK runs as "warm standby" — saves time if CLI fails
-    #     because SDK result is already available instantly
-    cli_task = tasks.get("cli")
-    sdk_task = tasks.get("sdk")
+    # ── Adaptive strategy gate ───────────────────────────────────
+    strategy = cli_health.strategy if (has_cli and has_sdk) else "sequential"
 
-    # Case 1: Only one provider available
-    if not cli_task and sdk_task:
-        result = await sdk_task
-        if result.get("success"):
-            log.info(f"SDK-only: {result['latency_ms']:.0f}ms")
-            _put_cache(prompt, result)
-            return result
-        return result
-    
-    if cli_task and not sdk_task:
-        result = await cli_task
-        if result.get("success"):
-            log.info(f"CLI-only: {result['latency_ms']:.0f}ms")
-            _put_cache(prompt, result)
-            return result
-        return result
+    if strategy == "parallel":
+        log.info(
+            f"[adaptive] → PARALLEL (CLI degraded: "
+            f"avg={cli_health.info['avg_latency_ms']:.0f}ms, "
+            f"fail_rate={cli_health.info['failure_rate']:.0%})"
+        )
+        result = await _run_parallel(prompt, model, timeout_sec, has_cli, has_sdk)
+    else:
+        result = await _run_sequential(prompt, model, timeout_sec, has_cli, has_sdk)
 
-    # Case 2: Both available — CLI-preferred
-    # Wait for CLI to complete (it's the primary)
-    try:
-        cli_result = await asyncio.wait_for(cli_task, timeout=timeout_sec + 5)
-    except asyncio.TimeoutError:
-        cli_result = {"success": False, "error": f"CLI timeout ({timeout_sec}s)"}
-    except Exception as e:
-        cli_result = {"success": False, "error": f"CLI exception: {e}"}
+    # Annotate result with strategy used
+    if result.get("success"):
+        result["strategy"] = strategy
+        _put_cache(prompt, result)
 
-    if cli_result.get("success"):
-        # CLI succeeded — cancel SDK, return CLI
-        sdk_task.cancel()
-        try:
-            await sdk_task
-        except (asyncio.CancelledError, Exception):
-            pass
-        log.info(f"CLI primary OK ({cli_result['latency_ms']:.0f}ms) — SDK cancelled")
-        _put_cache(prompt, cli_result)
-        return cli_result
-
-    # CLI failed — use SDK result (already running in parallel, likely done)
-    log.warning(f"CLI failed: {cli_result.get('error', 'unknown')}. Using SDK standby...")
-    try:
-        sdk_result = await asyncio.wait_for(sdk_task, timeout=5)  # SDK should be done by now
-    except asyncio.TimeoutError:
-        sdk_result = {"success": False, "error": "SDK also timed out"}
-    except Exception as e:
-        sdk_result = {"success": False, "error": f"SDK exception: {e}"}
-
-    if sdk_result.get("success"):
-        log.info(f"SDK standby OK ({sdk_result['latency_ms']:.0f}ms) — CLI was: {cli_result.get('error', '')[:60]}")
-        _put_cache(prompt, sdk_result)
-        return sdk_result
-
-    # Both failed
-    return {
-        "success": False,
-        "error": f"All providers failed: CLI={cli_result.get('error','?')[:80]}; SDK={sdk_result.get('error','?')[:80]}",
-    }
+    return result
 
 
 # ── FastAPI App ──────────────────────────────────────────────────
 
 try:
     from fastapi import FastAPI, HTTPException
-    from fastapi.responses import JSONResponse
     from pydantic import BaseModel
 except ImportError:
     log.error("FastAPI not installed. Run: pip3 install fastapi uvicorn")
@@ -422,12 +599,12 @@ class AnalyzeRequest(BaseModel):
 
 @app.get("/health")
 async def health():
-    """Health check with circuit breaker state."""
+    """Health check with circuit breaker and adaptive strategy state."""
     return {
         "status": "ok" if cb.is_available() else "degraded",
         "agy_binary": AGY_PATH or "NOT_FOUND",
         "pty_mode": PTY_MODE,
-        "strategy": "cli-preferred",  # CLI primary + SDK warm standby
+        "strategy": cli_health.info,  # adaptive: sequential ↔ parallel
         "circuit_breaker": cb.info,
         "cache": {
             "entries": len(_response_cache),

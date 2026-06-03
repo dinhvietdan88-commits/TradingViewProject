@@ -108,8 +108,11 @@ bash deploy/deploy-agy-bridge.sh
   → Fix: `ProtectHome=false`, `PrivateTmp=false`, temp file in `~/.cache/`
 
 ### Performance Optimizations
-- **CLI-Preferred Race**: Both agy CLI + SDK run in parallel. CLI is primary;
-  SDK is warm standby used only when CLI fails. Saves ~5s on failover.
+- **Adaptive Strategy** (SCAR-007b): Auto-switches between sequential and parallel
+  based on CLI health metrics (rolling 10-call window):
+  - CLI **healthy** → Sequential fallback (1x tokens, ~0 extra latency)
+  - CLI **degraded** → Parallel race (2x tokens, saves ~8s on failover)
+  - Degraded triggers: avg latency >18s, failure rate >40%, or 2+ consecutive fails
 - **Response Cache**: SHA256-keyed, 5min TTL (configurable via `AGY_CACHE_TTL`).
   Duplicate signals return **<100ms** instead of ~13s.
 - **Prompt Compression**: RAG chunks trimmed 800→400 chars, prompt compacted ~40%.
@@ -132,10 +135,11 @@ server over a Tailscale VPN.
 
 | Method | Use Case | Speed | Status |
 |--------|----------|-------|--------|
-| Bridge → agy CLI binary | Docker containers (primary) | ~11-13s | ✅ **Production Primary** |
-| Bridge → google-genai SDK | Docker containers (warm standby) | ~8s | ✅ **Warm Standby** |
+| Bridge → agy CLI binary | Docker containers (primary) | ~11-13s | ✅ **Primary** |
+| Bridge → google-genai SDK | Docker containers (adaptive fallback) | ~8s | ✅ **Adaptive Fallback** |
 | Response Cache | Duplicate signals | **<100ms** | ✅ **Active (5min TTL)** |
 | `agy -p "prompt"` | Interactive terminal agent | ~30s-10min+ | ✅ Available |
 | `agy -i "prompt"` | Interactive session | N/A | ✅ Available |
 | A2A Gateway :9108 | Remote orchestration | TBD | 🔮 Planned |
 | `google.antigravity` Agent SDK | In-container direct | >20s timeout | ❌ Not suitable |
+
