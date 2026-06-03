@@ -72,6 +72,7 @@ async def test_morning_brief_trigger_and_persistence(client, mocker):
     mocker.patch("config.MCP_ENABLED", True)
     mocker.patch("config.BRIEF_ENABLED", True)
     mocker.patch("config.RAG_ENABLED", True)
+    mocker.patch("config.GEMINI_API_KEY", "fake-test-key")  # needed to pass has_gemini guard at line 200
     
     # 2. Mock MCPClient status, batch_run, and screenshot inside brief namespace
     mock_mcp = mocker.patch('brief.get_mcp_client')
