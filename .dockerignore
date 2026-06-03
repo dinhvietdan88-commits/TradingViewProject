@@ -9,45 +9,56 @@
 .gemini
 .mcp.json
 *.code-workspace
+.gitnexus
+.kiro
 
-# ── Python ────────────────────────────────────────────
-__pycache__
-*.pyc
-*.pyo
-.pytest_cache
-server/.pytest_cache
-server/__pycache__
-server/tests/__pycache__
+# ── Python / Cache (Any Level) ───────────────────────
+**/.venv
+**/venv
+**/env
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.pytest_cache
+**/.hypothesis
+**/.ruff_cache
 
-# ── Runtime data (will be volume-mounted) ─────────────
-server/trades.db
-server/trades.log
-server/chroma_db
-server/watchlist.json
-server/screenshots
-server/test_trades.log
+# ── Runtime Data / Databases (Any Level) ──────────────
+**/trades.db
+**/trades.log
+**/chroma_db
+**/watchlist.json
+**/screenshots
+**/test_trades.log
+**/logs
 test_trades.log
+project.tar.gz
 
-# ── Environment files ─────────────────────────────────
+# ── Environment Files ─────────────────────────────────
 .env
 .env.production
-server/.env
 *.env
 
 # ── Docs / Plans (not needed in image) ────────────────
 docs/plans
 docs/mindmaps
+docs/references
 ONBOARDING.md
 README.md
 cloudflared.log
 
-# ── Node / MCP submodule ─────────────────────────────
+# ── Node / MCP Submodule ─────────────────────────────
 tradingview-mcp
 node_modules
 
-# ── Scripts (dev tools) ──────────────────────────────
+# ── Scripts / Development Folders ─────────────────────
 scripts
 extract_pdf.py
+cortex
+lobes
+cache
+archive
+workflows
 
 # ── Pine Script (TradingView indicators) ─────────────
 pine
