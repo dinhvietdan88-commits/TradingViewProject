@@ -19,6 +19,7 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
       deploy: ${{ steps.filter.outputs.deploy }}
+      docker: ${{ steps.filter.outputs.docker }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
@@ -40,6 +41,11 @@ jobs:
               - 'deploy/**'
               - 'vbs/**'
               - '.github/workflows/**'
+            docker:
+              - 'nerves/workers/trading/**'
+              - 'Dockerfile'
+              - 'vbs/**'
+              - 'docs/knowledge/**'
 
   # ── 1A. LINT & SECURITY (Fast ~15s — zero pip install) ───────────
   ci-lint-security:
@@ -187,103 +193,114 @@ jobs:
           echo "${{ steps.code-hash.outputs.hash }}" > .test-passed/hash.txt
           echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .test-passed/timestamp.txt
 
-  # ── 1C. BUILD & PUSH DOCKER IMAGES (GHCR Cache Optimization) ─────
+  # ── 1C. BUILD & PUSH DOCKER IMAGES (Parallel Matrix + Hash Skip) ──
+  # Optimization: 3 images build simultaneously on separate runners.
+  # Hash-based skip: if source files haven't changed, build is skipped.
+  # Scoped GHA cache: each image has its own BuildKit cache partition.
+  # Trivy runs inside each matrix entry (parallel, not sequential).
   build-images:
-    name: Build & Push Docker Images
+    name: "Build: ${{ matrix.name }}"
     needs: [changes, ci-lint-security, ci-tests]
     if: |
       always() &&
-      (needs.changes.outputs.deploy == 'true' || contains(github.event.head_commit.message, '[force deploy]')) &&
+      (needs.changes.outputs.docker == 'true' || contains(github.event.head_commit.message, '[force deploy]')) &&
       (needs.ci-lint-security.result == 'success' || needs.ci-lint-security.result == 'skipped') &&
       (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: VBS
+            image: tradingbot-vbs
+            context: ./vbs
+            file: ./vbs/Dockerfile
+            target: ""
+            hash_paths: "vbs/"
+          - name: Execution
+            image: tradingbot-execution
+            context: .
+            file: ./Dockerfile
+            target: runtime-execution
+            hash_paths: "nerves/workers/trading/ Dockerfile"
+          - name: Analyzer
+            image: tradingbot-analyzer
+            context: .
+            file: ./Dockerfile
+            target: runtime-analyzer
+            hash_paths: "nerves/workers/trading/ Dockerfile docs/knowledge/"
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
 
+      - name: Compute image content hash
+        id: hash
+        run: |
+          HASH=$(find ${{ matrix.hash_paths }} -type f \( -name '*.py' -o -name '*.txt' -o -name '*.md' -o -name 'Dockerfile*' -o -name '*.yml' -o -name '*.yaml' \) 2>/dev/null | sort | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1)
+          SHORT=${HASH:0:12}
+          echo "hash=$SHORT" >> $GITHUB_OUTPUT
+          echo "📦 [${{ matrix.name }}] Content hash: $SHORT"
+
+      - name: Check build cache
+        id: build-cache
+        uses: actions/cache@v5
+        with:
+          path: .build-passed-${{ matrix.name }}
+          key: build-${{ matrix.name }}-${{ steps.hash.outputs.hash }}
+
+      - name: Skip build (cache hit)
+        if: steps.build-cache.outputs.cache-hit == 'true'
+        run: echo "⚡ [${{ matrix.name }}] Already built for hash ${{ steps.hash.outputs.hash }} — skipping."
+
       - name: Set up Docker Buildx
+        if: steps.build-cache.outputs.cache-hit != 'true'
         uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
+        if: steps.build-cache.outputs.cache-hit != 'true'
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push VBS Image
+      - name: "Build and Push ${{ matrix.name }}"
+        if: steps.build-cache.outputs.cache-hit != 'true'
         uses: docker/build-push-action@v7
         with:
-          context: ./vbs
-          file: ./vbs/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target || '' }}
           push: true
-          tags: ghcr.io/dinhvietdan88-commits/tradingbot-vbs:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: |
+            ghcr.io/dinhvietdan88-commits/${{ matrix.image }}:latest
+            ghcr.io/dinhvietdan88-commits/${{ matrix.image }}:${{ steps.hash.outputs.hash }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
 
-      - name: Build and Push Execution Image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ./Dockerfile
-          target: runtime-execution
-          push: true
-          tags: ghcr.io/dinhvietdan88-commits/tradingbot-execution:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and Push Analyzer Image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ./Dockerfile
-          target: runtime-analyzer
-          push: true
-          tags: ghcr.io/dinhvietdan88-commits/tradingbot-analyzer:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Run Trivy vulnerability scanner on VBS Image
+      - name: "Trivy Scan: ${{ matrix.name }}"
+        if: steps.build-cache.outputs.cache-hit != 'true'
         uses: aquasecurity/trivy-action@v0.36.0
         env:
           TRIVY_USERNAME: ${{ github.actor }}
           TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         with:
-          image-ref: 'ghcr.io/dinhvietdan88-commits/tradingbot-vbs:latest'
+          image-ref: 'ghcr.io/dinhvietdan88-commits/${{ matrix.image }}:latest'
           format: 'table'
           exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL'
 
-      - name: Run Trivy vulnerability scanner on Execution Image
-        uses: aquasecurity/trivy-action@v0.36.0
-        env:
-          TRIVY_USERNAME: ${{ github.actor }}
-          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          image-ref: 'ghcr.io/dinhvietdan88-commits/tradingbot-execution:latest'
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL'
-
-      - name: Run Trivy vulnerability scanner on Analyzer Image
-        uses: aquasecurity/trivy-action@v0.36.0
-        env:
-          TRIVY_USERNAME: ${{ github.actor }}
-          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          image-ref: 'ghcr.io/dinhvietdan88-commits/tradingbot-analyzer:latest'
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL'
+      - name: Mark build passed
+        if: steps.build-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .build-passed-${{ matrix.name }}
+          echo "${{ steps.hash.outputs.hash }}" > .build-passed-${{ matrix.name }}/hash.txt
+          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .build-passed-${{ matrix.name }}/timestamp.txt
 
   # ── 2A. DEPLOY SERVER A (Gateway) ──────────────────────────────────
   deploy-server-a:
