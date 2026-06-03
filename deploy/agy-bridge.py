@@ -28,6 +28,9 @@ import time
 from dataclasses import dataclass, field
 from typing import Optional
 
+# ── Auth ─────────────────────────────────────────────────────────
+AGY_BRIDGE_SECRET = os.environ.get("AGY_BRIDGE_SECRET", "")
+
 # ── Logging ──────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
@@ -282,7 +285,11 @@ def _clean_output(text: str) -> str:
 # ── Provider: agy CLI ────────────────────────────────────────────
 
 async def _run_cli(prompt: str, timeout_sec: int) -> dict:
-    """Execute via agy CLI binary with file redirect."""
+    """Execute via agy CLI binary with stdin pipe (no shell).
+
+    Security: Uses create_subprocess_exec (not _shell) to prevent
+    shell injection via AGY_PATH or prompt content. (Fixes #63)
+    """
     if not AGY_PATH:
         return {"success": False, "error": "No agy binary"}
 
@@ -292,30 +299,24 @@ async def _run_cli(prompt: str, timeout_sec: int) -> dict:
         "based on your knowledge.\n\n" + prompt
     )
 
-    prompt_file = None
     start = time.time()
     try:
-        cache_dir = os.path.expanduser("~/.cache")
-        os.makedirs(cache_dir, exist_ok=True)
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", prefix="agy_prompt_",
-            dir=cache_dir, delete=False, encoding="utf-8",
-        ) as f:
-            f.write(constrained_prompt)
-            prompt_file = f.name
-
-        shell_cmd = (
-            f"{AGY_PATH} --print --print-timeout {timeout_sec}s"
-            f" --dangerously-skip-permissions"
-            f" < {prompt_file}"
-        )
-        proc = await asyncio.create_subprocess_shell(
-            shell_cmd,
+        # Build explicit arg list — no shell interpolation
+        args = [
+            AGY_PATH,
+            "--print",
+            "--print-timeout", f"{timeout_sec}s",
+            "--dangerously-skip-permissions",
+        ]
+        proc = await asyncio.create_subprocess_exec(
+            *args,
+            stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await asyncio.wait_for(
-            proc.communicate(), timeout=timeout_sec + 5,
+            proc.communicate(input=constrained_prompt.encode("utf-8")),
+            timeout=timeout_sec + 5,
         )
     except asyncio.TimeoutError:
         try:
@@ -325,12 +326,6 @@ async def _run_cli(prompt: str, timeout_sec: int) -> dict:
         return {"success": False, "error": f"CLI timeout ({timeout_sec}s)"}
     except Exception as e:
         return {"success": False, "error": f"CLI error: {e}"}
-    finally:
-        if prompt_file:
-            try:
-                os.unlink(prompt_file)
-            except OSError:
-                pass
 
     latency_ms = (time.time() - start) * 1000
     output = _clean_output(stdout.decode("utf-8", errors="replace"))
@@ -581,7 +576,7 @@ async def _run_agy(prompt: str, model: str, timeout_sec: int) -> dict:
 # ── FastAPI App ──────────────────────────────────────────────────
 
 try:
-    from fastapi import FastAPI, HTTPException
+    from fastapi import FastAPI, Header, HTTPException
     from pydantic import BaseModel
 except ImportError:
     log.error("FastAPI not installed. Run: pip3 install fastapi uvicorn")
@@ -623,8 +618,22 @@ async def health():
 
 
 @app.post("/analyze")
-async def analyze(req: AnalyzeRequest):
-    """Execute agy CLI analysis."""
+async def analyze(req: AnalyzeRequest, authorization: str = Header(default="")):
+    """Execute agy CLI analysis.
+
+    Auth: If AGY_BRIDGE_SECRET is set, requires Authorization: Bearer <secret>.
+    If not set, endpoint is open (backward compatible). Fixes #64.
+    """
+    # ── Auth gate ──
+    if AGY_BRIDGE_SECRET:
+        import hmac
+        token = authorization.removeprefix("Bearer ").strip()
+        if not token or not hmac.compare_digest(token, AGY_BRIDGE_SECRET):
+            raise HTTPException(
+                status_code=401,
+                detail={"error": "Unauthorized: invalid or missing AGY_BRIDGE_SECRET"},
+            )
+
     _stats["total_requests"] += 1
 
     if not cb.is_available():

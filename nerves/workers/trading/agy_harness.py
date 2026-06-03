@@ -28,6 +28,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import aiohttp
+import os
 
 log = logging.getLogger("agy_harness")
 
@@ -75,11 +76,13 @@ class AgyHarness:
         timeout_sec: int = 25,
         max_retries: int = 1,
         model: str = "gemini-2.5-flash",
+        secret: str = "",
     ):
         self.bridge_url = bridge_url.rstrip("/")
         self.timeout_sec = timeout_sec
         self.max_retries = max_retries
         self.model = model
+        self._secret = secret or os.environ.get("AGY_BRIDGE_SECRET", "")
         self._session: Optional[aiohttp.ClientSession] = None
 
     async def _get_session(self) -> aiohttp.ClientSession:
@@ -154,9 +157,13 @@ class AgyHarness:
         last_error = None
         for attempt in range(self.max_retries + 1):
             try:
+                headers = {}
+                if self._secret:
+                    headers["Authorization"] = f"Bearer {self._secret}"
                 async with session.post(
                     f"{self.bridge_url}/analyze",
                     json=payload,
+                    headers=headers,
                     timeout=aiohttp.ClientTimeout(total=effective_timeout + 15),
                 ) as resp:
                     if resp.status == 200:

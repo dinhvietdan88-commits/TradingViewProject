@@ -6,18 +6,29 @@ Tài liệu này mô tả luồng kiến trúc (Architecture Flow) kết nối t
 
 ```mermaid
 flowchart TD
-    TV[TradingView Alert] -->|Webhook JSON| API[FastAPI Server :5000]
-    API -->|Triggers| AGENT[AI RAG Agent]
+    TV[TradingView Alert] -->|Webhook JSON| API["FastAPI Server A :5000"]
+    API -->|HTTP Forward| ANALYZER["Analyzer Server C :8000"]
     
-    subgraph RAG System [Kho Kiến thức & AI]
-        AGENT -->|1. Query: 'Rules for VCP'| VDB[(Chroma Vector DB)]
-        VDB -->|2. Return Top Chunks| AGENT
-        AGENT -->|3. Signal + Minervini Context| LLM[Claude Sonnet 4.5]
-        LLM -->|4. Analysis Report| AGENT
+    subgraph RAG_System ["Server C — RAG & AI Core"]
+        ANALYZER -->|1. build_rag_query| RAG[rag.py]
+        RAG -->|2. Semantic Search| VDB["ChromaDB (Vector DB)"]
+        VDB -->|3. Top 3 Chunks| RAG
+        RAG -->|4. Prompt + Context| PROVIDER{AI Provider Cascade}
+        
+        PROVIDER -->|"P1: agy"| AGY["agy-bridge :9100"]
+        PROVIDER -->|"P2: antigravity"| ANTIGRAV["google-antigravity SDK"]
+        PROVIDER -->|"P3: claude_cli"| CLI["claude CLI (OAuth)"]
+        PROVIDER -->|"P4: anthropic"| SDK["anthropic SDK"]
+        PROVIDER -->|"P5: gemini"| GEMINI["google-genai SDK"]
     end
     
-    AGENT -->|5. Execute Action| NOTIFY[notifier.py]
-    NOTIFY -->|Gửi Báo cáo| TG[Telegram / Discord]
+    AGY -->|Gemini 2.5 Flash| GOOGLE["Google AI"]
+    ANTIGRAV -->|localharness| GOOGLE
+    SDK -->|API Key| CLAUDE["Claude Sonnet 4.5"]
+    GEMINI -->|API Key| GOOGLE
+    
+    RAG -->|5. Analysis Report| ANALYZER
+    ANALYZER -->|6. Notify| TG[Telegram]
 ```
 
 ## 2. Chi tiết các Bước thực thi
@@ -47,26 +58,33 @@ flowchart TD
 |-----------|-----------|---------|
 | Vector DB | **ChromaDB** (local, persistent) | Lưu trữ và truy vấn embedding vectors |
 | Embedding | **sentence-transformers** (`paraphrase-multilingual-MiniLM-L12-v2`) | Chuyển text → vectors, hỗ trợ tiếng Việt |
-| LLM | **Claude Sonnet** (`claude-sonnet-4-5` via Anthropic API) | Phân tích tín hiệu dựa trên context Minervini |
+| LLM | **Multi-Provider Cascade** (xem Section 5) | Phân tích tín hiệu dựa trên context Minervini |
 | Framework | **FastAPI v5.0** | Webhook server + RAG endpoints |
 
 ### Files đã triển khai
 
 ```
 server/
-├── rag.py              ← [NEW] RAG core module
+├── rag.py              ← [CORE] RAG module (601 LOC)
 │   ├── init_vector_db()          # Embed 36 chunks → ChromaDB (startup)
 │   ├── query_knowledge()         # Semantic search (cosine similarity)
 │   ├── build_rag_query()         # Tạo query từ webhook payload
-│   └── generate_trading_advice() # Gọi Claude phân tích
+│   └── generate_trading_advice() # Multi-provider AI analysis
 │
-├── config.py           ← [UPDATED] + ANTHROPIC_API_KEY, KNOWLEDGE_DIR, RAG_ENABLED
-├── main.py             ← [UPDATED] v5.0 + RAG lifespan + /api/rag/* endpoints
-├── requirements.txt    ← [UPDATED] + chromadb, sentence-transformers, anthropic
-└── .env.example        ← [UPDATED] + RAG config section
+├── agy_harness.py      ← [CLIENT] HTTP client for agy-bridge (265 LOC)
+│   └── AgyHarness                # 5-Gate harness pattern
+│
+├── config.py           ← [CONFIG] AI_PROVIDER, AGY_*, GEMINI_*, ANTHROPIC_*
+├── main.py             ← [SERVER] v5.0 + RAG lifespan + /api/rag/* endpoints
+├── requirements.txt    ← + chromadb, sentence-transformers, anthropic, google-genai
+└── .env.example        ← + RAG config section
+
+deploy/
+├── agy-bridge.py       ← [SIDECAR] Host-level bridge for agy CLI (711 LOC)
+└── .env.agy            ← ANTIGRAVITY_API_KEY, AGY_BRIDGE_SECRET
 ```
 
-### API Endpoints mới
+### API Endpoints
 
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
@@ -76,7 +94,20 @@ server/
 ### Cấu hình `.env`
 
 ```env
+# AI Provider (production Server C)
+AI_PROVIDER=agy
+
+# agy-bridge sidecar
+AGY_BRIDGE_URL=http://host.docker.internal:9100
+AGY_BRIDGE_SECRET=your-secret-here
+AGY_TIMEOUT_SEC=25
+AGY_MODEL=gemini-2.5-flash
+
+# Fallback keys
+GEMINI_API_KEY=your-gemini-key
 ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxx
+
+# RAG
 RAG_ENABLED=true
 RAG_TOP_K=3
 ```
@@ -92,7 +123,8 @@ sequenceDiagram
     participant DB as SQLite
     participant RAG as rag.py
     participant VDB as ChromaDB
-    participant CLAUDE as Claude API
+    participant BRIDGE as agy-bridge :9100
+    participant GEMINI as Gemini 2.5 Flash
     participant BOT as notifier.py
     participant TG as Telegram
 
@@ -106,9 +138,11 @@ sequenceDiagram
     RAG->>VDB: query_knowledge(semantic_query, n=3)
     VDB-->>RAG: [chunk_007, chunk_012, chunk_003] + scores
 
-    RAG->>CLAUDE: generate_trading_advice(signal + 3 chunks)
-    Note over CLAUDE: Prompt:<br/>- Tín hiệu: BTCUSDT BUY 65000<br/>- Volume: 1500 vs avg 800<br/>- Context: Minervini rules
-    CLAUDE-->>RAG: "✅ Tín hiệu MẠNH - VCP xác nhận..."
+    RAG->>BRIDGE: POST /analyze {prompt, model}
+    Note over BRIDGE: Adaptive Strategy:<br/>CLI healthy → Sequential<br/>CLI degraded → Parallel race
+    BRIDGE->>GEMINI: google-genai SDK
+    GEMINI-->>BRIDGE: Analysis text
+    BRIDGE-->>RAG: {success: true, advice: "...", latency_ms: 12000}
 
     RAG-->>API: advice_text
 
@@ -118,8 +152,63 @@ sequenceDiagram
 
 ---
 
-## 5. Tài liệu liên quan
+## 5. Multi-Provider AI Architecture (V10+)
+
+### Provider Cascade
+
+```
+AI_PROVIDER env var → rag.py generate_trading_advice()
+
+┌──────────────────────────────────────────────────────────┐
+│ Priority 1: agy         → agy-bridge :9100 → Gemini     │
+│ Priority 2: antigravity → google-antigravity SDK Agent   │
+│ Priority 3: claude_cli  → claude binary (OAuth session)  │
+│ Priority 4: anthropic   → Anthropic SDK (API key)        │
+│ Priority 5: gemini      → google-genai / Vertex AI       │
+│                                                          │
+│ Fallback: agy fail → gemini | anthropic fail → gemini    │
+└──────────────────────────────────────────────────────────┘
+```
+
+### agy-bridge Sidecar Architecture
+
+| Component | Mô tả |
+|-----------|-------|
+| **Dual Provider** | agy CLI (binary) + google-genai SDK (direct API) |
+| **Adaptive Strategy** | Sequential (healthy) ↔ Parallel race (degraded CLI) |
+| **Circuit Breaker** | CLOSED → OPEN (3 fails) → HALF_OPEN (120s cooldown) |
+| **Response Cache** | SHA-256 key, 5min TTL, max 50 entries |
+| **Auth** | `AGY_BRIDGE_SECRET` bearer token (timing-safe hmac comparison) |
+
+### SCAR Registry
+
+| SCAR | Mô tả |
+|------|-------|
+| SCAR-005 | agy CLI requires PTY — bridge uses `script -qfc` wrapper |
+| SCAR-006 | Free tier API key hits quota — must use Tier 1 |
+| SCAR-007b | Adaptive strategy saves tokens when CLI is healthy |
+
+---
+
+## 6. Cập nhật Vận hành trên Linux & AI Provider "agy" (V10 Hardening)
+
+### agy-bridge sidecar
+
+- AI provider `agy` định tuyến prompt qua sidecar `agy-bridge` chạy trên host `:9100`.
+- Sidecar dùng `google-genai` SDK gọi Gemini 2.5 Flash.
+- Docker container gọi bridge qua `host.docker.internal:9100`.
+
+### Cross-platform SQLite Fallback
+
+- `ingest_helper.py` ghi semantic memory vào `V3_brain.db`.
+- Trên Windows: gọi `angati.exe memory ingest`.
+- Trên Linux: fallback trực tiếp SQLite (no binary dependency).
+
+---
+
+## 7. Tài liệu liên quan
 
 - [`docs/plans/P5/architecture_mermaid.md`](plans/P5/architecture_mermaid.md) — 5 sơ đồ Mermaid chi tiết
 - [`docs/plans/P5/implementation_log.md`](plans/P5/implementation_log.md) — Log kỹ thuật & checklist deploy
 - [`docs/TRADINGVIEW_ALERT_SETUP.md`](TRADINGVIEW_ALERT_SETUP.md) — Hướng dẫn setup TradingView Alert
+- [`docs/CICD_WORKFLOW.md`](CICD_WORKFLOW.md) — CI/CD PR-based workflow guide
