@@ -658,6 +658,14 @@ jobs:
                 echo "✅ AGY_BRIDGE_SECRET injected into .env.agy + .env"
               fi
               
+              # Deploy agy CLI security settings (deny list for --sandbox mode)
+              if [ -f deploy/agy-settings.json ]; then
+                AGY_SETTINGS_DIR="$HOME/.gemini/antigravity-cli"
+                mkdir -p "$AGY_SETTINGS_DIR"
+                cp deploy/agy-settings.json "$AGY_SETTINGS_DIR/settings.json"
+                echo "✅ agy settings.json deployed (sandbox deny list)"
+              fi
+              
               # Update systemd service (ExecStart uses detected Python)
               PY_PATH=$(command -v $PY)
               sed "s|ExecStart=.*python.*agy-bridge.py|ExecStart=${PY_PATH} $(pwd)/deploy/agy-bridge.py|" \

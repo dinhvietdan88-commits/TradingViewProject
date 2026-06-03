@@ -189,6 +189,18 @@ AI_PROVIDER env var → rag.py generate_trading_advice()
 | SCAR-006 | Free tier API key hits quota — must use Tier 1 |
 | SCAR-007b | Adaptive strategy saves tokens when CLI is healthy |
 | SCAR-008 | Single API key for both paths = single quota failure. Fix: quota isolation (CLI=ADC, SDK=GEMINI_API_KEY) |
+| SCAR-009 | `--dangerously-skip-permissions` bypasses ALL security. Fix: `--sandbox` + `settings.json` deny list (Defense-in-Depth) |
+
+### Security: Defense-in-Depth (4 Layers)
+
+| Layer | Cơ chế | Status |
+|-------|--------|--------|
+| **L1** | Hardened constrained_prompt (NON-NEGOTIABLE system rules) | ✅ Active |
+| **L2** | `--sandbox` + `settings.json` deny list (20 rules: deny run_command/write_file) | ✅ Active |
+| **L3** | systemd `ProtectSystem=strict`, `ProtectHome=read-only`, `NoNewPrivileges=true` | ✅ Active |
+| **L4** | `nsjail` kernel namespace sandbox | ⚠️ Not installed |
+
+**Config**: `deploy/agy-settings.json` → auto-deployed to `~/.gemini/antigravity-cli/settings.json` by CI.
 
 ---
 
