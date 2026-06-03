@@ -528,6 +528,79 @@ jobs:
               docker logout ghcr.io
             fi
             
+            # ── agy-bridge sidecar (host-level Gemini proxy) ──────────
+            echo "🔧 Setting up agy-bridge sidecar..."
+            
+            # Ensure Python 3.11 is available for google-antigravity
+            if command -v python3.11 &>/dev/null; then
+              PY=python3.11
+            elif command -v python3 &>/dev/null; then
+              PY=python3
+            else
+              echo "⚠️ No Python3 found — skipping agy-bridge"
+              PY=""
+            fi
+            
+            if [ -n "$PY" ] && [ -f deploy/agy-bridge.py ]; then
+              # Install dependencies (idempotent)
+              $PY -m pip install --user --quiet fastapi uvicorn google-genai 2>&1 | tail -2
+              
+              # Try google-antigravity (needs Python 3.10+)
+              $PY -m pip install --user --quiet google-antigravity 2>&1 | tail -1 || true
+              
+              # Create .env.agy if missing
+              if [ ! -f deploy/.env.agy ]; then
+                GEMINI_KEY=$(grep "^GEMINI_API_KEY=" deploy/.env 2>/dev/null | cut -d= -f2- || echo "")
+                cat > deploy/.env.agy <<ENVEOF
+ANTIGRAVITY_API_KEY=${GEMINI_KEY:-REPLACE_ME}
+GEMINI_API_KEY=${GEMINI_KEY:-REPLACE_ME}
+ENVEOF
+                chmod 600 deploy/.env.agy
+              fi
+              
+              # Update systemd service (ExecStart uses detected Python)
+              PY_PATH=$(command -v $PY)
+              sed "s|ExecStart=.*python.*agy-bridge.py|ExecStart=${PY_PATH} $(pwd)/deploy/agy-bridge.py|" \
+                deploy/agy-bridge.service > /tmp/agy-bridge.service.tmp
+              
+              # Install service if changed (needs passwordless sudo for botuser)
+              if ! diff -q /tmp/agy-bridge.service.tmp /etc/systemd/system/agy-bridge.service &>/dev/null 2>&1; then
+                if sudo -n cp /tmp/agy-bridge.service.tmp /etc/systemd/system/agy-bridge.service 2>/dev/null; then
+                  sudo -n systemctl daemon-reload
+                  sudo -n systemctl enable agy-bridge
+                  sudo -n systemctl restart agy-bridge
+                  echo "✅ agy-bridge service updated and restarted"
+                else
+                  echo "⚠️ agy-bridge service update needs sudo — skipping (manual)"
+                fi
+              else
+                # Service file unchanged — just ensure running
+                if ! systemctl is-active --quiet agy-bridge 2>/dev/null; then
+                  sudo -n systemctl restart agy-bridge 2>/dev/null || echo "⚠️ agy-bridge not running (needs sudo)"
+                else
+                  echo "✅ agy-bridge already running"
+                fi
+              fi
+              
+              # Verify bridge health
+              sleep 2
+              if curl -sf http://localhost:9100/health > /dev/null 2>&1; then
+                echo "✅ agy-bridge health OK"
+              else
+                echo "⚠️ agy-bridge health check failed (non-blocking)"
+              fi
+              rm -f /tmp/agy-bridge.service.tmp
+            fi
+            
+            # Hot-patch rag.py into running container (until next image build)
+            if [ -f nerves/workers/trading/rag.py ]; then
+              docker cp nerves/workers/trading/rag.py tradingbot-analyzer:/app/rag.py 2>/dev/null || true
+            fi
+            if [ -f nerves/workers/trading/workers/vps_analyzer.py ]; then
+              docker cp nerves/workers/trading/workers/vps_analyzer.py tradingbot-analyzer:/app/workers/vps_analyzer.py 2>/dev/null || true
+              docker restart tradingbot-analyzer 2>/dev/null || true
+            fi
+            
             echo "🔍 Testing Server C Health..."
             for i in {1..30}; do
               CHROMA_OK=false
