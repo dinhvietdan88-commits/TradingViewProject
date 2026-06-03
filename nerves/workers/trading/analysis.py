@@ -18,6 +18,7 @@ class TrendTemplateResult:
     criteria: dict[str, bool]           # {criterion_name: passed}
     stage: str                          # "Stage 2", "Stage 1", "Stage 3/4", "Unknown"
     summary: str                        # Human-readable summary
+    macro_regime: str = "Unknown"       # "Bull", "Bear", "Choppy", "Unknown"
 
 
 @dataclass
@@ -141,12 +142,23 @@ def score_trend_template(
     else:
         stage = "Stage 3/4 (Avoid)"
 
+    # Macro Regime classification
+    if sma200 is not None and sma50 is not None:
+        if price > sma50 and sma50 > sma200 and (sma200_slope is None or sma200_slope > 0):
+            macro_regime = "Bull 🐂"
+        elif price < sma50 and sma50 < sma200 and (sma200_slope is None or sma200_slope < 0):
+            macro_regime = "Bear 🐻"
+        else:
+            macro_regime = "Choppy 🌊"
+    else:
+        macro_regime = "Unknown"
+
     # Summary
     passed = [k for k, v in criteria.items() if v is True]
     failed = [k for k, v in criteria.items() if v is False]
-    summary = f"Score {score}/8 — {stage}. ✅ {len(passed)} passed, ❌ {len(failed)} failed"
+    summary = f"Score {score}/8 — {stage}. Regime: {macro_regime}. ✅ {len(passed)} passed, ❌ {len(failed)} failed"
 
-    return TrendTemplateResult(score=score, criteria=criteria, stage=stage, summary=summary)
+    return TrendTemplateResult(score=score, criteria=criteria, stage=stage, macro_regime=macro_regime, summary=summary)
 
 
 def detect_vcp(
@@ -509,7 +521,7 @@ def _calculate_scan_result(
     if not ohlcv or len(ohlcv) < 50:
         return ScanResult(
             symbol=symbol, price=0.0, change_pct=0.0,
-            trend_template=TrendTemplateResult(0, {}, "Unknown", f"Insufficient candles ({len(ohlcv) if ohlcv else 0})"),
+            trend_template=TrendTemplateResult(0, {}, "Unknown", "Unknown", f"Insufficient candles ({len(ohlcv) if ohlcv else 0})"),
             vcp=VCPResult(False, 1.0, 1.0, None, False, "Insufficient candles"),
             volume=0.0, volume_avg=None, exchange=exchange_name,
             error="Insufficient data"
@@ -625,7 +637,7 @@ async def scan_single_symbol_rest(
         logger.exception(f"Exception during REST scan for {symbol}")
         return ScanResult(
             symbol=symbol, price=0.0, change_pct=0.0,
-            trend_template=TrendTemplateResult(0, {}, "Unknown", f"Scan error: {str(e)}"),
+            trend_template=TrendTemplateResult(0, {}, "Unknown", "Unknown", f"Scan error: {str(e)}"),
             vcp=VCPResult(False, 1.0, 1.0, None, False, "Scan error"),
             volume=0.0, volume_avg=None, exchange=exchange_name,
             error=str(e)
@@ -663,7 +675,7 @@ async def scan_symbol_multi_timeframe(
             logger.warning(f"Failed to scan timeframe {tf} for {symbol}: {e}")
             err_result = ScanResult(
                 symbol=symbol, price=0.0, change_pct=0.0,
-                trend_template=TrendTemplateResult(0, {}, "Unknown", f"Fetch error: {e}"),
+                trend_template=TrendTemplateResult(0, {}, "Unknown", "Unknown", f"Fetch error: {e}"),
                 vcp=VCPResult(False, 1.0, 1.0, None, False, "Fetch error"),
                 volume=0.0, volume_avg=None, exchange=exchange_name,
                 error=str(e)

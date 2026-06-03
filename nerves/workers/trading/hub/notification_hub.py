@@ -249,11 +249,12 @@ async def notify_signal_rejected(event: SignalRejected) -> None:
     reason_text = reason_map.get(event.reason, event.reason)
 
     if event.reason == "low_confidence" and getattr(event, "analysis_text", ""):
+        from utils.html_chunker import truncate_caption_html_safe
         msg = (
             f"🔴 **TỰ ĐỘNG TỪ CHỐI** — `{event.symbol}` trên `{getattr(event, 'exchange', 'binance').upper()}`\n"
             f"- Hành động: `{event.action.upper()}`\n"
             f"- Lý do: {reason_text}\n\n"
-            f"🧠 **Phân tích AI:**\n{event.analysis_text[:500]}"
+            f"🧠 **Phân tích AI:**\n{truncate_caption_html_safe(event.analysis_text, 500)}"
         )
     else:
         msg = (
@@ -297,7 +298,8 @@ async def notify_signal_rejected(event: SignalRejected) -> None:
         edit_msg += f"• Lý do: {reason_text}"
         
         if event.reason == "low_confidence" and getattr(event, "analysis_text", ""):
-            edit_msg += f"\n• 🧠 Phân tích AI: {event.analysis_text[:300]}..."
+            from utils.html_chunker import truncate_caption_html_safe
+            edit_msg += f"\n• 🧠 Phân tích AI: {truncate_caption_html_safe(event.analysis_text, 300)}"
         elif event.reason == "invalid_timeframe":
             edit_msg += f" (Khung 1H/Daily mới hợp lệ)"
 
@@ -568,7 +570,8 @@ async def process_analysis_complete(event: AnalysisComplete) -> None:
         except Exception:
             pass
 
-        ai_advice = event.analysis_text[:800]
+        from utils.html_chunker import truncate_caption_html_safe
+        ai_advice = truncate_caption_html_safe(event.analysis_text, 800)
         
         msg = render_template(
             "A",
@@ -673,7 +676,8 @@ async def notify_trade_executed(event: TradeExecuted) -> None:
         msg += "\n⚠️ `CHẾ ĐỘ DRY_RUN — KHÔNG KHỚP LỆNH THỰC TẾ`"
 
     if event.rag_advice:
-        msg += f"\n\n🧠 **Phân tích AI:**\n{event.rag_advice[:500]}"
+        from utils.html_chunker import truncate_caption_html_safe
+        msg += f"\n\n🧠 **Phân tích AI:**\n{truncate_caption_html_safe(event.rag_advice, 500)}"
 
     log.info(f"NotificationHub: Trade executed #{event.trade_id} on {exchange}")
     await notifier.notify_all(msg)

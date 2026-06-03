@@ -128,6 +128,7 @@ class PythonCaptureClient:
         method: Optional[str] = None,
         show_parent_chart: bool = True,
         inset_position: str = "bottom-right",
+        pattern_overlays: Optional[Any] = None,
     ) -> CaptureResult:
         """
         Capture a chart screenshot. Resolves capture method hierarchically:
@@ -178,7 +179,8 @@ class PythonCaptureClient:
             strategy_table=strategy_table,
             method=capture_method,
             show_parent_chart=show_parent_chart,
-            inset_position=inset_position
+            inset_position=inset_position,
+            pattern_overlays=pattern_overlays
         )
         
         latency = (time.monotonic() - start_time) * 1000
@@ -371,6 +373,7 @@ class PythonCaptureClient:
         method: str,
         show_parent_chart: bool = True,
         inset_position: str = "bottom-right",
+        pattern_overlays: Optional[Any] = None,
     ) -> CaptureResult:
         """Executes native rendering locally using lightweight-charts or mplfinance."""
         self._fallback_mode = True
@@ -429,6 +432,14 @@ class PythonCaptureClient:
                     parent_ohlcv = None
                     parent_timeframe = None
 
+        # 1b. Calculate Pattern Overlays if not provided
+        if not pattern_overlays and ohlcv_data:
+            try:
+                from utils.pattern_overlay import detect_all_patterns
+                pattern_overlays = detect_all_patterns(ohlcv_data)
+            except Exception as e:
+                logger.warning(f"Failed to auto-detect patterns for overlay: {e}")
+
         # 2. Render via Lightweight Charts (Playwright)
         if method == "lightweight-charts":
             try:
@@ -442,7 +453,8 @@ class PythonCaptureClient:
                     save_path=save_path,
                     parent_timeframe=parent_timeframe,
                     parent_ohlcv=parent_ohlcv,
-                    inset_position=inset_position
+                    inset_position=inset_position,
+                    pattern_overlays=pattern_overlays
                 )
                 
                 size = img_path.stat().st_size
@@ -476,7 +488,8 @@ class PythonCaptureClient:
                         strategy_table=strategy_table,
                         save_path=save_path,
                         parent_timeframe=parent_timeframe,
-                        parent_ohlcv=parent_ohlcv
+                        parent_ohlcv=parent_ohlcv,
+                        pattern_overlays=pattern_overlays
                     )
                 )
                 

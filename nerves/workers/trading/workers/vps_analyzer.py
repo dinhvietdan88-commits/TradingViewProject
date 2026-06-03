@@ -637,6 +637,7 @@ class VpsAnalyzerWorker:
                     payload["trend_stats"] = {
                         "score": tt_res.score,
                         "stage": tt_res.stage,
+                        "macro_regime": tt_res.macro_regime,
                         "summary": tt_res.summary,
                         "criteria": tt_res.criteria
                     }

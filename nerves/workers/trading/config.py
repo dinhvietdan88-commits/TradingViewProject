@@ -241,6 +241,6 @@ EXECUTION_TARGET_NAME = os.getenv("EXECUTION_TARGET_NAME", "Server B (Cloud)")
 
 
 # Server start time (for uptime calculation)
-import time as _time
+import time as _time  # noqa: E402
 SERVER_START_TIME = _time.time()
 
