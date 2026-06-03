@@ -282,6 +282,45 @@ def query_knowledge(query: str, n_results: int = 3) -> list[dict]:
         return []
 
 
+def _call_gemini(prompt: str, has_vertex: bool, has_genai: bool) -> str | None:
+    """Shared Gemini call logic (DRY — used by both primary and fallback paths).
+
+    Returns advice text on success, None on auth failure.
+    Raises on API error (caller handles).
+    """
+    model_name = "gemini-2.5-flash"
+
+    _use_vertex = False
+    if has_vertex:
+        try:
+            import google.auth
+            google.auth.default()
+            _use_vertex = True
+        except Exception:
+            log.warning("Vertex AI ADC not found — falling back to GEMINI_API_KEY")
+
+    if _use_vertex:
+        import vertexai
+        from vertexai.generative_models import GenerativeModel as VertexGenerativeModel
+        vertexai.init(
+            project=config.GCP_PROJECT_ID,
+            location=getattr(config, "GCP_LOCATION", "us-central1"),
+        )
+        g_model = VertexGenerativeModel(model_name)
+        response = g_model.generate_content(prompt)
+        return response.text
+    elif has_genai:
+        from google import genai
+        client = genai.Client(api_key=config.GEMINI_API_KEY)
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+        )
+        return response.text
+    else:
+        return None
+
+
 async def generate_trading_advice(
     symbol: str,
     action: str,
@@ -448,35 +487,9 @@ async def generate_trading_advice(
                     return f"⚠️ Claude CLI lỗi: {e}"
                 provider = "anthropic"  # ép xuống nhánh SDK
         if provider == "gemini":
-            model_name = "gemini-2.5-flash"
-            
-            _use_vertex = False
-            if has_vertex:
-                try:
-                    import google.auth
-                    google.auth.default()
-                    _use_vertex = True
-                except Exception:
-                    log.warning("Vertex AI ADC not found — falling back to GEMINI_API_KEY")
-
-            if _use_vertex:
-                import vertexai
-                from vertexai.generative_models import GenerativeModel as VertexGenerativeModel
-                vertexai.init(project=config.GCP_PROJECT_ID, location=getattr(config, "GCP_LOCATION", "us-central1"))
-                g_model = VertexGenerativeModel(model_name)
-                response = g_model.generate_content(prompt)
-                advice = response.text
-            elif has_genai:
-                from google import genai
-                client = genai.Client(api_key=config.GEMINI_API_KEY)
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=prompt,
-                )
-                advice = response.text
-            else:
+            advice = _call_gemini(prompt, has_vertex, has_genai)
+            if advice is None:
                 return "⚠️ RAG Analysis không khả dụng (thiếu Gemini auth)."
-            
             log.info(f"RAG: Gemini generated advice for {symbol} ({action})")
             return advice
 
@@ -535,35 +548,9 @@ async def generate_trading_advice(
 
         # Run Gemini if fallback activated it
         if provider == "gemini":
-            model_name = "gemini-2.5-flash"
-            
-            _use_vertex = False
-            if has_vertex:
-                try:
-                    import google.auth
-                    google.auth.default()
-                    _use_vertex = True
-                except Exception:
-                    log.warning("Vertex AI ADC not found — falling back to GEMINI_API_KEY")
-
-            if _use_vertex:
-                import vertexai
-                from vertexai.generative_models import GenerativeModel as VertexGenerativeModel
-                vertexai.init(project=config.GCP_PROJECT_ID, location=getattr(config, "GCP_LOCATION", "us-central1"))
-                g_model = VertexGenerativeModel(model_name)
-                response = g_model.generate_content(prompt)
-                advice = response.text
-            elif has_genai:
-                from google import genai
-                client = genai.Client(api_key=config.GEMINI_API_KEY)
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=prompt,
-                )
-                advice = response.text
-            else:
+            advice = _call_gemini(prompt, has_vertex, has_genai)
+            if advice is None:
                 return "⚠️ RAG Analysis không khả dụng (thiếu Gemini auth)."
-            
             log.info(f"RAG: Gemini fallback generated advice for {symbol} ({action})")
             return advice
 
