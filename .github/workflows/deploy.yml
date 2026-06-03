@@ -510,7 +510,7 @@ jobs:
               CHROMA_OK=false
               ANALYZER_OK=false
               
-              if curl -sf http://localhost:8000/api/v2/heartbeat > /dev/null 2>&1; then
+              if curl -sf http://localhost:8001/api/v2/heartbeat > /dev/null 2>&1; then
                 CHROMA_OK=true
               fi
               
