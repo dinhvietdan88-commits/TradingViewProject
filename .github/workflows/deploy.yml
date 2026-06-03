@@ -582,9 +582,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_ACTOR: ${{ github.actor }}
           DEPLOY_TIER: ${{ needs.changes.outputs.server_c_tier }}
+          AGY_BRIDGE_SECRET: ${{ secrets.AGY_BRIDGE_SECRET }}
         run: |
           echo "🚀 Deploying Server C (Tier $DEPLOY_TIER)..."
-          ssh -p ${{ secrets.SSH_PORT_C || '22' }} botuser@${{ secrets.SERVER_C_IP }} "GH_TOKEN='$GH_TOKEN' GH_ACTOR='$GH_ACTOR' DEPLOY_TIER='$DEPLOY_TIER' bash -s" << 'EOF'
+          ssh -p ${{ secrets.SSH_PORT_C || '22' }} botuser@${{ secrets.SERVER_C_IP }} "GH_TOKEN='$GH_TOKEN' GH_ACTOR='$GH_ACTOR' DEPLOY_TIER='$DEPLOY_TIER' AGY_BRIDGE_SECRET='$AGY_BRIDGE_SECRET' bash -s" << 'EOF'
             set -e
             DEPLOY_DIR="/opt/trading-bot"
             [ ! -d "$DEPLOY_DIR/.git" ] && DEPLOY_DIR="/home/botuser/trading-bot"
@@ -647,6 +648,22 @@ jobs:
                 GEMINI_KEY=$(grep "^GEMINI_API_KEY=" deploy/.env 2>/dev/null | cut -d= -f2- || echo "")
                 printf "ANTIGRAVITY_API_KEY=%s\nGEMINI_API_KEY=%s\n" "${GEMINI_KEY:-REPLACE_ME}" "${GEMINI_KEY:-REPLACE_ME}" > deploy/.env.agy
                 chmod 600 deploy/.env.agy
+              fi
+              
+              # Inject AGY_BRIDGE_SECRET from GitHub Secrets (idempotent)
+              if [ -n "$AGY_BRIDGE_SECRET" ]; then
+                sed -i '/^AGY_BRIDGE_SECRET=/d' deploy/.env.agy deploy/.env 2>/dev/null || true
+                echo "AGY_BRIDGE_SECRET=$AGY_BRIDGE_SECRET" >> deploy/.env.agy
+                echo "AGY_BRIDGE_SECRET=$AGY_BRIDGE_SECRET" >> deploy/.env
+                echo "✅ AGY_BRIDGE_SECRET injected into .env.agy + .env"
+              fi
+              
+              # Deploy agy CLI security settings (deny list for --sandbox mode)
+              if [ -f deploy/agy-settings.json ]; then
+                AGY_SETTINGS_DIR="$HOME/.gemini/antigravity-cli"
+                mkdir -p "$AGY_SETTINGS_DIR"
+                cp deploy/agy-settings.json "$AGY_SETTINGS_DIR/settings.json"
+                echo "✅ agy settings.json deployed (sandbox deny list)"
               fi
               
               # Update systemd service (ExecStart uses detected Python)

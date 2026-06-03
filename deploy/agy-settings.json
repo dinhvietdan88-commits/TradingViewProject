@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "deny": [
+      "run_command(rm *)",
+      "run_command(curl *)",
+      "run_command(wget *)",
+      "run_command(ssh *)",
+      "run_command(nc *)",
+      "run_command(python *)",
+      "run_command(bash *)",
+      "run_command(sh *)",
+      "run_command(chmod *)",
+      "run_command(chown *)",
+      "run_command(sudo *)",
+      "run_command(apt *)",
+      "run_command(dnf *)",
+      "run_command(pip *)",
+      "run_command(docker *)",
+      "write_file(/etc/*)",
+      "write_file(/home/*)",
+      "write_file(/opt/*)",
+      "write_file(/tmp/*)",
+      "write_file(/var/*)"
+    ],
+    "allow": [
+      "read_file(*)"
+    ]
+  },
+  "toolPermission": "proceed-in-sandbox"
+}
