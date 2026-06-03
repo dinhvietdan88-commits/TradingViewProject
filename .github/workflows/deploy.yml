@@ -13,6 +13,8 @@ concurrency:
 
 jobs:
   # ── 0. CHANGE DETECTION ────────────────────────────────────────────
+  # V2: 3-Tier Deploy Strategy — per-server tier outputs.
+  # Tier 0 = skip (no deploy), Tier 1 = light pull + restart, Tier 2 = full image deploy.
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
@@ -20,9 +22,14 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
       deploy: ${{ steps.filter.outputs.deploy }}
       docker: ${{ steps.filter.outputs.docker }}
+      server_a_tier: ${{ steps.tiers.outputs.server_a_tier }}
+      server_b_tier: ${{ steps.tiers.outputs.server_b_tier }}
+      server_c_tier: ${{ steps.tiers.outputs.server_c_tier }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
 
       - name: Check for changes
         id: filter
@@ -46,6 +53,61 @@ jobs:
               - 'Dockerfile'
               - 'vbs/**'
               - 'docs/knowledge/**'
+
+      - name: Compute deploy tiers per server
+        id: tiers
+        run: |
+          # ── Safety Net 1: [force deploy] in commit message ──
+          MSG=$(git log -1 --format=%s)
+          PARENTS=$(git rev-list --parents -1 HEAD | wc -w)
+          
+          if [[ "$MSG" == *"[force deploy]"* ]] || [ "$PARENTS" -gt 2 ]; then
+            echo "🔴 Safety net triggered: force deploy or merge commit"
+            echo "server_a_tier=2" >> $GITHUB_OUTPUT
+            echo "server_b_tier=2" >> $GITHUB_OUTPUT
+            echo "server_c_tier=2" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # ── Per-file tier mapping ──
+          CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || echo "")
+          if [ -z "$CHANGED" ]; then
+            echo "⚠️ No parent commit — defaulting to Tier 2 ALL"
+            echo "server_a_tier=2" >> $GITHUB_OUTPUT
+            echo "server_b_tier=2" >> $GITHUB_OUTPUT
+            echo "server_c_tier=2" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          A=0; B=0; C=0
+          
+          while IFS= read -r f; do
+            case "$f" in
+              vbs/*)                              [[ $A -lt 2 ]] && A=2 ;;
+              nerves/workers/trading/*)            [[ $C -lt 2 ]] && C=2 ;;
+              server/*)                            [[ $B -lt 2 ]] && B=2 ;;
+              Dockerfile)                          [[ $B -lt 2 ]] && B=2; [[ $C -lt 2 ]] && C=2 ;;
+              deploy/*server-a* | deploy/*vbs*)    [[ $A -lt 1 ]] && A=1 ;;
+              deploy/*server-b*)                   [[ $B -lt 1 ]] && B=1 ;;
+              deploy/*server-c* | deploy/agy*)     [[ $C -lt 1 ]] && C=1 ;;
+              deploy/* | .env* | config.py)        # Shared config → pull all
+                [[ $A -lt 1 ]] && A=1
+                [[ $B -lt 1 ]] && B=1
+                [[ $C -lt 1 ]] && C=1 ;;
+              docs/* | .github/* | *.md | pine/* | scratch/* | provisioning*) ;; # No deploy
+              *)  # Safety Net 3: Unknown file → pull all
+                echo "⚠️ Unknown file pattern: $f → Tier 1 safety"
+                [[ $A -lt 1 ]] && A=1
+                [[ $B -lt 1 ]] && B=1
+                [[ $C -lt 1 ]] && C=1 ;;
+            esac
+          done <<< "$CHANGED"
+          
+          echo "server_a_tier=$A" >> $GITHUB_OUTPUT
+          echo "server_b_tier=$B" >> $GITHUB_OUTPUT
+          echo "server_c_tier=$C" >> $GITHUB_OUTPUT
+          echo "📊 Deploy Tiers: A=$A B=$B C=$C"
+
 
   # ── 1A. LINT & SECURITY (Fast ~15s — zero pip install) ───────────
   ci-lint-security:
@@ -304,11 +366,11 @@ jobs:
 
   # ── 2A. DEPLOY SERVER A (Gateway) ──────────────────────────────────
   deploy-server-a:
-    name: Deploy Server A (Gateway)
+    name: "Deploy Server A (Gateway) [T${{ needs.changes.outputs.server_a_tier }}]"
     needs: [changes, ci-lint-security, ci-tests, build-images]
     if: |
       always() &&
-      (needs.changes.outputs.deploy == 'true' || contains(github.event.head_commit.message, '[force deploy]')) &&
+      needs.changes.outputs.server_a_tier != '0' &&
       (needs.ci-lint-security.result == 'success' || needs.ci-lint-security.result == 'skipped') &&
       (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped') &&
       (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
@@ -350,9 +412,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_ACTOR: ${{ github.actor }}
+          DEPLOY_TIER: ${{ needs.changes.outputs.server_a_tier }}
         run: |
-          echo "🚀 Deploying Server A..."
-          ssh botuser@${{ secrets.SERVER_A_IP }} "GH_TOKEN='$GH_TOKEN' GH_ACTOR='$GH_ACTOR' bash -s" << 'EOF'
+          echo "🚀 Deploying Server A (Tier $DEPLOY_TIER)..."
+          ssh botuser@${{ secrets.SERVER_A_IP }} "GH_TOKEN='$GH_TOKEN' GH_ACTOR='$GH_ACTOR' DEPLOY_TIER='$DEPLOY_TIER' bash -s" << 'EOF'
             set -e
             cd /opt/trading-bot
             git reset --hard origin/main
@@ -390,14 +453,20 @@ jobs:
               echo "⚠️ No changes but service unhealthy — restarting..."
             fi
             
-            # Đánh dấu đã deploy (cho rollback logic)
-            echo "DEPLOYED" > /tmp/.deploy_state
-            
-            # Login to GHCR, pull and update container, then logout
-            echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
-            docker compose -f deploy/docker-compose.server-a.yml pull
-            docker compose -f deploy/docker-compose.server-a.yml up -d
-            docker logout ghcr.io
+            # ── Tier-based deploy logic ──
+            if [ "$DEPLOY_TIER" = "2" ]; then
+              # Tier 2: Full deploy — docker pull + up
+              echo "🔧 Tier 2: Full image deploy"
+              echo "DEPLOYED" > /tmp/.deploy_state
+              echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+              docker compose -f deploy/docker-compose.server-a.yml pull
+              docker compose -f deploy/docker-compose.server-a.yml up -d
+              docker logout ghcr.io
+            else
+              # Tier 1: Light deploy — restart only (config/code pulled via git)
+              echo "🔄 Tier 1: Light restart (config refresh)"
+              docker compose -f deploy/docker-compose.server-a.yml restart
+            fi
             
             # Restore/Import database from backup if it exists
             if [ -f /tmp/signal_queue.db.bak ]; then
@@ -466,11 +535,11 @@ jobs:
 
   # ── 2B. DEPLOY SERVER C (AI Core) ──────────────────────────────────
   deploy-server-c:
-    name: Deploy Server C (AI Core)
+    name: "Deploy Server C (AI Core) [T${{ needs.changes.outputs.server_c_tier }}]"
     needs: [changes, ci-lint-security, ci-tests, build-images]
     if: |
       always() &&
-      (needs.changes.outputs.deploy == 'true' || contains(github.event.head_commit.message, '[force deploy]')) &&
+      needs.changes.outputs.server_c_tier != '0' &&
       (needs.ci-lint-security.result == 'success' || needs.ci-lint-security.result == 'skipped') &&
       (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped') &&
       (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
@@ -512,9 +581,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_ACTOR: ${{ github.actor }}
+          DEPLOY_TIER: ${{ needs.changes.outputs.server_c_tier }}
         run: |
-          echo "🚀 Deploying Server C..."
-          ssh -p ${{ secrets.SSH_PORT_C || '22' }} botuser@${{ secrets.SERVER_C_IP }} "GH_TOKEN='$GH_TOKEN' GH_ACTOR='$GH_ACTOR' bash -s" << 'EOF'
+          echo "🚀 Deploying Server C (Tier $DEPLOY_TIER)..."
+          ssh -p ${{ secrets.SSH_PORT_C || '22' }} botuser@${{ secrets.SERVER_C_IP }} "GH_TOKEN='$GH_TOKEN' GH_ACTOR='$GH_ACTOR' DEPLOY_TIER='$DEPLOY_TIER' bash -s" << 'EOF'
             set -e
             DEPLOY_DIR="/opt/trading-bot"
             [ ! -d "$DEPLOY_DIR/.git" ] && DEPLOY_DIR="/home/botuser/trading-bot"
@@ -538,11 +608,18 @@ jobs:
               echo "⚠️ No changes but service unhealthy — restarting..."
             fi
             
+            # ── Tier-based deploy logic ──
             if [ -f deploy/docker-compose.server-c.yml ]; then
-              echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
-              docker compose -f deploy/docker-compose.server-c.yml pull
-              docker compose -f deploy/docker-compose.server-c.yml up -d
-              docker logout ghcr.io
+              if [ "$DEPLOY_TIER" = "2" ]; then
+                echo "🔧 Tier 2: Full image deploy"
+                echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+                docker compose -f deploy/docker-compose.server-c.yml pull
+                docker compose -f deploy/docker-compose.server-c.yml up -d
+                docker logout ghcr.io
+              else
+                echo "🔄 Tier 1: Light restart (config refresh)"
+                docker compose -f deploy/docker-compose.server-c.yml restart
+              fi
             fi
             
             # ── agy-bridge sidecar (host-level Gemini proxy) ──────────
@@ -668,11 +745,11 @@ jobs:
 
   # ── 2C. DEPLOY SERVER B (Execution Vault — Windows) ─────────────────
   deploy-server-b:
-    name: Deploy Server B (Execution Vault)
+    name: "Deploy Server B (Execution Vault) [T${{ needs.changes.outputs.server_b_tier }}]"
     needs: [changes, ci-lint-security, ci-tests, build-images]
     if: |
       always() &&
-      (needs.changes.outputs.deploy == 'true' || contains(github.event.head_commit.message, '[force deploy]')) &&
+      needs.changes.outputs.server_b_tier != '0' &&
       (needs.ci-lint-security.result == 'success' || needs.ci-lint-security.result == 'skipped') &&
       (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped') &&
       (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
@@ -711,8 +788,10 @@ jobs:
       - name: Deploy Server B (Windows)
         id: deploy_b
         if: steps.ssh_check_b.outputs.reachable == 'true'
+        env:
+          DEPLOY_TIER: ${{ needs.changes.outputs.server_b_tier }}
         run: |
-          echo "🚀 Deploying Server B (Windows)..."
+          echo "🚀 Deploying Server B (Tier $DEPLOY_TIER)..."
           ssh Administrator@${{ secrets.SERVER_B_IP }} << 'EOF'
             $ErrorActionPreference = "Stop"
             cd C:\opt\trading-bot
@@ -773,13 +852,20 @@ jobs:
               }
             }
             
-            # Login to GHCR, pull, start and logout
-            $GhToken = "${{ secrets.GITHUB_TOKEN }}"
-            $GhActor = "${{ github.actor }}"
-            $GhToken | docker login ghcr.io -u $GhActor --password-stdin
-            docker compose -f deploy/docker-compose.server-b.yml pull
-            docker compose -f deploy/docker-compose.server-b.yml up -d
-            docker logout ghcr.io
+            # ── Tier-based deploy logic ──
+            $DeployTier = "${{ needs.changes.outputs.server_b_tier }}"
+            if ($DeployTier -eq "2") {
+              Write-Output "🔧 Tier 2: Full image deploy"
+              $GhToken = "${{ secrets.GITHUB_TOKEN }}"
+              $GhActor = "${{ github.actor }}"
+              $GhToken | docker login ghcr.io -u $GhActor --password-stdin
+              docker compose -f deploy/docker-compose.server-b.yml pull
+              docker compose -f deploy/docker-compose.server-b.yml up -d
+              docker logout ghcr.io
+            } else {
+              Write-Output "🔄 Tier 1: Light restart (config refresh)"
+              docker compose -f deploy/docker-compose.server-b.yml restart
+            }
             
             # Restore/Import database from backup if it exists
             if (Test-Path C:\Windows\Temp\trades.db.bak) {
@@ -864,7 +950,7 @@ jobs:
   # ── 3. PIPELINE REPORT & NOTIFICATION ─────────────────────────────────
   deploy-summary:
     name: Pipeline Summary & Telegram Alert
-    needs: [build-images, deploy-server-a, deploy-server-c, deploy-server-b]
+    needs: [changes, build-images, deploy-server-a, deploy-server-c, deploy-server-b]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -874,6 +960,9 @@ jobs:
           SERVER_A_STATUS: ${{ needs.deploy-server-a.result }}
           SERVER_C_STATUS: ${{ needs.deploy-server-c.result }}
           SERVER_B_STATUS: ${{ needs.deploy-server-b.result }}
+          TIER_A: ${{ needs.changes.outputs.server_a_tier }}
+          TIER_B: ${{ needs.changes.outputs.server_b_tier }}
+          TIER_C: ${{ needs.changes.outputs.server_c_tier }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
@@ -902,6 +991,14 @@ jobs:
               else:
                   return '❓ UNKNOWN'
 
+          def tier_label(t):
+              labels = {'0': 'T0 Skip', '1': 'T1 Pull', '2': 'T2 Full'}
+              return labels.get(t, f'T{t}')
+
+          tier_a = tier_label(os.getenv('TIER_A', '?'))
+          tier_b = tier_label(os.getenv('TIER_B', '?'))
+          tier_c = tier_label(os.getenv('TIER_C', '?'))
+
           emoji_build = get_emoji(build_status)
           emoji_a = get_emoji(server_a_status)
           emoji_c = get_emoji(server_c_status)
@@ -927,9 +1024,9 @@ jobs:
 
           <b>Stages Status:</b>
             • Build & Push: {emoji_build}
-            • Server A (Gateway): {emoji_a}
-            • Server C (AI Core): {emoji_c}
-            • Server B (Execution): {emoji_b}
+            • Server A (Gateway) [{tier_a}]: {emoji_a}
+            • Server C (AI Core) [{tier_c}]: {emoji_c}
+            • Server B (Execution) [{tier_b}]: {emoji_b}
           """
 
           bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
@@ -962,6 +1059,9 @@ jobs:
           SERVER_A_STATUS: ${{ needs.deploy-server-a.result }}
           SERVER_C_STATUS: ${{ needs.deploy-server-c.result }}
           SERVER_B_STATUS: ${{ needs.deploy-server-b.result }}
+          TIER_A: ${{ needs.changes.outputs.server_a_tier }}
+          TIER_B: ${{ needs.changes.outputs.server_b_tier }}
+          TIER_C: ${{ needs.changes.outputs.server_c_tier }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           COMMIT_AUTHOR: ${{ github.event.head_commit.author.name }}
         run: |
@@ -990,6 +1090,14 @@ jobs:
           badge_c = get_badge(server_c_status)
           badge_b = get_badge(server_b_status)
 
+          def tier_label(t):
+              labels = {'0': 'T0 Skip', '1': 'T1 Pull', '2': 'T2 Full'}
+              return labels.get(t, f'T{t}')
+
+          tier_a = tier_label(os.getenv('TIER_A', '?'))
+          tier_b = tier_label(os.getenv('TIER_B', '?'))
+          tier_c = tier_label(os.getenv('TIER_C', '?'))
+
           overall_success = all(s in ['success', 'skipped'] for s in [build_status, server_a_status, server_c_status, server_b_status])
           summary_emoji = '✅' if overall_success else '🚨'
           summary_title = 'Production Deployment Summary'
@@ -1012,9 +1120,9 @@ jobs:
           | Stage | Status | Description |
           | :--- | :--- | :--- |
           | **Build & Push Images** | {badge_build} | GHA build layer and scan with Trivy |
-          | **Server A (Gateway)** | {badge_a} | VBS Gateway deploy & DB safe-gate |
-          | **Server C (AI Core)** | {badge_c} | ChromaDB and Analyzer pull & check |
-          | **Server B (Execution)** | {badge_b} | Windows host pull & fallback restore |
+          | **Server A (Gateway)** [{tier_a}] | {badge_a} | VBS Gateway deploy & DB safe-gate |
+          | **Server C (AI Core)** [{tier_c}] | {badge_c} | ChromaDB and Analyzer pull & check |
+          | **Server B (Execution)** [{tier_b}] | {badge_b} | Windows host pull & fallback restore |
 
           ## Security Hardening Details
           - **Vulnerability Scanner**: Trivy Enforcement (`severity: CRITICAL`)
