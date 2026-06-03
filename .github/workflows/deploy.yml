@@ -828,8 +828,8 @@ jobs:
           chat_id = os.getenv('TELEGRAM_CHAT_ID')
 
           if not bot_token or not chat_id:
-              print("Telegram credentials missing, cannot send alert.")
-              exit(1)
+              print("Telegram credentials missing, skipping alert.")
+              exit(0)
 
           url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
           data = urllib.parse.urlencode({
