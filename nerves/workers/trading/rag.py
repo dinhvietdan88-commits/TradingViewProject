@@ -9,14 +9,15 @@ Flow:
 """
 
 import asyncio
+import importlib.util
 import logging
 import re
 from pathlib import Path
 from typing import Optional
 
-log = logging.getLogger(__name__)
+import config
 
-import importlib.util
+log = logging.getLogger(__name__)
 
 CHROMADB_AVAILABLE = importlib.util.find_spec("chromadb") is not None
 ANTHROPIC_AVAILABLE = importlib.util.find_spec("anthropic") is not None
@@ -34,8 +35,6 @@ if not VERTEXAI_AVAILABLE:
     log.warning("vertexai not installed. Run: pip install google-cloud-aiplatform")
 if not ANTIGRAVITY_AVAILABLE:
     log.warning("google-antigravity not installed. Run: pip install google-antigravity")
-
-import config
 
 # ── Globals ────────────────────────────────────────────────────────────────
 _chroma_client: Optional[object] = None
@@ -75,7 +74,6 @@ def _get_cli_semaphore():
     """Lazy-init Semaphore (cần event loop để khởi tạo)."""
     global _cli_semaphore
     if _cli_semaphore is None:
-        import asyncio
         n = getattr(config, "CLAUDE_CLI_MAX_PARALLEL", 2)
         _cli_semaphore = asyncio.Semaphore(max(1, n))
     return _cli_semaphore
@@ -97,7 +95,6 @@ async def _call_claude_cli(prompt: str, image_path: Optional[str] = None) -> str
         ClaudeCLIError: khi binary không tồn tại, timeout, hoặc returncode != 0.
             Caller có thể bắt để fallback sang SDK.
     """
-    import asyncio
     from pathlib import Path as _Path
 
     claude_path = getattr(config, "CLAUDE_CLI_PATH", "claude")
@@ -273,6 +270,10 @@ def query_knowledge(query: str, n_results: int = 3) -> list[dict]:
         return []
 
     try:
+        if _collection.count() == 0:
+            log.warning("RAG: Collection is empty.")
+            return []
+
         results = _collection.query(
             query_texts=[query],
             n_results=min(n_results, _collection.count()),
@@ -371,9 +372,6 @@ async def generate_trading_advice(
         and not getattr(config, "ANTHROPIC_API_KEY", "").startswith("sk-ant-xxx")
     )
 
-    # Claude CLI auth session (OAuth login — no API key needed)
-    has_claude_cli = True   # always available as long as `claude` binary exists; verified at call time
-
     if provider == "antigravity":
         if not ANTIGRAVITY_AVAILABLE:
             return "⚠️ RAG Analysis không khả dụng (thiếu google-antigravity SDK)."
@@ -421,20 +419,51 @@ async def generate_trading_advice(
     alert_type = payload.get("alert_type", action)
     timeframe = payload.get("timeframe", "N/A")
 
+    # ── VCP & Trend Template stats ─────────────────────────────────────────
+    vcp_stats = payload.get("vcp_stats", {})
+    trend_stats = payload.get("trend_stats", {})
+    
+    stats_context = ""
+    if trend_stats:
+        if "error" in trend_stats:
+            stats_context += f"- Trend Template Checklist: ERROR ({trend_stats['error']})\n"
+        else:
+            stats_context += f"- Trend Template Score: {trend_stats.get('score', 0)}/8 ({trend_stats.get('stage', 'Unknown')})\n"
+            stats_context += f"  Detail: {trend_stats.get('summary', '')}\n"
+            criteria_list = []
+            for k, v in trend_stats.get("criteria", {}).items():
+                status = "✅" if v is True else ("❌" if v is False else "❓")
+                criteria_list.append(f"{k}: {status}")
+            stats_context += f"  Checklist: {', '.join(criteria_list)}\n"
+            
+    if vcp_stats:
+        if vcp_stats.get("detected"):
+            stats_context += f"- VCP Pattern: DETECTED (Quality: {vcp_stats.get('quality_score', 0)}%)\n"
+            stats_context += f"  Pivot Breakout Level: {vcp_stats.get('pivot_line', 0.0)}\n"
+            stats_context += f"  Contractions ({vcp_stats.get('contractions_count', 0)} waves):\n"
+            for idx, c in enumerate(vcp_stats.get("contractions", []), 1):
+                stats_context += f"    * Wave {idx}: High={c['high']}, Low={c['low']}, Depth={c['depth_pct']}%, Duration={c['duration_bars']} bars\n"
+        else:
+            stats_context += "- VCP Pattern: NOT DETECTED or invalid contraction sequence\n"
+
     prompt = f"""Chuyên gia SEPA Minervini. Phân tích tín hiệu TradingView.
 
 ## TÍN HIỆU: {symbol} {action.upper()} @ {price}
 - Loại: {alert_type} | TF: {timeframe}
 - Vol: {volume} (avg: {volume_avg}) | RSI: {rsi}
 
+## CHỈ BÁO KỸ THUẬT THỰC TẾ (HỆ THỐNG TỰ TÍNH TOÁN)
+{stats_context}
+
 ## KIẾN THỨC MINERVINI
 {knowledge_context}
 
 ## YÊU CẦU (dưới 150 từ, emoji cho Telegram)
-1. Chất lượng tín hiệu (Mạnh/Trung bình/Yếu) + lý do
-2. Phù hợp Minervini? (Trend Template, VCP, Volume)
-3. Khuyến nghị + SL/TP gợi ý
-4. Cảnh báo rủi ro"""
+1. Bắt đầu bằng chữ 'APPROVED', 'REJECTED' hoặc 'WAIT' dựa trên việc kiểm duyệt quy tắc.
+2. Chất lượng tín hiệu (Mạnh/Trung bình/Yếu) + lý do.
+3. Phải đối chiếu chéo các chỉ báo thực tế trên (Trend Template, VCP, Volume) với tài liệu kiến thức Minervini. Nếu Trend Template < 5/8 hoặc Stop Loss thực tế > 8% (hoặc mẫu hình VCP bị hỏng), bắt buộc phải từ chối (bắt đầu bằng REJECTED hoặc WAIT).
+4. Khuyến nghị + SL/TP gợi ý cụ thể.
+5. Cảnh báo rủi ro."""
 
     try:
         # ── agy: bridge sidecar (host :9100, google-genai SDK, ~12s) ──
@@ -540,7 +569,7 @@ async def generate_trading_advice(
                 log.info("RAG: Falling back to Gemini...")
                 provider = "gemini"  # will be caught by fallback block below
             else:
-                return f"⚠️ Claude không khả dụng (CLI + SDK failed). Cài đặt GEMINI_API_KEY để fallback."
+                return "⚠️ Claude không khả dụng (CLI + SDK failed). Cài đặt GEMINI_API_KEY để fallback."
 
         else:
             # Unknown provider — try anthropic SDK directly

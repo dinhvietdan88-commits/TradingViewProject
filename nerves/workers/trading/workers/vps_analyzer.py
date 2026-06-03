@@ -18,6 +18,7 @@ V2 Changes vs V1:
 import asyncio
 import logging
 import os
+import re
 import aiohttp
 import socket
 from typing import Dict, Any, List, Optional, Tuple
@@ -583,6 +584,90 @@ class VpsAnalyzerWorker:
 
         # ── AI Mode (primary) ─────────────────────────────────────────────────
         if llm_breaker.is_available():
+            # Calculate and inject VCP Pattern & Trend Template scorecards into prompt context
+            try:
+                from capture_client import get_capture_client
+                from analysis import score_trend_template
+                from utils.pattern_overlay import detect_all_patterns
+
+                # Fetch daily OHLCV candles (limit to 365 to calculate SMA200 and 52-week High/Low)
+                ohlcv = await get_capture_client().fetch_ohlcv(symbol, timeframe="D", limit=365)
+                if ohlcv and len(ohlcv) >= 10:
+                    closes = [c[4] for c in ohlcv]
+                    highs = [c[2] for c in ohlcv]
+                    lows = [c[3] for c in ohlcv]
+                    
+                    latest_close = closes[-1]
+                    sma50 = sum(closes[-50:]) / 50 if len(closes) >= 50 else None
+                    sma150 = sum(closes[-150:]) / 150 if len(closes) >= 150 else None
+                    sma200 = sum(closes[-200:]) / 200 if len(closes) >= 200 else None
+                    
+                    # SMA200 slope (trend) over past 20 days
+                    sma200_20_ago = sum(closes[-220:-20]) / 200 if len(closes) >= 220 else None
+                    sma200_slope = (sma200 - sma200_20_ago) if (sma200 is not None and sma200_20_ago is not None) else None
+                    
+                    high_52w = max(highs[-365:]) if len(highs) >= 365 else max(highs)
+                    low_52w = min(lows[-365:]) if len(lows) >= 365 else min(lows)
+                    
+                    # Calculate rs_ratio relative to BTC benchmark (or default to 1.01)
+                    rs_ratio = 1.01
+                    btc_symbol = "BTCUSDT_UMCBL" if symbol.endswith("_UMCBL") else "BTCUSDT"
+                    if symbol != btc_symbol:
+                        try:
+                            btc_ohlcv = await get_capture_client().fetch_ohlcv(btc_symbol, timeframe="D", limit=365)
+                            if btc_ohlcv and len(btc_ohlcv) >= 50 and len(closes) >= 50:
+                                symbol_perf = closes[-1] / closes[-50]
+                                btc_closes = [c[4] for c in btc_ohlcv]
+                                btc_perf = btc_closes[-1] / btc_closes[-50]
+                                rs_ratio = symbol_perf / btc_perf
+                        except Exception as e:
+                            log.warning(f"[VpsAnalyzer] Could not fetch/calculate RS ratio vs benchmark: {e}")
+                    
+                    tt_res = score_trend_template(
+                        price=latest_close,
+                        sma50=sma50,
+                        sma150=sma150,
+                        sma200=sma200,
+                        high_52w=high_52w,
+                        low_52w=low_52w,
+                        sma200_slope=sma200_slope,
+                        rs_ratio=rs_ratio
+                    )
+                    
+                    payload["trend_stats"] = {
+                        "score": tt_res.score,
+                        "stage": tt_res.stage,
+                        "summary": tt_res.summary,
+                        "criteria": tt_res.criteria
+                    }
+                    
+                    patterns = detect_all_patterns(ohlcv)
+                    if patterns.vcp.detected:
+                        payload["vcp_stats"] = {
+                            "detected": True,
+                            "contractions_count": len(patterns.vcp.contractions),
+                            "contractions": [
+                                {
+                                    "high": c.pivot_high_price,
+                                    "low": c.trough_price,
+                                    "depth_pct": c.depth_pct,
+                                    "duration_bars": c.duration_bars
+                                }
+                                for c in patterns.vcp.contractions
+                            ],
+                            "pivot_line": patterns.vcp.pivot_line_price,
+                            "quality_score": patterns.vcp.quality_score
+                        }
+                    else:
+                        payload["vcp_stats"] = {"detected": False}
+                else:
+                    payload["trend_stats"] = {"error": "Insufficient OHLCV data to calculate Trend Template"}
+                    payload["vcp_stats"] = {"detected": False}
+            except Exception as exc:
+                log.warning(f"[VpsAnalyzer] Gracefully handled pattern detection error for {symbol}: {exc}")
+                payload["trend_stats"] = {"error": f"Pattern detection exception: {exc}"}
+                payload["vcp_stats"] = {"detected": False}
+
             try:
                 rag_query  = rag.build_rag_query(symbol, action, payload)
                 rag_chunks = rag.query_knowledge(rag_query, n_results=config.RAG_TOP_K)
@@ -648,20 +733,65 @@ class VpsAnalyzerWorker:
                     "reason": f"RAG error: {advice[:100]}",
                     "analysis_mode": analysis_mode,
                 }
-            rejected_kw = ["⚠️", "chờ thêm", "không nên", "rejected", "wait", "avoid"]
+            # 1. Prefix-based checks (high priority)
+            starts_with_reject = False
+            for kw in ["rejected", "wait", "avoid", "không nên", "không mua", "chờ thêm", "⚠️"]:
+                if advice_lower.startswith(kw):
+                    starts_with_reject = True
+                    break
+                    
+            starts_with_approve = False
+            for kw in ["approved", "mua", "buy", "bán", "sell", "mạnh", "strong"]:
+                if advice_lower.startswith(kw):
+                    starts_with_approve = True
+                    break
+            
+            # 2. Substring/word boundary checking
+            rejected_kw = ["⚠️", "chờ thêm", "không nên", "không mua", "rejected", "wait", "avoid"]
             approved_kw = ["mua", "buy", "bán", "sell", "mạnh", "strong", "approved"]
-            is_rejected = any(kw in advice_lower for kw in rejected_kw)
-            is_approved = any(kw in advice_lower for kw in approved_kw)
-            if is_rejected and not is_approved:
+            
+            def has_keyword(text, kw):
+                if kw == "⚠️":
+                    return kw in text
+                if kw.isalnum():
+                    pattern = rf"\b{re.escape(kw)}\b"
+                    return bool(re.search(pattern, text))
+                else:
+                    return kw in text
+
+            is_rejected = starts_with_reject or any(has_keyword(advice_lower, kw) for kw in rejected_kw)
+            is_approved = starts_with_approve or any(has_keyword(advice_lower, kw) for kw in approved_kw)
+            
+            if is_rejected or not is_approved:
                 return {
                     "approved": False,
-                    "reason": "AI analysis rejected signal",
+                    "reason": "AI analysis rejected signal" if is_rejected else "AI analysis did not approve signal",
                     "analysis_mode": analysis_mode,
                 }
 
         # ── Position sizing ────────────────────────────────────────────────────
         qty              = self._calculate_position_size(price_val, action, signal=signal)
         sl_price, tp_price = self._calculate_sl_tp(price_val, action, signal=signal)
+
+        # ── Programmatic Guardrails ───────────────────────────────────────────
+        # 1. Trend Template score < 5/8
+        tt_score = payload.get("trend_stats", {}).get("score")
+        if tt_score is not None and isinstance(tt_score, (int, float)) and tt_score < 5:
+            return {
+                "approved": False,
+                "reason": f"Programmatic guardrail: Trend Template score {tt_score}/8 is below minimum threshold (5/8)",
+                "analysis_mode": analysis_mode,
+            }
+
+        # 2. Stop-Loss > 8%
+        if sl_price > 0 and price_val > 0:
+            risk_pct = abs(price_val - sl_price) / price_val * 100
+            if round(risk_pct, 4) > 8.0:
+                return {
+                    "approved": False,
+                    "reason": f"Programmatic guardrail: Stop Loss risk {risk_pct:.2f}% exceeds maximum threshold (8%)",
+                    "analysis_mode": analysis_mode,
+                }
 
         trade_payload = {
             "symbol":          symbol,
@@ -732,7 +862,7 @@ class VpsAnalyzerWorker:
             f"{'━' * 28}",
             f"{mode_icon} <b>AI Core Analysis #{queue_id}</b>",
             f"{'━' * 28}",
-            f"",
+            "",
             f"📌 <b>{symbol}</b> | <code>{action.upper()}</code> @ <code>{price:,.2f}</code>" if price >= 1 else f"📌 <b>{symbol}</b> | <code>{action.upper()}</code> @ <code>{price:.6f}</code>",
             f"🎯 Confidence: <b>{conf}%</b>  |  Mode: <b>{mode.upper()}</b>",
             f"📋 Status: <b>{status}</b>",
@@ -744,8 +874,8 @@ class VpsAnalyzerWorker:
             tp_price = tp.get("tp", 0)
             risk = tp.get("risk_per_trade", 0)
             lines.extend([
-                f"",
-                f"💰 <b>Position:</b>",
+                "",
+                "💰 <b>Position:</b>",
                 f"   • Qty: <code>{qty}</code>",
                 f"   • SL: <code>{sl:,.2f}</code>  |  TP: <code>{tp_price:,.2f}</code>" if sl >= 1 else f"   • SL: <code>{sl:.6f}</code>  |  TP: <code>{tp_price:.6f}</code>",
                 f"   • Risk/Trade: <code>{risk:.1%}</code>",
@@ -753,7 +883,7 @@ class VpsAnalyzerWorker:
 
         if not approved and reason:
             lines.extend([
-                f"",
+                "",
                 f"📝 <b>Reason:</b> {reason[:200]}",
             ])
 
@@ -763,7 +893,7 @@ class VpsAnalyzerWorker:
             if len(analysis) > 300:
                 excerpt += "…"
             lines.extend([
-                f"",
+                "",
                 f"💬 <b>AI:</b> {excerpt}",
             ])
 

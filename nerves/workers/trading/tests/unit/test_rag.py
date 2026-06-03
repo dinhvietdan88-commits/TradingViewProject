@@ -8,11 +8,52 @@ import sys
 class TestRAGSystem(unittest.TestCase):
     def test_rag_context_retrieval_empty(self):
         """Should gracefully handle queries with no matches in the vector database."""
-        pass
+        from unittest.mock import MagicMock, patch
+        import rag
+
+        # 1. Test when _collection is None
+        with patch("rag._collection", None):
+            results = rag.query_knowledge("test query")
+            self.assertEqual(results, [])
+
+        # 2. Test when _collection count is 0
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 0
+        with patch("rag._collection", mock_collection):
+            results = rag.query_knowledge("test query")
+            self.assertEqual(results, [])
+            mock_collection.count.assert_called_once()
+            mock_collection.query.assert_not_called()
 
     def test_rag_context_retrieval_success(self):
         """Should retrieve relevant documents based on semantic similarity."""
-        pass
+        from unittest.mock import MagicMock, patch
+        import rag
+
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 2
+        mock_collection.query.return_value = {
+            "documents": [["doc1", "doc2"]],
+            "metadatas": [[{"source": "book"}, {"source": "article"}]],
+            "distances": [[0.1, 0.2]]
+        }
+
+        with patch("rag._collection", mock_collection):
+            results = rag.query_knowledge("test query", n_results=3)
+            
+            self.assertEqual(len(results), 2)
+            self.assertEqual(results[0]["content"], "doc1")
+            self.assertEqual(results[0]["metadata"]["source"], "book")
+            self.assertEqual(results[0]["relevance_score"], 0.9)
+            
+            self.assertEqual(results[1]["content"], "doc2")
+            self.assertEqual(results[1]["metadata"]["source"], "article")
+            self.assertEqual(results[1]["relevance_score"], 0.8)
+            
+            mock_collection.query.assert_called_once_with(
+                query_texts=["test query"],
+                n_results=2
+            )
 
     def test_generate_trading_advice_antigravity_success(self):
         """Should call Antigravity SDK to generate advice when AI_PROVIDER is 'antigravity'."""

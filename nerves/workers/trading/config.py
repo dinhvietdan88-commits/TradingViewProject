@@ -22,7 +22,8 @@ DB_PATH = os.getenv("DB_PATH", "trades.db")
 BINANCE_API_KEY    = os.getenv("BINANCE_API_KEY", "")
 BINANCE_API_SECRET = os.getenv("BINANCE_API_SECRET", "")
 BINANCE_TESTNET    = os.getenv("BINANCE_TESTNET", "true").lower() == "true"
-BINANCE_DRY_RUN    = os.getenv("BINANCE_DRY_RUN", "true").lower() == "true"
+_binance_dry_run_env = os.getenv("BINANCE_DRY_RUN", "true")
+BINANCE_DRY_RUN    = _binance_dry_run_env.lower() == "true"
 
 # Bybit (Sprint 7.2)
 BYBIT_API_KEY      = os.getenv("BYBIT_API_KEY", "")
@@ -78,10 +79,15 @@ ENABLE_IP_WHITELIST = os.getenv("ENABLE_IP_WHITELIST", "false").lower() == "true
 
 # ── RAG / Knowledge Base ──────────────────────────────────────────────────
 # Đường dẫn tới thư mục chứa các file chunk Markdown của Minervini
-KNOWLEDGE_DIR = os.getenv(
-    "KNOWLEDGE_DIR",
-    str((Path(__file__).resolve().parent.parent.parent.parent / "docs" / "knowledge" / "trading_wizard" / "chunks").absolute())
-)
+default_knowledge_dir = "/app/knowledge/trading_wizard/chunks"
+if not os.path.exists(default_knowledge_dir):
+    # Local path relative to config.py (server/../docs)
+    default_knowledge_dir = str((Path(__file__).resolve().parent.parent / "docs" / "knowledge" / "trading_wizard" / "chunks").absolute())
+    if not os.path.exists(default_knowledge_dir):
+        # Local path with V9 nested folders (server/../../../../docs)
+        default_knowledge_dir = str((Path(__file__).resolve().parent.parent.parent.parent / "docs" / "knowledge" / "trading_wizard" / "chunks").absolute())
+
+KNOWLEDGE_DIR = os.getenv("KNOWLEDGE_DIR", default_knowledge_dir)
 
 # Đường dẫn lưu ChromaDB vector database (persistent trên disk)
 CHROMA_DB_PATH = os.getenv(

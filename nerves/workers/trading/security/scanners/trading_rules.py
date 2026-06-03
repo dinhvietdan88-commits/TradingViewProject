@@ -46,8 +46,11 @@ def scan_directory(target_dir: Path) -> List[Finding]:
     """Scan all Python files in the target directory."""
     findings = []
     for py_file in target_dir.rglob("*.py"):
+        rel = str(py_file).replace("\\", "/")
+        if "/.venv/" in rel or "/venv/" in rel:
+            continue
         # Skip test files — they're allowed to do dangerous things
-        if "/tests/" in str(py_file).replace("\\", "/") or "test_" in py_file.name:
+        if "/tests/" in rel or "test_" in py_file.name:
             continue
         # Skip the security harness itself
         if "/security/" in str(py_file).replace("\\", "/"):

@@ -30,6 +30,7 @@ import database
 
 from core.event_bus import bus as _event_bus
 from core.events import SignalReceived, IndicatorSignalReceived
+from data.tv_models import TradingViewAlertPayload
 
 log = logging.getLogger(__name__)
 
@@ -37,9 +38,6 @@ router = APIRouter()
 
 # ── Rate Limiting State ──────────────────────────────────────────────────────
 _WEBHOOK_RATE_LIMITS: dict = {}
-
-
-from data.tv_models import TradingViewAlertPayload
 
 # ═══ WEBHOOK ENDPOINT ═════════════════════════════════════════════════════════
 @router.post("/webhook")

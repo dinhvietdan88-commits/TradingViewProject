@@ -91,7 +91,8 @@ def start_tunnel_process(port=5000):
     # Run in background redirecting stdout/stderr to log file
     try:
         log_f = open(LOG_FILE, "w", encoding="utf-8")
-        proc = subprocess.Popen(
+        from subprocess import Popen
+        proc = Popen(
             cmd,
             stdout=log_f,
             stderr=log_f,

@@ -1,0 +1,58 @@
+{
+  "warnings": [],
+  "groups": [
+    {
+      "scope": "docs",
+      "type": "docs",
+      "subject": "update ORIGINAL_REQUEST.md and 3 other files",
+      "files": [
+        "ORIGINAL_REQUEST.md",
+        "docs/DesignUI/Draf_Charts/visual_chart_messege.md",
+        "docs/DesignUI/ServerC/agy_analysis.md",
+        "docs/telegram_chart_walkthrough.md"
+      ]
+    },
+    {
+      "scope": "test",
+      "type": "test",
+      "subject": "update debug_test.py and 5 other files",
+      "files": [
+        "debug_test.py",
+        "nerves/workers/trading/test_trades.log",
+        "nerves/workers/trading/tests/unit/test_rag.py",
+        "nerves/workers/trading/tests/unit/test_brief_fallback.py",
+        "nerves/workers/trading/tests/unit/test_vps_analyzer_rag_context.py",
+        "run_challenger_tests.py"
+      ]
+    },
+    {
+      "scope": "workers",
+      "type": "feat",
+      "subject": "update brief.py and 13 other files",
+      "files": [
+        "nerves/workers/trading/brief.py",
+        "nerves/workers/trading/capture_client.py",
+        "nerves/workers/trading/config.py",
+        "nerves/workers/trading/gateway/webhook.py",
+        "nerves/workers/trading/main.py",
+        "nerves/workers/trading/rag.py",
+        "nerves/workers/trading/scripts/cloudflared_mcp.py",
+        "nerves/workers/trading/scripts/tv_cdp_webhook.py",
+        "nerves/workers/trading/security/harness.py",
+        "nerves/workers/trading/security/scanners/static_scanner.py",
+        "nerves/workers/trading/security/scanners/trading_rules.py",
+        "nerves/workers/trading/workers/vps_analyzer.py",
+        "nerves/workers/trading/scripts/seed_chroma.py",
+        "nerves/workers/trading/scripts/verify_rag.py"
+      ]
+    },
+    {
+      "scope": "core",
+      "type": "feat",
+      "subject": "update \"",
+      "files": [
+        "\" .agents/\""
+      ]
+    }
+  ]
+}

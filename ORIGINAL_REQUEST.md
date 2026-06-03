@@ -704,6 +704,31 @@ Please adjust the project orchestrator's focus accordingly. Let me know once you
 
 Hi Swarm, the user has refined the focus. We need to concentrate strictly on the Cross-Server Integration Test (Server A -> C). Please proceed to implement the integration test file at `nerves/workers/trading/tests/integration/test_server_a_c_integration.py` based on the template from `.agents/explorer_server_c/analysis.md`, run the tests, verify the confidence edge cases (49, 50, 51) and ACK DB status updates, and run the victory audit. Let me know when you start the implementation.
 
+## Follow-up — 2026-06-03T20:59:33Z
 
+Verify and audit the quality of the completed Phase 0 Layer 3 RAG & AI Integration changes in the TradingViewProject codebase, ensuring configuration resolution, local indicator calculations, remote database seeding, and unit tests are completely correct and robust when running with a live integration setup.
 
+Working directory: c:\Users\pesil\working\mj_trading\TradingViewProject
+Integrity mode: development
 
+## Requirements
+
+### R1. Live ChromaDB Integration and Seeding Verification
+Verify that the `server/scripts/seed_chroma.py` script runs successfully against the configured remote ChromaDB container instance. The script must parse files in `KNOWLEDGE_DIR` (resolved via robust configuration logic), embed them using local models, and upload them to the remote database. Verify that the collection `minervini_knowledge` has 43 documents.
+
+### R2. Algorithmic Scorecard Calculation Verification
+Verify that the Trend Template 8-criteria check and VCP contraction wave calculations in `server/workers/vps_analyzer.py` correctly identify patterns and scores, and that the calculated scorecard is properly formatted and injected into `server/rag.py` prompts.
+
+### R3. Automated Test Completeness and Code Quality
+Run all RAG and analyzer unit tests to verify they pass successfully. Run static code checks (Ruff) and python compilation to ensure the new and modified code is clean, syntax-error-free, and has zero lint errors.
+
+## Acceptance Criteria
+
+### ChromaDB Seeding Check
+- [ ] Running `python server/scripts/seed_chroma.py` completes with exit code 0.
+- [ ] Querying the remote ChromaDB collection count returns exactly the number of chunk files on disk (43 documents).
+
+### Code Quality & Tests
+- [ ] Ruff lint checks return 0 errors on modified python files: `server/config.py`, `server/capture_client.py`, `server/rag.py`, `server/workers/vps_analyzer.py`, and `server/scripts/seed_chroma.py`.
+- [ ] Running `pytest server/tests/unit/test_vps_analyzer_rag_context.py` and `pytest server/tests/unit/test_rag.py` passes with 100% success.
+- [ ] No regression or compilation failures exist in `server/gateway/webhook.py` or other integrated files.

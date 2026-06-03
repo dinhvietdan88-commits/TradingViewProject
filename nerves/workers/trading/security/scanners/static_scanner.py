@@ -133,6 +133,8 @@ def scan_directory(target_dir: Path) -> List[Finding]:
     findings = []
     for py_file in target_dir.rglob("*.py"):
         rel = str(py_file).replace("\\", "/")
+        if "/.venv/" in rel or "/venv/" in rel:
+            continue
         if "/tests/" in rel or "test_" in py_file.name or "/security/" in rel:
             continue
         findings.extend(scan_file(py_file))

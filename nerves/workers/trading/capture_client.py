@@ -9,7 +9,7 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any
 from pathlib import Path
 
 import config
@@ -110,6 +110,10 @@ class PythonCaptureClient:
         return self._fallback_mode
 
     # ── Core API ──────────────────────────────────────────────────────────────
+
+    async def fetch_ohlcv(self, symbol: str, timeframe: str = "D", limit: int = 150) -> List[Any]:
+        """Public method to fetch OHLCV klines from cache or from external public exchange endpoints."""
+        return await self._get_ohlcv_data(symbol, timeframe, limit)
 
     async def capture_screenshot(
         self,
@@ -619,7 +623,7 @@ class PythonCaptureClient:
                         finally:
                             try:
                                 inst.close()
-                            except:
+                            except Exception:
                                 pass
                                 
                     ohlcv = await loop.run_in_executor(None, sync_fetch)

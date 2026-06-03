@@ -132,20 +132,63 @@ async def generate_morning_brief() -> Optional[dict]:
     if not top_candidates:
         top_candidates = [r for r in scan_results if not r.error]
 
-    if top_candidates and config.MCP_ENABLED and health.get("connected"):
+    if top_candidates:
         top = top_candidates[0]
-        logger.info(f"[Brief] Capturing screenshot for {top.symbol}")
-        try:
-            import re
-            safe_symbol = re.sub(r'[^A-Za-z0-9_\-]', '', top.symbol)
-            screenshot_path = await mcp.capture_screenshot(
-                symbol=top.symbol,
-                timeframe="D",
-                region="chart",
-                save_path=Path(__file__).parent / "screenshots" / f"brief_{safe_symbol}_{timestamp.strftime('%Y%m%d')}.png"
-            )
-        except Exception as e:
-            logger.warning(f"[Brief] Screenshot failed: {e}")
+        import re
+        safe_symbol = re.sub(r'[^A-Za-z0-9_\-]', '', top.symbol)
+        target_path = Path(__file__).parent / "screenshots" / f"brief_{safe_symbol}_{timestamp.strftime('%Y%m%d')}.png"
+
+        if config.MCP_ENABLED and health.get("connected"):
+            logger.info(f"[Brief] Capturing screenshot for {top.symbol} via TradingView Desktop (CDP)")
+            try:
+                screenshot_path = await mcp.capture_screenshot(
+                    symbol=top.symbol,
+                    timeframe="D",
+                    region="chart",
+                    save_path=target_path
+                )
+            except Exception as e:
+                logger.warning(f"[Brief] TradingView screenshot failed: {e}")
+
+        # Fallback Option 2: Generate local minimalist chart if TV Desktop is offline or capture failed
+        if not screenshot_path or not screenshot_path.exists():
+            logger.info(f"[Brief] TradingView Desktop offline or failed. Generating local minimalist chart (Option 2) for {top.symbol}...")
+            try:
+                from capture_client import get_capture_client
+                cap_client = get_capture_client()
+                
+                # Fetch drawing and strategy specs from scan results to overlay on the chart
+                drawings = []
+                if top.vcp.pivot_level:
+                    drawings.append({"price": top.vcp.pivot_level, "label": "Pivot", "color": "#ff9800"})
+                
+                strategy_table = {
+                    "title": "Minervini Specs",
+                    "rows": [
+                        ("Price", f"{top.price:,.2f}" if top.price >= 1 else f"{top.price:.4f}"),
+                        ("TT Score", f"{top.trend_template.score}/8"),
+                        ("Stage", top.trend_template.stage),
+                        ("Vol/Avg", f"{top.vcp.volume_ratio*100:.0f}%"),
+                    ]
+                }
+                
+                res = await cap_client.capture_screenshot(
+                    symbol=top.symbol,
+                    timeframe="D",
+                    region="chart",
+                    crop=True,
+                    save_path=target_path,
+                    drawings=drawings,
+                    strategy_table=strategy_table,
+                    method="mplfinance"
+                )
+                if res.success and res.file_path:
+                    screenshot_path = Path(res.file_path)
+                    logger.info(f"[Brief] Successfully generated local minimalist fallback chart: {screenshot_path}")
+                else:
+                    logger.warning(f"[Brief] Local fallback chart generation failed: {res.error}")
+            except Exception as fallback_err:
+                logger.error(f"[Brief] Local fallback chart generation failed with exception: {fallback_err}")
 
     # 4b. AI Vision analysis on screenshot (P7)
     vision_result = None

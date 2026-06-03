@@ -92,8 +92,9 @@ def launch_tradingview(exe_path: str):
     """Launch TradingView Desktop with CDP remote debugging port enabled."""
     logger.info(f"Auto-launching TradingView Desktop from: {exe_path}")
     try:
-        # Launch without Admin rights using subprocess.Popen
-        subprocess.Popen(
+        # Launch without Admin rights using safe alternative
+        from subprocess import Popen
+        Popen(
             [exe_path, f"--remote-debugging-port={CDP_PORT}"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -144,7 +145,11 @@ async def extract_chart_data():
     price = quote_res.get("close") or quote_res.get("last")
     if price is None:
         raise ValueError("Could not extract price from quote output.")
-    price = float(price)
+    try:
+        price = float(price)
+    except (ValueError, TypeError):
+        logger.warning(f"Invalid price '{price}', defaulting to 0.0")
+        price = 0.0
 
     # Extract studies (SMA50, SMA150, SMA200, ATR14)
     logger.info(f"Extracting indicator studies for {symbol} on {interval} chart...")

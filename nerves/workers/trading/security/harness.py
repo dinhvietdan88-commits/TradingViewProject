@@ -87,6 +87,8 @@ class SecurityHarness:
         py_files = set()
         for py_file in self.target_dir.rglob("*.py"):
             rel = str(py_file).replace("\\", "/")
+            if "/.venv/" in rel or "/venv/" in rel:
+                continue
             if "/tests/" not in rel and "/security/" not in rel:
                 py_files.add(str(py_file))
 
