@@ -22,7 +22,7 @@ async def insert_signal(
     vbs_queue_id: Optional[int] = None,
 ) -> int:
     """Luu tin hieu moi tu TradingView, tra ve signal_id."""
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
         cursor = await db.execute(
             """INSERT INTO signals (symbol, action, price, quote_qty, source_ip, payload, mode, vbs_queue_id)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -35,7 +35,7 @@ async def insert_signal(
 
 async def update_signal_status(signal_id: int, processed: int):
     """Cap nhat trang thai signal: 0=pending, 1=success, 2=failed."""
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
         await db.execute(
             "UPDATE signals SET processed = ? WHERE id = ?",
             (processed, signal_id),
@@ -56,7 +56,7 @@ async def insert_indicator_signal(
     exchange: str = "binance",
 ) -> int:
     """Luu tin hieu indicator vao bang indicator_signals (REQ 7.1 — full schema)."""
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
         cursor = await db.execute(
             """INSERT INTO indicator_signals
                (signal_id, symbol, indicator_name, signal_type, interval, price,
@@ -95,7 +95,7 @@ async def insert_trade(
     vbs_queue_id: Optional[int] = None,
 ) -> int:
     """Luu ket qua giao dich Binance/Bybit."""
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
         # Auto-resolve vbs_queue_id from signals if not provided
         if vbs_queue_id is None:
             try:
@@ -129,7 +129,7 @@ async def update_trade_oco(
     order_type: str = "OCO",
 ) -> None:
     """Cập nhật OCO details cho một trade."""
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
         await db.execute(
             """UPDATE trades SET
                stop_loss_price = ?, take_profit_price = ?,
@@ -154,7 +154,7 @@ async def insert_brief(
     success: int = 1,
 ) -> int:
     """Lưu morning brief vào database."""
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
         cursor = await db.execute(
             """INSERT INTO briefs
                (symbols_scanned, scan_data, ai_analysis, vision_data,
@@ -167,3 +167,29 @@ async def insert_brief(
         brief_id = cursor.lastrowid
         log.info(f"Brief #{brief_id} saved ({symbols_scanned} symbols scanned)")
         return brief_id
+
+
+# ═══════════════════════════════════════════════════════════════
+# SENTIMENT WRITE
+# ═══════════════════════════════════════════════════════════════
+
+async def insert_sentiment_log(
+    symbol: str,
+    twitter_score: Optional[float] = None,
+    rss_score: Optional[float] = None,
+    glassnode_score: Optional[float] = None,
+    combined_score: Optional[float] = None,
+    raw_data: Optional[Dict[str, Any]] = None,
+) -> int:
+    """Luu ket qua phan tich sentiment vao database."""
+    async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
+        cursor = await db.execute(
+            """INSERT INTO sentiment_logs
+               (symbol, twitter_score, rss_score, glassnode_score, combined_score, raw_data)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (symbol, twitter_score, rss_score, glassnode_score, combined_score, json.dumps(raw_data) if raw_data else None),
+        )
+        await db.commit()
+        log_id = cursor.lastrowid
+        log.info(f"Sentiment log #{log_id} saved for {symbol}: combined={combined_score}")
+        return log_id

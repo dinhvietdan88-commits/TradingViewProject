@@ -17,6 +17,11 @@ LOG_FILE = os.getenv("LOG_FILE", "trades.log")
 
 # Database (Sprint 4)
 DB_PATH = os.getenv("DB_PATH", "trades.db")
+DB_TIMEOUT = float(os.getenv("DB_TIMEOUT", "60.0"))
+
+# Rate Limiting & Concurrency (Stress Testing)
+DISABLE_RATE_LIMIT = os.getenv("DISABLE_RATE_LIMIT", "false").lower() == "true"
+
 
 # Binance (optional)
 BINANCE_API_KEY    = os.getenv("BINANCE_API_KEY", "")
@@ -239,8 +244,21 @@ SERVER_B_SECRET = os.getenv("SERVER_B_SECRET", "")
 # Tên định danh của server thực thi lệnh (Dùng cho thông báo Telegram)
 EXECUTION_TARGET_NAME = os.getenv("EXECUTION_TARGET_NAME", "Server B (Cloud)")
 
+# Sentiment / News Filter Infrastructure (Layer 3)
+SENTIMENT_ENABLED = os.getenv("SENTIMENT_ENABLED", "true").lower() == "true"
+TWITTER_API_KEY = os.getenv("TWITTER_API_KEY", "")
+TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN", "")
+RSS_FEED_URLS = [
+    url.strip() for url in os.getenv(
+        "RSS_FEED_URLS",
+        "https://feeds.feedburner.com/CoinTelegraph,https://www.coindesk.com/arc/outboundfeeds/rss/"
+    ).split(",") if url.strip()
+]
+GLASSNODE_API_KEY = os.getenv("GLASSNODE_API_KEY", "")
+
 
 # Server start time (for uptime calculation)
 import time as _time  # noqa: E402
 SERVER_START_TIME = _time.time()
+
 

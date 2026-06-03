@@ -132,6 +132,16 @@ def score_trend_template(
     # Score: count True (None = unknown, treated as 0)
     score = sum(1 for v in criteria.values() if v is True)
 
+    # Macro regime classification
+    macro_regime = "Unknown"
+    if sma200_slope is not None and sma200 is not None:
+        if sma200_slope > 0 and price > sma200:
+            macro_regime = "Bull"
+        elif sma200_slope < 0 and price < sma200:
+            macro_regime = "Bear"
+        else:
+            macro_regime = "Choppy"
+
     # Stage classification
     if score >= 7:
         stage = "Stage 2 ⭐"
@@ -158,7 +168,13 @@ def score_trend_template(
     failed = [k for k, v in criteria.items() if v is False]
     summary = f"Score {score}/8 — {stage}. Regime: {macro_regime}. ✅ {len(passed)} passed, ❌ {len(failed)} failed"
 
-    return TrendTemplateResult(score=score, criteria=criteria, stage=stage, macro_regime=macro_regime, summary=summary)
+    return TrendTemplateResult(
+        score=score,
+        criteria=criteria,
+        stage=stage,
+        summary=summary,
+        macro_regime=macro_regime
+    )
 
 
 def detect_vcp(

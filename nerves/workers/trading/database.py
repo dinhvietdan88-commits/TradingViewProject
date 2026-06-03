@@ -134,6 +134,20 @@ CREATE INDEX IF NOT EXISTS idx_ind_sig_sym_type  ON indicator_signals(symbol, si
 -- Covering index: feed query WHERE symbol=? ORDER BY created_at DESC LIMIT n
 CREATE INDEX IF NOT EXISTS idx_ind_sig_sym_date  ON indicator_signals(symbol, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS sentiment_logs (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at     TEXT    NOT NULL DEFAULT (datetime('now')),
+    symbol         TEXT    NOT NULL,
+    twitter_score  REAL,
+    rss_score      REAL,
+    glassnode_score REAL,
+    combined_score  REAL,
+    raw_data       TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_sentiment_logs_symbol ON sentiment_logs(symbol);
+CREATE INDEX IF NOT EXISTS idx_sentiment_logs_created ON sentiment_logs(created_at);
+
 CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -147,7 +161,8 @@ CREATE TABLE IF NOT EXISTS settings (
 
 async def init_db():
     """Tao bang khi khoi dong server."""
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
+        await db.execute("PRAGMA journal_mode=WAL")
         await db.executescript(_SCHEMA)
         await db.commit()
 
@@ -218,6 +233,7 @@ from data.persistence_store import (  # noqa: E402, F401
     insert_trade,
     update_trade_oco,
     insert_brief,
+    insert_sentiment_log,
 )
 
 # Read operations (QueryService)

@@ -135,6 +135,9 @@ STATIC_DIR = Path(__file__).parent / "static"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Khoi tao database, RAG Vector DB, MCP client va Scheduler khi server start."""
+    # Dynamic rate limit toggle for testing/stress-testing
+    limiter.enabled = not getattr(config, "DISABLE_RATE_LIMIT", False)
+    
     await database.init_db()
     log.info("Database ready.")
 
@@ -356,7 +359,11 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["100/minute"],
+    enabled=not getattr(config, "DISABLE_RATE_LIMIT", False)
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)

@@ -445,6 +445,10 @@ async def generate_trading_advice(
                 stats_context += f"    * Wave {idx}: High={c['high']}, Low={c['low']}, Depth={c['depth_pct']}%, Duration={c['duration_bars']} bars\n"
         else:
             stats_context += "- VCP Pattern: NOT DETECTED or invalid contraction sequence\n"
+            
+    pattern_detection = payload.get("pattern_detection", "")
+    if pattern_detection:
+        stats_context += f"- Pattern Result (AI Analyzer): {pattern_detection}\n"
 
     prompt = f"""Chuyên gia SEPA Minervini. Phân tích tín hiệu TradingView.
 

@@ -245,7 +245,12 @@ async def process_validated_signal(event: SignalValidated) -> None:
     if config.RAG_ENABLED:
         try:
             import rag
-            payload = {"action": event.action, "symbol": event.symbol, "alert_type": "webhook"}
+            payload = {
+                "action": event.action, 
+                "symbol": event.symbol, 
+                "alert_type": "webhook",
+                "pattern_detection": pattern_summary if pattern_summary else "Không phát hiện VCP/Cup/DoubleBottom"
+            }
             query = rag.build_rag_query(event.symbol, event.action, payload)
             if rag._collection is not None:
                 chunks = rag.query_knowledge(query, n_results=config.RAG_TOP_K)
@@ -265,7 +270,39 @@ async def process_validated_signal(event: SignalValidated) -> None:
                         confidence = max(1, confidence - 2)
         except Exception as e:
             log.error(f"AIAnalyzer: RAG analysis error: {e}")
-            analysis_text += f"Lỗi RAG: {e}"
+            analysis_text += f"Lỗi RAG: {e}\n\n"
+
+    # ── Step 2.5: Sentiment Analysis ─────────────────────────
+    if getattr(config, "SENTIMENT_ENABLED", True):
+        try:
+            from analyzer.sentiment_analyzer import SentimentAnalyzer
+            sent_analyzer = SentimentAnalyzer()
+            sentiment_res = await sent_analyzer.analyze_symbol(symbol)
+            if sentiment_res.get("enabled"):
+                t_score = sentiment_res["breakdown"]["twitter"]
+                r_score = sentiment_res["breakdown"]["rss"]
+                g_score = sentiment_res["breakdown"]["glassnode"]
+                combined = sentiment_res["combined_score"]
+                
+                analysis_text += (
+                    f"📰 **SENTIMENT ANALYSIS:** Combined={combined:.2f} "
+                    f"(Twitter={t_score:.2f}, RSS={r_score:.2f}, Glassnode={g_score:.2f})\n"
+                )
+                
+                # Apply sentiment modifier to confidence score
+                if combined > 0.5:
+                    confidence = min(10, confidence + 1)
+                    analysis_text += f"   ↳ Bullish sentiment boost → confidence +1\n\n"
+                elif combined < -0.7:
+                    confidence = max(1, confidence - 2)
+                    analysis_text += f"   ↳ Panic/Extreme bearish sentiment penalty → confidence -2\n\n"
+                elif combined < -0.4:
+                    confidence = max(1, confidence - 1)
+                    analysis_text += f"   ↳ Bearish sentiment penalty → confidence -1\n\n"
+                else:
+                    analysis_text += "   ↳ Neutral sentiment → no confidence modifier\n\n"
+        except Exception as sent_err:
+            log.warning(f"AIAnalyzer: Sentiment analysis failed (non-fatal): {sent_err}")
 
     # ── Step 3: Compute final verdict flags ──────────────────
     # v6.0 INV-5/6: Threshold enforcement is in NotificationHub.

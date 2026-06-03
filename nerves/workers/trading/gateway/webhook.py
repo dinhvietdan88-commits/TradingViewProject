@@ -112,15 +112,16 @@ async def webhook(request: Request):
         source_ip = forwarded.split(",")[-1].strip()
 
     # TVP-004: Basic Rate Limiting
-    now = time.time()
-    count, first_req = _WEBHOOK_RATE_LIMITS.get(source_ip, (0, now))
-    if now - first_req < 60:
-        if count >= 15:
-            log.warning(f"Rate limit exceeded for {source_ip}")
-            raise HTTPException(status_code=429, detail="Too Many Requests")
-        _WEBHOOK_RATE_LIMITS[source_ip] = (count + 1, first_req)
-    else:
-        _WEBHOOK_RATE_LIMITS[source_ip] = (1, now)
+    if not getattr(config, "DISABLE_RATE_LIMIT", False):
+        now = time.time()
+        count, first_req = _WEBHOOK_RATE_LIMITS.get(source_ip, (0, now))
+        if now - first_req < 60:
+            if count >= 15:
+                log.warning(f"Rate limit exceeded for {source_ip}")
+                raise HTTPException(status_code=429, detail="Too Many Requests")
+            _WEBHOOK_RATE_LIMITS[source_ip] = (count + 1, first_req)
+        else:
+            _WEBHOOK_RATE_LIMITS[source_ip] = (1, now)
 
     # TVP-001 & TVP-002: Safe parsing and Max limits
     try:

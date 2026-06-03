@@ -2,14 +2,14 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 
 from server.main import app
-import server.config as config
+import config
 
 
 @pytest.fixture
 async def async_client():
     """Fixture to provide an AsyncClient for testing the FastAPI app with isolated dependencies."""
     # Reset rate limiting state before each test
-    from server.gateway.webhook import _WEBHOOK_RATE_LIMITS
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS
     _WEBHOOK_RATE_LIMITS.clear()
     
     # Disable external daemons and DB/RAG for test isolation
