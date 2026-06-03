@@ -13,7 +13,7 @@ services:
     container_name: tradingbot-chromadb
     restart: unless-stopped
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"  # Bind localhost only — security
     volumes:
       - chroma_data:/chroma/chroma
     environment:
@@ -39,7 +39,7 @@ services:
       dockerfile: Dockerfile
     container_name: tradingbot-analyzer
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"  # Bind localhost only — security
     command: ["python", "workers/vps_analyzer.py"]
     restart: unless-stopped
     depends_on:
