@@ -20,6 +20,7 @@ def generate_chart_mpl(
     save_path: Optional[Union[str, Path]] = None,
     parent_timeframe: Optional[str] = None,
     parent_ohlcv: Optional[Union[List[List[Any]], List[Dict[str, Any]]]] = None,
+    pattern_overlays: Optional[Any] = None,
 ) -> Path:
     """
     Renders a candlestick chart locally using mplfinance/matplotlib.
@@ -198,6 +199,96 @@ def generate_chart_mpl(
                 )
             )
             
+    # 6b. Render Pattern Overlays (VCP, Cup&Handle, Double Bottom)
+    if pattern_overlays:
+        try:
+            from utils.pattern_overlay import VCPOverlay, CupHandleOverlay, DoubleBottomOverlay, PatternOverlayResult
+            
+            overlays = pattern_overlays
+            if isinstance(overlays, PatternOverlayResult):
+                overlays = overlays  # already a result object
+            
+            # ── VCP Overlay: contraction waves ──
+            vcp = getattr(overlays, 'vcp', None)
+            if vcp and isinstance(vcp, VCPOverlay) and vcp.detected and vcp.contractions:
+                # Draw descending pivot highs line
+                pivot_xs = [c.pivot_high_idx for c in vcp.contractions]
+                pivot_ys = [c.pivot_high_price for c in vcp.contractions]
+                
+                if pivot_xs and all(x < len(df) for x in pivot_xs):
+                    main_ax.plot(pivot_xs, pivot_ys, color='#ff9800', linestyle='--',
+                                linewidth=1.5, alpha=0.8, marker='v', markersize=6,
+                                label='VCP Pivots')
+                    
+                    # Label each contraction depth
+                    for c in vcp.contractions:
+                        if c.trough_idx < len(df):
+                            main_ax.annotate(
+                                f"-{c.depth_pct:.0f}%",
+                                xy=(c.trough_idx, c.trough_price),
+                                xytext=(c.trough_idx + 2, c.trough_price * 0.997),
+                                color='#ff9800', fontsize=7, fontweight='bold',
+                                arrowprops=dict(arrowstyle='->', color='#ff9800', lw=0.8),
+                            )
+                    
+                    # Pivot breakout line
+                    if vcp.pivot_line_price > 0:
+                        main_ax.axhline(y=vcp.pivot_line_price, color='#ff9800',
+                                       linestyle=':', linewidth=1.0, alpha=0.6)
+                        xlim = main_ax.get_xlim()
+                        main_ax.text(
+                            xlim[0] + 1, vcp.pivot_line_price * 1.002,
+                            f"VCP Pivot {vcp.pivot_line_price:.2f} (Q={vcp.quality_score:.0f})",
+                            color='#ff9800', fontsize=7, fontweight='bold',
+                            bbox=dict(facecolor='#131722', edgecolor='#ff9800',
+                                     boxstyle='round,pad=0.2', alpha=0.8)
+                        )
+            
+            # ── Cup & Handle Overlay ──
+            cup = getattr(overlays, 'cup_handle', None)
+            if cup and isinstance(cup, CupHandleOverlay) and cup.detected:
+                # Draw cup arc (simplified: line from left rim → bottom → right rim)
+                cup_points_x = [cup.cup_start_idx, cup.cup_bottom_idx, cup.cup_end_idx]
+                closes_list = _extract_closes(ohlcv_data) if callable(globals().get('_extract_closes', None)) else []
+                if closes_list and all(x < len(closes_list) for x in cup_points_x):
+                    cup_points_y = [closes_list[x] for x in cup_points_x]
+                    main_ax.plot(cup_points_x, cup_points_y, color='#4caf50',
+                                linestyle='-', linewidth=2.0, alpha=0.6, marker='o', markersize=4)
+                
+                # Neckline
+                if cup.neckline_price > 0:
+                    main_ax.axhline(y=cup.neckline_price, color='#4caf50',
+                                   linestyle=':', linewidth=1.0, alpha=0.5)
+            
+            # ── Double Bottom Overlay ──
+            db = getattr(overlays, 'double_bottom', None)
+            if db and isinstance(db, DoubleBottomOverlay) and db.detected:
+                # Mark the two bottoms
+                for bx, by, label in [
+                    (db.first_bottom_idx, db.first_bottom_price, "B1"),
+                    (db.second_bottom_idx, db.second_bottom_price, "B2"),
+                ]:
+                    if bx < len(df):
+                        main_ax.plot(bx, by, marker='^', color='#2196f3',
+                                    markersize=10, zorder=5)
+                        main_ax.annotate(label, xy=(bx, by),
+                                        xytext=(bx + 1, by * 0.998),
+                                        color='#2196f3', fontsize=8, fontweight='bold')
+                
+                # Neckline
+                if db.neckline_price > 0:
+                    main_ax.axhline(y=db.neckline_price, color='#2196f3',
+                                   linestyle='--', linewidth=1.0, alpha=0.6)
+                    xlim = main_ax.get_xlim()
+                    main_ax.text(
+                        xlim[0] + 1, db.neckline_price * 1.001,
+                        f"Neckline {db.neckline_price:.2f}",
+                        color='#2196f3', fontsize=7,
+                        bbox=dict(facecolor='#131722', edgecolor='#2196f3',
+                                 boxstyle='round,pad=0.2', alpha=0.8)
+                    )
+        except Exception as overlay_err:
+            log.warning(f"Pattern overlay rendering failed (non-fatal): {overlay_err}")
     # 7. Save output
     if not save_path:
         # Default save path under worker's screenshots folder
