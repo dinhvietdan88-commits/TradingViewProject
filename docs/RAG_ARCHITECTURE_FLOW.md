@@ -174,7 +174,8 @@ AI_PROVIDER env var → rag.py generate_trading_advice()
 
 | Component | Mô tả |
 |-----------|-------|
-| **Dual Provider** | agy CLI (binary) + google-genai SDK (direct API) |
+| **Dual Provider** | agy CLI (project auth/ADC) + google-genai SDK (GEMINI_API_KEY) |
+| **Quota Isolation** | CLI → Vertex AI quota, SDK → AI Studio quota (separate pools) |
 | **Adaptive Strategy** | Sequential (healthy) ↔ Parallel race (degraded CLI) |
 | **Circuit Breaker** | CLOSED → OPEN (3 fails) → HALF_OPEN (120s cooldown) |
 | **Response Cache** | SHA-256 key, 5min TTL, max 50 entries |
@@ -187,6 +188,7 @@ AI_PROVIDER env var → rag.py generate_trading_advice()
 | SCAR-005 | agy CLI requires PTY — bridge uses `script -qfc` wrapper |
 | SCAR-006 | Free tier API key hits quota — must use Tier 1 |
 | SCAR-007b | Adaptive strategy saves tokens when CLI is healthy |
+| SCAR-008 | Single API key for both paths = single quota failure. Fix: quota isolation (CLI=ADC, SDK=GEMINI_API_KEY) |
 
 ---
 
@@ -195,8 +197,9 @@ AI_PROVIDER env var → rag.py generate_trading_advice()
 ### agy-bridge sidecar
 
 - AI provider `agy` định tuyến prompt qua sidecar `agy-bridge` chạy trên host `:9100`.
-- Sidecar dùng `google-genai` SDK gọi Gemini 2.5 Flash.
-- Docker container gọi bridge qua `host.docker.internal:9100`.
+- **Quota isolation**: CLI dùng project auth (ADC/gcloud), SDK dùng `GEMINI_API_KEY` — 2 pool riêng.
+- Startup log cảnh báo nếu 2 key giống nhau: `⚠️ CLI and SDK use SAME key`.
+- Docker container gọi bridge qua `host.docker.internal:9100` với `AGY_BRIDGE_SECRET` bearer token.
 
 ### Cross-platform SQLite Fallback
 

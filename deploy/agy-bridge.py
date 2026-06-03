@@ -349,10 +349,14 @@ async def _run_cli(prompt: str, timeout_sec: int) -> dict:
 # ── Provider: google-genai SDK ───────────────────────────────────
 
 async def _run_sdk(prompt: str, model: str) -> dict:
-    """Execute via google-genai SDK directly."""
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("ANTIGRAVITY_API_KEY")
+    """Execute via google-genai SDK directly.
+
+    Quota isolation: SDK uses GEMINI_API_KEY only (AI Studio quota).
+    CLI path uses project-based auth (Vertex AI quota) — separate pool.
+    """
+    api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        return {"success": False, "error": "No API key"}
+        return {"success": False, "error": "No GEMINI_API_KEY for SDK fallback"}
 
     try:
         from google import genai
@@ -546,11 +550,10 @@ async def _run_agy(prompt: str, model: str, timeout_sec: int) -> dict:
         return cached
 
     has_cli = bool(AGY_PATH)
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("ANTIGRAVITY_API_KEY")
-    has_sdk = bool(api_key)
+    has_sdk = bool(os.environ.get("GEMINI_API_KEY"))  # SDK only uses GEMINI_API_KEY
 
     if not has_cli and not has_sdk:
-        return {"success": False, "error": "No agy binary and no API key available"}
+        return {"success": False, "error": "No agy binary and no GEMINI_API_KEY available"}
 
     # ── Adaptive strategy gate ───────────────────────────────────
     strategy = cli_health.strategy if (has_cli and has_sdk) else "sequential"
@@ -691,12 +694,20 @@ async def startup():
     log.info(f"Default model: {DEFAULT_MODEL}")
     log.info(f"Listening on {BIND_HOST}:{BIND_PORT}")
 
-    # Verify ANTIGRAVITY_API_KEY
-    key = os.environ.get("ANTIGRAVITY_API_KEY") or os.environ.get("GEMINI_API_KEY")
-    if key:
-        log.info(f"Auth key detected ({key[:6]}...)")
+    # Auth paths (quota isolation)
+    cli_key = os.environ.get("ANTIGRAVITY_API_KEY")
+    sdk_key = os.environ.get("GEMINI_API_KEY")
+    if AGY_PATH:
+        if cli_key:
+            log.info(f"CLI auth: API key ({cli_key[:6]}...) → AI Studio quota")
+        else:
+            log.info("CLI auth: project-based (ADC/gcloud) → Vertex AI quota")
+    if sdk_key:
+        log.info(f"SDK auth: GEMINI_API_KEY ({sdk_key[:6]}...) → AI Studio quota")
     else:
-        log.warning("⚠️ No ANTIGRAVITY_API_KEY or GEMINI_API_KEY set!")
+        log.warning("⚠️ No GEMINI_API_KEY — SDK fallback disabled")
+    if cli_key and sdk_key and cli_key == sdk_key:
+        log.warning("⚠️ CLI and SDK use SAME key — no quota isolation!")
 
 
 if __name__ == "__main__":
