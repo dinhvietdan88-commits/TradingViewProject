@@ -27,3 +27,4 @@ mplfinance>=0.12.9b0
 ccxt>=4.0.0
 playwright>=1.40.0
 scipy>=1.10.0
+slowapi>=0.1.0
