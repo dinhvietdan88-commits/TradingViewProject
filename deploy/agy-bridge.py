@@ -138,152 +138,244 @@ def _detect_pty_mode() -> str:
     return "direct"
 
 
+import hashlib
+import re
+import tempfile
+
+# ── Response Cache ───────────────────────────────────────────────
+
+_response_cache: dict = {}  # {hash: (timestamp, result)}
+CACHE_TTL = int(os.environ.get("AGY_CACHE_TTL", "300"))  # 5 min default
+
+
+def _cache_key(prompt: str) -> str:
+    """Generate cache key from prompt hash."""
+    return hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:16]
+
+
+def _get_cached(prompt: str) -> Optional[dict]:
+    """Return cached response if within TTL."""
+    key = _cache_key(prompt)
+    if key in _response_cache:
+        ts, result = _response_cache[key]
+        if time.time() - ts < CACHE_TTL:
+            cached_result = dict(result)
+            cached_result["provider"] = f"{result['provider']}+cache"
+            cached_result["cache_hit"] = True
+            log.info(f"Cache HIT ({key[:8]}…): {result['provider']}, age={time.time()-ts:.0f}s")
+            return cached_result
+        else:
+            del _response_cache[key]
+    return None
+
+
+def _put_cache(prompt: str, result: dict):
+    """Store successful response in cache."""
+    if result.get("success") and result.get("advice"):
+        key = _cache_key(prompt)
+        _response_cache[key] = (time.time(), result)
+        # Evict old entries (max 50)
+        if len(_response_cache) > 50:
+            oldest = min(_response_cache, key=lambda k: _response_cache[k][0])
+            del _response_cache[oldest]
+
+
+def _clean_output(text: str) -> str:
+    """Remove ANSI escape codes and carriage returns."""
+    text = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', text)
+    return text.replace('\r', '').strip()
+
+
+# ── Provider: agy CLI ────────────────────────────────────────────
+
+async def _run_cli(prompt: str, timeout_sec: int) -> dict:
+    """Execute via agy CLI binary with file redirect."""
+    if not AGY_PATH:
+        return {"success": False, "error": "No agy binary"}
+
+    constrained_prompt = (
+        "IMPORTANT: Do NOT use any tools. Do NOT read any files. "
+        "Do NOT explore the workspace. Answer the analysis directly "
+        "based on your knowledge.\n\n" + prompt
+    )
+
+    prompt_file = None
+    start = time.time()
+    try:
+        cache_dir = os.path.expanduser("~/.cache")
+        os.makedirs(cache_dir, exist_ok=True)
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", prefix="agy_prompt_",
+            dir=cache_dir, delete=False, encoding="utf-8",
+        ) as f:
+            f.write(constrained_prompt)
+            prompt_file = f.name
+
+        shell_cmd = (
+            f"{AGY_PATH} --print --print-timeout {timeout_sec}s"
+            f" --dangerously-skip-permissions"
+            f" < {prompt_file}"
+        )
+        proc = await asyncio.create_subprocess_shell(
+            shell_cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(
+            proc.communicate(), timeout=timeout_sec + 5,
+        )
+    except asyncio.TimeoutError:
+        try:
+            proc.kill()
+        except (ProcessLookupError, NameError):
+            pass
+        return {"success": False, "error": f"CLI timeout ({timeout_sec}s)"}
+    except Exception as e:
+        return {"success": False, "error": f"CLI error: {e}"}
+    finally:
+        if prompt_file:
+            try:
+                os.unlink(prompt_file)
+            except OSError:
+                pass
+
+    latency_ms = (time.time() - start) * 1000
+    output = _clean_output(stdout.decode("utf-8", errors="replace"))
+
+    if proc.returncode != 0:
+        return {"success": False, "error": f"CLI exit {proc.returncode}"}
+    if not output or len(output) < 10:
+        return {"success": False, "error": "CLI empty response"}
+
+    return {
+        "success": True,
+        "advice": output,
+        "model": "gemini-2.5-flash",
+        "latency_ms": latency_ms,
+        "exit_code": 0,
+        "stdout_len": len(output),
+        "provider": "agy-cli",
+    }
+
+
+# ── Provider: google-genai SDK ───────────────────────────────────
+
+async def _run_sdk(prompt: str, model: str) -> dict:
+    """Execute via google-genai SDK directly."""
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("ANTIGRAVITY_API_KEY")
+    if not api_key:
+        return {"success": False, "error": "No API key"}
+
+    try:
+        from google import genai
+
+        start = time.time()
+        client = genai.Client(api_key=api_key)
+        # Run in executor to avoid blocking event loop
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: client.models.generate_content(model=model, contents=prompt),
+        )
+        try:
+            advice = response.text
+        except (ValueError, AttributeError):
+            advice = None
+            if response.candidates:
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        advice = (advice or "") + part.text
+        latency_ms = (time.time() - start) * 1000
+
+        if not advice or len(advice.strip()) < 10:
+            return {"success": False, "error": f"SDK empty response (len={len(advice) if advice else 0})"}
+
+        return {
+            "success": True,
+            "advice": advice.strip(),
+            "model": model,
+            "latency_ms": latency_ms,
+            "exit_code": 0,
+            "stdout_len": len(advice),
+            "provider": "google-genai",
+        }
+    except ImportError:
+        return {"success": False, "error": "google-genai not installed"}
+    except Exception as e:
+        return {"success": False, "error": f"SDK error: {str(e)[:200]}"}
+
+
+# ── Race Strategy: CLI + SDK ─────────────────────────────────────
+
 async def _run_agy(prompt: str, model: str, timeout_sec: int) -> dict:
-    """Execute AI generation via agy CLI binary (primary) or google-genai SDK (fallback).
+    """Race agy CLI vs google-genai SDK — fastest successful response wins.
 
     Strategy:
-      1. agy CLI binary with stdin redirect + --print-timeout (no PTY needed)
-         Key: prompt must include "Do NOT use any tools" instruction to prevent
-         workspace exploration. stdin redirect disables interactive tool use.
-      2. google-genai SDK fallback (uses GEMINI_API_KEY directly)
+      1. Check response cache first (5min TTL)
+      2. Launch both CLI and SDK simultaneously
+      3. Return whichever succeeds first, cancel the other
+      4. Cache the winning response
     """
-    global AGY_PATH, PTY_MODE
+    # ── Cache check ──────────────────────────────────────────────
+    cached = _get_cached(prompt)
+    if cached:
+        return cached
 
-    # ── Strategy 1: agy CLI binary (file redirect, no PTY) ────────
+    # ── Parallel race ────────────────────────────────────────────
+    tasks = {}
     if AGY_PATH:
-        import tempfile
-
-        # Prepend instruction to prevent tool/file exploration
-        constrained_prompt = (
-            "IMPORTANT: Do NOT use any tools. Do NOT read any files. "
-            "Do NOT explore the workspace. Answer the analysis directly "
-            "based on your knowledge.\n\n" + prompt
-        )
-
-        # Write prompt to temp file — agy detects stdin PIPE as interactive
-        # but file redirect (< file.txt) triggers proper single-shot mode
-        prompt_file = None
-        start = time.time()
-        try:
-            # Use ~/.cache (in ReadWritePaths) — /tmp is read-only under ProtectSystem=strict
-            cache_dir = os.path.expanduser("~/.cache")
-            os.makedirs(cache_dir, exist_ok=True)
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".txt", prefix="agy_prompt_",
-                dir=cache_dir, delete=False, encoding="utf-8",
-            ) as f:
-                f.write(constrained_prompt)
-                prompt_file = f.name
-
-            shell_cmd = (
-                f"{AGY_PATH} --print --print-timeout {timeout_sec}s"
-                f" --dangerously-skip-permissions"
-                f" < {prompt_file}"
-            )
-            proc = await asyncio.create_subprocess_shell(
-                shell_cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, stderr = await asyncio.wait_for(
-                proc.communicate(),
-                timeout=timeout_sec + 5,
-            )
-        except asyncio.TimeoutError:
-            try:
-                proc.kill()
-            except (ProcessLookupError, NameError):
-                pass
-            log.warning(f"agy CLI timeout ({timeout_sec}s). Trying SDK fallback...")
-        except FileNotFoundError:
-            log.warning(f"agy binary not found: {AGY_PATH}. Trying SDK fallback...")
-        except Exception as e:
-            log.warning(f"agy CLI error: {e}. Trying SDK fallback...")
-        else:
-            latency_ms = (time.time() - start) * 1000
-            output = stdout.decode("utf-8", errors="replace").strip()
-
-            if proc.returncode != 0:
-                err = stderr.decode("utf-8", errors="replace")[:200]
-                log.warning(f"agy CLI exit code {proc.returncode}: {err[:100]}. Trying SDK...")
-            elif output and len(output.strip()) >= 10:
-                # Clean ANSI escape codes if any
-                import re
-                output = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', output)
-                output = output.replace('\r', '')
-                log.info(f"agy CLI OK ({latency_ms:.0f}ms, {len(output)} chars)")
-                return {
-                    "success": True,
-                    "advice": output.strip(),
-                    "model": model,
-                    "latency_ms": latency_ms,
-                    "exit_code": 0,
-                    "stdout_len": len(output),
-                    "provider": "agy-cli",
-                }
-            else:
-                log.warning("agy CLI returned empty/short response. Trying SDK...")
-        finally:
-            # Cleanup temp file
-            if prompt_file:
-                try:
-                    os.unlink(prompt_file)
-                except OSError:
-                    pass
-
-    # ── Strategy 2: google-genai SDK (fallback) ──────────────────
+        tasks["cli"] = asyncio.create_task(_run_cli(prompt, timeout_sec))
+    
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("ANTIGRAVITY_API_KEY")
     if api_key:
-        try:
-            from google import genai
+        tasks["sdk"] = asyncio.create_task(_run_sdk(prompt, model))
 
-            start = time.time()
-            client = genai.Client(api_key=api_key)
-            response = client.models.generate_content(
-                model=model,
-                contents=prompt,
-            )
-            # response.text can raise ValueError if no text parts
-            try:
-                advice = response.text
-            except (ValueError, AttributeError):
-                # Try extracting from candidates
-                advice = None
-                if response.candidates:
-                    for part in response.candidates[0].content.parts:
-                        if hasattr(part, 'text') and part.text:
-                            advice = (advice or "") + part.text
-            latency_ms = (time.time() - start) * 1000
+    if not tasks:
+        return {"success": False, "error": "No agy binary and no API key available"}
 
-            log.info(f"SDK response: advice_len={len(advice) if advice else 0}, latency={latency_ms:.0f}ms")
+    # Wait for first successful completion
+    winner = None
+    pending = set(tasks.values())
+    
+    while pending:
+        done, pending = await asyncio.wait(
+            pending, return_when=asyncio.FIRST_COMPLETED, timeout=timeout_sec + 5,
+        )
+        
+        if not done:
+            # All timed out
+            break
+        
+        for task in done:
+            result = task.result()
+            if result.get("success"):
+                winner = result
+                # Cancel remaining tasks
+                for p in pending:
+                    p.cancel()
+                    try:
+                        await p
+                    except (asyncio.CancelledError, Exception):
+                        pass
+                pending = set()
+                break
+        
+        if winner:
+            break
 
-            if not advice or len(advice.strip()) < 10:
-                return {
-                    "success": False,
-                    "error": f"Empty response from Gemini SDK fallback (advice_len={len(advice) if advice else 0})",
-                    "latency_ms": latency_ms,
-                }
+    if winner:
+        log.info(f"Race winner: {winner['provider']} ({winner['latency_ms']:.0f}ms)")
+        _put_cache(prompt, winner)
+        return winner
 
-            return {
-                "success": True,
-                "advice": advice.strip(),
-                "model": model,
-                "latency_ms": latency_ms,
-                "exit_code": 0,
-                "stdout_len": len(advice),
-                "provider": "google-genai",
-            }
-        except ImportError:
-            log.warning("google-genai SDK not installed.")
-        except Exception as e:
-            log.warning(f"google-genai SDK failed: {e}")
-            return {
-                "success": False,
-                "error": f"Both agy CLI and SDK failed: {str(e)[:200]}",
-                "latency_ms": (time.time() - start) * 1000 if 'start' in dir() else 0,
-            }
-
-    return {"success": False, "error": "No agy binary and no API key available"}
+    # All failed — collect errors
+    errors = []
+    for name, task in tasks.items():
+        if task.done():
+            r = task.result()
+            errors.append(f"{name}: {r.get('error', 'unknown')}")
+    
+    return {"success": False, "error": f"All providers failed: {'; '.join(errors)}"}
 
 
 # ── FastAPI App ──────────────────────────────────────────────────
@@ -313,7 +405,12 @@ async def health():
         "status": "ok" if cb.is_available() else "degraded",
         "agy_binary": AGY_PATH or "NOT_FOUND",
         "pty_mode": PTY_MODE,
+        "strategy": "race",  # CLI + SDK parallel
         "circuit_breaker": cb.info,
+        "cache": {
+            "entries": len(_response_cache),
+            "ttl_sec": CACHE_TTL,
+        },
         "stats": {
             "total_requests": _stats["total_requests"],
             "success": _stats["success"],
