@@ -90,6 +90,36 @@ async def get_health():
         "circuit_breaker_status": circuit_breaker_status
     }
 
+# ── V3: Server Announce (Smart Offline) ────────────────────────────────────────
+@app.post("/api/server-announce")
+async def server_announce(request: Request):
+    """Server B calls this when it starts up to resume health monitoring."""
+    from workers.liveness_monitor import announce_server_online
+    body = await request.json()
+    server_name = body.get("server", "")
+    if not server_name:
+        return {"status": "error", "message": "'server' field required"}
+    result = announce_server_online(server_name)
+    if result.get("status") == "ok":
+        try:
+            from notifier import notify_all
+            await notify_all(
+                f"🟢 <b>SERVER ONLINE</b>\n\n"
+                f"Server: <b>{result['server']}</b>\n"
+                f"Health monitoring resumed."
+            )
+        except Exception:
+            pass
+    return result
+
+
+@app.get("/api/server-status")
+async def server_status():
+    """Get current health monitoring status of all servers."""
+    from workers.liveness_monitor import get_server_status
+    return {"servers": get_server_status()}
+
+
 @app.get("/metrics")
 async def get_metrics(request: Request):
     accept_header = request.headers.get("accept", "")

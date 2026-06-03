@@ -519,7 +519,39 @@ async def mcp_status():
     return {"enabled": True, **health}
 
 
-# ═══ TELEGRAM TEMPLATE CONFIG ═════════════════════════════════
+# ═══ V3: SERVER HEALTH ANNOUNCE ═══════════════════════════════
+@app.post("/api/server-announce")
+async def server_announce(body: dict = Body(...)):
+    """Server B calls this when it starts up to resume health monitoring.
+
+    Body: {"server": "SERVER_B"} or {"server": "Execution"}
+    """
+    from workers.liveness_monitor import announce_server_online
+    server_name = body.get("server", "")
+    if not server_name:
+        raise HTTPException(status_code=400, detail="'server' field required")
+    result = announce_server_online(server_name)
+    if result.get("status") == "ok":
+        # Send recovery notification
+        try:
+            from notifier import notify_all
+            await notify_all(
+                f"🟢 <b>SERVER ONLINE</b>\n\n"
+                f"Server: <b>{result['server']}</b>\n"
+                f"Health monitoring resumed."
+            )
+        except Exception:
+            pass
+    return result
+
+
+@app.get("/api/server-status")
+async def server_status():
+    """Get current health monitoring status of all servers."""
+    from workers.liveness_monitor import get_server_status
+    return {"servers": get_server_status()}
+
+
 @app.get("/api/telegram/templates")
 async def get_telegram_templates():
     """Retrieve the current custom Telegram message templates."""
