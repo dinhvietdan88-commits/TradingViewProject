@@ -333,49 +333,71 @@ async def _run_agy(prompt: str, model: str, timeout_sec: int) -> dict:
     if not tasks:
         return {"success": False, "error": "No agy binary and no API key available"}
 
-    # Wait for first successful completion
-    winner = None
-    pending = set(tasks.values())
-    
-    while pending:
-        done, pending = await asyncio.wait(
-            pending, return_when=asyncio.FIRST_COMPLETED, timeout=timeout_sec + 5,
-        )
-        
-        if not done:
-            # All timed out
-            break
-        
-        for task in done:
-            result = task.result()
-            if result.get("success"):
-                winner = result
-                # Cancel remaining tasks
-                for p in pending:
-                    p.cancel()
-                    try:
-                        await p
-                    except (asyncio.CancelledError, Exception):
-                        pass
-                pending = set()
-                break
-        
-        if winner:
-            break
+    # ── CLI-preferred race strategy ──────────────────────────────
+    # Both providers run in parallel, but CLI is PRIMARY:
+    #   - Always wait for CLI result (up to timeout)
+    #   - Only use SDK if CLI fails/timeout
+    #   - SDK runs as "warm standby" — saves time if CLI fails
+    #     because SDK result is already available instantly
+    cli_task = tasks.get("cli")
+    sdk_task = tasks.get("sdk")
 
-    if winner:
-        log.info(f"Race winner: {winner['provider']} ({winner['latency_ms']:.0f}ms)")
-        _put_cache(prompt, winner)
-        return winner
-
-    # All failed — collect errors
-    errors = []
-    for name, task in tasks.items():
-        if task.done():
-            r = task.result()
-            errors.append(f"{name}: {r.get('error', 'unknown')}")
+    # Case 1: Only one provider available
+    if not cli_task and sdk_task:
+        result = await sdk_task
+        if result.get("success"):
+            log.info(f"SDK-only: {result['latency_ms']:.0f}ms")
+            _put_cache(prompt, result)
+            return result
+        return result
     
-    return {"success": False, "error": f"All providers failed: {'; '.join(errors)}"}
+    if cli_task and not sdk_task:
+        result = await cli_task
+        if result.get("success"):
+            log.info(f"CLI-only: {result['latency_ms']:.0f}ms")
+            _put_cache(prompt, result)
+            return result
+        return result
+
+    # Case 2: Both available — CLI-preferred
+    # Wait for CLI to complete (it's the primary)
+    try:
+        cli_result = await asyncio.wait_for(cli_task, timeout=timeout_sec + 5)
+    except asyncio.TimeoutError:
+        cli_result = {"success": False, "error": f"CLI timeout ({timeout_sec}s)"}
+    except Exception as e:
+        cli_result = {"success": False, "error": f"CLI exception: {e}"}
+
+    if cli_result.get("success"):
+        # CLI succeeded — cancel SDK, return CLI
+        sdk_task.cancel()
+        try:
+            await sdk_task
+        except (asyncio.CancelledError, Exception):
+            pass
+        log.info(f"CLI primary OK ({cli_result['latency_ms']:.0f}ms) — SDK cancelled")
+        _put_cache(prompt, cli_result)
+        return cli_result
+
+    # CLI failed — use SDK result (already running in parallel, likely done)
+    log.warning(f"CLI failed: {cli_result.get('error', 'unknown')}. Using SDK standby...")
+    try:
+        sdk_result = await asyncio.wait_for(sdk_task, timeout=5)  # SDK should be done by now
+    except asyncio.TimeoutError:
+        sdk_result = {"success": False, "error": "SDK also timed out"}
+    except Exception as e:
+        sdk_result = {"success": False, "error": f"SDK exception: {e}"}
+
+    if sdk_result.get("success"):
+        log.info(f"SDK standby OK ({sdk_result['latency_ms']:.0f}ms) — CLI was: {cli_result.get('error', '')[:60]}")
+        _put_cache(prompt, sdk_result)
+        return sdk_result
+
+    # Both failed
+    return {
+        "success": False,
+        "error": f"All providers failed: CLI={cli_result.get('error','?')[:80]}; SDK={sdk_result.get('error','?')[:80]}",
+    }
 
 
 # ── FastAPI App ──────────────────────────────────────────────────
@@ -405,7 +427,7 @@ async def health():
         "status": "ok" if cb.is_available() else "degraded",
         "agy_binary": AGY_PATH or "NOT_FOUND",
         "pty_mode": PTY_MODE,
-        "strategy": "race",  # CLI + SDK parallel
+        "strategy": "cli-preferred",  # CLI primary + SDK warm standby
         "circuit_breaker": cb.info,
         "cache": {
             "entries": len(_response_cache),
