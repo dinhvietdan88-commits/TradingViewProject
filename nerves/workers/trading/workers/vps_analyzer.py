@@ -408,6 +408,9 @@ class VpsAnalyzerWorker:
                     async def process_analyzed(analyzed: Dict[str, Any]):
                         queue_id = analyzed.get("queue_id")
                         try:
+                            # ── Send AI analysis to Telegram ──────────────
+                            await self._notify_analysis_telegram(analyzed)
+
                             if analyzed.get("approved"):
                                 fwd = await self.forward_to_server_b(analyzed["trade_payload"])
                                 if fwd.get("success"):
@@ -646,6 +649,92 @@ class VpsAnalyzerWorker:
             "trade_payload": trade_payload,
             "analysis_mode": analysis_mode,
         }
+
+    # ── Telegram notification for AI analysis ──────────────────────────────────
+
+    async def _notify_analysis_telegram(self, analyzed: Dict[str, Any]):
+        """Send AI analysis result to Telegram.
+
+        Fire-and-forget: Telegram errors won't block the trade pipeline.
+        """
+        try:
+            from notifier import send_telegram_alert
+        except ImportError:
+            return  # notifier not available
+
+        queue_id = analyzed.get("queue_id", "?")
+        approved = analyzed.get("approved", False)
+        mode = analyzed.get("analysis_mode", "unknown")
+        reason = analyzed.get("reason", "")
+        tp = analyzed.get("trade_payload", {})
+
+        symbol = tp.get("symbol", analyzed.get("symbol", "?"))
+        action = tp.get("action", analyzed.get("action", "?"))
+        price = tp.get("price", 0)
+        conf = tp.get("ai_confidence", 0)
+        analysis = tp.get("analysis", "")
+
+        # Status icon
+        if approved:
+            status = "✅ APPROVED"
+            hold = tp.get("hold_for_approval", False)
+            if hold:
+                status = "⏳ HOLD (chờ duyệt)"
+        else:
+            status = "❌ REJECTED"
+
+        # Mode icon
+        mode_icon = "🧠" if mode == "ai" else "📊"
+
+        # Build message
+        lines = [
+            f"{'━' * 28}",
+            f"{mode_icon} <b>AI Core Analysis #{queue_id}</b>",
+            f"{'━' * 28}",
+            f"",
+            f"📌 <b>{symbol}</b> | <code>{action.upper()}</code> @ <code>{price:,.2f}</code>" if price >= 1 else f"📌 <b>{symbol}</b> | <code>{action.upper()}</code> @ <code>{price:.6f}</code>",
+            f"🎯 Confidence: <b>{conf}%</b>  |  Mode: <b>{mode.upper()}</b>",
+            f"📋 Status: <b>{status}</b>",
+        ]
+
+        if approved and tp:
+            qty = tp.get("qty", 0)
+            sl = tp.get("sl", 0)
+            tp_price = tp.get("tp", 0)
+            risk = tp.get("risk_per_trade", 0)
+            lines.extend([
+                f"",
+                f"💰 <b>Position:</b>",
+                f"   • Qty: <code>{qty}</code>",
+                f"   • SL: <code>{sl:,.2f}</code>  |  TP: <code>{tp_price:,.2f}</code>" if sl >= 1 else f"   • SL: <code>{sl:.6f}</code>  |  TP: <code>{tp_price:.6f}</code>",
+                f"   • Risk/Trade: <code>{risk:.1%}</code>",
+            ])
+
+        if not approved and reason:
+            lines.extend([
+                f"",
+                f"📝 <b>Reason:</b> {reason[:200]}",
+            ])
+
+        # AI advice excerpt (max 300 chars)
+        if analysis:
+            excerpt = analysis[:300].replace("\n", " ")
+            if len(analysis) > 300:
+                excerpt += "…"
+            lines.extend([
+                f"",
+                f"💬 <b>AI:</b> {excerpt}",
+            ])
+
+        lines.append(f"\n{'━' * 28}")
+
+        message = "\n".join(lines)
+
+        try:
+            await send_telegram_alert(message)
+            log.info(f"[VpsAnalyzer] Telegram notification sent for #{queue_id}")
+        except Exception as e:
+            log.warning(f"[VpsAnalyzer] Telegram notification failed for #{queue_id}: {e}")
 
     # ── Algorithmic analysis (Minervini SEPA) ─────────────────────────────────
 
