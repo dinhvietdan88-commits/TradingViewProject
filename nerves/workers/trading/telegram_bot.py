@@ -57,9 +57,12 @@ def _get_imports():
 # ── Interactive Messaging ──────────────────────────────────────────────────
 
 async def send_interactive_trade_approval(
-    signal_id: int, message: str
+    signal_id: int, message: str, photo_path: Optional[str] = None
 ) -> list:
     """Send interactive trade approval message with Approve/Reject buttons.
+
+    If photo_path is provided, sends the chart image first, then the
+    interactive message with Approve/Reject inline keyboard.
 
     Returns:
         List[Tuple[int, int]]: List of (chat_id, message_id) for successfully sent messages.
@@ -89,6 +92,24 @@ async def send_interactive_trade_approval(
 
         for chat_id in config.TELEGRAM_CHAT_IDS:
             try:
+                # Send chart photo first if available
+                if photo_path:
+                    try:
+                        from pathlib import Path
+                        photo_file_path = Path(photo_path)
+                        if photo_file_path.exists():
+                            caption = f"📊 Chart Analysis — Signal #{signal_id}"
+                            with open(photo_file_path, "rb") as f:
+                                await _bot_app.bot.send_photo(
+                                    chat_id=chat_id,
+                                    photo=f,
+                                    caption=caption,
+                                )
+                            log.info(f"Chart photo sent for signal #{signal_id} to {chat_id}")
+                    except Exception as photo_err:
+                        log.warning(f"Failed to send chart photo to {chat_id}: {photo_err}")
+
+                # Send interactive message with Approve/Reject buttons
                 msg = await _bot_app.bot.send_message(
                     chat_id=chat_id,
                     text=html_message,

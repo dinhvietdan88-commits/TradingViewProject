@@ -23,6 +23,7 @@ Design Invariants (v6.0 INV-5/6):
 import logging
 import json
 from pathlib import Path
+from typing import Optional
 import aiosqlite
 
 import config
@@ -106,6 +107,78 @@ async def _get_vbs_metadata(signal_id: int) -> dict:
     except Exception as e:
         log.warning(f"NotificationHub: Failed to fetch VBS metadata for signal #{signal_id}: {e}")
     return {}
+
+
+async def _render_chart_for_event(event: AnalysisComplete) -> Optional[str]:
+    """Render a Matplotlib chart with Entry/SL/TP overlay for an AnalysisComplete event.
+
+    Returns the file path to the generated PNG, or None on failure.
+    Non-blocking: chart failure does NOT block trade flow.
+    """
+    try:
+        from capture_client import get_capture_client
+
+        # Build drawings from event price levels
+        drawings = []
+        if event.price:
+            drawings.append({"price": float(event.price), "label": "Entry", "color": "#26a69a"})
+        if event.sl:
+            try:
+                sl_val = float(str(event.sl).replace(",", ""))
+                if sl_val > 0:
+                    drawings.append({"price": sl_val, "label": "SL", "color": "#ef5350"})
+            except (ValueError, TypeError):
+                pass
+        if event.tp:
+            try:
+                tp_val = float(str(event.tp).replace(",", ""))
+                if tp_val > 0:
+                    drawings.append({"price": tp_val, "label": "TP", "color": "#2962ff"})
+            except (ValueError, TypeError):
+                pass
+
+        # Build strategy table from vision_result
+        strategy_table = None
+        if event.vision_result:
+            vr = event.vision_result.get("vision_data") or event.vision_result
+            if isinstance(vr, dict):
+                rows = []
+                if vr.get("trend_template_score") is not None:
+                    rows.append(("TT Score", f"{vr['trend_template_score']}/8"))
+                if vr.get("trend_template_stage"):
+                    rows.append(("Stage", vr["trend_template_stage"]))
+                if vr.get("vcp_detected") is not None:
+                    rows.append(("VCP", "Detected ✅" if vr["vcp_detected"] else "Not found"))
+                if vr.get("volume_ratio") is not None:
+                    rows.append(("Vol Ratio", f"{vr['volume_ratio']:.1f}x"))
+                if rows:
+                    strategy_table = {"title": "SEPA Analysis", "rows": rows}
+
+        # Resolve timeframe from vision_result or default
+        timeframe = "D"
+        if event.vision_result:
+            vr = event.vision_result.get("vision_data") or event.vision_result
+            if isinstance(vr, dict):
+                timeframe = vr.get("timeframe") or vr.get("interval") or "D"
+
+        client = get_capture_client()
+        result = await client.capture_screenshot(
+            symbol=event.symbol,
+            timeframe=timeframe,
+            drawings=drawings or None,
+            strategy_table=strategy_table,
+            method="mplfinance",
+        )
+
+        if result.success and result.file_path:
+            log.info(f"NotificationHub: 📊 Chart rendered for {event.symbol} → {result.file_path}")
+            return result.file_path
+        else:
+            log.warning(f"NotificationHub: Chart render failed for {event.symbol}: {result.error}")
+    except Exception as exc:
+        log.warning(f"NotificationHub: Chart rendering skipped for {event.symbol}: {exc}")
+
+    return None
 
 
 def _format_indicator_details_for_rejection(payload: dict) -> str:
@@ -402,6 +475,10 @@ async def process_analysis_complete(event: AnalysisComplete) -> None:
             f"NotificationHub: ✅ Auto-approving trade for #{event.signal_id} {event.symbol} "
             f"(confidence={confidence}/10, recovered={getattr(event, 'is_recovered', False)})"
         )
+
+        # Render chart with Entry/SL/TP (non-blocking)
+        chart_path = await _render_chart_for_event(event)
+
         await notifier.notify_all(
             f"{prefix}🟢 **AUTO-APPROVE** — `{event.symbol}` trên `{exchange.upper()}`\n"
             f"- Điểm AI: `{confidence}/10`\n"
@@ -410,6 +487,13 @@ async def process_analysis_complete(event: AnalysisComplete) -> None:
             f"- SL: `{event.sl or 'N/A'}` | TP: `{event.tp or 'N/A'}`\n\n"
             f"🤖 Tự động gửi lệnh..."
         )
+
+        # Send chart photo if available
+        if chart_path:
+            caption = f"📊 {event.symbol} — Auto-Approve (AI {confidence}/10)"
+            import asyncio
+            await asyncio.to_thread(notifier.send_telegram_photo, chart_path, caption)
+
         await _bus.emit(TradeApproved(
             signal_id=event.signal_id,
             symbol=event.symbol,
@@ -431,6 +515,9 @@ async def process_analysis_complete(event: AnalysisComplete) -> None:
             f"(confidence={confidence}/10)"
         )
         PENDING_TRADES[event.signal_id] = event
+
+        # Render chart with Entry/SL/TP (non-blocking)
+        chart_path = await _render_chart_for_event(event)
 
         from utils.telegram_templates import render_template
         
@@ -506,16 +593,25 @@ async def process_analysis_complete(event: AnalysisComplete) -> None:
             msg = f"🕒 **[PHỤC HỒI VBS Queue - cách đây {event.age_minutes}p] Lệnh Cần Duyệt**\n\n" + msg
             # Disable interactive buttons for recovered signals (User Request)
             await notifier.notify_all(msg + "\n\n*(Tín hiệu phục hồi không có nút tương tác)*")
+            # Send chart for recovered signals too
+            if chart_path:
+                caption = f"📊 {event.symbol} — Recovered (AI {confidence}/10)"
+                import asyncio
+                await asyncio.to_thread(notifier.send_telegram_photo, chart_path, caption)
         else:
             try:
                 import telegram_bot
                 sent_pairs = await telegram_bot.send_interactive_trade_approval(
                     signal_id=event.signal_id,
                     message=msg,
+                    photo_path=chart_path,
                 )
                 if not sent_pairs:
                     # Fallback to normal notify if bot not running
                     await notifier.notify_all(msg + "\n\n*(Bot chưa bật, không thể dùng nút bấm duyệt lệnh)*")
+                    if chart_path:
+                        import asyncio
+                        await asyncio.to_thread(notifier.send_telegram_photo, chart_path, f"📊 {event.symbol}")
                 else:
                     # REQ7: Register sent messages with ApprovalTimeoutManager for auto-timeout
                     timeout_mgr = telegram_bot.get_approval_timeout_mgr()
@@ -525,6 +621,9 @@ async def process_analysis_complete(event: AnalysisComplete) -> None:
             except Exception as e:
                 log.error(f"NotificationHub: Failed to trigger interactive message: {e}")
                 await notifier.notify_all(msg + f"\n\n*(Lỗi tương tác: {e})*")
+                if chart_path:
+                    import asyncio
+                    await asyncio.to_thread(notifier.send_telegram_photo, chart_path, f"📊 {event.symbol}")
         return
 
     # ── Tier 3: Auto-Reject (confidence < 5) ─────────────────
