@@ -571,12 +571,10 @@ jobs:
                   echo "⚠️ agy-bridge service update needs sudo — skipping (manual)"
                 fi
               else
-                # Service file unchanged — just ensure running
-                if ! systemctl is-active --quiet agy-bridge 2>/dev/null; then
-                  sudo -n systemctl restart agy-bridge 2>/dev/null || echo "⚠️ agy-bridge not running (needs sudo)"
-                else
-                  echo "✅ agy-bridge already running"
-                fi
+                # Service file unchanged — but Python code may have changed
+                # Always restart to pick up new code after git pull
+                sudo -n systemctl restart agy-bridge 2>/dev/null || echo "⚠️ agy-bridge restart needs sudo"
+                echo "✅ agy-bridge restarted (code refresh)"
               fi
               
               # Verify bridge health
