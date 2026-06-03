@@ -289,8 +289,10 @@ class VpsAnalyzerWorker:
             "consumer_id": self.consumer_id,
             "limit": 5,
             "timeout": self.LONG_POLL_TIMEOUT,
-            "exclude_source": "indicator",
         }
+        # Configurable: set EXCLUDE_INDICATOR_SIGNALS=true to skip indicator signals
+        if os.getenv("EXCLUDE_INDICATOR_SIGNALS", "false").lower() == "true":
+            params["exclude_source"] = "indicator"
         headers = {"X-Buffer-Secret": config.VPS_BUFFER_SECRET}
 
         # HTTP timeout = server hold time + margin to avoid premature client close
@@ -437,17 +439,26 @@ class VpsAnalyzerWorker:
                     
                     async def process_analyzed(analyzed: Dict[str, Any]):
                         queue_id = analyzed.get("queue_id")
+                        dry_run = os.getenv("ANALYZER_DRY_RUN", "false").lower() == "true"
                         try:
                             # ── Send AI analysis to Telegram ──────────────
                             await self._notify_analysis_telegram(analyzed)
 
                             if analyzed.get("approved"):
-                                fwd = await self.forward_to_server_b(analyzed["trade_payload"])
-                                if fwd.get("success"):
-                                    await self._ack_signal(queue_id, "executed")
+                                if dry_run:
+                                    log.info(
+                                        f"[VpsAnalyzer] 🧪 DRY RUN #{queue_id}: "
+                                        f"would forward {analyzed['trade_payload']['symbol']} "
+                                        f"{analyzed['trade_payload']['action']} — skipping execution"
+                                    )
+                                    await self._ack_signal(queue_id, "dry_run")
                                 else:
-                                    err = fwd.get("error", "Server B execution failed")
-                                    await self._ack_signal(queue_id, "failed", err)
+                                    fwd = await self.forward_to_server_b(analyzed["trade_payload"])
+                                    if fwd.get("success"):
+                                        await self._ack_signal(queue_id, "executed")
+                                    else:
+                                        err = fwd.get("error", "Server B execution failed")
+                                        await self._ack_signal(queue_id, "failed", err)
                             else:
                                 reason = analyzed.get("reason", "")
                                 if reason:

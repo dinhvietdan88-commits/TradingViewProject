@@ -82,6 +82,10 @@ services:
       - DISK_WARNING_THRESHOLD_PCT=${DISK_WARNING_THRESHOLD_PCT:-80}
       - DISK_CRITICAL_THRESHOLD_PCT=${DISK_CRITICAL_THRESHOLD_PCT:-90}
       - LIVENESS_ALERT_AFTER_FAILURES=${LIVENESS_ALERT_AFTER_FAILURES:-2}
+      # Overnight trial: AI analysis + Telegram, no real trade execution
+      - ANALYZER_DRY_RUN=${ANALYZER_DRY_RUN:-true}
+      # Accept all signals (including indicator). Set 'true' to filter them out.
+      - EXCLUDE_INDICATOR_SIGNALS=${EXCLUDE_INDICATOR_SIGNALS:-false}
     networks:
       - analyzer
     # Map host.docker.internal → Docker host IP
