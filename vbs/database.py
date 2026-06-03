@@ -8,6 +8,25 @@ import config
 
 log = logging.getLogger(__name__)
 
+# ── Display timezone: UTC+7 (ICT / Vietnam) ─────────────────────────────────
+VN_TZ = timezone(timedelta(hours=7))
+
+
+def format_vn_time(utc_str: str) -> str:
+    """Convert a UTC datetime string to UTC+7 display format.
+
+    Args:
+        utc_str: datetime in '%Y-%m-%d %H:%M:%S' (UTC).
+    Returns:
+        Formatted string like '2026-06-04 01:45:11 (ICT)'
+    """
+    try:
+        dt = datetime.strptime(utc_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        vn_dt = dt.astimezone(VN_TZ)
+        return vn_dt.strftime("%Y-%m-%d %H:%M:%S") + " (ICT)"
+    except (ValueError, TypeError):
+        return utc_str
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS signal_queue (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -100,11 +119,15 @@ async def check_duplicate(
 
 
 async def insert_signal(payload: Dict[str, Any]) -> Tuple[int, str]:
-    """Insert a new signal into the queue."""
+    """Insert a new signal into the queue.
+
+    Returns:
+        (queue_id, expires_display) — expires_display is UTC+7 formatted for Telegram.
+    """
     now = utc_now()
     now_str = now.strftime("%Y-%m-%d %H:%M:%S")
     expires = now + timedelta(hours=config.SIGNAL_TTL_HOURS)
-    expires_str = expires.strftime("%Y-%m-%d %H:%M:%S")
+    expires_str = expires.strftime("%Y-%m-%d %H:%M:%S")  # DB storage (UTC)
     
     # Parse basic attributes with fallback
     symbol = payload.get("symbol", "")
@@ -162,8 +185,8 @@ async def insert_signal(payload: Dict[str, Any]) -> Tuple[int, str]:
         await write_audit_log(db, queue_id, "QUEUED", detail=f"Signal queued for {symbol} {action}")
         await db.commit()
         
-        log.info(f"VBS Queue Signal #{queue_id} stored: {action} {symbol} (expires at {expires_str})")
-        return queue_id, expires_str
+        log.info(f"VBS Queue Signal #{queue_id} stored: {action} {symbol} (expires at {expires_str} UTC)")
+        return queue_id, format_vn_time(expires_str)
 
 async def update_signal_status(queue_id: int, status: str, detail: str = "") -> bool:
     """Updates the status of a specific signal (e.g. APPROVED, CANCELLED)."""

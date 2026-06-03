@@ -102,7 +102,7 @@ async def ingest_signal(request: Request, x_buffer_secret: Optional[str] = Heade
         f"Symbol: <b>{symbol}</b>\n"
         f"Action: <b>{action.upper()}</b>\n"
         f"Exchange: {exchange}\n"
-        f"Expires: {expires_at} UTC"
+        f"Expires: {expires_at}"
     )
     
     # [SCAR] Lược bỏ nút Approve/Cancel ở VBS để nhường quyền xử lý cho Server B (TradeEngine).

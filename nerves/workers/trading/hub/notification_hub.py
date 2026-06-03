@@ -28,6 +28,19 @@ import aiosqlite
 import config
 import notifier
 
+try:
+    from database import format_vn_time
+except ImportError:
+    # Fallback for Server B which uses nerves layout
+    def format_vn_time(s: str) -> str:  # type: ignore[misc]
+        from datetime import datetime, timedelta, timezone
+        try:
+            dt = datetime.strptime(s, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+            vn = dt.astimezone(timezone(timedelta(hours=7)))
+            return vn.strftime("%Y-%m-%d %H:%M:%S") + " (ICT)"
+        except Exception:
+            return s
+
 from core.event_bus import bus as _default_bus
 from core.events import (
     SignalRejected,
@@ -200,7 +213,7 @@ async def notify_signal_rejected(event: SignalRejected) -> None:
             strategy_text = f" - Chiến lược: {event.action.upper()}"
 
         edit_msg = (
-            f"📥 VBS Signal Queued - Time: <code>{vbs_time}</code> UTC\n"
+            f"📥 VBS Signal Queued - Time: <code>{format_vn_time(vbs_time)}</code>\n"
             f"⛔️ <b>Tín Hiệu Chỉ Báo Bị Từ Chối</b> ( ID: #{vbs_qid} Queue - #{event.signal_id}: Signal )\n"
             f"Symbol: {event.symbol} - Action: ~~{event.action.upper()}~~ (cancel)\n\n"
             f"• Sàn: {getattr(event, 'exchange', 'binance').upper()}{strategy_text}\n"
@@ -268,7 +281,7 @@ async def notify_indicator_signal_rejected(event: IndicatorSignalRejected) -> No
             ind_details = _format_indicator_details_for_rejection(payload)
             
             edit_msg = (
-                f"📥 VBS Signal Queued - Time: <code>{vbs_time}</code> UTC\n"
+                f"📥 VBS Signal Queued - Time: <code>{format_vn_time(vbs_time)}</code>\n"
                 f"⛔️ <b>Tín Hiệu Chỉ Báo Bị Từ Chối</b> ( ID: #{vbs_qid} Queue - #{event.signal_id}: Signal )\n"
                 f"Symbol: {event.symbol} - Action: ~~{action_val}~~ (cancel)\n\n"
                 f"• Sàn: {getattr(event, 'exchange', 'binance').upper()}\n"

@@ -30,11 +30,20 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 import httpx
 
 log = logging.getLogger(__name__)
+
+# Display timezone: UTC+7 (ICT / Vietnam)
+VN_TZ = timezone(timedelta(hours=7))
+
+
+def _now_vn_str() -> str:
+    """Current time in UTC+7 for display."""
+    return datetime.now(VN_TZ).strftime("%H:%M:%S %d/%m")
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 ALERT_AFTER_FAILURES = int(os.getenv("LIVENESS_ALERT_AFTER_FAILURES", "2"))
@@ -239,7 +248,8 @@ async def _send_down_alert(server: ServerHealth, error: str) -> None:
         f"URL: <code>{server.url}</code>\n"
         f"Lỗi: {error}\n"
         f"Failures: {server.consecutive_failures} liên tiếp\n"
-        f"Downtime: ~{downtime_min} phút\n\n"
+        f"Downtime: ~{downtime_min} phút\n"
+        f"Thời điểm: <code>{_now_vn_str()}</code> (ICT)\n\n"
         f"⚠️ Signal pipeline có thể bị gián đoạn!"
     )
     try:
@@ -260,7 +270,8 @@ async def _send_offline_alert(server: ServerHealth, error: str) -> None:
         f"Server: <b>{server.name}</b>\n"
         f"URL: <code>{server.url}</code>\n"
         f"Failures: {server.consecutive_failures} liên tiếp\n"
-        f"Downtime: ~{downtime_min} phút\n\n"
+        f"Downtime: ~{downtime_min} phút\n"
+        f"Thời điểm: <code>{_now_vn_str()}</code> (ICT)\n\n"
         f"🔕 Health checks SUSPENDED.\n"
         f"Server sẽ tự khai báo online khi khởi động lại."
     )
@@ -277,7 +288,8 @@ async def _send_recovery_alert(server: ServerHealth, health_data: dict) -> None:
         f"Server: <b>{server.name}</b>\n"
         f"Status: healthy\n"
         f"Uptime: {health_data.get('uptime_seconds', 0)}s\n"
-        f"Pending signals: {health_data.get('pending_count', '?')}"
+        f"Pending signals: {health_data.get('pending_count', '?')}\n"
+        f"Thời điểm: <code>{_now_vn_str()}</code> (ICT)"
     )
     try:
         from notifier import notify_all
