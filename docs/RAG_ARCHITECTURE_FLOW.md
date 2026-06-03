@@ -219,7 +219,19 @@ AI_PROVIDER env var → rag.py generate_trading_advice()
 - Trên Windows: gọi `angati.exe memory ingest`.
 - Trên Linux: fallback trực tiếp SQLite (no binary dependency).
 
----
+### V4: Monitoring & Alerting (liveness_monitor.py)
+
+| Alert | Trigger | Action |
+|-------|---------|--------|
+| 🚨 **AGY-BRIDGE DOWN** | HTTP unreachable × 2 liên tiếp | Telegram + Discord |
+| 🔴 **CB OPEN** | Circuit Breaker transition → OPEN | Telegram (AI pipeline blocked) |
+| ⚠️ **CLI DEGRADED** | Strategy transition → parallel | Telegram (2x token cost warning) |
+| ✅ **RECOVERED** | Any of above returns to normal | Telegram (all-clear) |
+
+**Alerting pattern**: Transition-based — fires ONCE per state change (no spam).
+**Env var**: `AGY_BRIDGE_HEALTH_URL` (default: `http://localhost:9100/health`)
+
+
 
 ## 7. Tài liệu liên quan
 

@@ -1,7 +1,12 @@
 """
-server/workers/liveness_monitor.py — Cross-Server Health Monitor (V3 Smart Offline).
+server/workers/liveness_monitor.py — Cross-Server Health Monitor (V4 + agy-bridge).
 
 Runs on SERVER C and periodically checks /health on SERVER A and SERVER B.
+Also monitors agy-bridge sidecar for:
+  - Bridge down (HTTP unreachable)
+  - Circuit Breaker OPEN (all requests rejected)
+  - CLI degraded / parallel strategy (burning 2x tokens)
+
 Sends Telegram alerts when a server goes down and again when it recovers.
 
 V3 Smart Offline Logic:
@@ -10,6 +15,11 @@ V3 Smart Offline Logic:
   - When Server B comes back, it calls POST /api/server-announce on Server C
     → Server C marks it ONLINE and resumes health checks
   - Telegram alert sent ONCE on transition: online→offline, offline→online
+
+V4 agy-bridge Monitoring:
+  - Checks GET http://localhost:9100/health every cycle
+  - Alerts on: bridge down, CB OPEN, strategy degraded
+  - Same transition-based alerting (alert ONCE on state change)
 
 Usage (via APScheduler in server/scheduler.py):
     from workers.liveness_monitor import run_liveness_check
@@ -21,6 +31,7 @@ Or standalone test:
 Environment variables:
   SERVER_A_HEALTH_URL  — e.g. http://100.x.x.1:5000/health  (Tailscale IP)
   SERVER_B_HEALTH_URL  — e.g. http://100.x.x.2:5002/health  (Tailscale IP)
+  AGY_BRIDGE_HEALTH_URL — default: http://localhost:9100/health
   LIVENESS_ALERT_AFTER_FAILURES = 2   (alert after N consecutive failures)
   LIVENESS_OFFLINE_THRESHOLD = 3      (mark offline after N consecutive failures)
 """
@@ -50,6 +61,25 @@ ALERT_AFTER_FAILURES = int(os.getenv("LIVENESS_ALERT_AFTER_FAILURES", "2"))
 OFFLINE_THRESHOLD    = int(os.getenv("LIVENESS_OFFLINE_THRESHOLD", "3"))
 RECOVERY_NOTIFY      = True
 CHECK_TIMEOUT_SEC    = 10.0
+AGY_BRIDGE_HEALTH_URL = os.getenv("AGY_BRIDGE_HEALTH_URL", "http://localhost:9100/health")
+
+
+# ── V4: agy-bridge health state tracker ─────────────────────────────────
+
+@dataclass
+class BridgeState:
+    """Track agy-bridge health for transition-based alerting."""
+    is_reachable: bool = True
+    cb_state: str = "CLOSED"        # CLOSED | OPEN | HALF_OPEN
+    strategy: str = "sequential"    # sequential | parallel
+    alerted_down: bool = False
+    alerted_cb_open: bool = False
+    alerted_degraded: bool = False
+    consecutive_failures: int = 0
+    last_health: dict = field(default_factory=dict)
+
+
+_bridge_state = BridgeState()
 
 
 # ── Server health tracker ──────────────────────────────────────────────────────
@@ -152,18 +182,17 @@ def get_server_status() -> List[dict]:
 # ── Main check function ────────────────────────────────────────────────────────
 
 async def run_liveness_check() -> None:
-    """Check /health on all configured servers.
+    """Check /health on all configured servers + agy-bridge.
 
     Called by APScheduler every 5 minutes (or standalone).
     V3: Skips servers marked as OFFLINE.
+    V4: Also checks agy-bridge sidecar health.
     """
     servers = _get_servers()
-    if not servers:
-        return
 
     async with httpx.AsyncClient(timeout=CHECK_TIMEOUT_SEC) as client:
+        # ── Server health checks (V3) ────────────────────────────────
         for server in servers:
-            # V3: Skip offline servers — they must self-announce to resume
             if server.is_offline:
                 log.debug(
                     f"⏭️ {server.name} is OFFLINE — skipping health check "
@@ -206,6 +235,9 @@ async def run_liveness_check() -> None:
                 )
             except Exception as exc:
                 await _handle_failure(server, str(exc)[:200])
+
+        # ── V4: agy-bridge health check ──────────────────────────────
+        await _check_agy_bridge(client)
 
 
 async def _handle_failure(server: ServerHealth, error: str) -> None:
@@ -298,9 +330,149 @@ async def _send_recovery_alert(server: ServerHealth, health_data: dict) -> None:
         log.error(f"[LivenessMonitor] Failed to send recovery alert: {exc}")
 
 
+# ── V4: agy-bridge monitoring ────────────────────────────────────────────
+
+async def _check_agy_bridge(client: httpx.AsyncClient) -> None:
+    """Check agy-bridge /health and alert on state transitions.
+
+    Alerts fire ONCE per transition (same pattern as server health):
+    - Bridge unreachable → alert once
+    - Circuit breaker OPEN → alert once
+    - Strategy degraded (parallel) → alert once
+    - Recovery from any of the above → alert once
+    """
+    global _bridge_state
+    bs = _bridge_state
+
+    try:
+        resp = await client.get(AGY_BRIDGE_HEALTH_URL)
+        data = resp.json()
+        bs.last_health = data
+        bs.consecutive_failures = 0
+
+        # ── Recovery from unreachable ──
+        if not bs.is_reachable:
+            bs.is_reachable = True
+            bs.alerted_down = False
+            log.info("✅ [agy-bridge] recovered — back online")
+            await _send_bridge_alert(
+                "✅ <b>AGY-BRIDGE RECOVERED</b>\n\n"
+                f"Status: {data.get('status', '?')}\n"
+                f"Strategy: {data.get('strategy', {}).get('strategy', '?')}\n"
+                f"Circuit Breaker: {data.get('circuit_breaker', {}).get('state', '?')}\n"
+                f"Uptime: {data.get('stats', {}).get('uptime_sec', 0):.0f}s\n"
+                f"Thời điểm: <code>{_now_vn_str()}</code> (ICT)"
+            )
+
+        # ── Circuit Breaker state ──
+        cb = data.get("circuit_breaker", {})
+        cb_state = cb.get("state", "CLOSED")
+        prev_cb = bs.cb_state
+        bs.cb_state = cb_state
+
+        if cb_state == "OPEN" and prev_cb != "OPEN":
+            # Transition to OPEN
+            if not bs.alerted_cb_open:
+                bs.alerted_cb_open = True
+                stats = data.get("stats", {})
+                await _send_bridge_alert(
+                    "🔴 <b>AGY-BRIDGE CIRCUIT BREAKER OPEN</b>\n\n"
+                    f"Failures: {cb.get('failure_count', '?')}/{cb.get('threshold', '?')}\n"
+                    f"Recovery in: {cb.get('recovery_timeout_sec', 120)}s\n"
+                    f"Total requests: {stats.get('total_requests', '?')}\n"
+                    f"Success rate: {stats.get('success', 0)}/{stats.get('total_requests', 0)}\n"
+                    f"Thời điểm: <code>{_now_vn_str()}</code> (ICT)\n\n"
+                    "⚠️ Tất cả AI analysis bị từ chối cho đến khi CB hồi phục!"
+                )
+        elif cb_state == "CLOSED" and prev_cb == "OPEN":
+            # Recovery from OPEN
+            bs.alerted_cb_open = False
+            await _send_bridge_alert(
+                "✅ <b>AGY-BRIDGE CB RECOVERED</b>\n\n"
+                f"Circuit Breaker: CLOSED\n"
+                f"Thời điểm: <code>{_now_vn_str()}</code> (ICT)\n\n"
+                "AI analysis pipeline hoạt động bình thường."
+            )
+
+        # ── Strategy degraded (parallel = CLI unhealthy) ──
+        strat = data.get("strategy", {})
+        strategy = strat.get("strategy", "sequential")
+        prev_strategy = bs.strategy
+        bs.strategy = strategy
+
+        if strategy == "parallel" and prev_strategy != "parallel":
+            if not bs.alerted_degraded:
+                bs.alerted_degraded = True
+                await _send_bridge_alert(
+                    "⚠️ <b>AGY-BRIDGE CLI DEGRADED</b>\n\n"
+                    f"Strategy: sequential → <b>parallel</b> (2x token cost)\n"
+                    f"Avg latency: {strat.get('avg_latency_ms', 0):.0f}ms\n"
+                    f"Failure rate: {strat.get('failure_rate', 0):.0%}\n"
+                    f"Consecutive failures: {strat.get('consecutive_failures', 0)}\n"
+                    f"Thời điểm: <code>{_now_vn_str()}</code> (ICT)\n\n"
+                    "agy CLI đang chậm/lỗi → bridge chạy cả CLI + SDK song song."
+                )
+        elif strategy == "sequential" and prev_strategy == "parallel":
+            bs.alerted_degraded = False
+            await _send_bridge_alert(
+                "✅ <b>AGY-BRIDGE CLI RECOVERED</b>\n\n"
+                f"Strategy: parallel → <b>sequential</b> (1x token cost)\n"
+                f"Avg latency: {strat.get('avg_latency_ms', 0):.0f}ms\n"
+                f"Thời điểm: <code>{_now_vn_str()}</code> (ICT)\n\n"
+                "agy CLI hồi phục → tiết kiệm token."
+            )
+
+        log.info(
+            f"✅ [agy-bridge] healthy "
+            f"(CB={cb_state}, strategy={strategy}, "
+            f"cache={data.get('cache', {}).get('entries', 0)}, "
+            f"uptime={data.get('stats', {}).get('uptime_sec', 0):.0f}s)"
+        )
+
+    except (httpx.ConnectError, httpx.ReadTimeout) as exc:
+        bs.consecutive_failures += 1
+        if bs.is_reachable and bs.consecutive_failures >= ALERT_AFTER_FAILURES:
+            bs.is_reachable = False
+            if not bs.alerted_down:
+                bs.alerted_down = True
+                await _send_bridge_alert(
+                    "🚨 <b>AGY-BRIDGE DOWN</b>\n\n"
+                    f"URL: <code>{AGY_BRIDGE_HEALTH_URL}</code>\n"
+                    f"Lỗi: {str(exc)[:200]}\n"
+                    f"Failures: {bs.consecutive_failures} liên tiếp\n"
+                    f"Thời điểm: <code>{_now_vn_str()}</code> (ICT)\n\n"
+                    "⚠️ AI analysis pipeline offline! "
+                    "Fallback to in-container Gemini SDK (if available)."
+                )
+        log.warning(f"❌ [agy-bridge] unreachable (attempt #{bs.consecutive_failures}): {exc}")
+
+    except Exception as exc:
+        log.error(f"[agy-bridge] unexpected error: {exc}")
+
+
+async def _send_bridge_alert(msg: str) -> None:
+    """Send agy-bridge alert via Telegram/Discord."""
+    try:
+        from notifier import notify_all
+        await notify_all(msg)
+    except Exception as exc:
+        log.error(f"[LivenessMonitor] Failed to send bridge alert: {exc}")
+
+
+def get_bridge_status() -> dict:
+    """Return current agy-bridge state for API/dashboard."""
+    bs = _bridge_state
+    return {
+        "is_reachable": bs.is_reachable,
+        "cb_state": bs.cb_state,
+        "strategy": bs.strategy,
+        "consecutive_failures": bs.consecutive_failures,
+        "last_health": bs.last_health,
+    }
+
+
 # ── Standalone entry-point ─────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     asyncio.run(run_liveness_check())
-
