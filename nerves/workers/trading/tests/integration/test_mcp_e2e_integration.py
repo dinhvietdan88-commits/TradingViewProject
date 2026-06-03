@@ -111,6 +111,7 @@ async def test_morning_brief_trigger_and_persistence(client, mocker):
     # 3. Mock RAG advice, search, and vision inside brief namespace
     mocker.patch("brief.query_knowledge", return_value=[{"content": "mock RAG chunk", "metadata": {}, "relevance_score": 0.95}])
     mocker.patch("brief.generate_trading_advice", new_callable=AsyncMock, return_value="Minervini AI: Watchlist is showing strong VCP setup.")
+    mocker.patch("rag.generate_trading_advice", new_callable=AsyncMock, return_value="Minervini AI: Watchlist is showing strong VCP setup.")
     mocker.patch("brief.analyze_chart_vision", new_callable=AsyncMock, return_value={"confidence": 8, "patterns": ["VCP"], "error": None})
     
     # 4. Mock Telegram sends to avoid network calls inside brief namespace
