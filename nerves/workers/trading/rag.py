@@ -189,10 +189,26 @@ async def init_vector_db() -> bool:
         )
 
     knowledge_dir = Path(config.KNOWLEDGE_DIR)
+    # Fallback: check common Docker mount paths if primary not found
+    fallback_dirs = [
+        Path("/app/knowledge/trading_wizard/chunks"),
+        Path("/app/docs/knowledge/trading_wizard/chunks"),
+        Path(config.KNOWLEDGE_DIR),
+    ]
     if not knowledge_dir.exists():
-        if getattr(config, "CHROMA_REMOTE", False):
-            log.info(f"RAG: Knowledge dir not found ({knowledge_dir}), but remote ChromaDB is active. Skipping ingestion.")
+        for fb in fallback_dirs:
+            if fb.exists() and list(fb.glob("chunk_*.md")):
+                log.info(f"RAG: Using fallback knowledge dir: {fb}")
+                knowledge_dir = fb
+                break
+
+    if not knowledge_dir.exists():
+        if getattr(config, "CHROMA_REMOTE", False) and _collection.count() > 0:
+            log.info(f"RAG: Knowledge dir not found, but remote ChromaDB has {_collection.count()} vectors. Using existing data.")
             return True
+        elif getattr(config, "CHROMA_REMOTE", False):
+            log.warning(f"RAG: Knowledge dir not found ({knowledge_dir}) AND remote ChromaDB is EMPTY. RAG will be non-functional!")
+            return True  # Don't crash, but RAG won't work
         log.error(f"RAG: Knowledge dir not found: {knowledge_dir}")
         return False
 

@@ -202,6 +202,44 @@ async def process_validated_signal(event: SignalValidated) -> None:
         if event.action == "alert":
             LAST_CAPTURE_TIME[symbol] = now
 
+    # ── Step 1.5: Pattern Detection (VCP/Cup/DoubleBottom) ─────
+    pattern_summary = ""
+    try:
+        from utils.pattern_overlay import detect_all_patterns
+        from capture_client import get_capture_client
+        capture = get_capture_client()
+        
+        # Fetch OHLCV for pattern detection (reuse existing client)
+        ohlcv_data = await capture.fetch_ohlcv(symbol, timeframe="1d", limit=150)
+        if ohlcv_data and len(ohlcv_data) >= 30:
+            patterns = detect_all_patterns(ohlcv_data, pivot_window=5)
+            
+            if patterns.any_detected:
+                pattern_summary = f"📐 **PATTERN DETECTION:** {patterns.summary}\n"
+                analysis_text += pattern_summary
+                
+                # Boost confidence if VCP with high quality detected
+                if patterns.vcp.detected and patterns.vcp.quality_score >= 70:
+                    confidence = min(10, confidence + 1)
+                    analysis_text += f"   ↳ VCP Quality={patterns.vcp.quality_score:.0f} → confidence +1\n"
+                
+                # Store pattern info in vision_result for chart rendering
+                vision_result["pattern_overlay"] = {
+                    "vcp_detected": patterns.vcp.detected,
+                    "cup_handle_detected": patterns.cup_handle.detected,
+                    "double_bottom_detected": patterns.double_bottom.detected,
+                    "summary": patterns.summary,
+                    "vcp_quality": patterns.vcp.quality_score if patterns.vcp.detected else 0,
+                }
+            else:
+                analysis_text += "📐 **PATTERN:** Không phát hiện VCP/Cup/DoubleBottom\n"
+                # Penalize if NO pattern and confidence is borderline
+                if confidence == 8:
+                    confidence = 7
+                    analysis_text += "   ↳ Không có pattern → confidence 8→7 (cần human gate)\n"
+    except Exception as pat_err:
+        log.warning(f"AIAnalyzer: Pattern detection failed (non-fatal): {pat_err}")
+
     # ── Step 2: RAG Analysis ─────────────────────────────────
     rag_advice = ""
     if config.RAG_ENABLED:

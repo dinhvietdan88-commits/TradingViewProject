@@ -65,6 +65,9 @@ ENV PORT=8000 \
     CHROMA_DB_PATH=/app/data/chroma_db \
     KNOWLEDGE_DIR=/app/knowledge/trading_wizard/chunks
 EXPOSE 8000
+# Pre-download the sentence-transformers model during build
+# to avoid runtime download timeout in Docker (120MB model)
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')"
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 USER trader
