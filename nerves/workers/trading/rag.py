@@ -8,6 +8,7 @@ Flow:
     3. generate_trading_advice() → Gọi Claude API để phân tích tín hiệu
 """
 
+import asyncio
 import logging
 import re
 from pathlib import Path
@@ -326,6 +327,8 @@ async def generate_trading_advice(
     elif provider == "gemini":
         if not has_gemini:
             return "⚠️ RAG Analysis không khả dụng (thiếu GEMINI_API_KEY hoặc GCP_PROJECT_ID)."
+    elif provider == "agy":
+        pass  # validated at execution time via AgyHarness
     elif provider == "anthropic":
         # Priority: Claude CLI (OAuth) → SDK (API key) → Gemini fallback
         # User dùng Claude login session — không cần ANTHROPIC_API_KEY
@@ -349,7 +352,7 @@ async def generate_trading_advice(
         meta = chunk.get("metadata", {})
         score = chunk.get("relevance_score", 0)
         topic = meta.get("topic", "N/A")
-        content_preview = chunk["content"][:800]  # giới hạn context
+        content_preview = chunk["content"][:400]  # giới hạn context (compressed)
         context_parts.append(
             f"[Tài liệu {i} | Chủ đề: {topic} | Độ liên quan: {score:.2%}]\n{content_preview}"
         )
@@ -363,57 +366,52 @@ async def generate_trading_advice(
     alert_type = payload.get("alert_type", action)
     timeframe = payload.get("timeframe", "N/A")
 
-    prompt = f"""Bạn là chuyên gia giao dịch theo phương pháp SEPA của Mark Minervini.
-Dưới đây là tín hiệu TradingView vừa nhận được và các quy tắc liên quan từ sách của Minervini.
+    prompt = f"""Chuyên gia SEPA Minervini. Phân tích tín hiệu TradingView.
 
-## TÍN HIỆU GIAO DỊCH
-- **Mã**: {symbol}
-- **Hành động**: {action.upper()}
-- **Giá**: {price}
-- **Loại tín hiệu**: {alert_type}
-- **Khung thời gian**: {timeframe}
-- **Volume hiện tại**: {volume}
-- **Volume trung bình**: {volume_avg}
-- **RSI**: {rsi}
+## TÍN HIỆU: {symbol} {action.upper()} @ {price}
+- Loại: {alert_type} | TF: {timeframe}
+- Vol: {volume} (avg: {volume_avg}) | RSI: {rsi}
 
-## KIẾN THỨC MINERVINI LIÊN QUAN (từ Knowledge Base)
+## KIẾN THỨC MINERVINI
 {knowledge_context}
 
-## YÊU CẦU PHÂN TÍCH
-Dựa trên tín hiệu trên và quy tắc của Minervini trong Knowledge Base:
-1. **Đánh giá chất lượng tín hiệu** (Mạnh/Trung bình/Yếu) và lý do ngắn gọn
-2. **Điểm phù hợp với Minervini** (có đáp ứng Trend Template, VCP, Volume không?)
-3. **Khuyến nghị hành động** (Mua/Bán/Chờ thêm xác nhận) + Stop-loss gợi ý
-4. **Cảnh báo rủi ro** (nếu có)
-
-Trả lời NGẮN GỌN, súc tích (dưới 200 từ), dùng emoji để dễ đọc trên Telegram."""
+## YÊU CẦU (dưới 150 từ, emoji cho Telegram)
+1. Chất lượng tín hiệu (Mạnh/Trung bình/Yếu) + lý do
+2. Phù hợp Minervini? (Trend Template, VCP, Volume)
+3. Khuyến nghị + SL/TP gợi ý
+4. Cảnh báo rủi ro"""
 
     try:
-        # ── agy CLI via bridge (Server C host sidecar) ──
+        # ── agy: bridge sidecar (host :9100, google-genai SDK, ~12s) ──
+        # NOTE: google.antigravity Agent SDK wraps localharness (Go binary)
+        # which launches a full agent session → always >20s → not suitable
+        # for single-shot analysis. Bridge uses google-genai SDK directly.
         if provider == "agy":
+            agy_model = getattr(config, "AGY_MODEL", "gemini-2.5-flash")
+
             from agy_harness import AgyHarness
             harness = AgyHarness(
                 bridge_url=getattr(config, "AGY_BRIDGE_URL", "http://host.docker.internal:9100"),
                 timeout_sec=getattr(config, "AGY_TIMEOUT_SEC", 25),
-                model=getattr(config, "AGY_MODEL", "gemini-2.5-flash"),
+                model=agy_model,
             )
             try:
                 result = await harness.analyze(prompt)
                 if result.success:
                     log.info(
-                        f"RAG: agy CLI generated advice for {symbol} ({action}) "
+                        f"RAG: agy bridge generated advice for {symbol} ({action}) "
                         f"[{result.latency_ms:.0f}ms]"
                     )
                     return result.advice
                 else:
                     log.warning(
-                        f"RAG: agy CLI failed ({result.error}). "
+                        f"RAG: agy bridge failed ({result.error}). "
                         f"Falling back to gemini..."
                     )
-                    provider = "gemini"  # fall through to gemini direct
+                    provider = "gemini"
             except Exception as e:
                 log.warning(
-                    f"RAG: agy harness error ({e}). Falling back to gemini..."
+                    f"RAG: agy bridge error ({e}). Falling back to gemini..."
                 )
                 provider = "gemini"
             finally:

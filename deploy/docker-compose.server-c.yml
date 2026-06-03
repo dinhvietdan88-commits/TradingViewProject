@@ -13,7 +13,7 @@ services:
     container_name: tradingbot-chromadb
     restart: unless-stopped
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"  # Bind localhost only — security
     volumes:
       - chroma_data:/chroma/chroma
     environment:
@@ -33,12 +33,13 @@ services:
         max-file: "3"
 
   analyzer:
+    image: ghcr.io/dinhvietdan88-commits/tradingbot-analyzer:latest
     build:
       context: ..
       dockerfile: Dockerfile
     container_name: tradingbot-analyzer
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"  # Bind localhost only — security
     command: ["python", "workers/vps_analyzer.py"]
     restart: unless-stopped
     depends_on:
@@ -64,8 +65,12 @@ services:
       - AGY_BRIDGE_URL=http://host.docker.internal:9100
       - AGY_TIMEOUT_SEC=${AGY_TIMEOUT_SEC:-25}
       - AGY_MODEL=${AGY_MODEL:-gemini-2.5-flash}
+      - LLM_CALL_TIMEOUT_SEC=${LLM_CALL_TIMEOUT_SEC:-30}
       - RISK_PER_TRADE=${RISK_PER_TRADE:-0.02}
       - STOP_LOSS_PCT=${STOP_LOSS_PCT:-0.08}
+      # Telegram notifications from AI Core
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       # V2 Hardening — Logging & Monitoring
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FILE=/app/logs/analyzer.log

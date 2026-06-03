@@ -137,6 +137,7 @@
   </button>
   <button class="tab-btn" data-tab="analysis" onclick="switchTab('analysis')">🧠 Phân Tích</button>
   <button class="tab-btn" data-tab="trade-analysis" onclick="switchTab('trade-analysis')">📊 Analysis</button>
+  <button class="tab-btn" data-tab="reports" onclick="switchTab('reports')">📋 Reports</button>
   <button class="tab-btn" data-tab="scanner" onclick="switchTab('scanner')">📋 Scanner</button>
   <button class="tab-btn" data-tab="status" onclick="switchTab('status')">⚡ System</button>
   <button class="tab-btn" data-tab="visualizer" onclick="switchTab('visualizer')">📐 Visualizer</button>
@@ -965,6 +966,260 @@
 
   </div>
 
+  <!-- ═══ TAB: REPORTS ═══ -->
+  <div id="tab-reports" class="tab-panel">
+    
+    <!-- Scoped Reports Styles -->
+    <style>
+      .rep-grid {
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        gap: 24px;
+        align-items: start;
+        margin-top: 12px;
+      }
+      @media (max-width: 1024px) {
+        .rep-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .rep-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+      }
+      .rep-sidebar-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 12px;
+      }
+      .rep-icon-pulse {
+        font-size: 1.6rem;
+        color: var(--accent2);
+        animation: repPulse 2.5s ease-in-out infinite;
+        display: inline-block;
+      }
+      @keyframes repPulse {
+        0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0px rgba(0,212,170,0)); }
+        50% { transform: scale(1.15); filter: drop-shadow(0 0 6px rgba(0,212,170,0.6)); }
+      }
+      .rep-brand-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #ffffff;
+      }
+      .rep-brand-sub {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+      }
+      .rep-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .rep-card {
+        background: rgba(255,255,255,0.02);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+      }
+      .rep-card:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(0, 212, 170, 0.25);
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      }
+      .rep-card.active {
+        background: rgba(108,99,255,0.12);
+        border-color: var(--accent);
+        box-shadow: 0 4px 12px rgba(108,99,255,0.15);
+      }
+      .rep-card-icon {
+        font-size: 1.3rem;
+        background: rgba(255,255,255,0.04);
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .rep-card-info {
+        flex: 1;
+      }
+      .rep-card-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 4px;
+      }
+      .rep-card-desc {
+        font-size: 0.74rem;
+        color: var(--text-muted);
+        line-height: 1.45;
+      }
+      .rep-viewer-panel {
+        padding: 0 !important;
+        overflow: hidden;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        height: calc(100vh - 200px);
+        display: flex;
+        flex-direction: column;
+      }
+      .rep-viewer-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(10, 15, 30, 0.3);
+      }
+      .rep-viewer-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .rep-viewer-icon {
+        font-size: 1.4rem;
+      }
+      .rep-viewer-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #ffffff;
+      }
+      .rep-viewer-file {
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        font-family: var(--mono);
+      }
+      .rep-viewer-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .rep-action-btn {
+        padding: 6px 12px;
+        font-size: 0.78rem;
+        background: var(--bg3);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+      }
+      .rep-action-btn:hover {
+        background: var(--glass);
+        border-color: var(--accent);
+      }
+      .rep-action-btn-link {
+        padding: 6px 12px;
+        font-size: 0.78rem;
+        background: var(--bg3);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--accent2);
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .rep-action-btn-link:hover {
+        background: var(--glass);
+        border-color: var(--accent2);
+        box-shadow: 0 0 8px rgba(0, 212, 170, 0.2);
+      }
+      .rep-viewer-body {
+        flex: 1;
+        position: relative;
+        background: #08090d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .rep-iframe {
+        width: 100%;
+        height: 100%;
+        background: #ffffff;
+        border: none;
+      }
+      .rep-empty-state {
+        text-align: center;
+        color: var(--text-muted);
+        padding: 40px;
+      }
+      .rep-empty-state .icon {
+        font-size: 3rem;
+        color: var(--border);
+        margin-bottom: 12px;
+      }
+      .rep-empty-state h3 {
+        font-size: 1rem;
+        color: var(--text);
+        margin-bottom: 6px;
+      }
+      .rep-empty-state p {
+        font-size: 0.8rem;
+        max-width: 320px;
+        margin: 0 auto;
+        line-height: 1.5;
+      }
+    </style>
+
+    <div class="rep-grid">
+      <!-- LEFT COLUMN: REPORT SELECTOR CARDS -->
+      <section class="glass-section rep-sidebar">
+        <div class="rep-sidebar-header">
+          <span class="rep-icon-pulse">📋</span>
+          <div>
+            <div class="rep-brand-title">Báo Cáo Chiến Lược</div>
+            <div class="rep-brand-sub">Backtest & Sizing Analysis</div>
+          </div>
+        </div>
+        <div class="rep-list" id="reportsList">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: IFRAME REPORT VIEWER -->
+      <section class="glass-section rep-viewer-panel">
+        <div class="rep-viewer-header d-none" id="repViewerHeader">
+          <div class="rep-viewer-title-wrap">
+            <span id="repViewerIcon" class="rep-viewer-icon">📊</span>
+            <div>
+              <div id="repViewerTitle" class="rep-viewer-title">Báo cáo hiệu suất</div>
+              <div id="repViewerFile" class="rep-viewer-file">supertrend_equity_curve.html</div>
+            </div>
+          </div>
+          <div class="rep-viewer-actions">
+            <button class="rep-action-btn" onclick="refreshActiveReport()" title="Tải lại báo cáo">🔄 Refresh</button>
+            <a id="repExternalLink" href="" target="_blank" class="rep-action-btn-link" title="Mở trong tab mới">↗ Open Standalone</a>
+          </div>
+        </div>
+        <div class="rep-viewer-body" id="repViewerBody">
+          <div class="rep-empty-state" id="repEmptyState">
+            <div class="icon">📋</div>
+            <h3>Chưa chọn báo cáo</h3>
+            <p>Vui lòng chọn một báo cáo từ danh sách bên trái để hiển thị chi tiết hiệu suất.</p>
+          </div>
+          <iframe id="repIframe" class="rep-iframe d-none" src="" frameborder="0"></iframe>
+        </div>
+      </section>
+    </div>
+  </div>
 
   <!-- ═══ TAB: SCANNER ═══ -->
   <div id="tab-scanner" class="tab-panel">
@@ -1558,5 +1813,6 @@
 <script src="/static/js/dashboard-features.js?v=20260529d"></script>
 <script src="/static/js/dashboard-signals.js?v=20260529d"></script>
 <script src="/static/js/dashboard-visualizer.js?v=20260602"></script>
+<script src="/static/js/dashboard-reports.js?v=20260603"></script>
 </body>
 </html>

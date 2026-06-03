@@ -4,9 +4,10 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
 
 # All actions upgraded to Node.js 24 native versions (setup-python@v6, checkout@v6, cache@v5)
 
@@ -29,6 +30,7 @@ jobs:
           filters: |
             code:
               - 'nerves/workers/trading/**'
+              - 'vbs/**'
               - 'Dockerfile'
               - 'pine/**'
               - '.github/workflows/**'
@@ -138,7 +140,7 @@ jobs:
           uv pip install --system -r server/requirements-test.txt
 
       - name: Cache Playwright browsers
-        if: steps.test-cache.outputs.cache-hit != 'true'
+        if: steps.test-cache.outputs.cache-hit != 'true' && matrix.install-browser == true
         id: playwright-cache
         uses: actions/cache@v5
         with:
@@ -148,7 +150,7 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Install Playwright Chromium Browser
-        if: steps.test-cache.outputs.cache-hit != 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
+        if: steps.test-cache.outputs.cache-hit != 'true' && steps.playwright-cache.outputs.cache-hit != 'true' && matrix.install-browser == true
         run: python -m playwright install chromium
 
       - name: "Run Tests: ${{ matrix.stage }}"
@@ -185,16 +187,114 @@ jobs:
           echo "${{ steps.code-hash.outputs.hash }}" > .test-passed/hash.txt
           echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .test-passed/timestamp.txt
 
-  # ── 2A. DEPLOY SERVER A (Gateway) ──────────────────────────────────
-  deploy-server-a:
-    name: Deploy Server A (Gateway)
+  # ── 1C. BUILD & PUSH DOCKER IMAGES (GHCR Cache Optimization) ─────
+  build-images:
+    name: Build & Push Docker Images
     needs: [changes, ci-lint-security, ci-tests]
     if: |
       always() &&
-      github.ref == 'refs/heads/main' && github.event_name == 'push' &&
       (needs.changes.outputs.deploy == 'true' || contains(github.event.head_commit.message, '[force deploy]')) &&
       (needs.ci-lint-security.result == 'success' || needs.ci-lint-security.result == 'skipped') &&
       (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push VBS Image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./vbs
+          file: ./vbs/Dockerfile
+          push: true
+          tags: ghcr.io/dinhvietdan88-commits/tradingbot-vbs:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and Push Execution Image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          target: runtime-execution
+          push: true
+          tags: ghcr.io/dinhvietdan88-commits/tradingbot-execution:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and Push Analyzer Image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          target: runtime-analyzer
+          push: true
+          tags: ghcr.io/dinhvietdan88-commits/tradingbot-analyzer:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner on VBS Image
+        uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: 'ghcr.io/dinhvietdan88-commits/tradingbot-vbs:latest'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+
+      - name: Run Trivy vulnerability scanner on Execution Image
+        uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: 'ghcr.io/dinhvietdan88-commits/tradingbot-execution:latest'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+
+      - name: Run Trivy vulnerability scanner on Analyzer Image
+        uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: 'ghcr.io/dinhvietdan88-commits/tradingbot-analyzer:latest'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+
+  # ── 2A. DEPLOY SERVER A (Gateway) ──────────────────────────────────
+  deploy-server-a:
+    name: Deploy Server A (Gateway)
+    needs: [changes, ci-lint-security, ci-tests, build-images]
+    if: |
+      always() &&
+      (needs.changes.outputs.deploy == 'true' || contains(github.event.head_commit.message, '[force deploy]')) &&
+      (needs.ci-lint-security.result == 'success' || needs.ci-lint-security.result == 'skipped') &&
+      (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped') &&
+      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -204,10 +304,6 @@ jobs:
         uses: tailscale/github-action@v4
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
-          # TODO: migrate to OAuth when scopes are fixed
-          # oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          # oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          # tags: tag:ci
 
       - name: Setup SSH Agent
         uses: webfactory/ssh-agent@v0.10.0
@@ -234,9 +330,12 @@ jobs:
       - name: Deploy Server A
         id: deploy_a
         if: steps.ssh_check_a.outputs.reachable == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
         run: |
           echo "🚀 Deploying Server A..."
-          ssh botuser@${{ secrets.SERVER_A_IP }} 'bash -s' << 'EOF'
+          ssh botuser@${{ secrets.SERVER_A_IP }} "GH_TOKEN='$GH_TOKEN' GH_ACTOR='$GH_ACTOR' bash -s" << 'EOF'
             set -e
             cd /opt/trading-bot
             git reset --hard origin/main
@@ -248,25 +347,53 @@ jobs:
             echo "$PULL_OUTPUT"
             NEW_SHA=$(git rev-parse HEAD)
             
-            # Nếu code không đổi → skip rebuild, health check only
+            # Backup database if container is running
+            if docker ps --format '{{.Names}}' | grep -q "^tradingbot-vbs$"; then
+              echo "📦 Backing up SQLite database..."
+              docker cp tradingbot-vbs:/app/data/signal_queue.db /tmp/signal_queue.db.bak || true
+            else
+              # Fallback to local files
+              for path in "/opt/trading-bot/vbs/data/signal_queue.db" "/opt/trading-bot/vbs/signal_queue.db" "/opt/trading-bot/signal_queue.db"; do
+                if [ -f "$path" ]; then
+                  echo "📦 Backing up local database file: $path"
+                  cp "$path" /tmp/signal_queue.db.bak
+                  break
+                fi
+              done
+            fi
+            
+            # Nếu code không đổi → skip pull & restart, health check only
             if [ "$OLD_SHA" = "$NEW_SHA" ]; then
-              echo "📎 No new commits — skipping rebuild"
+              echo "📎 No new commits — skipping pull"
               if curl -sf http://localhost:5000/health > /dev/null 2>&1; then
                 echo "✅ Server A already healthy (no changes)"
+                rm -f /tmp/signal_queue.db.bak
                 exit 0
               fi
-              echo "⚠️ No changes but service unhealthy — rebuilding..."
+              echo "⚠️ No changes but service unhealthy — restarting..."
             fi
             
             # Đánh dấu đã deploy (cho rollback logic)
             echo "DEPLOYED" > /tmp/.deploy_state
-            docker system prune -f
-            docker compose -f deploy/docker-compose.server-a.yml up -d --build
+            
+            # Login to GHCR, pull and update container, then logout
+            echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+            docker compose -f deploy/docker-compose.server-a.yml pull
+            docker compose -f deploy/docker-compose.server-a.yml up -d
+            docker logout ghcr.io
+            
+            # Restore/Import database from backup if it exists
+            if [ -f /tmp/signal_queue.db.bak ]; then
+              echo "📦 Restoring database into container..."
+              docker cp /tmp/signal_queue.db.bak tradingbot-vbs:/app/data/signal_queue.db || true
+              docker compose -f deploy/docker-compose.server-a.yml restart
+            fi
             
             echo "🔍 Testing Gateway Health..."
             for i in {1..10}; do
               if curl -sf http://localhost:5000/health > /dev/null; then
                 echo "✅ Server A Healthy!"
+                rm -f /tmp/signal_queue.db.bak
                 exit 0
               fi
               sleep 2
@@ -274,14 +401,28 @@ jobs:
             echo "❌ Server A Health Check Failed!"
             exit 1
           EOF
+      - name: Post-Deploy Smoke Test (External Routing)
+        id: smoke_a
+        if: steps.deploy_a.outcome == 'success'
+        run: |
+          echo "🔌 Testing Tailscale network connectivity to Server A..."
+          for i in {1..10}; do
+            if curl -sf --connect-timeout 5 http://${{ secrets.SERVER_A_IP }}:5000/health; then
+              echo "✅ Tailscale Network Smoke Test Passed!"
+              exit 0
+            fi
+            echo "⏳ Retrying Tailscale connection..."
+            sleep 3
+          done
+          echo "❌ Tailscale Network Smoke Test Failed!"
+          exit 1
 
       - name: Rollback Server A (On Failure)
-        if: failure() && steps.deploy_a.outcome == 'failure' && steps.ssh_check_a.outputs.reachable == 'true'
+        if: failure() && steps.ssh_check_a.outputs.reachable == 'true'
         run: |
           echo "⚠️ Checking if rollback is needed..."
           ssh botuser@${{ secrets.SERVER_A_IP }} 'bash -s' << 'EOF'
             cd /opt/trading-bot
-            # Chỉ rollback nếu deploy đã thực sự thay đổi code
             if [ ! -f .rollback_sha ]; then
               echo "⏭️ No rollback SHA — nothing to revert"
               exit 0
@@ -294,20 +435,28 @@ jobs:
             fi
             echo "🔄 Reverting Server A to $ROLLBACK_SHA..."
             git checkout $ROLLBACK_SHA
-            docker compose -f deploy/docker-compose.server-a.yml up -d --build
+            docker compose -f deploy/docker-compose.server-a.yml up -d
+            
+            # Restore database backup if it exists
+            if [ -f /tmp/signal_queue.db.bak ]; then
+              echo "📦 Restoring database backup..."
+              docker cp /tmp/signal_queue.db.bak tradingbot-vbs:/app/data/signal_queue.db || true
+              docker compose -f deploy/docker-compose.server-a.yml restart
+              rm -f /tmp/signal_queue.db.bak
+            fi
             echo "✅ Rollback Server A completed"
           EOF
 
   # ── 2B. DEPLOY SERVER C (AI Core) ──────────────────────────────────
   deploy-server-c:
     name: Deploy Server C (AI Core)
-    needs: [changes, ci-lint-security, ci-tests]
+    needs: [changes, ci-lint-security, ci-tests, build-images]
     if: |
       always() &&
-      github.ref == 'refs/heads/main' && github.event_name == 'push' &&
       (needs.changes.outputs.deploy == 'true' || contains(github.event.head_commit.message, '[force deploy]')) &&
       (needs.ci-lint-security.result == 'success' || needs.ci-lint-security.result == 'skipped') &&
-      (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped')
+      (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped') &&
+      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -317,10 +466,6 @@ jobs:
         uses: tailscale/github-action@v4
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
-          # TODO: migrate to OAuth when scopes are fixed
-          # oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          # oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          # tags: tag:ci
 
       - name: Setup SSH Agent
         uses: webfactory/ssh-agent@v0.10.0
@@ -330,13 +475,13 @@ jobs:
       - name: Scan SSH Host Keys
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.SERVER_C_IP }} >> ~/.ssh/known_hosts || true
+          ssh-keyscan -p ${{ secrets.SSH_PORT_C || '22' }} -H ${{ secrets.SERVER_C_IP }} >> ~/.ssh/known_hosts || true
 
       - name: Pre-check SSH connectivity
         id: ssh_check_c
         run: |
           echo "🔌 Testing SSH to Server C..."
-          if ssh -o ConnectTimeout=10 -o BatchMode=yes botuser@${{ secrets.SERVER_C_IP }} "echo ok" 2>/dev/null; then
+          if ssh -p ${{ secrets.SSH_PORT_C || '22' }} -o ConnectTimeout=10 -o BatchMode=yes botuser@${{ secrets.SERVER_C_IP }} "echo ok" 2>/dev/null; then
             echo "reachable=true" >> $GITHUB_OUTPUT
             echo "✅ Server C reachable"
           else
@@ -347,9 +492,12 @@ jobs:
       - name: Deploy Server C
         id: deploy_c
         if: steps.ssh_check_c.outputs.reachable == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
         run: |
           echo "🚀 Deploying Server C..."
-          ssh botuser@${{ secrets.SERVER_C_IP }} 'bash -s' << 'EOF'
+          ssh -p ${{ secrets.SSH_PORT_C || '22' }} botuser@${{ secrets.SERVER_C_IP }} "GH_TOKEN='$GH_TOKEN' GH_ACTOR='$GH_ACTOR' bash -s" << 'EOF'
             set -e
             DEPLOY_DIR="/opt/trading-bot"
             [ ! -d "$DEPLOY_DIR/.git" ] && DEPLOY_DIR="/home/botuser/trading-bot"
@@ -363,19 +511,91 @@ jobs:
             echo "$PULL_OUTPUT"
             NEW_SHA=$(git rev-parse HEAD)
             
-            # Nếu code không đổi → skip rebuild, health check only
+            # Nếu code không đổi → skip pull & restart, health check only
             if [ "$OLD_SHA" = "$NEW_SHA" ]; then
-              echo "📎 No new commits — skipping rebuild"
-              if curl -sf http://localhost:5000/health > /dev/null 2>&1 || curl -sf http://localhost:8000/api/v1/heartbeat > /dev/null 2>&1; then
+              echo "📎 No new commits — skipping pull"
+              if curl -sf http://localhost:8000/api/v2/heartbeat > /dev/null 2>&1; then
                 echo "✅ Server C already healthy (no changes)"
                 exit 0
               fi
-              echo "⚠️ No changes but service unhealthy — rebuilding..."
+              echo "⚠️ No changes but service unhealthy — restarting..."
             fi
             
             if [ -f deploy/docker-compose.server-c.yml ]; then
-              docker system prune -f
-              docker compose -f deploy/docker-compose.server-c.yml up -d --build
+              echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+              docker compose -f deploy/docker-compose.server-c.yml pull
+              docker compose -f deploy/docker-compose.server-c.yml up -d
+              docker logout ghcr.io
+            fi
+            
+            # ── agy-bridge sidecar (host-level Gemini proxy) ──────────
+            echo "🔧 Setting up agy-bridge sidecar..."
+            
+            # Ensure Python 3.11 is available for google-antigravity
+            if command -v python3.11 &>/dev/null; then
+              PY=python3.11
+            elif command -v python3 &>/dev/null; then
+              PY=python3
+            else
+              echo "⚠️ No Python3 found — skipping agy-bridge"
+              PY=""
+            fi
+            
+            if [ -n "$PY" ] && [ -f deploy/agy-bridge.py ]; then
+              # Install dependencies (idempotent)
+              $PY -m pip install --user --quiet fastapi uvicorn google-genai 2>&1 | tail -2
+              
+              # Try google-antigravity (needs Python 3.10+)
+              $PY -m pip install --user --quiet google-antigravity 2>&1 | tail -1 || true
+              
+              # Create .env.agy if missing
+              if [ ! -f deploy/.env.agy ]; then
+                GEMINI_KEY=$(grep "^GEMINI_API_KEY=" deploy/.env 2>/dev/null | cut -d= -f2- || echo "")
+                printf "ANTIGRAVITY_API_KEY=%s\nGEMINI_API_KEY=%s\n" "${GEMINI_KEY:-REPLACE_ME}" "${GEMINI_KEY:-REPLACE_ME}" > deploy/.env.agy
+                chmod 600 deploy/.env.agy
+              fi
+              
+              # Update systemd service (ExecStart uses detected Python)
+              PY_PATH=$(command -v $PY)
+              sed "s|ExecStart=.*python.*agy-bridge.py|ExecStart=${PY_PATH} $(pwd)/deploy/agy-bridge.py|" \
+                deploy/agy-bridge.service > /tmp/agy-bridge.service.tmp
+              
+              # Install service if changed (needs passwordless sudo for botuser)
+              if ! diff -q /tmp/agy-bridge.service.tmp /etc/systemd/system/agy-bridge.service &>/dev/null 2>&1; then
+                if sudo -n cp /tmp/agy-bridge.service.tmp /etc/systemd/system/agy-bridge.service 2>/dev/null; then
+                  sudo -n systemctl daemon-reload
+                  sudo -n systemctl enable agy-bridge
+                  sudo -n systemctl restart agy-bridge
+                  echo "✅ agy-bridge service updated and restarted"
+                else
+                  echo "⚠️ agy-bridge service update needs sudo — skipping (manual)"
+                fi
+              else
+                # Service file unchanged — just ensure running
+                if ! systemctl is-active --quiet agy-bridge 2>/dev/null; then
+                  sudo -n systemctl restart agy-bridge 2>/dev/null || echo "⚠️ agy-bridge not running (needs sudo)"
+                else
+                  echo "✅ agy-bridge already running"
+                fi
+              fi
+              
+              # Verify bridge health
+              sleep 2
+              if curl -sf http://localhost:9100/health > /dev/null 2>&1; then
+                echo "✅ agy-bridge health OK"
+              else
+                echo "⚠️ agy-bridge health check failed (non-blocking)"
+              fi
+              rm -f /tmp/agy-bridge.service.tmp
+            fi
+            
+            # Hot-patch rag.py into running container (until next image build)
+            if [ -f nerves/workers/trading/rag.py ]; then
+              docker cp nerves/workers/trading/rag.py tradingbot-analyzer:/app/rag.py 2>/dev/null || true
+            fi
+            if [ -f nerves/workers/trading/workers/vps_analyzer.py ]; then
+              docker cp nerves/workers/trading/workers/vps_analyzer.py tradingbot-analyzer:/app/workers/vps_analyzer.py 2>/dev/null || true
+              docker restart tradingbot-analyzer 2>/dev/null || true
             fi
             
             echo "🔍 Testing Server C Health..."
@@ -383,7 +603,7 @@ jobs:
               CHROMA_OK=false
               ANALYZER_OK=false
               
-              if curl -sf http://localhost:8000/api/v2/heartbeat > /dev/null 2>&1; then
+              if curl -sf http://localhost:8001/api/v2/heartbeat > /dev/null 2>&1; then
                 CHROMA_OK=true
               fi
               
@@ -409,7 +629,7 @@ jobs:
         if: failure() && steps.deploy_c.outcome == 'failure' && steps.ssh_check_c.outputs.reachable == 'true'
         run: |
           echo "⚠️ Checking if rollback is needed..."
-          ssh botuser@${{ secrets.SERVER_C_IP }} 'bash -s' << 'EOF'
+          ssh -p ${{ secrets.SSH_PORT_C || '22' }} botuser@${{ secrets.SERVER_C_IP }} 'bash -s' << 'EOF'
             DEPLOY_DIR="/opt/trading-bot"
             [ ! -d "$DEPLOY_DIR/.git" ] && DEPLOY_DIR="/home/botuser/trading-bot"
             cd "$DEPLOY_DIR"
@@ -426,7 +646,7 @@ jobs:
             echo "🔄 Reverting Server C to $ROLLBACK_SHA..."
             git checkout $ROLLBACK_SHA
             if [ -f deploy/docker-compose.server-c.yml ]; then
-              docker compose -f deploy/docker-compose.server-c.yml up -d --build
+              docker compose -f deploy/docker-compose.server-c.yml up -d
             fi
             echo "✅ Rollback Server C completed"
           EOF
@@ -434,13 +654,13 @@ jobs:
   # ── 2C. DEPLOY SERVER B (Execution Vault — Windows) ─────────────────
   deploy-server-b:
     name: Deploy Server B (Execution Vault)
-    needs: [changes, ci-lint-security, ci-tests]
+    needs: [changes, ci-lint-security, ci-tests, build-images]
     if: |
       always() &&
-      github.ref == 'refs/heads/main' && github.event_name == 'push' &&
       (needs.changes.outputs.deploy == 'true' || contains(github.event.head_commit.message, '[force deploy]')) &&
       (needs.ci-lint-security.result == 'success' || needs.ci-lint-security.result == 'skipped') &&
-      (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped')
+      (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped') &&
+      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -450,10 +670,6 @@ jobs:
         uses: tailscale/github-action@v4
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
-          # TODO: migrate to OAuth when scopes are fixed
-          # oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          # oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          # tags: tag:ci
 
       - name: Setup SSH Agent
         uses: webfactory/ssh-agent@v0.10.0
@@ -496,21 +712,70 @@ jobs:
             
             $NewSha = (git rev-parse HEAD).Trim()
             
-            # Nếu code không đổi → skip rebuild
+            # Backup database
+            if (docker ps --format '{{.Names}}' | Select-String -Pattern "^tradingbot-execution$") {
+              Write-Output "📦 Backing up trades database from running container..."
+              try {
+                docker cp tradingbot-execution:/app/data/trades.db C:\Windows\Temp\trades.db.bak
+              } catch {
+                Write-Output "⚠️ Failed to copy trades database: $_"
+              }
+            } else {
+              # Fallback to local files if native python execution was used
+              $LocalDbPaths = @(
+                "C:\opt\trading-bot\server\data\trades.db",
+                "C:\opt\trading-bot\server\trades.db",
+                "C:\opt\trading-bot\trades.db"
+              )
+              $BackedUp = $false
+              foreach ($Path in $LocalDbPaths) {
+                if (Test-Path $Path) {
+                  Write-Output "📦 Backing up local database file: $Path"
+                  Copy-Item -Path $Path -Destination C:\Windows\Temp\trades.db.bak -Force
+                  $BackedUp = $true
+                  break
+                }
+              }
+              if (-not $BackedUp) {
+                Write-Output "⚠️ No database found in container or local folders, skipping backup"
+              }
+            }
+            
+            # Nếu code không đổi → skip pull & restart
             if ($OldSha -eq $NewSha) {
-              Write-Output "📎 No new commits — skipping rebuild"
+              Write-Output "📎 No new commits — skipping pull"
               try {
                 $response = Invoke-RestMethod -Uri "http://localhost:5002/health" -Method Get -ErrorAction Stop
                 if ($response.status -eq "healthy" -or $response.status -eq "ok") {
                   Write-Output "✅ Server B already healthy (no changes)"
+                  if (Test-Path C:\Windows\Temp\trades.db.bak) {
+                    Remove-Item C:\Windows\Temp\trades.db.bak -Force
+                  }
                   exit 0
                 }
               } catch {
-                Write-Output "⚠️ No changes but service unavailable — rebuilding..."
+                Write-Output "⚠️ No changes but service unavailable — restarting..."
               }
             }
             
-            docker compose -f deploy/docker-compose.server-b.yml up -d --build
+            # Login to GHCR, pull, start and logout
+            $GhToken = "${{ secrets.GITHUB_TOKEN }}"
+            $GhActor = "${{ github.actor }}"
+            $GhToken | docker login ghcr.io -u $GhActor --password-stdin
+            docker compose -f deploy/docker-compose.server-b.yml pull
+            docker compose -f deploy/docker-compose.server-b.yml up -d
+            docker logout ghcr.io
+            
+            # Restore/Import database from backup if it exists
+            if (Test-Path C:\Windows\Temp\trades.db.bak) {
+              Write-Output "📦 Restoring trades database into container..."
+              try {
+                docker cp C:\Windows\Temp\trades.db.bak tradingbot-execution:/app/data/trades.db
+                docker compose -f deploy/docker-compose.server-b.yml restart
+              } catch {
+                Write-Output "⚠️ Failed to restore trades database: $_"
+              }
+            }
             
             echo "🔍 Testing Execution Server Health..."
             for ($i=1; $i -le 10; $i++) {
@@ -518,6 +783,9 @@ jobs:
                 $response = Invoke-RestMethod -Uri "http://localhost:5002/health" -Method Get
                 if ($response.status -eq "healthy" -or $response.status -eq "ok") {
                   Write-Output "✅ Server B Healthy!"
+                  if (Test-Path C:\Windows\Temp\trades.db.bak) {
+                    Remove-Item C:\Windows\Temp\trades.db.bak -Force
+                  }
                   exit 0
                 }
               } catch {
@@ -528,9 +796,24 @@ jobs:
             Write-Error "❌ Server B Health Check Failed!"
             exit 1
           EOF
+      - name: Post-Deploy Smoke Test (External Routing)
+        id: smoke_b
+        if: steps.deploy_b.outcome == 'success'
+        run: |
+          echo "🔌 Testing Tailscale network connectivity to Server B..."
+          for i in {1..10}; do
+            if curl -sf --connect-timeout 5 http://${{ secrets.SERVER_B_IP }}:5002/health; then
+              echo "✅ Tailscale Network Smoke Test Passed!"
+              exit 0
+            fi
+            echo "⏳ Retrying Tailscale connection..."
+            sleep 3
+          done
+          echo "❌ Tailscale Network Smoke Test Failed!"
+          exit 1
 
       - name: Rollback Server B (On Failure)
-        if: failure() && steps.deploy_b.outcome == 'failure' && steps.ssh_check_b.outputs.reachable == 'true'
+        if: failure() && steps.ssh_check_b.outputs.reachable == 'true'
         run: |
           echo "⚠️ Checking if rollback is needed..."
           ssh Administrator@${{ secrets.SERVER_B_IP }} << 'EOF'
@@ -547,6 +830,189 @@ jobs:
             }
             Write-Output "🔄 Reverting Server B to $RollbackSha..."
             git checkout $RollbackSha
-            docker compose -f deploy/docker-compose.server-b.yml up -d --build
+            docker compose -f deploy/docker-compose.server-b.yml up -d
+            
+            # Restore database backup if it exists
+            if (Test-Path C:\Windows\Temp\trades.db.bak) {
+              Write-Output "📦 Restoring trades database backup..."
+              try {
+                docker cp C:\Windows\Temp\trades.db.bak tradingbot-execution:/app/data/trades.db
+                docker compose -f deploy/docker-compose.server-b.yml restart
+                Remove-Item C:\Windows\Temp\trades.db.bak -Force
+              } catch {
+                Write-Output "⚠️ Failed to restore trades database: $_"
+              }
+            }
             Write-Output "✅ Rollback Server B completed"
           EOF
+
+  # ── 3. PIPELINE REPORT & NOTIFICATION ─────────────────────────────────
+  deploy-summary:
+    name: Pipeline Summary & Telegram Alert
+    needs: [build-images, deploy-server-a, deploy-server-c, deploy-server-b]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Summary Alert
+        env:
+          BUILD_STATUS: ${{ needs.build-images.result }}
+          SERVER_A_STATUS: ${{ needs.deploy-server-a.result }}
+          SERVER_C_STATUS: ${{ needs.deploy-server-c.result }}
+          SERVER_B_STATUS: ${{ needs.deploy-server-b.result }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMIT_AUTHOR: ${{ github.event.head_commit.author.name }}
+        run: |
+          cat << 'EOF' > send_telegram.py
+          import os
+          import urllib.request
+          import urllib.parse
+          import json
+
+          build_status = os.getenv('BUILD_STATUS', 'unknown')
+          server_a_status = os.getenv('SERVER_A_STATUS', 'unknown')
+          server_c_status = os.getenv('SERVER_C_STATUS', 'unknown')
+          server_b_status = os.getenv('SERVER_B_STATUS', 'unknown')
+
+          def get_emoji(status):
+              if status == 'success':
+                  return '🟢 SUCCESS'
+              elif status == 'failure':
+                  return '🔴 FAILED'
+              elif status == 'cancelled':
+                  return '⚪ CANCELLED'
+              elif status == 'skipped':
+                  return '🟡 SKIPPED'
+              else:
+                  return '❓ UNKNOWN'
+
+          emoji_build = get_emoji(build_status)
+          emoji_a = get_emoji(server_a_status)
+          emoji_c = get_emoji(server_c_status)
+          emoji_b = get_emoji(server_b_status)
+
+          overall_success = all(s in ['success', 'skipped'] for s in [build_status, server_a_status, server_c_status, server_b_status])
+          pipeline_emoji = '✅' if overall_success else '🚨'
+          pipeline_title = '<b>CI/CD Pipeline Deployment Report</b>'
+
+          commit_sha = os.getenv('GITHUB_SHA', '')[:7]
+          commit_msg = os.getenv('COMMIT_MESSAGE', 'N/A')
+          commit_author = os.getenv('COMMIT_AUTHOR', 'N/A')
+          repo = os.getenv('GITHUB_REPOSITORY', '')
+          run_id = os.getenv('GITHUB_RUN_ID', '')
+
+          message = f"""
+          {pipeline_emoji} {pipeline_title}
+
+          <b>Repository:</b> {repo}
+          <b>Run:</b> <a href="https://github.com/{repo}/actions/runs/{run_id}">#{run_id}</a>
+          <b>Commit:</b> <code>{commit_sha}</code> by {commit_author}
+          <b>Message:</b> {commit_msg}
+
+          <b>Stages Status:</b>
+            • Build & Push: {emoji_build}
+            • Server A (Gateway): {emoji_a}
+            • Server C (AI Core): {emoji_c}
+            • Server B (Execution): {emoji_b}
+          """
+
+          bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+          chat_id = os.getenv('TELEGRAM_CHAT_ID')
+
+          if not bot_token or not chat_id:
+              print("Telegram credentials missing, skipping alert.")
+              exit(0)
+
+          url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+          data = urllib.parse.urlencode({
+              'chat_id': chat_id,
+              'text': message.strip(),
+              'parse_mode': 'HTML',
+              'disable_web_page_preview': 'true'
+          }).encode('utf-8')
+
+          req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/x-www-form-urlencoded'})
+          try:
+              with urllib.request.urlopen(req) as response:
+                  print("Telegram alert sent successfully.")
+          except Exception as e:
+              print(f"Failed to send Telegram alert: {e}")
+          EOF
+          python send_telegram.py
+
+      - name: Generate GHA Summary Dashboard
+        env:
+          BUILD_STATUS: ${{ needs.build-images.result }}
+          SERVER_A_STATUS: ${{ needs.deploy-server-a.result }}
+          SERVER_C_STATUS: ${{ needs.deploy-server-c.result }}
+          SERVER_B_STATUS: ${{ needs.deploy-server-b.result }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMIT_AUTHOR: ${{ github.event.head_commit.author.name }}
+        run: |
+          cat << 'EOF' > generate_summary.py
+          import os
+
+          build_status = os.getenv('BUILD_STATUS', 'unknown')
+          server_a_status = os.getenv('SERVER_A_STATUS', 'unknown')
+          server_c_status = os.getenv('SERVER_C_STATUS', 'unknown')
+          server_b_status = os.getenv('SERVER_B_STATUS', 'unknown')
+
+          def get_badge(status):
+              if status == 'success':
+                  return '🟢 Success'
+              elif status == 'failure':
+                  return '🔴 Failed'
+              elif status == 'cancelled':
+                  return '⚪ Cancelled'
+              elif status == 'skipped':
+                  return '🟡 Skipped'
+              else:
+                  return '❓ Unknown'
+
+          badge_build = get_badge(build_status)
+          badge_a = get_badge(server_a_status)
+          badge_c = get_badge(server_c_status)
+          badge_b = get_badge(server_b_status)
+
+          overall_success = all(s in ['success', 'skipped'] for s in [build_status, server_a_status, server_c_status, server_b_status])
+          summary_emoji = '✅' if overall_success else '🚨'
+          summary_title = 'Production Deployment Summary'
+
+          commit_sha = os.getenv('GITHUB_SHA', '')[:7]
+          commit_msg = os.getenv('COMMIT_MESSAGE', 'N/A')
+          commit_author = os.getenv('COMMIT_AUTHOR', 'N/A')
+          repo = os.getenv('GITHUB_REPOSITORY', '')
+          run_id = os.getenv('GITHUB_RUN_ID', '')
+
+          summary_content = f"""# {summary_emoji} {summary_title}
+
+          ## Pipeline Info
+          - **Repository**: {repo}
+          - **Workflow Run**: [#{run_id}](https://github.com/{repo}/actions/runs/{run_id})
+          - **Commit**: `{commit_sha}` (Author: {commit_author})
+          - **Commit Message**: *{commit_msg}*
+
+          ## Deployment Stages Status
+          | Stage | Status | Description |
+          | :--- | :--- | :--- |
+          | **Build & Push Images** | {badge_build} | GHA build layer and scan with Trivy |
+          | **Server A (Gateway)** | {badge_a} | VBS Gateway deploy & DB safe-gate |
+          | **Server C (AI Core)** | {badge_c} | ChromaDB and Analyzer pull & check |
+          | **Server B (Execution)** | {badge_b} | Windows host pull & fallback restore |
+
+          ## Security Hardening Details
+          - **Vulnerability Scanner**: Trivy Enforcement (`severity: CRITICAL`)
+          - **Network Validation**: External Tailscale Network Smoke Tests
+          - **Safe-Gate Backup**: Auto-Backup and import SQLite databases for Server A & Server B
+          """
+
+          summary_file = os.getenv('GITHUB_STEP_SUMMARY')
+          if summary_file:
+              with open(summary_file, 'w', encoding='utf-8') as f:
+                  f.write(summary_content)
+              print("GHA Step Summary generated successfully.")
+          else:
+              print("GITHUB_STEP_SUMMARY environment variable not found.")
+          EOF
+          python generate_summary.py

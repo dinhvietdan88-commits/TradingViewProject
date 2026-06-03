@@ -218,7 +218,8 @@ async def test_bear_end_tactical_sizing_breakout():
     with patch("exchanges.router.get_router") as mock_get_router, \
          patch("engine.trade_engine.database") as mock_db, \
          patch("aiosqlite.connect", return_value=mock_conn), \
-         patch("analysis.fetch_candles_with_retry", AsyncMock(return_value=mock_candles_1h)):
+         patch("analysis.fetch_candles_with_retry", AsyncMock(return_value=mock_candles_1h)), \
+         patch("engine.regime_switcher.get_market_regime", AsyncMock(return_value="TRENDING")):
 
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = mock_client
@@ -275,7 +276,8 @@ async def test_safe_mode_halves_sizing():
 
     with patch("exchanges.router.get_router") as mock_get_router, \
          patch("engine.trade_engine.database") as mock_db, \
-         patch("aiosqlite.connect", return_value=mock_conn):
+         patch("aiosqlite.connect", return_value=mock_conn), \
+         patch("engine.regime_switcher.get_market_regime", AsyncMock(return_value="TRENDING")):
 
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = mock_client
@@ -319,17 +321,18 @@ async def test_safe_mode_deactivation():
 
     mock_cursor = AsyncMock()
     mock_cursor.__aenter__ = AsyncMock(return_value=mock_cursor)
-    mock_cursor.__aexit__ = MagicMock(return_value=None)
+    mock_cursor.__aexit__ = AsyncMock(return_value=None)
     mock_cursor.fetchone = AsyncMock(return_value={"action": "buy", "payload": '{"action": "buy"}'})
 
     mock_conn = AsyncMock()
     mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
-    mock_conn.__aexit__ = MagicMock(return_value=None)
+    mock_conn.__aexit__ = AsyncMock(return_value=None)
     mock_conn.execute = MagicMock(return_value=mock_cursor)
 
     with patch("exchanges.router.get_router") as mock_get_router, \
          patch("engine.trade_engine.database") as mock_db, \
-         patch("aiosqlite.connect", return_value=mock_conn):
+         patch("aiosqlite.connect", return_value=mock_conn), \
+         patch("engine.regime_switcher.get_market_regime", AsyncMock(return_value="TRENDING")):
 
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = mock_client

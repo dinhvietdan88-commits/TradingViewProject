@@ -11,6 +11,7 @@ version: "3.8"
 
 services:
   vbs:
+    image: ghcr.io/dinhvietdan88-commits/tradingbot-vbs:latest
     build:
       context: ../vbs
       dockerfile: Dockerfile

@@ -1,0 +1,46 @@
+[Unit]
+Description=agy Bridge — HTTP sidecar for Docker Analyzer (Antigravity Auth)
+Documentation=https://github.com/dinhvietdan88-commits/TradingViewProject
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=botuser
+Group=botuser
+WorkingDirectory=/home/botuser/trading-bot/deploy
+
+# Auth keys — loaded from EnvironmentFile
+EnvironmentFile=/home/botuser/trading-bot/deploy/.env.agy
+
+# Bridge settings
+Environment=AGY_BRIDGE_HOST=0.0.0.0
+Environment=AGY_BRIDGE_PORT=9100
+Environment=AGY_MODEL=gemini-2.5-flash
+Environment=AGY_TIMEOUT_SEC=25
+
+# Ensure agy is on PATH (pip --user install location)
+Environment=PATH=/home/botuser/.local/bin:/usr/local/bin:/usr/bin:/bin
+
+ExecStart=/usr/bin/python3 /home/botuser/trading-bot/deploy/agy-bridge.py
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+ReadWritePaths=/home/botuser/.cache
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=agy-bridge
+
+[Install]
+WantedBy=multi-user.target

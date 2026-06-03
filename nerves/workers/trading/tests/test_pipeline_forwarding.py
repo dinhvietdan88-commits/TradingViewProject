@@ -536,7 +536,11 @@ async def test_pipeline_ack_flow_executed():
     )
     worker._ack_signal = AsyncMock(return_value=True)
 
-    await worker.run()
+    # Mock uvicorn to prevent port 8000 binding conflicts in parallel CI
+    with patch("uvicorn.Config"), \
+         patch("uvicorn.Server") as mock_server:
+        mock_server.return_value.serve = AsyncMock()
+        await worker.run()
 
     # Verify forward was called with the trade payload
     worker.forward_to_server_b.assert_called_once_with(analyzed_signal["trade_payload"])
@@ -580,7 +584,11 @@ async def test_pipeline_ack_flow_rejected():
     worker.forward_to_server_b = AsyncMock()
     worker._ack_signal = AsyncMock(return_value=True)
 
-    await worker.run()
+    # Mock uvicorn to prevent port 8000 binding conflicts in parallel CI
+    with patch("uvicorn.Config"), \
+         patch("uvicorn.Server") as mock_server:
+        mock_server.return_value.serve = AsyncMock()
+        await worker.run()
 
     # Server B should NOT be called
     worker.forward_to_server_b.assert_not_called()
@@ -639,7 +647,11 @@ async def test_pipeline_ack_flow_failed_execution():
     )
     worker._ack_signal = AsyncMock(return_value=True)
 
-    await worker.run()
+    # Mock uvicorn to prevent port 8000 binding conflicts in parallel CI
+    with patch("uvicorn.Config"), \
+         patch("uvicorn.Server") as mock_server:
+        mock_server.return_value.serve = AsyncMock()
+        await worker.run()
 
     # Forward was attempted
     worker.forward_to_server_b.assert_called_once()
@@ -712,7 +724,11 @@ async def test_pipeline_multiple_signals_mixed_results():
     worker.forward_to_server_b = mock_forward
     worker._ack_signal = AsyncMock(return_value=True)
 
-    await worker.run()
+    # Mock uvicorn to prevent port 8000 binding conflicts in parallel CI
+    with patch("uvicorn.Config"), \
+         patch("uvicorn.Server") as mock_server:
+        mock_server.return_value.serve = AsyncMock()
+        await worker.run()
 
     # Verify ACK calls: 3 signals → 3 ACKs
     assert worker._ack_signal.call_count == 3
