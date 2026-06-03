@@ -382,7 +382,13 @@ async def serve_js_nocache(filename: str):
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # Mount reports files (for backtests, sizing and validation analysis)
-REPORTS_DIR = Path(__file__).parent.parent / "reports"
+# Dynamic resolution: supports local repo layout, CI runner, and Docker environment safely
+REPORTS_DIR = Path(__file__).parent.parent.parent.parent / "reports"
+if not REPORTS_DIR.exists():
+    # Fallback to local sibling path if run inside deep subdirectory / Docker
+    REPORTS_DIR = Path(__file__).parent / "reports"
+
+REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/reports", StaticFiles(directory=str(REPORTS_DIR)), name="reports")
 
 # ═══ MIDDLEWARE: IP WHITELISTING ══════════════════════════════
