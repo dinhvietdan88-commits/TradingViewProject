@@ -352,7 +352,7 @@ async def generate_trading_advice(
         meta = chunk.get("metadata", {})
         score = chunk.get("relevance_score", 0)
         topic = meta.get("topic", "N/A")
-        content_preview = chunk["content"][:800]  # giới hạn context
+        content_preview = chunk["content"][:400]  # giới hạn context (compressed)
         context_parts.append(
             f"[Tài liệu {i} | Chủ đề: {topic} | Độ liên quan: {score:.2%}]\n{content_preview}"
         )
@@ -366,30 +366,20 @@ async def generate_trading_advice(
     alert_type = payload.get("alert_type", action)
     timeframe = payload.get("timeframe", "N/A")
 
-    prompt = f"""Bạn là chuyên gia giao dịch theo phương pháp SEPA của Mark Minervini.
-Dưới đây là tín hiệu TradingView vừa nhận được và các quy tắc liên quan từ sách của Minervini.
+    prompt = f"""Chuyên gia SEPA Minervini. Phân tích tín hiệu TradingView.
 
-## TÍN HIỆU GIAO DỊCH
-- **Mã**: {symbol}
-- **Hành động**: {action.upper()}
-- **Giá**: {price}
-- **Loại tín hiệu**: {alert_type}
-- **Khung thời gian**: {timeframe}
-- **Volume hiện tại**: {volume}
-- **Volume trung bình**: {volume_avg}
-- **RSI**: {rsi}
+## TÍN HIỆU: {symbol} {action.upper()} @ {price}
+- Loại: {alert_type} | TF: {timeframe}
+- Vol: {volume} (avg: {volume_avg}) | RSI: {rsi}
 
-## KIẾN THỨC MINERVINI LIÊN QUAN (từ Knowledge Base)
+## KIẾN THỨC MINERVINI
 {knowledge_context}
 
-## YÊU CẦU PHÂN TÍCH
-Dựa trên tín hiệu trên và quy tắc của Minervini trong Knowledge Base:
-1. **Đánh giá chất lượng tín hiệu** (Mạnh/Trung bình/Yếu) và lý do ngắn gọn
-2. **Điểm phù hợp với Minervini** (có đáp ứng Trend Template, VCP, Volume không?)
-3. **Khuyến nghị hành động** (Mua/Bán/Chờ thêm xác nhận) + Stop-loss gợi ý
-4. **Cảnh báo rủi ro** (nếu có)
-
-Trả lời NGẮN GỌN, súc tích (dưới 200 từ), dùng emoji để dễ đọc trên Telegram."""
+## YÊU CẦU (dưới 150 từ, emoji cho Telegram)
+1. Chất lượng tín hiệu (Mạnh/Trung bình/Yếu) + lý do
+2. Phù hợp Minervini? (Trend Template, VCP, Volume)
+3. Khuyến nghị + SL/TP gợi ý
+4. Cảnh báo rủi ro"""
 
     try:
         # ── agy: bridge sidecar (host :9100, google-genai SDK, ~12s) ──
