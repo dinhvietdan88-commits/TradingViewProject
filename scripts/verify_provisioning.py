@@ -300,7 +300,8 @@ def main():
             ("9", "Kết nối đến SERVER B /api/execute-trade thành công", "Verify Server C can curl Server B health endpoint"),
             ("10", "Liveness monitor cấu hình (check A + B)", "Verify liveness_monitor.py or similar exists"),
             ("11", "Disk monitor cấu hình", "Verify disk_monitor.py or similar exists"),
-            ("12", "Circuit Breaker LLM cấu hình", "Verify circuit_breaker.py or config files exist")
+            ("12", "Circuit Breaker LLM cấu hình", "Verify circuit_breaker.py exists + state=CLOSED via /health"),
+            ("13", "AI smoke test: agy-bridge + RAG vectors", "Verify agy-bridge /admin/verify/quick returns rag_status=ok + vector_count>0"),
         ],
         "11.3": [
             ("1", "Windows Server 2022 cập nhật", "Verify Windows operating system via Get-CimInstance"),
@@ -538,17 +539,58 @@ def main():
         p = code == 0 and out.strip().startswith("100.")
         results["11.2.5"] = {"passed": p, "msg": f"Tailscale IP: {out.strip()}" if p else "Tailscale not connected."}
         
-        # 6. ChromaDB container
-        print("Running Check 11.2.6 (ChromaDB health)...")
-        code, out, err = conn_c.run("curl -sf http://localhost:8000/api/v2/heartbeat")
-        p = code == 0 and "heartbeat" in out
-        results["11.2.6"] = {"passed": p, "msg": "ChromaDB running on 8000." if p else f"ChromaDB not responding: {err.strip() or out.strip()}"}
+        # 6. ChromaDB container — check heartbeat + vector count (issue #57 fix)
+        print("Running Check 11.2.6 (ChromaDB health + vector count)...")
+        code, out, err = conn_c.run("curl -sf http://localhost:8001/api/v2/heartbeat")
+        heartbeat_ok = code == 0 and "heartbeat" in out
+        vector_count = -1
+        collection = "minervini_knowledge"
+        if heartbeat_ok:
+            code2, out2, _ = conn_c.run(f"curl -sf http://localhost:8001/api/v2/collections/{collection}/count")
+            if code2 == 0:
+                try:
+                    vector_count = int(out2.strip())
+                except ValueError:
+                    pass
+        if heartbeat_ok and vector_count > 0:
+            p = True
+            msg = f"ChromaDB running, {vector_count} vectors in '{collection}' (RAG data OK)."
+        elif heartbeat_ok and vector_count == 0:
+            p = False
+            msg = f"ChromaDB running but collection '{collection}' is EMPTY (0 vectors) — RAG non-functional! Fix #56."
+        elif heartbeat_ok:
+            p = True  # Heartbeat ok, count probe failed (collection may not exist yet)
+            msg = f"ChromaDB heartbeat OK, vector count probe failed (count={vector_count})."
+        else:
+            p = False
+            msg = f"ChromaDB not responding: {err.strip() or out.strip()}"
+        results["11.2.6"] = {"passed": p, "msg": msg}
         
-        # 7. Analyzer container
-        print("Running Check 11.2.7 (Analyzer container status)...")
-        code, out, err = conn_c.run("docker ps --filter name=analyzer")
-        p = code == 0 and "analyzer" in out
-        results["11.2.7"] = {"passed": p, "msg": "Analyzer container active." if p else "Analyzer container not found."}
+        # 7. Analyzer container — check running + no crash loop (issue #57)
+        print("Running Check 11.2.7 (Analyzer container status + crash loop)...")
+        code, out, err = conn_c.run("docker ps --filter name=tradingbot-analyzer --format '{{.Status}}'")
+        container_up = code == 0 and out.strip() != ""
+        health_status = out.strip()
+        crash_detected = False
+        if container_up:
+            # Check logs for crash loop indicators
+            code2, out2, _ = conn_c.run("docker logs --tail 20 tradingbot-analyzer 2>&1")
+            if code2 == 0:
+                crash_keywords = ["RecursionError", "RuntimeError", "CRITICAL", "Traceback", "crash", "Restarting"]
+                for kw in crash_keywords:
+                    if kw in out2:
+                        crash_detected = True
+                        break
+        if container_up and not crash_detected:
+            p = True
+            msg = f"Analyzer container active ({health_status}), no crash indicators in logs."
+        elif container_up and crash_detected:
+            p = False
+            msg = f"Analyzer container running ({health_status}) but crash loop detected in logs!"
+        else:
+            p = False
+            msg = "Analyzer container not found or not running."
+        results["11.2.7"] = {"passed": p, "msg": msg}
         
         # 8. Conn to Server A
         print("Running Check 11.2.8 (Connection to Server A)...")
@@ -574,11 +616,66 @@ def main():
         p = code == 0 and out.strip() != ""
         results["11.2.11"] = {"passed": p, "msg": f"Script found: {out.splitlines()[0]}" if p else "Disk monitor script not found."}
         
-        # 12. Circuit Breaker config
-        print("Running Check 11.2.12 (Circuit breaker check)...")
-        code, out, err = conn_c.run("find /opt/trading-bot /home/botuser/trading-bot -name 'circuit_breaker.py' -o -name '*circuit*' -o -name '*config.py' 2>/dev/null")
-        p = code == 0 and out.strip() != ""
-        results["11.2.12"] = {"passed": p, "msg": "Circuit Breaker code/configuration active." if p else "Circuit Breaker not configured."}
+        # 12. Circuit Breaker config + runtime state (issue #57)
+        print("Running Check 11.2.12 (Circuit breaker config + state check)...")
+        code, out, err = conn_c.run("find /opt/trading-bot /home/botuser/trading-bot -name 'ai_circuit_breaker.py' -o -name 'circuit_breaker.py' 2>/dev/null")
+        cb_code_exists = code == 0 and out.strip() != ""
+        cb_state = "unknown"
+        if cb_code_exists:
+            # Check runtime state via analyzer /health endpoint
+            code2, out2, _ = conn_c.run("curl -sf http://localhost:8000/health")
+            if code2 == 0:
+                try:
+                    import json as _j
+                    hdata = _j.loads(out2)
+                    cb_state = hdata.get("circuit_breaker_status", "unknown")
+                except Exception:
+                    pass
+        if cb_code_exists and cb_state == "closed":
+            p = True
+            msg = f"Circuit Breaker configured and state=CLOSED (healthy)."
+        elif cb_code_exists and cb_state in ("open", "half_open"):
+            p = False
+            msg = f"Circuit Breaker configured but state={cb_state} (OPEN — AI calls failing!)"
+        elif cb_code_exists:
+            p = True  # Code exists, state unknown (analyzer may not be up yet)
+            msg = f"Circuit Breaker code exists. Runtime state: {cb_state} (analyzer unreachable for probe)."
+        else:
+            p = False
+            msg = "Circuit Breaker not configured."
+        results["11.2.12"] = {"passed": p, "msg": msg}
+
+        # 13. AI smoke test via agy-bridge (issue #57 — NEW CHECK)
+        print("Running Check 11.2.13 (AI smoke test via agy-bridge)...")
+        # Read AGY_BRIDGE_SECRET from .env.agy on Server C
+        code, out, err = conn_c.run("grep '^AGY_BRIDGE_SECRET=' /opt/trading-bot/deploy/.env.agy /home/botuser/trading-bot/deploy/.env.agy 2>/dev/null | head -1 | cut -d= -f2-")
+        bridge_secret = out.strip() if code == 0 else ""
+        if bridge_secret:
+            code2, out2, _ = conn_c.run(
+                f'curl -sf http://localhost:9100/admin/verify/quick -H "Authorization: Bearer {bridge_secret}"'
+            )
+            if code2 == 0:
+                try:
+                    import json as _j
+                    rag_data = _j.loads(out2)
+                    vc = rag_data.get("vector_count", -1)
+                    rs = rag_data.get("rag_status", "unknown")
+                    if rs == "ok" and vc > 0:
+                        p = True
+                        msg = f"AI smoke test PASS: agy-bridge healthy, RAG={vc} vectors (status={rs})."
+                    else:
+                        p = False
+                        msg = f"AI smoke test FAIL: rag_status={rs}, vectors={vc}."
+                except Exception as ex:
+                    p = False
+                    msg = f"agy-bridge responded but parse failed: {ex}"
+            else:
+                p = False
+                msg = f"agy-bridge /admin/verify/quick unreachable (curl exit={code2})."
+        else:
+            p = False
+            msg = "AGY_BRIDGE_SECRET not found — cannot run AI smoke test."
+        results["11.2.13"] = {"passed": p, "msg": msg}
 
     # Section 11.3: Server B Verification (Local Windows)
     if args.server in ["b", "all"]:
@@ -749,9 +846,12 @@ def main():
             drift_ok = False
             
         if drift_c is not None:
-            details.append(f"C: {drift_c*1000:.1f}ms")
-            if drift_c > 0.5:
+            drift_c_ms = drift_c * 1000
+            details.append(f"C: {drift_c_ms:.1f}ms")
+            if drift_c > 0.5:  # > 500ms: fail
                 drift_ok = False
+            elif drift_c > 0.2:  # > 200ms: warn (issue #57: Server C had 372ms drift)
+                details.append("⚠️ C drift>200ms (approaching threshold)")
         else:
             details.append("C: Undetermined")
             drift_ok = False
