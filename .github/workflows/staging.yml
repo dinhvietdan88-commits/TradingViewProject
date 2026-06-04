@@ -51,10 +51,19 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Cache uv packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
       - name: Install test dependencies
         run: |
           pip install uv
-          uv pip install --system httpx pytest pytest-asyncio pytest-timeout
+          uv pip install --system -r server/requirements.txt
+          uv pip install --system -r server/requirements-test.txt
 
       - name: Run Staging Smoke Tests
         run: |
