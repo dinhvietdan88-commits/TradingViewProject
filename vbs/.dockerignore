@@ -1,0 +1,38 @@
+# ── Python Cache ──────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.hypothesis/
+.ruff_cache/
+.venv/
+venv/
+
+# ── Runtime Data ──────────────────────────────────────────────
+*.db
+*.db-shm
+*.db-wal
+*.log
+data/
+screenshots/
+
+# ── Development Config ────────────────────────────────────────
+.env
+*.env
+!.env.example
+
+# ── IDE / Editor ──────────────────────────────────────────────
+.vscode/
+.claude/
+.gemini/
+.kiro/
+*.code-workspace
+
+# ── Test Files ────────────────────────────────────────────────
+tests/
+test_*.py
+*_test.py
+
+# ── Docker ────────────────────────────────────────────────────
+Dockerfile
+docker-compose*.yml

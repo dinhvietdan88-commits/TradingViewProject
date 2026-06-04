@@ -1,0 +1,241 @@
+name: Cache Eviction & Storage Optimization
+
+on:
+  schedule:
+    # 3:00 AM UTC+7 = 20:00 UTC (runs after nightly regression at 19:00 UTC)
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run only — list caches without deleting'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['true', 'false']
+      target_mb:
+        description: 'Target max cache size in MB (default: 7000)'
+        required: false
+        default: '7000'
+
+jobs:
+  evict-stale-caches:
+    name: Evict Stale GHA Caches
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: write
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+      DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+      TARGET_MB: ${{ github.event.inputs.target_mb || '7000' }}
+
+    steps:
+      - name: Fetch all caches into unified JSON
+        id: fetch
+        run: |
+          echo "📊 Fetching all GHA caches for $REPO..."
+
+          # gh api --paginate outputs one JSON object per page separated by newlines.
+          # Use jq -s to slurp all pages, then flatten into single array.
+          ALL_JSON=$(gh api "repos/$REPO/actions/caches?per_page=100" --paginate \
+            | jq -s '[.[].actions_caches[]]')
+
+          # Write to temp file so we don't re-fetch in every step
+          echo "$ALL_JSON" > /tmp/all_caches.json
+
+          TOTAL_BYTES=$(echo "$ALL_JSON" | jq '[.[].size_in_bytes] | add // 0')
+          TOTAL_MB=$((TOTAL_BYTES / 1024 / 1024))
+          COUNT=$(echo "$ALL_JSON" | jq 'length')
+
+          echo "total_mb=$TOTAL_MB" >> $GITHUB_OUTPUT
+          echo "cache_count=$COUNT"  >> $GITHUB_OUTPUT
+          echo "📦 Total cache used: ${TOTAL_MB} MB across ${COUNT} entries"
+
+          # Print top-30 largest caches for visibility
+          echo ""
+          echo "=== Top 30 Caches by Size ==="
+          echo "$ALL_JSON" | jq -r \
+            '.[] | "\(.size_in_bytes / 1024 / 1024 | floor) MB | \(.key[0:80]) | \(.last_accessed_at[0:10])"' \
+            | sort -rn | head -30
+
+      - name: Audit Summary (Dry Run)
+        if: env.DRY_RUN == 'true'
+        run: |
+          echo "🔍 DRY RUN MODE — no caches will be deleted"
+          CUTOFF7=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          CUTOFF14=$(date -u -d '14 days ago' +%Y-%m-%dT%H:%M:%SZ)
+
+          echo ""
+          echo "=== Caches that WOULD be deleted (build-passed > 7d) ==="
+          jq -r --arg c "$CUTOFF7" \
+            '.[] | select(.key | test("^build-")) | select(.last_accessed_at < $c) | "\(.size_in_bytes/1024/1024|floor) MB | \(.key[0:80])"' \
+            /tmp/all_caches.json | sort -rn
+
+          echo ""
+          echo "=== Caches that WOULD be deleted (test-passed > 7d) ==="
+          jq -r --arg c "$CUTOFF7" \
+            '.[] | select(.key | test("^test-passed-")) | select(.last_accessed_at < $c) | "\(.size_in_bytes/1024/1024|floor) MB | \(.key[0:80])"' \
+            /tmp/all_caches.json | sort -rn
+
+          echo ""
+          echo "=== Playwright caches > 14 days ==="
+          jq -r --arg c "$CUTOFF14" \
+            '.[] | select(.key | test("playwright")) | select(.last_accessed_at < $c) | "\(.size_in_bytes/1024/1024|floor) MB | \(.key[0:80])"' \
+            /tmp/all_caches.json | sort -rn
+
+      - name: Delete stale build-sentinel caches (>7 days)
+        if: env.DRY_RUN == 'false'
+        run: |
+          CUTOFF=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          echo "🗑️ Evicting build-passed-* caches older than 7 days (cutoff: $CUTOFF)..."
+          DELETED=0
+
+          jq -r --arg c "$CUTOFF" \
+            '.[] | select(.key | test("^build-")) | select(.last_accessed_at < $c) | .id' \
+            /tmp/all_caches.json | while read ID; do
+              echo "  → DELETE build sentinel id=$ID"
+              gh api -X DELETE "repos/$REPO/actions/caches/$ID" && DELETED=$((DELETED+1)) || \
+                echo "  ⚠️ Failed to delete $ID (may already be gone)"
+          done
+          echo "✅ Build sentinel cleanup complete"
+
+      - name: Delete stale test-sentinel caches (>7 days)
+        if: env.DRY_RUN == 'false'
+        run: |
+          CUTOFF=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          echo "🗑️ Evicting test-passed-* caches older than 7 days..."
+
+          jq -r --arg c "$CUTOFF" \
+            '.[] | select(.key | test("^test-passed-")) | select(.last_accessed_at < $c) | .id' \
+            /tmp/all_caches.json | while read ID; do
+              echo "  → DELETE test sentinel id=$ID"
+              gh api -X DELETE "repos/$REPO/actions/caches/$ID" || \
+                echo "  ⚠️ Failed to delete $ID"
+          done
+          echo "✅ Test sentinel cleanup complete"
+
+      - name: Delete stale Playwright browser caches (>14 days)
+        if: env.DRY_RUN == 'false'
+        run: |
+          CUTOFF=$(date -u -d '14 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          echo "🗑️ Evicting Playwright caches older than 14 days..."
+
+          jq -r --arg c "$CUTOFF" \
+            '.[] | select(.key | test("playwright")) | select(.last_accessed_at < $c) | .id' \
+            /tmp/all_caches.json | while read ID; do
+              echo "  → DELETE playwright cache id=$ID"
+              gh api -X DELETE "repos/$REPO/actions/caches/$ID" || \
+                echo "  ⚠️ Failed to delete $ID"
+          done
+          echo "✅ Playwright cache cleanup complete"
+
+      - name: Delete orphaned branch caches
+        if: env.DRY_RUN == 'false'
+        run: |
+          echo "🗑️ Evicting caches from deleted branches..."
+
+          # Fetch all active branch refs
+          ACTIVE_REFS=$(gh api "repos/$REPO/branches?per_page=100" --paginate \
+            | jq -s -r '[.[].name] | .[] | "refs/heads/\(.)"')
+
+          echo "Active branches found: $(echo "$ACTIVE_REFS" | wc -l)"
+
+          jq -r '.[] | "\(.id) \(.ref // "")"' /tmp/all_caches.json | while read ID REF; do
+            # Skip if ref is empty or is a protected base branch
+            [ -z "$REF" ] && continue
+            [[ "$REF" == "refs/heads/main" || "$REF" == "refs/heads/master" ]] && continue
+
+            # Check if branch is still active
+            if ! echo "$ACTIVE_REFS" | grep -qF "$REF"; then
+              echo "  → DELETE orphaned branch cache: ref=$REF id=$ID"
+              gh api -X DELETE "repos/$REPO/actions/caches/$ID" || \
+                echo "  ⚠️ Failed to delete $ID"
+            fi
+          done
+          echo "✅ Orphaned branch cache cleanup complete"
+
+      - name: LRU Cap Enforcement
+        if: env.DRY_RUN == 'false'
+        run: |
+          TARGET_BYTES=$((TARGET_MB * 1024 * 1024))
+          echo "🎯 Enforcing cache storage cap: ${TARGET_MB} MB"
+
+          # Re-fetch fresh state after all evictions above
+          FRESH_JSON=$(gh api "repos/$REPO/actions/caches?per_page=100" --paginate \
+            | jq -s '[.[].actions_caches[]] | sort_by(.last_accessed_at)')
+
+          TOTAL_BYTES=$(echo "$FRESH_JSON" | jq '[.[].size_in_bytes] | add // 0')
+          TOTAL_MB=$((TOTAL_BYTES / 1024 / 1024))
+          echo "📊 Current total after eviction steps: ${TOTAL_MB} MB"
+
+          if [ "$TOTAL_BYTES" -le "$TARGET_BYTES" ]; then
+            echo "✅ Already within ${TARGET_MB} MB target — no LRU eviction needed"
+          else
+            echo "⚠️ Still over cap — applying LRU eviction (oldest accessed first)..."
+            RUNNING_TOTAL=$TOTAL_BYTES
+
+            echo "$FRESH_JSON" | jq -c '.[]' | while read ENTRY; do
+              [ "$RUNNING_TOTAL" -le "$TARGET_BYTES" ] && break
+
+              ID=$(echo "$ENTRY"   | jq -r '.id')
+              KEY=$(echo "$ENTRY"  | jq -r '.key')
+              SIZE=$(echo "$ENTRY" | jq -r '.size_in_bytes')
+              SIZE_MB=$((SIZE / 1024 / 1024))
+
+              # Protect the current week's uv package cache — too expensive to rebuild
+              WEEK=$(date -u +%Y-W%V)
+              if echo "$KEY" | grep -qE "^Linux-uv-${WEEK}"; then
+                echo "  ⏭️ Skipping protected uv cache: $KEY"
+                continue
+              fi
+
+              echo "  → LRU evict: ${SIZE_MB}MB | ${KEY:0:60}"
+              if gh api -X DELETE "repos/$REPO/actions/caches/$ID" 2>/dev/null; then
+                RUNNING_TOTAL=$((RUNNING_TOTAL - SIZE))
+              fi
+            done
+            echo "✅ LRU eviction complete"
+          fi
+
+      - name: Final Report
+        if: always()
+        run: |
+          echo "📊 === FINAL CACHE STORAGE REPORT ==="
+
+          FINAL_JSON=$(gh api "repos/$REPO/actions/caches?per_page=100" --paginate \
+            | jq -s '[.[].actions_caches[]]')
+          FINAL_BYTES=$(echo "$FINAL_JSON" | jq '[.[].size_in_bytes] | add // 0')
+          FINAL_MB=$((FINAL_BYTES / 1024 / 1024))
+          FINAL_COUNT=$(echo "$FINAL_JSON" | jq 'length')
+
+          INITIAL_MB="${{ steps.fetch.outputs.total_mb }}"
+          SAVED_MB=$((INITIAL_MB - FINAL_MB))
+
+          echo "Before: ${INITIAL_MB} MB | After: ${FINAL_MB} MB | Freed: ${SAVED_MB} MB"
+          echo ""
+          echo "=== Remaining Top-10 Caches ==="
+          echo "$FINAL_JSON" | jq -r \
+            '.[] | "\(.size_in_bytes/1024/1024|floor) MB | \(.key[0:70]) | \(.last_accessed_at[0:10])"' \
+            | sort -rn | head -10
+
+          # Write step summary
+          STATUS_ICON=$([ "$FINAL_MB" -le "$TARGET_MB" ] && echo "✅" || echo "⚠️")
+          cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY
+          ## 🗑️ Cache Eviction Report
+
+          | Metric | Before | After |
+          |:---|:---|:---|
+          | **Cache entries** | ${{ steps.fetch.outputs.cache_count }} | ${FINAL_COUNT} |
+          | **Total size** | ${INITIAL_MB} MB | ${FINAL_MB} MB |
+          | **Space freed** | — | **${SAVED_MB} MB** |
+          | **Target (${TARGET_MB} MB)** | — | ${STATUS_ICON} |
+
+          ### Remaining Top-10 Caches (by size)
+          | Size | Cache Key | Last Accessed |
+          |:---|:---|:---|
+          $(echo "$FINAL_JSON" | jq -r \
+            '.[] | "| \(.size_in_bytes/1024/1024|floor) MB | \(.key[0:60]) | \(.last_accessed_at[0:10]) |"' \
+            | sort -rn | head -10)
+          SUMMARY

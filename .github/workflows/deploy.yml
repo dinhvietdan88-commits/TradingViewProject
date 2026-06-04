@@ -170,6 +170,8 @@ jobs:
         run: |
           CODE_HASH=$(find nerves/workers/trading -type f -name '*.py' | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
           echo "hash=$CODE_HASH" >> $GITHUB_OUTPUT
+          # Weekly rotation key for uv cache (evicts stale packages every 7 days)
+          echo "week=$(date -u +%Y-W%V)" >> $GITHUB_OUTPUT
 
       - name: Check test result cache
         id: test-cache
@@ -201,8 +203,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
+          key: ${{ runner.os }}-uv-${{ steps.code-hash.outputs.week }}-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
           restore-keys: |
+            ${{ runner.os }}-uv-${{ steps.code-hash.outputs.week }}-
             ${{ runner.os }}-uv-
 
       - name: Install Dependencies
@@ -219,7 +222,7 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
           restore-keys: |
-            ${{ runner.os }}-playwright-
+            ${{ runner.os }}-playwright-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
 
       - name: Install Playwright Chromium Browser
         if: steps.test-cache.outputs.cache-hit != 'true' && steps.playwright-cache.outputs.cache-hit != 'true' && matrix.install-browser == true
@@ -273,6 +276,7 @@ jobs:
       (needs.ci-lint-security.result == 'success' || needs.ci-lint-security.result == 'skipped') &&
       (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped')
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
       packages: write
@@ -345,7 +349,7 @@ jobs:
             ghcr.io/dinhvietdan88-commits/${{ matrix.image }}:latest
             ghcr.io/dinhvietdan88-commits/${{ matrix.image }}:${{ steps.hash.outputs.hash }}
           cache-from: type=gha,scope=${{ matrix.name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=min,scope=${{ matrix.name }}
 
       - name: "Trivy Scan: ${{ matrix.name }}"
         if: steps.build-cache.outputs.cache-hit != 'true'

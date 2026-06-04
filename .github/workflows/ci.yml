@@ -8,6 +8,11 @@ on:
     branches:
       - main
 
+# Cancel any in-progress run for the same branch/PR — avoids redundant cache writes
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ── 0. CHANGE DETECTION ────────────────────────────────────────────
   changes:
@@ -18,6 +23,9 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          # Shallow clone — only need HEAD for change detection
+          fetch-depth: 1
 
       - name: Check for changes
         id: filter
@@ -41,6 +49,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -67,6 +76,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: true
       matrix:
@@ -86,6 +96,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       # Hash source code to bypass if test already passed for identical code
       - name: Compute code hash for test cache
@@ -93,6 +105,8 @@ jobs:
         run: |
           CODE_HASH=$(find nerves/workers/trading -type f -name '*.py' | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
           echo "hash=$CODE_HASH" >> $GITHUB_OUTPUT
+          # Weekly rotation key for uv cache (evicts stale packages every 7 days)
+          echo "week=$(date -u +%Y-W%V)" >> $GITHUB_OUTPUT
 
       - name: Check test result cache
         id: test-cache
@@ -124,8 +138,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
+          key: ${{ runner.os }}-uv-${{ steps.code-hash.outputs.week }}-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
           restore-keys: |
+            ${{ runner.os }}-uv-${{ steps.code-hash.outputs.week }}-
             ${{ runner.os }}-uv-
 
       - name: Install Dependencies
@@ -142,7 +157,7 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
           restore-keys: |
-            ${{ runner.os }}-playwright-
+            ${{ runner.os }}-playwright-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
 
       - name: Install Playwright Chromium Browser
         if: steps.test-cache.outputs.cache-hit != 'true' && steps.playwright-cache.outputs.cache-hit != 'true' && matrix.install-browser == true

@@ -1,24 +1,30 @@
+# syntax=docker/dockerfile:1.7
 # ════════════════════════════════════════════════════════════════
 # Minervini AI Trading Bot — Docker Image
 # Split-Image Architecture: Phase 6.5
 # ════════════════════════════════════════════════════════════════
 
-# ── Stage 1: Builder Base ─────────────────────────────────────
+# ──── Stage 1: Builder Base ────────────────────────────────────
 FROM python:3.11-slim AS builder-base
+# PIP_NO_CACHE_DIR=off means pip WILL write to ~/.cache/pip (used by BuildKit --mount=type=cache)
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /build
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc g++ && \
     rm -rf /var/lib/apt/lists/*
 
-# ── Stage 2: Builder Execution ────────────────────────────────
+# ──── Stage 2: Builder Execution ────────────────────────────────
 FROM builder-base AS builder-execution
 COPY nerves/workers/trading/requirements-execution.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --prefix=/install -r requirements-execution.txt
 
-# ── Stage 3: Builder Analyzer ─────────────────────────────────
+# ──── Stage 3: Builder Analyzer ─────────────────────────────────
 FROM builder-base AS builder-analyzer
 COPY nerves/workers/trading/requirements.txt .
+# Note: torch CPU-only is ~250 MB installed; pip cache mount avoids re-download on rebuild
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --prefix=/install torch --index-url https://download.pytorch.org/whl/cpu && \
     pip install --prefix=/install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
@@ -66,8 +72,10 @@ ENV PORT=8000 \
     KNOWLEDGE_DIR=/app/knowledge/trading_wizard/chunks
 EXPOSE 8000
 # Pre-download the sentence-transformers model during build
-# to avoid runtime download timeout in Docker (120MB model)
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')"
+# BuildKit cache mount preserves HuggingFace cache between rebuilds (~120 MB model)
+RUN --mount=type=cache,target=/root/.cache/huggingface \
+    HF_HOME=/root/.cache/huggingface \
+    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')"
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 USER trader

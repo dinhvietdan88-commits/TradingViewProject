@@ -57,12 +57,49 @@ extract_pdf.py
 cortex
 lobes
 cache
-archive
-workflows
 
 # ── Pine Script (TradingView indicators) ─────────────
 pine
 
-# ── Docker ────────────────────────────────────────────
+# ── Docker ────────────────────────────────────────────────────
 Dockerfile
 docker-compose.yml
+docker-compose.*.yml
+
+# ── Test / Dev Artifacts (not needed in image) ───────────────────
+**/tests/
+**/test_*.py
+**/.benchmarks/
+scratch/
+reports/
+hardness_report.md
+provisioning_report.json
+trades.log
+test_trades.log
+*.log
+*.pid
+
+# ── Local Agent State (never needed in image) ──────────────────
+.agents/
+memory/
+.benchmarks/
+.antigravitycli/
+cortex/
+lobes/
+spine/
+
+# ── Large Binaries / Packages ─────────────────────────────────
+*.exe
+*.tar.gz
+*.whl
+*.zip
+
+# ── CI / GitHub Meta (not needed in image) ─────────────────────
+.github/
+AGENTS.md
+CLAUDE.md
+ONBOARDING.md
+PROJECT.md
+ORIGINAL_REQUEST.md
+*.md
+!docs/knowledge/**/*.md

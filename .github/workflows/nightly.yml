@@ -26,12 +26,17 @@ jobs:
       - name: Install uv (fast pip)
         run: pip install uv
 
+      - name: Compute weekly cache key
+        id: cache-key
+        run: echo "week=$(date -u +%Y-W%V)" >> $GITHUB_OUTPUT
+
       - name: Cache uv packages
         uses: actions/cache@v5
         with:
           path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
+          key: ${{ runner.os }}-uv-${{ steps.cache-key.outputs.week }}-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
           restore-keys: |
+            ${{ runner.os }}-uv-${{ steps.cache-key.outputs.week }}-
             ${{ runner.os }}-uv-
 
       - name: Install Dependencies
