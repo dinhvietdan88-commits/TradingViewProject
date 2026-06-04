@@ -1,0 +1,28 @@
+# ════════════════════════════════════════════════════════════════
+# docker-compose.server-c.override.yml
+# Development / local override for server-c compose setup.
+# ════════════════════════════════════════════════════════════════
+# Usage (local dev):
+#   TRADING_SRC=../nerves/workers/trading docker compose \
+#     -f deploy/docker-compose.server-c.yml \
+#     -f deploy/docker-compose.server-c.override.yml up
+#
+# Or set in .env:
+#   TRADING_SRC=../nerves/workers/trading
+# ════════════════════════════════════════════════════════════════
+
+services:
+  analyzer:
+    # Override bind mount path for local development
+    # Uses relative path instead of absolute /opt/trading-bot/...
+    volumes:
+      - ${LOCAL_TRADING_PATH:-../nerves/workers/trading}:/app:ro
+      - analyzer_logs:/app/logs
+    # Lower resource limits for local dev
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+volumes:
+  analyzer_logs:

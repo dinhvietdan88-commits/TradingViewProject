@@ -84,7 +84,12 @@ jobs:
           while IFS= read -r f; do
             case "$f" in
               vbs/*)                              [[ $A -lt 2 ]] && A=2 ;;
-              nerves/workers/trading/*)            [[ $C -lt 2 ]] && C=2 ;;
+              # Fix #68: Split Server C tier — only infra changes need image rebuild
+              # .py-only changes: Tier 1 (bind mount serves latest code after git pull + restart)
+              # requirements / Dockerfile changes: Tier 2 (pip packages or system deps changed)
+              nerves/workers/trading/requirements*.txt)    [[ $C -lt 2 ]] && C=2 ;;
+              nerves/workers/trading/Dockerfile*)          [[ $C -lt 2 ]] && C=2 ;;
+              nerves/workers/trading/*)                    [[ $C -lt 1 ]] && C=1 ;;
               server/*)                            [[ $B -lt 2 ]] && B=2 ;;
               Dockerfile)                          [[ $B -lt 2 ]] && B=2; [[ $C -lt 2 ]] && C=2 ;;
               deploy/*server-a* | deploy/*vbs*)    [[ $A -lt 1 ]] && A=1 ;;
@@ -706,14 +711,11 @@ jobs:
               rm -f /tmp/agy-bridge.service.tmp
             fi
             
-            # Hot-patch rag.py into running container (until next image build)
-            if [ -f nerves/workers/trading/rag.py ]; then
-              docker cp nerves/workers/trading/rag.py tradingbot-analyzer:/app/rag.py 2>/dev/null || true
-            fi
-            if [ -f nerves/workers/trading/workers/vps_analyzer.py ]; then
-              docker cp nerves/workers/trading/workers/vps_analyzer.py tradingbot-analyzer:/app/workers/vps_analyzer.py 2>/dev/null || true
-              docker restart tradingbot-analyzer 2>/dev/null || true
-            fi
+            # Fix #68: No hot-patch needed — source is bind-mounted from host git directory.
+            # git pull above already updated /opt/trading-bot/nerves/workers/trading/
+            # TRADING_SRC bind mount in docker-compose.server-c.yml serves latest code.
+            # Container restart (Tier 1) is sufficient for Python-only changes.
+            echo "Source code served via bind mount — no docker cp needed"
             
             echo "🔍 Testing Server C Health..."
             for i in {1..30}; do
