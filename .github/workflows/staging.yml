@@ -1,0 +1,79 @@
+name: Staging Smoke Test
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      smoke_url:
+        description: 'Staging base URL (e.g. http://your-vps:5000)'
+        required: false
+        default: 'http://localhost:5000'
+
+jobs:
+  # Step 1: Check if STAGING_BASE_URL secret is set (secrets can't be compared in if: directly)
+  check-config:
+    name: Check Staging Config
+    runs-on: ubuntu-latest
+    outputs:
+      has_url: ${{ steps.check.outputs.has_url }}
+    steps:
+      - name: Check if STAGING_BASE_URL is configured
+        id: check
+        env:
+          STAGING_URL: ${{ secrets.STAGING_BASE_URL }}
+        run: |
+          if [ -n "$STAGING_URL" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "has_url=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_url=false" >> $GITHUB_OUTPUT
+            echo "⚠️ STAGING_BASE_URL secret not set — skipping smoke tests. Add it in Settings → Secrets → Actions."
+          fi
+
+  staging-smoke:
+    name: Staging Smoke HTTP
+    needs: check-config
+    if: needs.check-config.outputs.has_url == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SMOKE_BASE_URL: ${{ secrets.STAGING_BASE_URL || github.event.inputs.smoke_url || 'http://localhost:5000' }}
+      WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create server symlink
+        run: ln -s nerves/workers/trading server
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: |
+          pip install uv
+          uv pip install --system httpx pytest pytest-asyncio pytest-timeout
+
+      - name: Run Staging Smoke Tests
+        run: |
+          cd server
+          echo "🌐 Smoke testing: $SMOKE_BASE_URL"
+          python -m pytest tests/integration/test_staging_smoke.py \
+            -m staging --tb=short -v \
+            --timeout=30
+
+      - name: Notify Telegram on Failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            SHORT_SHA=$(echo "${{ github.sha }}" | head -c 7)
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TELEGRAM_CHAT_ID}" \
+              -d "text=🚨 Staging Smoke FAILED on ${SHORT_SHA} — ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+              -d "parse_mode=Markdown" || true
+          fi

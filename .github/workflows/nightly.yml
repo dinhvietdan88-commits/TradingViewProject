@@ -1,0 +1,82 @@
+name: Nightly Full Regression
+
+on:
+  schedule:
+    # 2:00 AM UTC+7 = 19:00 UTC previous day
+    - cron: '0 19 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  nightly-regression:
+    name: Nightly Regression Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create server symlink
+        run: ln -s nerves/workers/trading server
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv (fast pip)
+        run: pip install uv
+
+      - name: Cache uv packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Install Dependencies
+        run: |
+          uv pip install --system -r server/requirements.txt
+          uv pip install --system -r server/requirements-test.txt
+
+      - name: Full Unit Suite (no cache bypass)
+        env:
+          VPS_BUFFER_ENABLED: "false"
+          CHROMA_REMOTE: "false"
+        run: |
+          cd server
+          COUNT=$(python -m pytest tests/unit/ --collect-only -q 2>/dev/null | tail -1 | grep -oP '\d+(?= tests?)' || echo "?")
+          echo "🌙 Nightly: Running $COUNT unit tests"
+          python -m pytest tests/unit/ -x --tb=short -q
+
+      - name: Integration + Property + Security
+        env:
+          VPS_BUFFER_ENABLED: "false"
+          CHROMA_REMOTE: "false"
+        run: |
+          cd server
+          python -m pytest tests/integration/ tests/property/ tests/security/ -x --tb=short -q
+
+      - name: VBS Recovery Stress (3x repeat)
+        env:
+          VPS_BUFFER_ENABLED: "false"
+        run: |
+          cd server
+          for i in 1 2 3; do
+            echo "🔁 VBS Recovery run $i/3"
+            python -m pytest tests/unit/test_vbs_recovery.py -q --tb=short
+          done
+
+      - name: Notify Telegram on Failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            SHORT_SHA=$(echo "${{ github.sha }}" | head -c 7)
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TELEGRAM_CHAT_ID}" \
+              -d "text=🌙 Nightly Regression FAILED — ${SHORT_SHA} — ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+              -d "parse_mode=Markdown"
+          fi

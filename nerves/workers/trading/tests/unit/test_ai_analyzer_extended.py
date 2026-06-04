@@ -106,6 +106,7 @@ async def test_mcp_not_connected_emits_analysis_complete_with_default_confidence
 
             mock_config.MCP_ENABLED = True
             mock_config.RAG_ENABLED = False
+            mock_config.SENTIMENT_ENABLED = False
 
             mock_mcp = AsyncMock()
             mock_mcp.health_check = AsyncMock(return_value={"connected": False})
@@ -153,6 +154,7 @@ async def test_vision_error_reduces_confidence_to_3():
 
             mock_config.MCP_ENABLED = True
             mock_config.RAG_ENABLED = False
+            mock_config.SENTIMENT_ENABLED = False
 
             mock_mcp = AsyncMock()
             mock_mcp.health_check = AsyncMock(return_value={"connected": True})
@@ -222,6 +224,7 @@ async def test_rag_warning_keyword_reduces_confidence():
             mock_config.MCP_ENABLED = True
             mock_config.RAG_ENABLED = True
             mock_config.RAG_TOP_K = 3
+            mock_config.SENTIMENT_ENABLED = False
 
             mock_mcp = AsyncMock()
             mock_mcp.health_check = AsyncMock(return_value={"connected": True})
@@ -278,6 +281,7 @@ async def test_sl_tp_extracted_from_analysis_text():
 
             mock_config.MCP_ENABLED = True
             mock_config.RAG_ENABLED = False
+            mock_config.SENTIMENT_ENABLED = False
 
             mock_mcp = AsyncMock()
             mock_mcp.health_check = AsyncMock(return_value={"connected": True})
@@ -333,6 +337,7 @@ async def test_sl_tp_from_event_take_priority():
 
             mock_config.MCP_ENABLED = True
             mock_config.RAG_ENABLED = False
+            mock_config.SENTIMENT_ENABLED = False
 
             mock_mcp = AsyncMock()
             mock_mcp.health_check = AsyncMock(return_value={"connected": True})
@@ -403,6 +408,7 @@ async def test_confidence_threshold_flags(confidence, should_trade, interactive)
 
             mock_config.MCP_ENABLED = True
             mock_config.RAG_ENABLED = False
+            mock_config.SENTIMENT_ENABLED = False
 
             mock_mcp = AsyncMock()
             mock_mcp.health_check = AsyncMock(return_value={"connected": True})
