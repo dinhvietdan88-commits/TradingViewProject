@@ -707,18 +707,11 @@ async def test_pipeline_multiple_signals_mixed_results():
             return analyzed_signals
         raise asyncio.CancelledError()
 
-    # forward_to_server_b: first call succeeds, second call fails
-    forward_results = [
-        {"success": True, "status": 200, "data": {"order_id": "ORD-M1"}},
-        {"success": False, "status": 500, "error": "Insufficient margin for ETHUSDT"},
-    ]
-    forward_call_idx = 0
-
     async def mock_forward(payload):
-        nonlocal forward_call_idx
-        result = forward_results[forward_call_idx]
-        forward_call_idx += 1
-        return result
+        if payload.get("symbol") == "BTCUSDT":
+            return {"success": True, "status": 200, "data": {"order_id": "ORD-M1"}}
+        else:
+            return {"success": False, "status": 500, "error": "Insufficient margin for ETHUSDT"}
 
     worker.poll_and_analyze = mock_poll
     worker.forward_to_server_b = mock_forward
@@ -735,14 +728,17 @@ async def test_pipeline_multiple_signals_mixed_results():
 
     ack_calls = worker._ack_signal.call_args_list
 
-    # Signal 1101: approved + executed → ACK 'executed'
-    assert ack_calls[0].args == (1101, "executed")
+    # Verify ACK calls: 3 signals -> 3 ACKs (order-independent)
+    ack_map = {call.args[0]: call.args[1:] for call in ack_calls}
+    
+    # Signal 1101: approved + executed -> ACK 'executed'
+    assert ack_map[1101] == ("executed",)
 
-    # Signal 1102: rejected → ACK 'rejected' with reason
-    assert ack_calls[1].args == (1102, "rejected", "Does not meet Minervini VCP pattern")
+    # Signal 1102: rejected -> ACK 'rejected' with reason
+    assert ack_map[1102] == ("rejected", "Does not meet Minervini VCP pattern")
 
-    # Signal 1103: approved but failed → ACK 'failed' with error
-    assert ack_calls[2].args == (1103, "failed", "Insufficient margin for ETHUSDT")
+    # Signal 1103: approved but failed -> ACK 'failed' with error
+    assert ack_map[1103] == ("failed", "Insufficient margin for ETHUSDT")
 
 
 # ═══════════════════════════════════════════════════════════════

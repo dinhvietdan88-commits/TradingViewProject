@@ -29,20 +29,33 @@ async def test_indicator_signal_renders_chart_and_sends_photo():
     )
     
     mock_client = MagicMock()
-    mock_client.capture_screenshot = AsyncMock(return_value=MagicMock(success=True, file_path="/fake/path/chart.png"))
+    mock_client.capture_screenshot = AsyncMock(return_value=MagicMock(success=True, file_path="/fake/path/indicator_chart.png"))
     
     mock_bot = MagicMock()
     mock_bot.send_interactive_indicator_alert = AsyncMock(return_value=[(12345, 67890)])
     
     with patch("hub.notification_hub.notifier") as mock_notifier, \
+         patch("capture_client.get_capture_client", return_value=mock_client), \
          patch.dict(sys.modules, {"telegram_bot": mock_bot}):
          
         mock_notifier.notify_all = AsyncMock()
         
         await notify_indicator_signal(event)
         
-        # Verify send_interactive_indicator_alert was called
-        mock_bot.send_interactive_indicator_alert.assert_called_once()
+        # Verify capture_screenshot was called with correct params
+        mock_client.capture_screenshot.assert_called_once()
+        args, kwargs = mock_client.capture_screenshot.call_args
+        assert kwargs["symbol"] == "BTCUSDT"
+        assert kwargs["method"] == "mplfinance"
+        
+        # Verify send_interactive_indicator_alert was called with the chart path
+        mock_bot.send_interactive_indicator_alert.assert_called_once_with(
+            signal_id=900,
+            symbol="BTCUSDT",
+            message=ANY,
+            photo_path="/fake/path/indicator_chart.png",
+        )
+
 
 @pytest.mark.asyncio
 async def test_analysis_complete_renders_chart_and_sends_photo():

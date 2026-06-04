@@ -67,7 +67,7 @@ async def test_telegram_bot_lifecycle_start_stop():
 
         # Wait until bot is initialized or timeout (up to 5 seconds)
         for _ in range(100):
-            if telegram_bot._bot_app is not None:
+            if telegram_bot._bot_app is not None and telegram_bot._bot_loop is not None and telegram_bot._bot_loop.is_running():
                 break
             await asyncio.sleep(0.05)
 
