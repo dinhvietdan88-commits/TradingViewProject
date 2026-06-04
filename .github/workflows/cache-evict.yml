@@ -129,6 +129,36 @@ jobs:
           done
           echo "✅ Test sentinel cleanup complete"
 
+      - name: Delete stale buildkit-blob caches (>7 days)
+        if: env.DRY_RUN == 'false'
+        run: |
+          CUTOFF=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          echo "Evicting buildkit-blob and index caches older than 7 days..."
+
+          jq -r --arg c "$CUTOFF" \
+            '.[] | select(.key | test("^buildkit-blob|^index-")) | select(.last_accessed_at < $c) | .id' \
+            /tmp/all_caches.json | while read ID; do
+              echo "  DELETE buildkit-blob id=$ID"
+              gh api -X DELETE "repos/$REPO/actions/caches/$ID" || \
+                echo "  WARN: Failed to delete $ID"
+          done
+          echo "OK buildkit-blob cleanup complete"
+
+      - name: Delete old-format uv caches (pre-weekly-rotation)
+        if: env.DRY_RUN == 'false'
+        run: |
+          echo "Evicting old-format uv caches without year-week suffix..."
+
+          jq -r '.[] | select(.key | test("^Linux-uv-")) | "\(.id)\t\(.key)"' \
+            /tmp/all_caches.json | while IFS=$'\t' read -r ID KEY; do
+              if ! echo "$KEY" | grep -qE 'uv-[0-9]{4}-W[0-9]{2}-'; then
+                echo "  DELETE old-format uv: ${KEY:0:70}"
+                gh api -X DELETE "repos/$REPO/actions/caches/$ID" || \
+                  echo "  WARN: Failed to delete $ID"
+              fi
+          done
+          echo "OK old-format uv cache cleanup complete"
+
       - name: Delete stale Playwright browser caches (>14 days)
         if: env.DRY_RUN == 'false'
         run: |
