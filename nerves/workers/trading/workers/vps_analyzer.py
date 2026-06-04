@@ -1,19 +1,25 @@
 """
-vps_analyzer.py — AI Analyzer Worker for SERVER C (V2 Hardened).
+vps_analyzer.py — AI Analyzer Worker for SERVER C (V3 Multi-Strategy).
 
 Daemon worker that runs on SERVER C in the 3-server pipeline:
   SERVER A (VBS) → SERVER C (Analyzer) → SERVER B (Executor)
 
+V3 Changes vs V2:
+  - Multi-Strategy : Routes algorithmic fallback to the correct criteria set
+                     based on signal name/source (A.007, SuperTrend, Indicator, Minervini).
+  - Strategy Groups: A.007 (MA+ADX), SuperTrend (ST Flip), Indicator (passthrough),
+                     Minervini SEPA (default).
 V2 Changes vs V1:
   - Long Polling  : Replaces 15 s sleep-loop with /consume-long (hold up to 30 s).
                     Signal delivery latency drops from ~7.5 s to <1 s.
   - Circuit Breaker: LLMCircuitBreaker guards all generate_trading_advice() calls.
                     On timeout / 3 consecutive failures → Algorithmic Mode.
-  - Dual-Mode     : Algorithmic fallback scores signals against 5 Minervini checks.
+  - Dual-Mode     : Algorithmic fallback scores signals (V3: strategy-aware criteria).
                     Trades are still forwarded even when LLM is unavailable.
   - Confidence    : ai_confidence (0-100) is attached to every trade payload.
   - Failover      : LOCAL_EXECUTE_URL → SERVER_B_EXECUTE_URL (unchanged from V1).
 """
+
 
 import asyncio
 import logging
@@ -714,17 +720,18 @@ class VpsAnalyzerWorker:
                 f"[VpsAnalyzer] ⚡ Circuit OPEN → Algorithmic for #{queue_id}"
             )
 
-        # ── Algorithmic Fallback ───────────────────────────────────────────────
+        # ── Algorithmic Fallback (Multi-Strategy Router) ─────────────────────
         if analysis_mode == "algorithmic":
-            advice, ai_conf = self._algorithmic_analysis(signal)
+            advice, ai_conf = self._route_algorithmic_analysis(signal)
             # Reject if score below minimum threshold
             score = round(ai_conf / 100 * 5)  # confidence → score (0-5)
             if score < self.ALGO_MIN_SCORE:
+                strategy_name = self._detect_strategy_group(signal)
                 return {
                     "approved": False,
                     "reason": (
                         f"Algorithmic score {score}/{self.ALGO_MIN_SCORE} — "
-                        "insufficient Minervini criteria"
+                        f"insufficient {strategy_name} criteria"
                     ),
                     "analysis_mode": analysis_mode,
                 }
@@ -869,6 +876,15 @@ class VpsAnalyzerWorker:
         conf = tp.get("ai_confidence", 0)
         analysis = tp.get("analysis", "")
 
+        # Extract provider detail from advice suffix
+        provider_detail = None
+        if analysis:
+            import re as _re
+            match = _re.search(r"\[Provider: (.*?)\]$", analysis)
+            if match:
+                provider_detail = match.group(1)
+                analysis = _re.sub(r"\n\n\[Provider: (.*?)\]$", "", analysis)
+
         # Status icon
         if approved:
             status = "✅ APPROVED"
@@ -881,6 +897,22 @@ class VpsAnalyzerWorker:
         # Mode icon
         mode_icon = "🧠" if mode == "ai" else "📊"
 
+        # Format Client/Provider detail
+        mode_label = mode.upper()
+        if mode == "ai":
+            if provider_detail == "agy-cli":
+                mode_label = "AI (agy-cli / OAuth 🔑)"
+            elif provider_detail == "google-genai":
+                mode_label = "AI (Gemini SDK / API 📡)"
+            elif provider_detail == "gemini-direct":
+                mode_label = "AI (Gemini Direct / Fallback ⚠️)"
+            elif provider_detail == "gemini-fallback":
+                mode_label = "AI (Gemini Fallback ⚠️)"
+            elif provider_detail:
+                mode_label = f"AI ({provider_detail})"
+        elif mode == "algorithmic":
+            mode_label = "Algorithmic (No AI ⚙️)"
+
         # Build message
         lines = [
             f"{'━' * 28}",
@@ -888,7 +920,7 @@ class VpsAnalyzerWorker:
             f"{'━' * 28}",
             "",
             f"📌 <b>{symbol}</b> | <code>{action.upper()}</code> @ <code>{price:,.2f}</code>" if price >= 1 else f"📌 <b>{symbol}</b> | <code>{action.upper()}</code> @ <code>{price:.6f}</code>",
-            f"🎯 Confidence: <b>{conf}%</b>  |  Mode: <b>{mode.upper()}</b>",
+            f"🎯 Confidence: <b>{conf}%</b>  |  Client: <b>{mode_label}</b>",
             f"📋 Status: <b>{status}</b>",
         ]
 
@@ -1008,6 +1040,296 @@ class VpsAnalyzerWorker:
             + f"\n\n{verdict}"
         )
 
+        return advice, confidence
+
+    # ── Multi-Strategy Router (V3) ────────────────────────────────────────────
+
+    def _detect_strategy_group(self, signal: Dict[str, Any]) -> str:
+        """Detect which strategy group a signal belongs to.
+
+        Returns a human-readable group name for logging/rejection messages.
+        """
+        payload = signal.get("payload", {})
+        if isinstance(payload, str):
+            import json as _json
+            try:
+                payload = _json.loads(payload)
+            except Exception:
+                payload = {}
+
+        signal_name = str(
+            signal.get("signal", "")
+            or payload.get("signal", "")
+            or ""
+        ).upper()
+        source = str(
+            signal.get("source", "")
+            or payload.get("source", "")
+            or ""
+        ).lower()
+        indicator_name = str(
+            payload.get("indicator_name", "")
+            or payload.get("indicator", "")
+            or ""
+        ).upper()
+
+        # Group A: A.007 (MA Crossover + ADX Regime)
+        if any(k in signal_name for k in ["A007", "MIS_AUTO", "ADX", "FWD"]):
+            return "A.007 (MA Crossover + ADX)"
+
+        # Group C: SuperTrend
+        if any(k in signal_name for k in ["SUPERTREND", "ST_FLIP", "ST_BULL", "ST_BEAR"]):
+            return "SuperTrend"
+        if "SUPERTREND" in indicator_name:
+            return "SuperTrend"
+
+        # Group B: MIS Indicator
+        if source == "indicator":
+            return f"Indicator ({indicator_name or 'unknown'})"
+        if "MIS" in signal_name and "AUTO" not in signal_name:
+            return "MIS Indicator"
+
+        # Group E: Default = Minervini SEPA
+        return "Minervini SEPA"
+
+    def _route_algorithmic_analysis(
+        self, signal: Dict[str, Any]
+    ) -> Tuple[str, int]:
+        """Route to the correct algorithmic criteria based on signal source.
+
+        V3 Multi-Strategy Router: Instead of always applying 5 Minervini
+        checks, identifies the signal's strategy group and applies
+        appropriate sanity checks.
+
+        Returns:
+            (advice_text, confidence_0_to_100)
+        """
+        group = self._detect_strategy_group(signal)
+
+        if group.startswith("A.007"):
+            return self._algo_a007(signal)
+        if group.startswith("SuperTrend"):
+            return self._algo_supertrend(signal)
+        if group.startswith("Indicator") or group.startswith("MIS Indicator"):
+            return self._algo_indicator_passthrough(signal)
+
+        # Default: Minervini SEPA (original logic)
+        return self._algorithmic_analysis(signal)
+
+    def _algo_a007(self, signal: Dict[str, Any]) -> Tuple[str, int]:
+        """A.007 (MA Crossover + ADX): Strategy-level sanity check.
+
+        The Pine strategy already enforces MA cross + ADX > threshold + BB
+        squeeze block + time stop.  In Algorithmic Mode we only verify the
+        payload integrity fields that the webhook actually sends.
+
+        Returns:
+            (advice_text, confidence_0_to_100)
+        """
+        payload = signal.get("payload", {})
+        if isinstance(payload, str):
+            import json as _json
+            try:
+                payload = _json.loads(payload)
+            except Exception:
+                payload = {}
+
+        action = signal.get("action", "") or payload.get("action", "")
+        price = float(signal.get("price") or payload.get("price") or 0)
+        interval = str(
+            signal.get("interval", "")
+            or payload.get("interval", "")
+            or ""
+        )
+        position_size = payload.get("position_size", payload.get("quoteQty"))
+
+        checks: List[str] = []
+        score = 0
+        total = 4
+
+        # 1. Valid action
+        if action.lower() in ("buy", "sell", "long", "short"):
+            checks.append(f"✅ Action = {action.upper()}")
+            score += 1
+        else:
+            checks.append(f"⚠️ Action = '{action}' (không hợp lệ)")
+
+        # 2. Price > 0
+        if price > 0:
+            checks.append(f"✅ Price = {price:,.2f}")
+            score += 1
+        else:
+            checks.append("⚠️ Price ≤ 0")
+
+        # 3. Interval present
+        if interval:
+            checks.append(f"✅ Interval = {interval}")
+            score += 1
+        else:
+            checks.append("⬜ Interval missing")
+
+        # 4. Position size present
+        if position_size is not None:
+            checks.append(f"✅ Position Size = {position_size}")
+            score += 1
+        else:
+            checks.append("⬜ Position Size not provided (will use default)")
+            score += 1  # Not required — strategy computes it
+
+        confidence = int(score / total * 100) if total > 0 else 60
+        verdict = (
+            "✅ PASS — A.007 Strategy pre-validated by Pine Script"
+            if score >= 3
+            else "⚠️ WARN — Payload incomplete"
+        )
+        advice = (
+            f"⚡ **A.007 ALGORITHMIC MODE** (LLM unavailable)\n\n"
+            f"📊 Payload Check: {score}/{total} ({confidence}%)\n\n"
+            + "\n".join(checks)
+            + f"\n\n{verdict}\n"
+            f"ℹ️ Entry conditions (MA cross + ADX + BB) enforced by Pine strategy."
+        )
+        return advice, confidence
+
+    def _algo_supertrend(self, signal: Dict[str, Any]) -> Tuple[str, int]:
+        """SuperTrend: Strategy-level sanity check.
+
+        SuperTrend Flip signals are generated by indicator with VBS_Webhook_Lib.
+        They carry ATR-based SL/TP in metadata.  In Algorithmic Mode we verify
+        the payload integrity and confidence from source.
+
+        Returns:
+            (advice_text, confidence_0_to_100)
+        """
+        payload = signal.get("payload", {})
+        if isinstance(payload, str):
+            import json as _json
+            try:
+                payload = _json.loads(payload)
+            except Exception:
+                payload = {}
+
+        action = signal.get("action", "") or payload.get("action", "")
+        price = float(signal.get("price") or payload.get("price") or 0)
+        metadata = payload.get("metadata", {})
+        if isinstance(metadata, str):
+            import json as _json
+            try:
+                metadata = _json.loads(metadata)
+            except Exception:
+                metadata = {}
+
+        checks: List[str] = []
+        score = 0
+        total = 4
+
+        # 1. Valid action
+        if action.lower() in ("buy", "sell", "long", "short"):
+            checks.append(f"✅ Action = {action.upper()}")
+            score += 1
+        else:
+            checks.append(f"⚠️ Action = '{action}'")
+
+        # 2. Price > 0
+        if price > 0:
+            checks.append(f"✅ Price = {price:,.2f}")
+            score += 1
+        else:
+            checks.append("⚠️ Price ≤ 0")
+
+        # 3. SL present (from ATR calculation)
+        sl = metadata.get("sl") or payload.get("sl")
+        if sl is not None:
+            try:
+                sl_val = float(str(sl).replace(",", ""))
+                if sl_val > 0:
+                    checks.append(f"✅ SL = {sl_val:,.2f} (ATR-based)")
+                    score += 1
+                else:
+                    checks.append("⬜ SL = 0")
+            except (ValueError, TypeError):
+                checks.append(f"⬜ SL = {sl} (cannot parse)")
+        else:
+            checks.append("⬜ SL not in payload (will use default)")
+            score += 1  # Not critical — indicator may omit
+
+        # 4. Source confidence
+        conf_score = payload.get("confidence_score")
+        if conf_score is not None:
+            try:
+                cv = int(conf_score)
+                if cv >= 50:
+                    checks.append(f"✅ Source Confidence = {cv}%")
+                    score += 1
+                else:
+                    checks.append(f"⚠️ Source Confidence = {cv}% (low)")
+            except (ValueError, TypeError):
+                checks.append(f"⬜ Source Confidence = {conf_score}")
+        else:
+            checks.append("⬜ Source Confidence not provided")
+            score += 1  # Strategy signals may not carry this
+
+        confidence = int(score / total * 100) if total > 0 else 60
+        verdict = (
+            "✅ PASS — SuperTrend Flip validated"
+            if score >= 3
+            else "⚠️ WARN — Payload incomplete"
+        )
+        advice = (
+            f"⚡ **SUPERTREND ALGORITHMIC MODE** (LLM unavailable)\n\n"
+            f"📊 Payload Check: {score}/{total} ({confidence}%)\n\n"
+            + "\n".join(checks)
+            + f"\n\n{verdict}\n"
+            f"ℹ️ Entry conditions (ST flip + regime + RSI zone) enforced by Pine indicator."
+        )
+        return advice, confidence
+
+    def _algo_indicator_passthrough(
+        self, signal: Dict[str, Any]
+    ) -> Tuple[str, int]:
+        """Indicator signals: pass-through with source confidence.
+
+        Indicator alerts (source='indicator') are monitor-only signals that
+        feed the Dashboard Signals tab.  They should NOT be evaluated against
+        trade-execution criteria like Minervini.  We pass through using the
+        confidence_score embedded in the payload.
+
+        Returns:
+            (advice_text, confidence_0_to_100)
+        """
+        payload = signal.get("payload", {})
+        if isinstance(payload, str):
+            import json as _json
+            try:
+                payload = _json.loads(payload)
+            except Exception:
+                payload = {}
+
+        indicator_name = (
+            payload.get("indicator_name")
+            or payload.get("indicator")
+            or "unknown"
+        )
+        conf = payload.get("confidence_score")
+        try:
+            confidence = int(conf) if conf is not None else 60
+        except (ValueError, TypeError):
+            confidence = 60
+
+        # Clamp to 0-100
+        confidence = max(0, min(100, confidence))
+
+        action = signal.get("action", "") or payload.get("action", "")
+        symbol = signal.get("symbol", "") or payload.get("symbol", "")
+
+        advice = (
+            f"⚡ **INDICATOR PASSTHROUGH** (LLM unavailable)\n\n"
+            f"📊 Chỉ báo: {indicator_name}\n"
+            f"📈 Symbol: {symbol} | Action: {action.upper()}\n"
+            f"🎯 Confidence from source: {confidence}%\n\n"
+            f"ℹ️ Indicator signals flow to Dashboard Signals tab.\n"
+            f"ℹ️ Trade decisions are NOT made from indicator alerts."
+        )
         return advice, confidence
 
     # ── Helpers ───────────────────────────────────────────────────────────────
@@ -1259,11 +1581,12 @@ class VpsAnalyzerWorker:
                 analyzed = await self._analyze_signal(signal)
 
                 if analyzed is None:
-                    # V1: rejected
+                    # V1: rejected — use strategy-aware message
+                    strategy_name = self._detect_strategy_group(signal)
                     return {
                         "queue_id": queue_id,
                         "approved": False,
-                        "reason": "RAG analysis rejected signal — does not meet Minervini criteria",
+                        "reason": f"RAG analysis rejected signal — does not meet {strategy_name} criteria",
                     }
                 elif isinstance(analyzed, dict) and "approved" in analyzed:
                     # V2 dict returned by a test mock or V2-aware caller
