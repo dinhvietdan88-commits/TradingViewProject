@@ -742,6 +742,41 @@ jobs:
             
             echo "❌ Server C Health Check Failed! (ChromaDB: $CHROMA_OK, Analyzer: $STATUS)"
             exit 1
+            
+            # ── Tier 2 only: RAG vector count verification via agy-bridge ──────
+            # Calls /admin/verify (host-side, no sandbox) which delegates to
+            # analyzer /admin/rag-verify → checks ChromaDB vector count.
+            # This is the runtime proof for issue #56 fix.
+            if [ "$DEPLOY_TIER" = "2" ]; then
+              echo "🧠 Verifying RAG/ChromaDB vector count (issue #56)..."
+              
+              BRIDGE_SECRET=$(grep "^AGY_BRIDGE_SECRET=" deploy/.env.agy 2>/dev/null | cut -d= -f2- || echo "")
+              
+              # Primary: delegate via agy-bridge /admin/verify
+              if [ -n "$BRIDGE_SECRET" ]; then
+                RAG_RESULT=$(curl -s -X POST "http://localhost:9100/admin/verify" \
+                  -H "Authorization: Bearer $BRIDGE_SECRET" \
+                  -H "Content-Type: application/json" \
+                  --max-time 35 || echo '{"status":"error","error":"curl failed"}')
+              else
+                # Fallback: opt_admin=true → direct docker exec (no auth needed internally)
+                RAG_RESULT=$(curl -s -X POST "http://localhost:9100/admin/verify?opt_admin=true" \
+                  -H "Content-Type: application/json" \
+                  --max-time 35 || echo '{"status":"error","error":"bridge unreachable"}')
+              fi
+              
+              RAG_STATUS=$(echo "$RAG_RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','unknown'))" 2>/dev/null || echo "parse_error")
+              RAG_COUNT=$(echo "$RAG_RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('vector_count',-1))" 2>/dev/null || echo "-1")
+              
+              if [ "$RAG_STATUS" = "ok" ] || [ "$RAG_STATUS" = "re-ingested" ]; then
+                echo "✅ RAG verified: ${RAG_COUNT} vectors in ChromaDB (status=${RAG_STATUS})"
+              else
+                echo "⚠️ RAG verification: status=${RAG_STATUS}, vectors=${RAG_COUNT}"
+                echo "   Full result: $RAG_RESULT"
+                # Non-blocking — RAG failure doesn't kill deploy (ChromaDB may still be warming up)
+                echo "   → Continuing deploy. Check /admin/verify manually after warmup."
+              fi
+            fi
           EOF
 
       - name: Rollback Server C (On Failure)

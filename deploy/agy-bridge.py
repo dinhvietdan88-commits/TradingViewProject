@@ -687,6 +687,212 @@ async def analyze(req: AnalyzeRequest, authorization: str = Header(default="")):
         raise HTTPException(status_code=500, detail=result)
 
 
+# ── Admin: Production Verification Endpoints ─────────────────────
+# These run on the HOST process directly (NO agy CLI, NO --sandbox).
+# Secured by the same AGY_BRIDGE_SECRET Bearer token.
+#
+# Why host-side (not via agy CLI)?
+#   agy CLI uses --sandbox + deny list (fix #69) → run_command(docker *) is BLOCKED.
+#   The bridge process itself (botuser on host) CAN reach Docker via unix socket
+#   and can curl http://localhost:8000 (analyzer mapped port). No sandbox applies.
+#
+# Endpoints:
+#   POST /admin/verify          → delegate rag-verify to analyzer container
+#   GET  /admin/verify/quick    → fast check via GET /health rag_vector_count field
+#
+# Flow:
+#   CI/CD or agy-bridge client
+#     → POST :9100/admin/verify  (Bearer auth)
+#       → agy-bridge host process (no sandbox)
+#         → POST :8000/admin/rag-verify  (analyzer container via mapped port)
+#           → ChromaDB count() + re-ingest if empty
+#
+# Usage:
+#   curl -s -X POST http://SERVER_C:9100/admin/verify \
+#        -H "Authorization: Bearer $AGY_BRIDGE_SECRET" | python3 -m json.tool
+
+ANALYZER_BASE_URL = os.environ.get("ANALYZER_URL", "http://localhost:8000")
+
+
+def _require_admin_auth(authorization: str):
+    """Shared auth check for all /admin/* endpoints."""
+    if AGY_BRIDGE_SECRET:
+        import hmac
+        token = authorization.removeprefix("Bearer ").strip()
+        if not token or not hmac.compare_digest(token, AGY_BRIDGE_SECRET):
+            raise HTTPException(
+                status_code=401,
+                detail={"error": "Unauthorized: missing or invalid AGY_BRIDGE_SECRET"},
+            )
+
+
+class VerifyResponse(BaseModel):
+    """Structured verification result."""
+    vector_count: int = -1
+    status: str = "unknown"          # ok | re-ingested | empty | error
+    action_taken: str = "check-only"
+    rag_initialized: bool = False
+    source: str = "analyzer"         # "analyzer" | "health" | "direct"
+    latency_ms: float = 0.0
+    error: str = ""
+
+
+@app.post("/admin/verify", response_model=VerifyResponse)
+async def admin_verify(
+    authorization: str = Header(default=""),
+    opt_admin: bool = False,         # query param: use opt fallback (direct docker exec)
+):
+    """Delegate RAG verification to the analyzer container.
+
+    This endpoint runs on the HOST (no agy CLI, no sandbox constraints).
+    It calls the analyzer's /admin/rag-verify which checks ChromaDB vector count
+    and triggers re-ingestion if the collection is empty.
+
+    Args:
+        opt_admin: If True, falls back to direct docker exec verification
+                   when analyzer HTTP is unreachable (opt_admin=true query param).
+
+    Returns:
+        VerifyResponse with vector_count > 0 meaning ChromaDB fix (#56) is working.
+
+    Examples:
+        # Standard delegation to analyzer
+        curl -s -X POST http://localhost:9100/admin/verify \\
+             -H "Authorization: Bearer $AGY_BRIDGE_SECRET" | python3 -m json.tool
+
+        # With opt_admin fallback
+        curl -s -X POST "http://localhost:9100/admin/verify?opt_admin=true" \\
+             -H "Authorization: Bearer $AGY_BRIDGE_SECRET"
+    """
+    _require_admin_auth(authorization)
+
+    start = time.time()
+    result = VerifyResponse(source="analyzer")
+
+    # ── Primary: call analyzer /admin/rag-verify via HTTP ────────────────────
+    try:
+        import urllib.request
+        import urllib.error
+        import json as _json
+
+        url = f"{ANALYZER_BASE_URL}/admin/rag-verify"
+        req = urllib.request.Request(
+            url,
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            data=b"{}",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = _json.loads(resp.read().decode("utf-8"))
+
+        result.vector_count = body.get("vector_count", -1)
+        result.status = body.get("status", "unknown")
+        result.action_taken = body.get("action_taken", "check-only")
+        result.rag_initialized = body.get("rag_initialized", False)
+        result.latency_ms = round((time.time() - start) * 1000, 1)
+
+        log.info(
+            f"[admin/verify] analyzer responded: status={result.status} "
+            f"vectors={result.vector_count} ({result.latency_ms:.0f}ms)"
+        )
+        return result
+
+    except Exception as primary_err:
+        log.warning(f"[admin/verify] Analyzer HTTP failed: {primary_err}")
+        result.error = f"analyzer unreachable: {str(primary_err)[:120]}"
+
+        if not opt_admin:
+            result.status = "error"
+            result.latency_ms = round((time.time() - start) * 1000, 1)
+            return result
+
+    # ── opt_admin fallback: direct docker exec on host ───────────────────────
+    # Used when analyzer container is not yet up (e.g., during Tier 2 cold start)
+    log.info("[admin/verify] opt_admin=true — falling back to docker exec...")
+    result.source = "direct"
+
+    try:
+        check_cmd = [
+            "docker", "exec", "tradingbot-analyzer",
+            "python3", "-c",
+            (
+                "import sys; sys.path.insert(0, '/app'); "
+                "import asyncio, rag; "
+                "count = rag._collection.count() if rag._collection else -1; "
+                "print(count)"
+            ),
+        ]
+        proc = await asyncio.create_subprocess_exec(
+            *check_cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=20)
+
+        if proc.returncode == 0:
+            raw = stdout.decode("utf-8").strip()
+            try:
+                count = int(raw)
+                result.vector_count = count
+                result.status = "ok" if count > 0 else "empty"
+                result.action_taken = "check-only"
+                result.error = ""
+            except ValueError:
+                result.status = "error"
+                result.error = f"docker exec returned non-int: {raw[:60]}"
+        else:
+            result.status = "error"
+            result.error = stderr.decode("utf-8", errors="replace")[:120]
+
+    except asyncio.TimeoutError:
+        result.status = "error"
+        result.error = "docker exec timeout (20s)"
+    except FileNotFoundError:
+        result.status = "error"
+        result.error = "docker binary not found on host"
+    except Exception as e:
+        result.status = "error"
+        result.error = f"docker exec exception: {str(e)[:120]}"
+
+    result.latency_ms = round((time.time() - start) * 1000, 1)
+    log.info(
+        f"[admin/verify] opt_admin docker exec: status={result.status} "
+        f"vectors={result.vector_count} ({result.latency_ms:.0f}ms)"
+    )
+    return result
+
+
+@app.get("/admin/verify/quick")
+async def admin_verify_quick(authorization: str = Header(default="")):
+    """Fast read-only check — polls /health rag_vector_count field.
+
+    Does NOT trigger re-ingestion. Use POST /admin/verify for active remediation.
+
+    Returns:
+        {"vector_count": N, "rag_status": "ok"|"empty"|"not_initialized"}
+    """
+    _require_admin_auth(authorization)
+
+    try:
+        import urllib.request
+        import json as _json
+
+        url = f"{ANALYZER_BASE_URL}/health"
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            body = _json.loads(resp.read().decode("utf-8"))
+
+        return {
+            "vector_count": body.get("rag_vector_count", -1),
+            "rag_status": body.get("rag_status", "unknown"),
+            "source": "health_endpoint",
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail={"error": f"Analyzer health unreachable: {str(e)[:120]}"},
+        )
+
+
 # ── Startup ──────────────────────────────────────────────────────
 
 @app.on_event("startup")

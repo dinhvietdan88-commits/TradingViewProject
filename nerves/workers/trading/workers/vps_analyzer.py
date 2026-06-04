@@ -93,16 +93,104 @@ async def get_health():
     except Exception as e:
         log.warning(f"Error checking circuit breaker status: {e}")
 
+    # 5. RAG / ChromaDB vector count — verifies issue #56 fix at runtime
+    rag_vector_count = -1  # -1 = not initialized, 0 = empty (bug), >0 = OK
+    rag_status = "unknown"
+    try:
+        import rag as _rag
+        if _rag._collection is not None:
+            rag_vector_count = _rag._collection.count()
+            rag_status = "ok" if rag_vector_count > 0 else "empty"
+        else:
+            rag_status = "not_initialized"
+    except Exception as e:
+        rag_status = f"error: {str(e)[:60]}"
+
     return {
         "liveness_status_server_a": liveness_status_server_a,
         "liveness_status_server_b": liveness_status_server_b,
         "disk_usage_pct": disk_usage_pct,
         "ntp_clock_drift_ms": ntp_clock_drift_ms,
         "ntp_clock_drift_detail": ntp_clock_drift_detail,
-        "circuit_breaker_status": circuit_breaker_status
+        "circuit_breaker_status": circuit_breaker_status,
+        "rag_vector_count": rag_vector_count,
+        "rag_status": rag_status,
     }
 
+
+# ── RAG Verification Endpoint (Issue #56) ──────────────────────────────────────
+@app.post("/admin/rag-verify")
+async def rag_verify():
+    """Post-deploy verification endpoint for ChromaDB ingestion (issue #56).
+
+    Called by:
+      - CI/CD pipeline after Tier 2 deploy (curl -X POST http://localhost:8000/admin/rag-verify)
+      - agy-bridge /admin/verify delegation (non-sandbox path)
+      - Manual health check from Server C host for runtime evidence
+
+    Returns status: 'ok' | 're-ingested' | 'empty' | 'error'
+    vector_count must be > 0 to confirm fix is working.
+
+    Usage:
+      curl -s -X POST http://localhost:8000/admin/rag-verify | python3 -m json.tool
+    """
+    import rag as _rag
+
+    result = {
+        "vector_count": -1,
+        "status": "unknown",
+        "action_taken": "check-only",
+        "rag_initialized": False,
+    }
+
+    try:
+        # Step 1: Check current state
+        if _rag._collection is not None:
+            count = _rag._collection.count()
+            result["rag_initialized"] = True
+            result["vector_count"] = count
+
+            if count > 0:
+                result["status"] = "ok"
+                log.info(f"[rag-verify] RAG OK: {count} vectors in ChromaDB")
+                return result
+
+            # Collection exists but empty — trigger re-ingestion
+            log.warning("[rag-verify] ChromaDB empty — triggering re-ingestion...")
+            result["action_taken"] = "re-ingestion"
+        else:
+            log.warning("[rag-verify] RAG collection not initialized — running init...")
+            result["action_taken"] = "init-and-ingest"
+
+        # Step 2: Re-run init_vector_db()
+        ok = await _rag.init_vector_db()
+
+        # Step 3: Re-check after init
+        if _rag._collection is not None:
+            new_count = _rag._collection.count()
+            result["vector_count"] = new_count
+            result["rag_initialized"] = True
+            if new_count > 0:
+                result["status"] = "re-ingested"
+                log.info(f"[rag-verify] Re-ingestion SUCCESS: {new_count} vectors")
+            else:
+                result["status"] = "empty"
+                result["error"] = f"init returned {ok} but still 0 vectors"
+                log.error("[rag-verify] Re-ingestion FAILED: still 0 vectors")
+        else:
+            result["status"] = "error"
+            result["error"] = "Collection still None after init"
+
+    except Exception as e:
+        result["status"] = "error"
+        result["error"] = str(e)[:200]
+        log.exception(f"[rag-verify] Exception: {e}")
+
+    return result
+
+
 # ── V3: Server Announce (Smart Offline) ────────────────────────────────────────
+
 @app.post("/api/server-announce")
 async def server_announce(request: Request):
     """Server B calls this when it starts up to resume health monitoring."""
