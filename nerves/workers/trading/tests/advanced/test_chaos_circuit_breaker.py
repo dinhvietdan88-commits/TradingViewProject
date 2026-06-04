@@ -9,7 +9,7 @@ import config
 
 pytestmark = pytest.mark.asyncio
 
-async def test_chaos_ai_analyzer_outage(mocker):
+async def test_chaos_ai_analyzer_outage(client, mocker):
     """
     Chaos Engineering: Simulate complete outage of the AI subsystem (Server C / LLM / VectorDB).
     Ensure that Server A / Trade Engine degrades gracefully to Algorithmic Mode without dropping the signal.
@@ -35,10 +35,8 @@ async def test_chaos_ai_analyzer_outage(mocker):
         "secret": "chaos_secret"
     }
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-        # Bắn signal khi hệ thống AI đang sập
-        response = await client.post("/webhook", json=payload)
+    # Bắn signal khi hệ thống AI đang sập
+    response = await client.post("/webhook", json=payload)
         
     # HTTP ingress vẫn phải trả về 200 OK (Graceful degradation)
     assert response.status_code == 200, "Webhook failed during AI outage!"
