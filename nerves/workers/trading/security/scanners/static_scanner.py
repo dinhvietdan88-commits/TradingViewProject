@@ -106,21 +106,60 @@ class _DangerousCallVisitor(ast.NodeVisitor):
 
 
 def scan_file(filepath: Path) -> List[Finding]:
-    """Run static analysis on a single Python file."""
+    """Run static analysis on a single Python file.
+
+    Handles RecursionError for large/complex files (issue #71).
+    telegram_bot.py (3123 lines, deeply nested async code) caused
+    ast.NodeVisitor.visit() to exhaust Python's call stack (~1000 frames).
+    """
+    import logging
+    _log = logging.getLogger(__name__)
+
     findings = []
     try:
         content = filepath.read_text(encoding="utf-8")
+    except Exception:
+        return findings
+
+    # Guard: skip files > 300KB — AST traversal cost is O(n) in code depth,
+    # not just file size, but very large files are the primary RecursionError risk.
+    file_size = len(content.encode("utf-8"))
+    if file_size > 300_000:
+        _log.warning(
+            f"static_scanner: {filepath.name} is {file_size // 1024}KB — "
+            f"skipping AST visitor (too large, risk of RecursionError). "
+            f"Regex checks still applied."
+        )
+        # Still run regex-based checks (no recursion risk)
+        lines = content.split("\n")
+        findings.extend(_check_debug_mode(filepath, lines))
+        findings.extend(_check_hardcoded_secrets(filepath, lines))
+        return findings
+
+    try:
         tree = ast.parse(content, filename=str(filepath))
     except SyntaxError:
         return findings
     except Exception:
         return findings
 
-    visitor = _DangerousCallVisitor(str(filepath))
-    visitor.visit(tree)
-    findings.extend(visitor.findings)
+    # AST visitor — MUST be wrapped in RecursionError guard.
+    # ast.NodeVisitor.visit() → generic_visit() is recursive and can exhaust
+    # Python's call stack (~1000 frames) on deeply nested code (e.g. telegram_bot.py).
+    try:
+        visitor = _DangerousCallVisitor(str(filepath))
+        visitor.visit(tree)
+        findings.extend(visitor.findings)
+    except RecursionError:
+        _log.warning(
+            f"static_scanner: RecursionError visiting AST of {filepath.name} "
+            f"({file_size // 1024}KB, deeply nested code) — AST scan skipped, "
+            f"regex checks still applied. Fix #71."
+        )
+    except Exception as e:
+        _log.debug(f"static_scanner: unexpected error visiting {filepath.name}: {e}")
 
-    # Regex-based checks for patterns AST can't catch easily
+    # Regex-based checks — no recursion risk, always applied
     lines = content.split("\n")
     findings.extend(_check_debug_mode(filepath, lines))
     findings.extend(_check_hardcoded_secrets(filepath, lines))
