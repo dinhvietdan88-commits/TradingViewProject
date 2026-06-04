@@ -37,8 +37,8 @@ jobs:
         run: |
           echo "📊 Fetching all GHA caches for $REPO..."
 
-          # gh api --paginate outputs one JSON object per page separated by newlines.
-          # Use jq -s to slurp all pages, then flatten into single array.
+          # gh api --paginate on the caches endpoint returns objects with .actions_caches[]
+          # Using jq -s to slurp all pages then flatten into single array
           ALL_JSON=$(gh api "repos/$REPO/actions/caches?per_page=100" --paginate \
             | jq -s '[.[].actions_caches[]]')
 
@@ -85,18 +85,31 @@ jobs:
             '.[] | select(.key | test("playwright")) | select(.last_accessed_at < $c) | "\(.size_in_bytes/1024/1024|floor) MB | \(.key[0:80])"' \
             /tmp/all_caches.json | sort -rn
 
+          echo ""
+          echo "=== Orphaned branch caches (not refs/heads/main or master) ==="
+          # FIX: branches endpoint returns bare arrays per page — use jq -s '[.[][][]]' to flatten
+          ACTIVE_REFS=$(gh api "repos/$REPO/branches?per_page=100" --paginate \
+            | jq -s -r '[.[][][].name] | .[] | "refs/heads/\(.)"' 2>/dev/null || echo "")
+          jq -r '.[] | "\(.id) \(.ref // "")"' /tmp/all_caches.json | while read ID REF; do
+            [ -z "$REF" ] && continue
+            [[ "$REF" == "refs/heads/main" || "$REF" == "refs/heads/master" ]] && continue
+            if ! echo "$ACTIVE_REFS" | grep -qF "$REF"; then
+              SIZE=$(jq -r --arg id "$ID" '.[] | select(.id == ($id|tonumber)) | .size_in_bytes' /tmp/all_caches.json 2>/dev/null || echo 0)
+              echo "  [DRY RUN] orphaned: $REF (id=$ID)"
+            fi
+          done
+
       - name: Delete stale build-sentinel caches (>7 days)
         if: env.DRY_RUN == 'false'
         run: |
           CUTOFF=$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ)
           echo "🗑️ Evicting build-passed-* caches older than 7 days (cutoff: $CUTOFF)..."
-          DELETED=0
 
           jq -r --arg c "$CUTOFF" \
             '.[] | select(.key | test("^build-")) | select(.last_accessed_at < $c) | .id' \
             /tmp/all_caches.json | while read ID; do
               echo "  → DELETE build sentinel id=$ID"
-              gh api -X DELETE "repos/$REPO/actions/caches/$ID" && DELETED=$((DELETED+1)) || \
+              gh api -X DELETE "repos/$REPO/actions/caches/$ID" || \
                 echo "  ⚠️ Failed to delete $ID (may already be gone)"
           done
           echo "✅ Build sentinel cleanup complete"
@@ -136,12 +149,16 @@ jobs:
         run: |
           echo "🗑️ Evicting caches from deleted branches..."
 
-          # Fetch all active branch refs
+          # FIX: branches endpoint returns a bare JSON array (not object) per page.
+          # After --paginate, output is multiple arrays. jq -s makes [[b1,b2],[b3,...]].
+          # Use [.[][][].name] to flatten nested array before mapping to refs/heads/ prefix.
           ACTIVE_REFS=$(gh api "repos/$REPO/branches?per_page=100" --paginate \
-            | jq -s -r '[.[].name] | .[] | "refs/heads/\(.)"')
+            | jq -s -r '[.[][][].name] | .[] | "refs/heads/\(.)"' 2>/dev/null || echo "")
 
-          echo "Active branches found: $(echo "$ACTIVE_REFS" | wc -l)"
+          BRANCH_COUNT=$(echo "$ACTIVE_REFS" | grep -c . || true)
+          echo "Active branches found: $BRANCH_COUNT"
 
+          DELETED=0
           jq -r '.[] | "\(.id) \(.ref // "")"' /tmp/all_caches.json | while read ID REF; do
             # Skip if ref is empty or is a protected base branch
             [ -z "$REF" ] && continue
@@ -174,26 +191,30 @@ jobs:
             echo "✅ Already within ${TARGET_MB} MB target — no LRU eviction needed"
           else
             echo "⚠️ Still over cap — applying LRU eviction (oldest accessed first)..."
-            RUNNING_TOTAL=$TOTAL_BYTES
 
-            echo "$FRESH_JSON" | jq -c '.[]' | while read ENTRY; do
+            # FIX: Use temp file for running total to avoid subshell variable isolation in while loop
+            echo "$TOTAL_BYTES" > /tmp/running_total.txt
+            WEEK=$(date -u +%Y-W%V)
+
+            echo "$FRESH_JSON" | jq -r \
+              '.[] | "\(.id)\t\(.key)\t\(.size_in_bytes)"' | \
+            while IFS=$'\t' read -r ID KEY SIZE; do
+              RUNNING_TOTAL=$(cat /tmp/running_total.txt)
               [ "$RUNNING_TOTAL" -le "$TARGET_BYTES" ] && break
 
-              ID=$(echo "$ENTRY"   | jq -r '.id')
-              KEY=$(echo "$ENTRY"  | jq -r '.key')
-              SIZE=$(echo "$ENTRY" | jq -r '.size_in_bytes')
               SIZE_MB=$((SIZE / 1024 / 1024))
 
               # Protect the current week's uv package cache — too expensive to rebuild
-              WEEK=$(date -u +%Y-W%V)
               if echo "$KEY" | grep -qE "^Linux-uv-${WEEK}"; then
-                echo "  ⏭️ Skipping protected uv cache: $KEY"
+                echo "  ⏭️ Skipping protected uv cache: ${KEY:0:60}"
                 continue
               fi
 
               echo "  → LRU evict: ${SIZE_MB}MB | ${KEY:0:60}"
               if gh api -X DELETE "repos/$REPO/actions/caches/$ID" 2>/dev/null; then
-                RUNNING_TOTAL=$((RUNNING_TOTAL - SIZE))
+                NEW_TOTAL=$((RUNNING_TOTAL - SIZE))
+                echo "$NEW_TOTAL" > /tmp/running_total.txt
+                echo "     Freed ${SIZE_MB}MB — running total now $((NEW_TOTAL/1024/1024)) MB"
               fi
             done
             echo "✅ LRU eviction complete"
@@ -211,6 +232,8 @@ jobs:
           FINAL_COUNT=$(echo "$FINAL_JSON" | jq 'length')
 
           INITIAL_MB="${{ steps.fetch.outputs.total_mb }}"
+          # Handle empty INITIAL_MB (if fetch step failed)
+          INITIAL_MB="${INITIAL_MB:-0}"
           SAVED_MB=$((INITIAL_MB - FINAL_MB))
 
           echo "Before: ${INITIAL_MB} MB | After: ${FINAL_MB} MB | Freed: ${SAVED_MB} MB"
