@@ -420,8 +420,9 @@ class VpsAnalyzerWorker:
             except Exception as e:
                 log.warning(f"Could not register signal handler for {sig}: {e}")
 
-        # Create shutdown waiter ONCE outside loop to prevent task leak
-        shutdown_task = asyncio.create_task(self._shutdown_event.wait())
+        # Fix #54 Bug 1: Create shutdown_task fresh each iteration.
+        # Creating it once outside the loop caused asyncio.wait() to return immediately
+        # on subsequent iterations because the done Task stayed in the set.
 
         while not self._shutdown_event.is_set():
             try:
@@ -429,17 +430,18 @@ class VpsAnalyzerWorker:
                 # Since poll_and_analyze is an async call that might take 30s (long polling),
                 # we run it as a task and await it along with the shutdown event.
                 poll_task = asyncio.create_task(self.poll_and_analyze())
+                shutdown_task = asyncio.create_task(self._shutdown_event.wait())
                 
                 done, pending = await asyncio.wait(
                     {poll_task, shutdown_task},
                     return_when=asyncio.FIRST_COMPLETED
                 )
                 
-                # Cancel only the poll_task if shutdown was triggered
-                if poll_task in pending:
-                    poll_task.cancel()
+                # Cancel whichever task didn't finish first
+                for t in pending:
+                    t.cancel()
                     try:
-                        await poll_task
+                        await t
                     except asyncio.CancelledError:
                         pass
                 
@@ -1693,7 +1695,9 @@ class VpsAnalyzerWorker:
                     v2_res = None
 
                 # Call _analyze_signal (for compatibility / side effects if mocked)
-                analyzed = await self._analyze_signal(signal) if is_mocked else (v2_res["trade_payload"] if v2_res.get("approved") else None)
+                # Fix #54 Bug 2: Use .get() to avoid KeyError when signal is rejected
+                # (rejected results have approved=False and no 'trade_payload' key)
+                analyzed = await self._analyze_signal(signal) if is_mocked else (v2_res.get("trade_payload") if v2_res.get("approved") else None)
 
                 # Extract payload safely
                 payload = signal.get("payload", {})
