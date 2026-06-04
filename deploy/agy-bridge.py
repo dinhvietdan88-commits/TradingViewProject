@@ -806,60 +806,56 @@ async def admin_verify(
             result.latency_ms = round((time.time() - start) * 1000, 1)
             return result
 
-    # ── opt_admin fallback: direct docker exec on host ───────────────────────
-    # Used when analyzer container is not yet up (e.g., during Tier 2 cold start)
-    log.info("[admin/verify] opt_admin=true — falling back to docker exec...")
-    result.source = "direct"
+    # ── opt_admin fallback: probe ChromaDB HTTP API directly ─────────────────
+    # SECURITY NOTE: We do NOT use `docker exec` here.
+    #   docker group membership = effective root (privilege escalation risk).
+    #   botuser does NOT need docker group for this probe.
+    #
+    # Instead: ChromaDB :8001 is already mapped to host (deploy.yml L725).
+    # We probe ChromaDB REST API directly:
+    #   GET :8001/api/v2/heartbeat              → is ChromaDB up?
+    #   GET :8001/api/v2/collections/{name}/count → vector count
+    #
+    # This gives the same information as docker exec without ANY privilege escalation.
+    log.info("[admin/verify] opt_admin=true — probing ChromaDB :8001 directly (no docker exec)...")
+    result.source = "chromadb_direct"
+
+    import urllib.request as _req
+    import json as _json
+
+    CHROMA_URL = os.environ.get("CHROMA_URL", "http://localhost:8001")
+    COLLECTION  = "minervini_knowledge"
 
     try:
-        check_cmd = [
-            "docker", "exec", "tradingbot-analyzer",
-            "python3", "-c",
-            (
-                "import sys; sys.path.insert(0, '/app'); "
-                "import asyncio, rag; "
-                "count = rag._collection.count() if rag._collection else -1; "
-                "print(count)"
-            ),
-        ]
-        proc = await asyncio.create_subprocess_exec(
-            *check_cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=20)
+        # Step 1: heartbeat — is ChromaDB reachable?
+        with _req.urlopen(f"{CHROMA_URL}/api/v2/heartbeat", timeout=5) as r:
+            if r.status != 200:
+                raise RuntimeError(f"heartbeat HTTP {r.status}")
 
-        if proc.returncode == 0:
-            raw = stdout.decode("utf-8").strip()
-            try:
-                count = int(raw)
-                result.vector_count = count
-                result.status = "ok" if count > 0 else "empty"
-                result.action_taken = "check-only"
-                result.error = ""
-            except ValueError:
-                result.status = "error"
-                result.error = f"docker exec returned non-int: {raw[:60]}"
-        else:
-            result.status = "error"
-            result.error = stderr.decode("utf-8", errors="replace")[:120]
+        # Step 2: get vector count for our collection
+        count_url = f"{CHROMA_URL}/api/v2/collections/{COLLECTION}/count"
+        with _req.urlopen(count_url, timeout=10) as r:
+            raw = r.read().decode("utf-8").strip()
+            # ChromaDB returns a plain integer for /count
+            count = int(raw)
 
-    except asyncio.TimeoutError:
-        result.status = "error"
-        result.error = "docker exec timeout (20s)"
-    except FileNotFoundError:
-        result.status = "error"
-        result.error = "docker binary not found on host"
+        result.vector_count = count
+        result.status = "ok" if count > 0 else "empty"
+        result.action_taken = "check-only"
+        result.error = ""
+
     except Exception as e:
+        # ChromaDB not reachable — container truly down or collection missing
         result.status = "error"
-        result.error = f"docker exec exception: {str(e)[:120]}"
+        result.error = f"ChromaDB direct probe failed: {str(e)[:120]}"
 
     result.latency_ms = round((time.time() - start) * 1000, 1)
     log.info(
-        f"[admin/verify] opt_admin docker exec: status={result.status} "
+        f"[admin/verify] opt_admin ChromaDB probe: status={result.status} "
         f"vectors={result.vector_count} ({result.latency_ms:.0f}ms)"
     )
     return result
+
 
 
 @app.get("/admin/verify/quick")
