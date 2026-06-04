@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 from exchanges.weex_adapter import WeexAdapter
-from exchanges.base import ExchangeErrorCategory
+from exchanges.base import ExchangeErrorCategory, ExchangeError
 
 @pytest.mark.asyncio
 async def test_weex_adapter_properties():
@@ -135,4 +135,123 @@ async def test_weex_smart_order_position_capped():
     )
     assert result.success is True
     assert result.risk.cost <= 10000.0 * 0.95 + 0.01
+
+
+@pytest.mark.asyncio
+async def test_weex_smart_order_micro_volume_limits():
+    """Verify Weex adapter enforces micro-volume minimums and cost range clamping."""
+    adapter = WeexAdapter(
+        api_key="mock_key",
+        api_secret="mock_secret",
+        passphrase="mock_passphrase",
+        testnet=True,
+        dry_run=True
+    )
+    
+    # 1. BTC should clamp to 0.001 BTC minimum
+    res_btc = await adapter.execute_smart_order(
+        symbol="BTCUSDT",
+        side="BUY",
+        entry_price=60000.0,
+        sl_price=55000.0,
+        quote_qty=6.0  # Unclamped qty = 0.0001 BTC
+    )
+    assert res_btc.success is True
+    assert res_btc.risk.quantity >= 0.001
+
+    # 2. ETH should clamp to 0.01 ETH minimum
+    res_eth = await adapter.execute_smart_order(
+        symbol="ETHUSDT",
+        side="BUY",
+        entry_price=3000.0,
+        sl_price=2700.0,
+        quote_qty=3.0  # Unclamped qty = 0.001 ETH
+    )
+    assert res_eth.success is True
+    assert res_eth.risk.quantity >= 0.01
+
+    # 3. SOL (other asset) with small value should clamp value to $5.00 minimum
+    res_sol_small = await adapter.execute_smart_order(
+        symbol="SOLUSDT",
+        side="BUY",
+        entry_price=100.0,
+        sl_price=90.0,
+        quote_qty=1.0  # Unclamped qty = 0.01 SOL (value = $1.00)
+    )
+    assert res_sol_small.success is True
+    assert res_sol_small.risk.cost >= 5.0
+
+    # 4. SOL with large value should clamp value to $10.00 maximum
+    res_sol_large = await adapter.execute_smart_order(
+        symbol="SOLUSDT",
+        side="BUY",
+        entry_price=100.0,
+        sl_price=90.0,
+        quote_qty=20.0  # Unclamped qty = 0.20 SOL (value = $20.00)
+    )
+    assert res_sol_large.success is True
+    assert res_sol_large.risk.cost <= 10.0 + 0.01
+
+
+@pytest.mark.asyncio
+async def test_weex_http_error_handling():
+    """Verify Weex adapter _request raises ExchangeError for status >= 400."""
+    adapter = WeexAdapter(
+        api_key="mock_key",
+        api_secret="mock_secret",
+        passphrase="mock_passphrase",
+        testnet=True,
+        dry_run=False
+    )
+    
+    mock_resp = AsyncMock()
+    mock_resp.__aenter__.return_value.status = 500
+    mock_resp.__aenter__.return_value.json = AsyncMock(return_value={})
+    
+    # We patch ClientSession's request methods
+    with patch("aiohttp.ClientSession.get", return_value=mock_resp):
+        with pytest.raises(ExchangeError) as exc_info:
+            await adapter._request("GET", "/api/v2/contract/public/symbols")
+        assert exc_info.value.category == ExchangeErrorCategory.CONNECTION_ERROR
+        assert "HTTP Error 500" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_weex_orphan_position_prevention():
+    """Verify that Weex entry order is cancelled if subsequent OCO exit placement fails."""
+    adapter = WeexAdapter(
+        api_key="mock_key",
+        api_secret="mock_secret",
+        passphrase="mock_passphrase",
+        testnet=True,
+        dry_run=False
+    )
+    
+    entry_mock_res = {
+        "orderId": "MOCK-ENTRY-123",
+        "executedQty": "0.01",
+        "cummulativeQuoteQty": "30.0",
+        "status": "FILLED"
+    }
+    
+    # Mock place_market_order to succeed, place_oco_order to fail, cancel_order to succeed
+    with patch.object(adapter, "place_market_order", AsyncMock(return_value=entry_mock_res)), \
+         patch.object(adapter, "get_account_balance", AsyncMock(return_value=1000.0)), \
+         patch.object(adapter, "place_oco_order", AsyncMock(side_effect=Exception("OCO API Error"))), \
+         patch.object(adapter, "cancel_order", AsyncMock(return_value={"status": "CANCELED"})) as mock_cancel:
+        
+        result = await adapter.execute_smart_order(
+            symbol="ETHUSDT",
+            side="BUY",
+            entry_price=3000.0,
+            sl_price=2700.0,
+            tp_price=3600.0,
+            quote_qty=30.0
+        )
+        
+        # Verify result is a failure and cancel_order was called for the entry order ID
+        assert result.success is False
+        assert "OCO placement failed" in result.error
+        assert result.error_category == ExchangeErrorCategory.ORDER_REJECTED
+        mock_cancel.assert_called_once_with("ETHUSDT_UMCBL", "MOCK-ENTRY-123")
 
