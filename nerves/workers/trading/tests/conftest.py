@@ -24,12 +24,10 @@ os.environ["ENABLE_IP_WHITELIST"] = "false"
 
 @pytest.fixture(autouse=True)
 def mock_global_capture_client():
-    """Globally mock capture_client to avoid any real network calls to Binance."""
-    with patch("capture_client.get_capture_client") as mock_get_capture:
-        mock_capture = AsyncMock()
-        mock_capture.fetch_ohlcv.return_value = None
-        mock_get_capture.return_value = mock_capture
-        yield mock_capture
+    """Globally mock capture_client's fetch_ohlcv to avoid any real network calls to Binance."""
+    with patch("capture_client.PythonCaptureClient.fetch_ohlcv", new_callable=AsyncMock) as mock_fetch:
+        mock_fetch.return_value = None
+        yield mock_fetch
 
 os.environ["LOG_FILE"] = "test_trades.log"
 os.environ["TELEGRAM_BOT_ENABLED"] = "false"
