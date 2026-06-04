@@ -156,6 +156,10 @@ jobs:
             paths: "tests/e2e/ tests/security/"
             parallel: false
             install-browser: true
+          - stage: "Advanced (Load + Chaos + Backtest)"
+            paths: "tests/advanced/"
+            parallel: false
+            install-browser: false
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
