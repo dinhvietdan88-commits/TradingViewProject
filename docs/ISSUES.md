@@ -84,3 +84,70 @@
 ### 2. MCP Connectivity Error Handling
 * **Description:** If the TradingView MCP server dies or the Chrome CDP connection drops, the bot still proceeds but logs `[Brief] Screenshot failed`.
 * **Action Item:** Need more robust retry mechanisms and circuit breakers in `mcp_client.py` for headless Chrome crashes.
+
+---
+
+## Session Resolution Log — 2026-06-05 (/goal Bug Sprint)
+
+Resolved 11 issues in a single /goal deep-search session.
+
+### #54 — VpsAnalyzer Crash Loop (`asyncio` coroutine forbidden)
+* **File:** `nerves/workers/trading/workers/vps_analyzer.py`
+* **Root cause:** `asyncio.ensure_future(coroutine())` passed a coroutine object instead of a Task. Two separate bugs: shutdown loop + `KeyError` on missing key.
+* **Fix:** Replaced with `asyncio.create_task()`. Added `.get()` with default.
+* **Commit:** `83a7c12`
+* **Status:** FIXED ✅
+
+### #56 — ChromaDB Empty State (RAG broken)
+* **Root cause:** `rag.py` initialized `chroma_client` but never populated the collection. `/health` returned `rag_status: ok` even with 0 vectors.
+* **Fix:** Added `collection.count() > 0` guard in `rag.py`. Added `/admin/rag-verify` endpoint in `agy-bridge.py`. Added HTTP-based vector count probe to `verify_provisioning.py`.
+* **Commits:** `d04abca`, `daa64d1`
+* **Status:** FIXED ✅
+
+### #57 — Provisioning Checks Too Shallow
+* **Root cause:** `verify_provisioning.py` reported 12/12 PASS even when ChromaDB was empty, analyzer was crash-looping, or Circuit Breaker was OPEN.
+* **Fix:** Added 5 new operational probes: ChromaDB vector count (REST), crash-loop detection in logs, CB state=CLOSED check, AI smoke test via agy-bridge, NTP drift warning at >200ms.
+* **Commit:** `41294ac`
+* **Status:** FIXED ✅
+
+### #58 — agy `--print` stdout silenced (SCAR-005)
+* **Root cause:** `agy` CLI requires PTY to flush stdout; non-TTY context (Docker daemon) silences output.
+* **Fix:** SDK-first architecture eliminates need for `agy` CLI; `script -qfc` PTY wrapper as fallback.
+* **Status:** FIXED / CLOSED ✅
+
+### #59 — Free Tier API Quota Exhaustion (SCAR-006)
+* **Fix:** Mitigated via dual-key isolation (#67) + Circuit Breaker (opens after 3 failures, 60s recovery).
+* **Status:** CLOSED (mitigation in place; billing tier upgrade = permanent fix) ✅
+
+### #60 — agy-bridge Sidecar Not Provisioned
+* **Fix:** `agy-bridge.py` deployed as Tier 2 step in `deploy.yml`. Bind-mount overlay (#68) ensures persistence across container restarts.
+* **Status:** CLOSED ✅
+
+### #67 — agy-bridge Single API Key = Single Point of Quota Failure
+* **Root cause:** `ANTIGRAVITY_API_KEY` and `GEMINI_API_KEY` could be the same key → both paths exhaust simultaneously.
+* **Fix:** Startup warning if `CLI_KEY == SDK_KEY`. Dual-key isolation: CLI path uses `ANTIGRAVITY_API_KEY`, SDK path uses `GEMINI_API_KEY`.
+* **Status:** FIXED ✅
+
+### #68 — docker cp Hot-Patching Not Persisted Across Restarts
+* **Root cause:** `docker cp` writes to container writable layer → lost on `docker restart`.
+* **Fix:** Replaced with read-only Docker bind mounts in `docker-compose.server-c.yml`.
+* **Commit:** `e0b0093`
+* **Status:** FIXED ✅
+
+### #69 — agy-bridge Security Hardening
+* **Fix:** L1 (constrained system prompt), L2 (`--sandbox` + 19-rule deny list), L3 (HMAC-SHA256 auth on `/admin/*` routes).
+* **Status:** FIXED ✅
+
+### #71 — AQH Security Scanner RecursionError
+* **File:** `nerves/workers/trading/security/scanners/static_scanner.py`
+* **Root cause:** `visitor.visit(tree)` (AST traversal) was unprotected. `telegram_bot.py` (137KB, 3123 lines) + exchange SDKs (binance 687KB) exhaust Python call stack.
+* **Fix 1:** Files >300KB skip AST visitor; regex checks still run.
+* **Fix 2:** `try/except RecursionError` wraps `visitor.visit(tree)` for all files.
+* **Commit:** `169341b`
+* **Status:** FIXED ✅
+
+### #72 — scan_directory Leaks `.venv` Files on Windows
+* **Root cause:** Path filter used string `/.venv/` — requires leading `/` which `Path.rglob()` on Windows doesn't always produce.
+* **Fix:** Replaced with `Path.parts` set membership check (`SKIP_PARTS = {'.venv', 'venv', 'site-packages', ...}`).
+* **Commit:** `5ab7b4b`
+* **Status:** FIXED ✅
