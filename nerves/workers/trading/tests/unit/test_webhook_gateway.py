@@ -206,6 +206,8 @@ async def test_rate_limit_blocks_after_15_requests():
         mock_config.WEBHOOK_SECRET = "test-secret"
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 1000.0
+        mock_config.DISABLE_RATE_LIMIT = False
+        mock_config.DEFAULT_EXCHANGE = "binance"
 
         req = _make_request(
             payload={"secret": "test-secret", "symbol": "BTCUSDT", "action": "buy"},
@@ -232,6 +234,8 @@ async def test_rate_limit_resets_after_window():
         mock_config.WEBHOOK_SECRET = "test-secret"
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 1000.0
+        mock_config.DISABLE_RATE_LIMIT = False
+        mock_config.DEFAULT_EXCHANGE = "binance"
         mock_config.DEFAULT_EXCHANGE = "binance"
         mock_bus.emit_background = AsyncMock()
 

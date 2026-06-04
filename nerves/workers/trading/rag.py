@@ -428,6 +428,7 @@ async def generate_trading_advice(
         if "error" in trend_stats:
             stats_context += f"- Trend Template Checklist: ERROR ({trend_stats['error']})\n"
         else:
+            stats_context += f"- Macro Regime: {trend_stats.get('macro_regime', 'Unknown')}\n"
             stats_context += f"- Trend Template Score: {trend_stats.get('score', 0)}/8 ({trend_stats.get('stage', 'Unknown')})\n"
             stats_context += f"  Detail: {trend_stats.get('summary', '')}\n"
             criteria_list = []

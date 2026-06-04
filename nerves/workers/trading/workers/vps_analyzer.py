@@ -739,6 +739,15 @@ class VpsAnalyzerWorker:
                     "reason": f"RAG error: {advice[:100]}",
                     "analysis_mode": analysis_mode,
                 }
+            
+            # Hard reject if AI confidence is too low (< 30)
+            if ai_conf < 30:
+                return {
+                    "approved": False,
+                    "reason": f"Hard Reject: AI confidence too low ({ai_conf} < 30)",
+                    "analysis_mode": analysis_mode,
+                }
+            
             # 1. Prefix-based checks (high priority)
             starts_with_reject = False
             for kw in ["rejected", "wait", "avoid", "không nên", "không mua", "chờ thêm", "⚠️"]:

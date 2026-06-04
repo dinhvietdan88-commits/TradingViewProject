@@ -5,10 +5,13 @@ conftest.py — Shared fixtures for entire test suite.
 - WEBHOOK_SECRET overridden to "test-secret" for all tests.
 """
 
+import pytest
 import pytest_asyncio
 import os
 import sys
 import pathlib
+from unittest.mock import patch, AsyncMock
+from httpx import AsyncClient, ASGITransport
 
 # Override env BEFORE importing any app modules
 os.environ["WEBHOOK_SECRET"] = "test-secret"
@@ -18,6 +21,14 @@ os.environ["TELEGRAM_BOT_TOKEN"] = ""
 os.environ["TELEGRAM_CHAT_ID"] = ""
 os.environ["DISCORD_WEBHOOK_URL"] = ""
 os.environ["ENABLE_IP_WHITELIST"] = "false"
+
+@pytest.fixture(autouse=True)
+def mock_global_capture_client():
+    """Globally mock capture_client's fetch_ohlcv to avoid any real network calls to Binance."""
+    with patch("capture_client.PythonCaptureClient.fetch_ohlcv", new_callable=AsyncMock) as mock_fetch:
+        mock_fetch.return_value = None
+        yield mock_fetch
+
 os.environ["LOG_FILE"] = "test_trades.log"
 os.environ["TELEGRAM_BOT_ENABLED"] = "false"
 os.environ["BRIEF_ENABLED"] = "false"
