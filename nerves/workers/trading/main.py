@@ -1954,6 +1954,83 @@ async def sse_events(request: Request):
     )
 
 
+from pydantic import BaseModel
+
+class OverrideRequest(BaseModel):
+    exchange: str
+    action: str
+
+class RiskSettingsUpdateRequest(BaseModel):
+    exchange: str
+    daily_loss_cap: float
+    drawdown_cap: float
+    max_quote_qty: float
+    slippage_limit: float
+    safe_mode: int
+
+@app.get("/api/risk/status")
+async def get_risk_status():
+    """Get dynamic status and circuit breaker state of security gates."""
+    try:
+        return await database.get_all_risk_statuses()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/risk/override")
+async def post_risk_override(req: OverrideRequest):
+    """Manually trip, reset or override the circuit breaker for an exchange."""
+    try:
+        ex = req.exchange.lower()
+        act = req.action.lower()
+        
+        if act == "reset":
+            prev_status = await database.get_risk_settings(ex)
+            prev_state = prev_status.get("state", "CLOSED")
+            await database.update_circuit_breaker_state(ex, "CLOSED")
+            await database.log_circuit_breaker(
+                ex, "*", prev_state, "CLOSED", "Manual override reset via dashboard",
+                {"action": "reset"}
+            )
+            return {"status": "success", "message": f"Circuit breaker for {ex} reset to CLOSED"}
+        elif act == "trip":
+            prev_status = await database.get_risk_settings(ex)
+            prev_state = prev_status.get("state", "CLOSED")
+            await database.update_circuit_breaker_state(ex, "OPEN")
+            await database.log_circuit_breaker(
+                ex, "*", prev_state, "OPEN", "Manual override trip via dashboard",
+                {"action": "trip"}
+            )
+            return {"status": "success", "message": f"Circuit breaker for {ex} tripped to OPEN"}
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported override action: {act}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/risk/settings")
+async def get_risk_settings_endpoint(exchange: str = Query(...)):
+    """Get the current risk settings for an exchange."""
+    try:
+        return await database.get_risk_settings(exchange)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/risk/settings")
+async def update_risk_settings_endpoint(req: RiskSettingsUpdateRequest):
+    """Update risk settings thresholds for an exchange."""
+    try:
+        await database.save_risk_settings(
+            exchange=req.exchange,
+            daily_loss_cap=req.daily_loss_cap,
+            drawdown_cap=req.drawdown_cap,
+            max_quote_qty=req.max_quote_qty,
+            slippage_limit=req.slippage_limit,
+            safe_mode=req.safe_mode
+        )
+        return {"status": "success", "message": f"Risk settings updated for {req.exchange}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     log.info(f"Starting FastAPI Webhook Server v7.6 on {config.HOST}:{config.PORT}")

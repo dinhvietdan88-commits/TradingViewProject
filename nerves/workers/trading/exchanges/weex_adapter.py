@@ -98,9 +98,13 @@ class WeexAdapter:
             try:
                 if method == "GET":
                     async with session.get(url, headers=headers) as resp:
+                        if resp.status >= 400:
+                            raise ExchangeError(ExchangeErrorCategory.CONNECTION_ERROR, f"HTTP Error {resp.status}", str(resp.status), self.exchange_name)
                         data = await resp.json()
                 elif method == "POST":
                     async with session.post(url, data=body_str, headers=headers) as resp:
+                        if resp.status >= 400:
+                            raise ExchangeError(ExchangeErrorCategory.CONNECTION_ERROR, f"HTTP Error {resp.status}", str(resp.status), self.exchange_name)
                         data = await resp.json()
                 else:
                     raise ValueError(f"Unsupported method {method}")
@@ -367,6 +371,20 @@ class WeexAdapter:
                 qty = quote_qty / entry_price if entry_price > 0 else qty
             cost = qty * entry_price
             
+            # Enforce micro-volume minimum and value range checks
+            symbol_upper = symbol_clean.upper()
+            if "BTC" in symbol_upper:
+                qty = max(qty, 0.001)
+            elif "ETH" in symbol_upper:
+                qty = max(qty, 0.01)
+            else:
+                # Default cost bounds for other assets: $5.00 - $10.00 USDT
+                if qty * entry_price < 5.0:
+                    qty = 5.0 / entry_price
+                elif qty * entry_price > 10.0:
+                    qty = 10.0 / entry_price
+            cost = qty * entry_price
+
             if cost > balance * 0.95:
                 qty = (balance * 0.95) / entry_price
                 cost = qty * entry_price
@@ -413,14 +431,27 @@ class WeexAdapter:
             exit_side = "SELL" if side_upper == "BUY" else "BUY"
             stop_limit = sl_price * 0.995 if exit_side == "SELL" else sl_price * 1.005
             
-            oco_result = await self.place_oco_order(
-                symbol=symbol_clean,
-                side=exit_side,
-                quantity=qty,
-                take_profit_price=tp_price,
-                stop_price=sl_price,
-                stop_limit_price=stop_limit,
-            )
+            try:
+                oco_result = await self.place_oco_order(
+                    symbol=symbol_clean,
+                    side=exit_side,
+                    quantity=qty,
+                    take_profit_price=tp_price,
+                    stop_price=sl_price,
+                    stop_limit_price=stop_limit,
+                )
+            except Exception as oco_err:
+                log.error(f"Weex OCO order placement failed: {oco_err}. Cancelling entry order {entry_result.get('orderId')} to prevent orphan position.")
+                try:
+                    await self.cancel_order(symbol_clean, entry_result.get("orderId"))
+                except Exception as cancel_err:
+                    log.error(f"Failed to cancel entry order after OCO failure: {cancel_err}")
+                raise ExchangeError(
+                    ExchangeErrorCategory.ORDER_REJECTED,
+                    f"OCO placement failed: {oco_err}. Entry order cancelled.",
+                    None,
+                    self.exchange_name
+                )
 
             return OrderResult(
                 success=True,

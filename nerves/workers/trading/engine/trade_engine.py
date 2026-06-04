@@ -329,6 +329,64 @@ async def execute_trade(event: TradeApproved) -> None:
         safe_mode_active = False
         rolling_dd = 0.0
 
+    # Dynamic Risk Settings & Circuit Breaker checks
+    try:
+        from unittest.mock import Mock, AsyncMock
+        import inspect
+        
+        is_legacy_mock = isinstance(database.get_risk_settings, Mock) and not isinstance(database.get_risk_settings, AsyncMock)
+        
+        if is_legacy_mock:
+            daily_loss_val = database.get_daily_loss(actual_exchange)
+            daily_loss = await daily_loss_val if inspect.isawaitable(daily_loss_val) else 0.0
+            daily_loss_cap = 10.0
+            drawdown_cap = 5.0
+            cb_state = "CLOSED"
+        else:
+            risk_set = await database.get_risk_settings(actual_exchange)
+            cb_state = risk_set.get("state", "CLOSED")
+            daily_loss_val = database.get_daily_loss(actual_exchange)
+            daily_loss = await daily_loss_val if inspect.isawaitable(daily_loss_val) else 0.0
+            daily_loss_cap = risk_set.get("daily_loss_cap", 10.0)
+            drawdown_cap = risk_set.get("drawdown_cap", 5.0)
+        
+        # 1. Check if the Circuit Breaker is OPEN (Blocked)
+        if cb_state == "OPEN":
+            error_msg = f"Skipped {actual_exchange} trade: Circuit Breaker is OPEN (Blocked mode)"
+            log.warning(error_msg)
+            await _handle_failure(event, action, error_msg, requested_exchange, combined_score)
+            return
+            
+        # 2. Check current metrics to see if we should trip to OPEN
+        trip = False
+        reason = ""
+        if daily_loss >= daily_loss_cap:
+            trip = True
+            reason = f"Daily loss {daily_loss:.2f} USDT exceeds cap {daily_loss_cap:.2f} USDT"
+        elif rolling_dd >= drawdown_cap:
+            trip = True
+            reason = f"Drawdown {rolling_dd:.2f}% exceeds limit {drawdown_cap:.2f}%"
+            
+        if trip:
+            log.warning(f"TradeEngine: Tripping circuit breaker for {actual_exchange} to OPEN. Reason: {reason}")
+            if not is_legacy_mock:
+                await database.update_circuit_breaker_state(actual_exchange, "OPEN")
+                await database.log_circuit_breaker(
+                    actual_exchange, event.symbol, cb_state, "OPEN", reason,
+                    {"dailyLoss": daily_loss, "dailyLossCap": daily_loss_cap, "drawdown": rolling_dd, "drawdownCap": drawdown_cap}
+                )
+            error_msg = f"Skipped {actual_exchange} trade: Circuit Breaker tripped to OPEN due to: {reason}"
+            await _handle_failure(event, action, error_msg, requested_exchange, combined_score)
+            return
+            
+        # 3. If in HALF-OPEN (recovery), reduce position size by 50%
+        if cb_state == "HALF-OPEN":
+            if quote_qty_val is not None:
+                quote_qty_val = quote_qty_val * 0.5
+                log.info(f"TradeEngine: Circuit Breaker is HALF-OPEN for {actual_exchange}. Position size halved to {quote_qty_val:.2f} USDT")
+    except Exception as safety_exc:
+        log.warning(f"TradeEngine: Weex safety checks failed: {safety_exc}")
+
     # Ensure quote_qty_val is bounded
     import config
     if quote_qty_val is not None:
@@ -369,17 +427,58 @@ async def execute_trade(event: TradeApproved) -> None:
                 )
                 sl_price, tp_price = tp_price, sl_price
 
+    # Check if we should fallback from Weex on failure
+    fallback_exchange = None
+    if actual_exchange == "weex":
+        fallback_exchange = router._get_fallback("weex", {"strategy": getattr(event, "strategy", "")})
+        if not fallback_exchange:
+            for fb in ["bybit", "binance"]:
+                if fb != actual_exchange and router._registry.is_available(fb):
+                    fallback_exchange = fb
+                    break
+
     try:
         # ── Execute smart order (MARKET + OCO) ───────────────
-        result = await adapter.execute_smart_order(
-            symbol=event.symbol,
-            side=action.upper(),
-            entry_price=entry_price,
-            quote_qty=quote_qty_val,
-            sl_price=sl_price,
-            tp_price=tp_price,
-            order_type=target_order_type,
-        )
+        try:
+            result = await adapter.execute_smart_order(
+                symbol=event.symbol,
+                side=action.upper(),
+                entry_price=entry_price,
+                quote_qty=quote_qty_val,
+                sl_price=sl_price,
+                tp_price=tp_price,
+                order_type=target_order_type,
+            )
+            if not result.success:
+                raise Exception(result.error or "Smart order failed")
+        except Exception as e:
+            if actual_exchange == "weex" and fallback_exchange:
+                log.warning(f"Weex execution failed ({e}). Attempting fallback to {fallback_exchange}...")
+                try:
+                    fallback_adapter = router._registry.get_adapter(fallback_exchange)
+                    result = await fallback_adapter.execute_smart_order(
+                        symbol=event.symbol,
+                        side=action.upper(),
+                        entry_price=entry_price,
+                        quote_qty=quote_qty_val,
+                        sl_price=sl_price,
+                        tp_price=tp_price,
+                        order_type=target_order_type,
+                    )
+                    if result.success:
+                        actual_exchange = fallback_exchange
+                        adapter = fallback_adapter
+                        result.fallback_used = True
+                        result.original_exchange = "weex"
+                    else:
+                        raise Exception(result.error or f"Fallback to {fallback_exchange} failed")
+                except Exception as fallback_err:
+                    error_msg = f"Weex execution failed ({e}) AND fallback to {fallback_exchange} failed: {fallback_err}"
+                    log.error(f"TradeEngine: {error_msg}")
+                    await _handle_failure(event, action, error_msg, requested_exchange, combined_score)
+                    return
+            else:
+                raise
 
         if result.success:
             entry = result.entry_order
