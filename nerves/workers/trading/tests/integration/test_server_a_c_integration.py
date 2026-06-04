@@ -232,8 +232,13 @@ async def test_server_a_c_integration_flow(test_db, worker):
          patch("rag.query_knowledge", return_value=[]), \
          patch("rag.generate_trading_advice", new_callable=AsyncMock, return_value="Strong BUY signal. approved"), \
          patch("workers.ai_circuit_breaker.llm_breaker.is_available", return_value=True), \
-         patch("notifier.send_telegram_alert", new_callable=AsyncMock):
+         patch("notifier.send_telegram_alert", new_callable=AsyncMock), \
+         patch("capture_client.get_capture_client") as mock_get_capture:
          
+        mock_capture = AsyncMock()
+        mock_capture.fetch_ohlcv.return_value = None  # Force error/skip pattern detection
+        mock_get_capture.return_value = mock_capture
+        
         run_task = asyncio.create_task(worker.run())
         
         # Give it a short moment to process the signal
@@ -303,8 +308,13 @@ async def test_confidence_edge_cases(test_db, worker, confidence, mode, expected
          patch("rag.init_vector_db", return_value=True), \
          patch("rag.build_rag_query", return_value="query"), \
          patch("rag.query_knowledge", return_value=[]), \
-         patch("notifier.send_telegram_alert", new_callable=AsyncMock):
+         patch("notifier.send_telegram_alert", new_callable=AsyncMock), \
+         patch("capture_client.get_capture_client") as mock_get_capture:
          
+        mock_capture = AsyncMock()
+        mock_capture.fetch_ohlcv.return_value = None
+        mock_get_capture.return_value = mock_capture
+        
         results = await worker.poll_and_analyze()
 
     assert len(results) == 1
