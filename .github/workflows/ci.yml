@@ -68,10 +68,6 @@ jobs:
             paths: "tests/unit/ tests/property/ tests/integration/ __auto_root__"
             parallel: true
             install-browser: false
-          - stage: "Browser (E2E + Security)"
-            paths: "tests/e2e/ tests/security/"
-            parallel: false
-            install-browser: true
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6

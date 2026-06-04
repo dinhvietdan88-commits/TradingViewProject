@@ -259,9 +259,8 @@ async def _handle_failure(server: ServerHealth, error: str) -> None:
                 f"Health checks SUSPENDED until self-announce."
             )
             # Send ONE final alert — then silence
-            if not server.alerted_down:
-                await _send_offline_alert(server, error)
-                server.alerted_down = True
+            await _send_offline_alert(server, error)
+            server.alerted_down = True
     elif server.consecutive_failures >= ALERT_AFTER_FAILURES:
         # Still under threshold — send warning (but only once)
         if not server.alerted_down:

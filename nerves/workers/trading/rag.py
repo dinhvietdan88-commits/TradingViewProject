@@ -491,7 +491,7 @@ async def generate_trading_advice(
                         f"RAG: agy bridge generated advice for {symbol} ({action}) "
                         f"[{result.latency_ms:.0f}ms]"
                     )
-                    return result.advice
+                    return f"{result.advice}\n\n[Provider: {result.provider or 'agy-bridge'}]"
                 else:
                     log.warning(
                         f"RAG: agy bridge failed ({result.error}). "
@@ -517,13 +517,13 @@ async def generate_trading_advice(
                 response = await agent.chat(prompt)
                 advice = await response.text()
             log.info(f"RAG: Antigravity SDK Agent 2.0 generated advice for {symbol} ({action})")
-            return advice
+            return f"{advice}\n\n[Provider: antigravity-sdk]"
 
         if provider == "claude_cli":
             try:
                 advice = await _call_claude_cli(prompt)
                 log.info(f"RAG: Claude CLI generated advice for {symbol} ({action})")
-                return advice
+                return f"{advice}\n\n[Provider: claude-cli]"
             except ClaudeCLIError as e:
                 log.warning(f"RAG: Claude CLI fail ({e}). Fallback?")
                 if (
@@ -541,7 +541,7 @@ async def generate_trading_advice(
             if advice is None:
                 return "⚠️ RAG Analysis không khả dụng (thiếu Gemini auth)."
             log.info(f"RAG: Gemini generated advice for {symbol} ({action})")
-            return advice
+            return f"{advice}\n\n[Provider: gemini-direct]"
 
         elif provider in ("anthropic", "claude_cli"):
             # Priority chain: Claude CLI (OAuth session) → SDK (API key) → Gemini fallback
@@ -549,7 +549,7 @@ async def generate_trading_advice(
             try:
                 advice = await _call_claude_cli(prompt)
                 log.info(f"RAG: Claude CLI (auth session) generated advice for {symbol} ({action})")
-                return advice
+                return f"{advice}\n\n[Provider: claude-cli]"
             except ClaudeCLIError as cli_err:
                 log.warning(f"RAG: Claude CLI fail ({cli_err}). Trying SDK fallback...")
 
@@ -565,7 +565,7 @@ async def generate_trading_advice(
                     )
                     advice = message.content[0].text
                     log.info(f"RAG: Claude SDK generated advice for {symbol} ({action})")
-                    return advice
+                    return f"{advice}\n\n[Provider: claude-sdk]"
                 except Exception as sdk_err:
                     log.warning(f"RAG: Anthropic SDK fail ({sdk_err}). Trying Gemini fallback...")
 
@@ -588,7 +588,7 @@ async def generate_trading_advice(
                 )
                 advice = message.content[0].text
                 log.info(f"RAG: Claude generated advice for {symbol} ({action})")
-                return advice
+                return f"{advice}\n\n[Provider: claude-sdk]"
             except Exception as sdk_err:
                 if has_gemini:
                     log.warning(f"RAG: Anthropic call failed ({sdk_err}). Falling back to Gemini...")
@@ -602,7 +602,7 @@ async def generate_trading_advice(
             if advice is None:
                 return "⚠️ RAG Analysis không khả dụng (thiếu Gemini auth)."
             log.info(f"RAG: Gemini fallback generated advice for {symbol} ({action})")
-            return advice
+            return f"{advice}\n\n[Provider: gemini-fallback]"
 
     except Exception as e:
         log.error(f"RAG API error: {e}")

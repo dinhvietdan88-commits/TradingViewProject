@@ -49,6 +49,7 @@ class AgyResponse:
     error: Optional[str] = None
     exit_code: int = 0
     stdout_len: int = 0
+    provider: Optional[str] = None
 
 
 # ════════════════════════════════════════════════════════════════
@@ -199,6 +200,7 @@ class AgyHarness:
                             success=True,
                             exit_code=0,
                             stdout_len=data.get("stdout_len", len(advice)),
+                            provider=data.get("provider", "agy-bridge"),
                         )
 
                     elif resp.status == 503:
