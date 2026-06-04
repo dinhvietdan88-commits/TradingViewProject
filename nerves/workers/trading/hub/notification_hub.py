@@ -181,6 +181,60 @@ async def _render_chart_for_event(event: AnalysisComplete) -> Optional[str]:
     return None
 
 
+async def _render_chart_for_indicator(event: IndicatorSignalReceived) -> Optional[str]:
+    """Render a Matplotlib chart for an IndicatorSignalReceived event.
+
+    Uses the indicator's symbol and interval to fetch OHLCV and render a
+    clean dark-theme candlestick chart. The indicator_name is shown in the
+    strategy table overlay.
+
+    Returns the file path to the generated PNG, or None on failure.
+    Non-blocking: chart failure does NOT block notification flow.
+    """
+    try:
+        from capture_client import get_capture_client
+
+        # Build entry price drawing if present
+        drawings = []
+        if event.price:
+            try:
+                price_val = float(str(event.price).replace(",", ""))
+                if price_val > 0:
+                    drawings.append({"price": price_val, "label": "Price", "color": "#2962ff"})
+            except (ValueError, TypeError):
+                pass
+
+        # Strategy table: indicator name + confidence
+        rows = [("Indicator", event.indicator_name or "N/A")]
+        if event.confidence_score:
+            rows.append(("Confidence", f"{event.confidence_score}%"))
+        if event.conditions_met:
+            rows.append(("Conditions", ", ".join(event.conditions_met[:2])))
+        strategy_table = {"title": "Indicator Alert", "rows": rows}
+
+        # Resolve timeframe
+        timeframe = event.interval or "1h"
+
+        client = get_capture_client()
+        result = await client.capture_screenshot(
+            symbol=event.symbol,
+            timeframe=timeframe,
+            drawings=drawings or None,
+            strategy_table=strategy_table,
+            method="mplfinance",
+        )
+
+        if result.success and result.file_path:
+            log.info(f"NotificationHub: 📊 Indicator chart rendered for {event.symbol} → {result.file_path}")
+            return result.file_path
+        else:
+            log.warning(f"NotificationHub: Indicator chart render failed for {event.symbol}: {result.error}")
+    except Exception as exc:
+        log.warning(f"NotificationHub: Indicator chart rendering skipped for {event.symbol}: {exc}")
+
+    return None
+
+
 def _format_indicator_details_for_rejection(payload: dict) -> str:
     """Format indicator name, timeframe, price, confidence, and metadata for rejection message."""
     details = []
@@ -438,16 +492,23 @@ async def notify_indicator_signal(event: IndicatorSignalReceived) -> None:
     if event.is_recovered:
         await notifier.notify_all(msg)
     else:
+        # Render chart for indicator signal (non-blocking)
+        chart_path = await _render_chart_for_indicator(event)
+
         try:
             import telegram_bot
             await telegram_bot.send_interactive_indicator_alert(
                 signal_id=event.signal_id,
                 symbol=event.symbol,
-                message=msg
+                message=msg,
+                photo_path=chart_path,
             )
         except Exception as e:
             log.error(f"NotificationHub: Failed to trigger interactive indicator alert: {e}")
             await notifier.notify_all(msg + f"\n\n*(Lỗi tương tác: {e})*")
+            if chart_path:
+                import asyncio
+                await asyncio.to_thread(notifier.send_telegram_photo, chart_path, f"📊 {event.symbol} — Indicator")
 
 
 

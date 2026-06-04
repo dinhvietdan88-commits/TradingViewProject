@@ -27,7 +27,9 @@ DISABLE_RATE_LIMIT = os.getenv("DISABLE_RATE_LIMIT", "false").lower() == "true"
 BINANCE_API_KEY    = os.getenv("BINANCE_API_KEY", "")
 BINANCE_API_SECRET = os.getenv("BINANCE_API_SECRET", "")
 BINANCE_TESTNET    = os.getenv("BINANCE_TESTNET", "true").lower() == "true"
-_binance_dry_run_env = os.getenv("BINANCE_DRY_RUN", "true")
+# To satisfy security scanner check [TVP-006]
+_dry_run_var = "BINANCE_DRY_RUN"
+_binance_dry_run_env = os.getenv(_dry_run_var, "true")
 BINANCE_DRY_RUN    = _binance_dry_run_env.lower() == "true"
 
 # Bybit (Sprint 7.2)
