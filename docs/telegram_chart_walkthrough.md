@@ -55,3 +55,26 @@ uv run python scripts/verify_server_c_gaps.py
 * **Bộ Định Tuyến Capture:** [capture_client.py](file:///c:/Users/pesil/working/mj_trading/TradingViewProject/server/capture_client.py)
 * **Sinh Mô Hình Toán Học:** [chart_generator_mpl.py](file:///c:/Users/pesil/working/mj_trading/TradingViewProject/server/utils/chart_generator_mpl.py)
 * **Điều Phối Sự Kiện:** [notification_hub.py](file:///c:/Users/pesil/working/mj_trading/TradingViewProject/server/hub/notification_hub.py)
+
+---
+
+## 🔍 /goal Audit Session (2026-06-05) — Gap Fix & CI Enhancement
+
+### Gap Phát Hiện & Đã Sửa
+
+| File | Thay Đổi |
+|------|----------|
+| `server/telegram_bot.py` | Thêm `photo_path: Optional[str] = None` vào `send_interactive_indicator_alert` — gửi ảnh chart kèm indicator alert |
+| `server/hub/notification_hub.py` | Thêm hàm `_render_chart_for_indicator()` cho `IndicatorSignalReceived` + tích hợp vào handler |
+| `server/tests/unit/test_telegram_chart_rendering.py` | Nâng cấp assertion: verify `capture_screenshot()` và `photo_path` pass-through |
+| `.github/workflows/ci.yml` | Thêm `push: branches: [main]` trigger + path filter cho `utils/` và `hub/` |
+
+### Kết Quả Kiểm Thử Cuối (0 failures)
+
+| Batch | Tests | Kết Quả |
+|-------|-------|---------|
+| Chart + Telegram Pipeline | 86 | ✅ 86 PASSED |
+| Full unit/ suite | 468 | ✅ 468 PASSED |
+| Regression sau fix | 37 | ✅ 37 PASSED |
+| Feature test (indicator chart) | 2 | ✅ 2 PASSED |
+| **Tổng** | **593** | **✅ 0 failures** |
