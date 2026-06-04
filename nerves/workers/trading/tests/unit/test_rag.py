@@ -102,7 +102,7 @@ class TestRAGSystem(unittest.TestCase):
                 rag_chunks=[{"metadata": {"topic": "SEPA", "chapter": "001"}, "content": "SEPA buy rules", "relevance_score": 0.9}]
             ))
             
-            self.assertEqual(advice, "Mocked Antigravity SEPA Advice: Buy breakout pattern.")
+            self.assertEqual(advice, "Mocked Antigravity SEPA Advice: Buy breakout pattern.\n\n[Provider: antigravity-sdk]")
 
     def test_generate_trading_advice_antigravity_missing_sdk(self):
         """Should return error message when AI_PROVIDER is 'antigravity' but SDK is not available."""
