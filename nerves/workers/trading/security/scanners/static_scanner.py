@@ -168,13 +168,18 @@ def scan_file(filepath: Path) -> List[Finding]:
 
 
 def scan_directory(target_dir: Path) -> List[Finding]:
-    """Scan all Python files in the target directory."""
+    """Scan all Python files in the target directory.
+
+    Skips: .venv, venv, site-packages, tests, security scanner itself, __pycache__.
+    Uses Path.parts for platform-independent filtering (avoids Windows backslash issues).
+    """
+    SKIP_PARTS = {".venv", "venv", "site-packages", "tests", "security", "__pycache__"}
     findings = []
     for py_file in target_dir.rglob("*.py"):
-        rel = str(py_file).replace("\\", "/")
-        if "/.venv/" in rel or "/venv/" in rel:
+        # Skip directories by path component (works on Windows + Linux)
+        if any(part in SKIP_PARTS for part in py_file.parts):
             continue
-        if "/tests/" in rel or "test_" in py_file.name or "/security/" in rel:
+        if py_file.name.startswith("test_"):
             continue
         findings.extend(scan_file(py_file))
     return findings
