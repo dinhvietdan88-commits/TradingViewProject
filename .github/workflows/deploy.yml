@@ -331,7 +331,9 @@ jobs:
       - name: Connect to Tailscale VPN
         uses: tailscale/github-action@v4
         with:
-          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          oauth-client-id:     ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+          oauth-client-secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
+          tags: tag:ci-deploy
 
       - name: Setup SSH Agent
         uses: webfactory/ssh-agent@v0.10.0
@@ -499,7 +501,9 @@ jobs:
       - name: Connect to Tailscale VPN
         uses: tailscale/github-action@v4
         with:
-          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          oauth-client-id:     ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+          oauth-client-secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
+          tags: tag:ci-deploy
 
       - name: Setup SSH Agent
         uses: webfactory/ssh-agent@v0.10.0
@@ -561,6 +565,16 @@ jobs:
             if [ -f deploy/docker-compose.server-c.yml ]; then
               if [ "$DEPLOY_TIER" = "2" ]; then
                 echo "🔧 Tier 2: Full image deploy"
+                # Pre-check: verify Docker data dir is writable before pulling images
+                # Catches overlay2 read-only filesystem early (avoids cryptic OCI errors)
+                DOCKER_ROOT=$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo '/home/docker-data')
+                if ! touch "${DOCKER_ROOT}/.write-test" 2>/dev/null; then
+                  echo "❌ Docker root ${DOCKER_ROOT} is NOT writable — aborting Tier 2 deploy"
+                  echo "   Run: sudo systemctl restart docker  (on Server C)"
+                  exit 1
+                fi
+                rm -f "${DOCKER_ROOT}/.write-test"
+                echo "✅ Docker filesystem writable"
                 echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
                 docker compose -f deploy/docker-compose.server-c.yml pull
                 docker compose -f deploy/docker-compose.server-c.yml up -d
@@ -757,7 +771,9 @@ jobs:
       - name: Connect to Tailscale VPN
         uses: tailscale/github-action@v4
         with:
-          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          oauth-client-id:     ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+          oauth-client-secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
+          tags: tag:ci-deploy
 
       - name: Setup SSH Agent
         uses: webfactory/ssh-agent@v0.10.0

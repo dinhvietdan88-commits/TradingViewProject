@@ -75,7 +75,7 @@ services:
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       # V2 Hardening — Logging & Monitoring
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - LOG_FILE=/app/logs/analyzer.log
+      - LOG_FILE=/logs/analyzer.log
       - LOG_MAX_SIZE_MB=${LOG_MAX_SIZE_MB:-10}
       - LOG_BACKUP_COUNT=${LOG_BACKUP_COUNT:-5}
       - SERVER_A_HEALTH_URL=http://${SERVER_A_IP}:5000/health
@@ -102,8 +102,11 @@ services:
     # Override TRADING_SRC env var for local dev: TRADING_SRC=../nerves/workers/trading
     volumes:
       - ${TRADING_SRC:-/opt/trading-bot/nerves/workers/trading}:/app:ro
-      # Named volume for /app/logs — excluded from read-only bind mount
-      - analyzer_logs:/app/logs
+      # FIX: logs volume mounted at /logs (NOT /app/logs) to avoid overlay2 conflict.
+      # When /app is bind-mounted :ro, Docker cannot create mountpoints INSIDE /app
+      # because the overlay2 merged layer is read-only. /logs is a separate path
+      # outside the bind mount, giving Docker full write access to the volume.
+      - analyzer_logs:/logs
     healthcheck:
       test:
         - "CMD"
@@ -131,7 +134,7 @@ services:
 
 volumes:
   chroma_data:
-  analyzer_logs:    # Writable logs volume (excluded from read-only /app bind mount)
+  analyzer_logs:    # Writable logs volume at /logs (outside ro /app bind mount)
 
 networks:
   analyzer:
