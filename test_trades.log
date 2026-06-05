@@ -3177,3 +3177,1367 @@ RuntimeError: Transient network error
 2026-06-04 04:39:25,555 [INFO] workers.vps_analyzer:496 — [VpsAnalyzer] Starting graceful shutdown cleanup...
 2026-06-04 04:39:25,556 [INFO] workers.vps_analyzer:519 — [VpsAnalyzer] Health server stopped.
 2026-06-04 04:39:25,557 [INFO] workers.vps_analyzer:531 — [VpsAnalyzer] Shutdown complete.
+2026-06-06 01:24:43,723 [INFO] root:138 — Logging configured: level=INFO, file=test_trades.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-06 01:24:43,723 [INFO] workers.vps_analyzer:470 — [VpsAnalyzer] V2 Starting (consumer=server-c-analyzer, long_poll_timeout=5s, circuit_threshold=3)
+2026-06-06 01:24:43,725 [INFO] workers.vps_analyzer:480 — [VpsAnalyzer] RAG vector database initialized and seeded successfully.
+2026-06-06 01:24:43,726 [INFO] workers.vps_analyzer:501 — [VpsAnalyzer] APScheduler started.
+2026-06-06 01:24:43,728 [INFO] workers.vps_analyzer:511 — [VpsAnalyzer] Health and metrics server started on port 8000.
+2026-06-06 01:24:43,747 [INFO] workers.vps_analyzer:440 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited 0s)
+2026-06-06 01:24:43,747 [INFO] workers.vps_analyzer:706 — [VpsAnalyzer] Analysing #1: BTCUSDT buy @ 60000.0
+2026-06-06 01:24:43,748 [INFO] workers.vps_analyzer:848 — [VpsAnalyzer] AI advice #1 (conf=85%): Strong BUY signal. approved...
+2026-06-06 01:24:43,750 [INFO] workers.vps_analyzer:1012 — [VpsAnalyzer] #1 APPROVED [ai]: BTCUSDT buy qty=0.00416667 sl=55200.0 tp=72000.0 conf=85%
+2026-06-06 01:24:43,756 [INFO] workers.vps_analyzer:1123 — [VpsAnalyzer] 📊 Chart rendered for BTCUSDT → <AsyncMock name='get_capture_client().capture_screenshot().file_path' id='2744613566800'>
+2026-06-06 01:24:43,757 [INFO] workers.vps_analyzer:1254 — [VpsAnalyzer] Telegram photo notification sent for #1
+2026-06-06 01:24:43,758 [INFO] workers.vps_analyzer:1750 — [VpsAnalyzer] Attempting LOCAL execution: http://server-b-mock/api/execute-trade
+2026-06-06 01:24:43,759 [INFO] workers.vps_analyzer:1762 — [VpsAnalyzer] LOCAL executed: BTCUSDT buy
+2026-06-06 01:24:43,775 [INFO] workers.vps_analyzer:1860 — [VpsAnalyzer] ACK #1 → executed
+2026-06-06 01:24:44,221 [INFO] workers.vps_analyzer:635 — [VpsAnalyzer] Starting graceful shutdown cleanup...
+2026-06-06 01:24:44,224 [INFO] workers.vps_analyzer:659 — [VpsAnalyzer] Health server stopped.
+2026-06-06 01:24:44,225 [INFO] workers.vps_analyzer:671 — [VpsAnalyzer] Shutdown complete.
+2026-06-06 01:24:44,323 [INFO] database:90 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_confidence_edge_cases_49_0\test_vbs.db
+2026-06-06 01:24:44,344 [INFO] database:223 — VBS Queue Signal #1 stored: buy ETHUSDT (expires at 2026-06-05 22:24:44 UTC)
+2026-06-06 01:24:44,370 [INFO] workers.vps_analyzer:440 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited 0s)
+2026-06-06 01:24:44,370 [INFO] workers.vps_analyzer:706 — [VpsAnalyzer] Analysing #1: ETHUSDT buy @ 3000.0
+2026-06-06 01:24:44,372 [INFO] workers.vps_analyzer:848 — [VpsAnalyzer] AI advice #1 (conf=49%): Strong BUY signal. approved...
+2026-06-06 01:24:44,373 [INFO] workers.vps_analyzer:1012 — [VpsAnalyzer] #1 APPROVED [ai]: ETHUSDT buy qty=0.08333333 sl=2760.0 tp=3600.0 conf=49%
+2026-06-06 01:24:44,466 [INFO] database:90 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_confidence_edge_cases_50_0\test_vbs.db
+2026-06-06 01:24:44,487 [INFO] database:223 — VBS Queue Signal #1 stored: buy ETHUSDT (expires at 2026-06-05 22:24:44 UTC)
+2026-06-06 01:24:44,517 [INFO] workers.vps_analyzer:440 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited 0s)
+2026-06-06 01:24:44,517 [INFO] workers.vps_analyzer:706 — [VpsAnalyzer] Analysing #1: ETHUSDT buy @ 3000.0
+2026-06-06 01:24:44,519 [INFO] workers.vps_analyzer:848 — [VpsAnalyzer] AI advice #1 (conf=50%): Strong BUY signal. approved...
+2026-06-06 01:24:44,519 [INFO] workers.vps_analyzer:1012 — [VpsAnalyzer] #1 APPROVED [ai]: ETHUSDT buy qty=0.08333333 sl=2760.0 tp=3600.0 conf=50%
+2026-06-06 01:24:44,626 [INFO] database:90 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_confidence_edge_cases_51_0\test_vbs.db
+2026-06-06 01:24:44,659 [INFO] database:223 — VBS Queue Signal #1 stored: buy ETHUSDT (expires at 2026-06-05 22:24:44 UTC)
+2026-06-06 01:24:44,696 [INFO] workers.vps_analyzer:440 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited 0s)
+2026-06-06 01:24:44,696 [INFO] workers.vps_analyzer:706 — [VpsAnalyzer] Analysing #1: ETHUSDT buy @ 3000.0
+2026-06-06 01:24:44,699 [INFO] workers.vps_analyzer:848 — [VpsAnalyzer] AI advice #1 (conf=51%): Strong BUY signal. approved...
+2026-06-06 01:24:44,699 [INFO] workers.vps_analyzer:1012 — [VpsAnalyzer] #1 APPROVED [ai]: ETHUSDT buy qty=0.08333333 sl=2760.0 tp=3600.0 conf=51%
+2026-06-06 01:24:44,794 [INFO] database:90 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_confidence_edge_cases_49_1\test_vbs.db
+2026-06-06 01:24:44,809 [INFO] database:223 — VBS Queue Signal #1 stored: buy ETHUSDT (expires at 2026-06-05 22:24:44 UTC)
+2026-06-06 01:24:44,838 [INFO] workers.vps_analyzer:440 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited 0s)
+2026-06-06 01:24:44,838 [INFO] workers.vps_analyzer:706 — [VpsAnalyzer] Analysing #1: ETHUSDT buy @ 3000.0
+2026-06-06 01:24:44,839 [INFO] workers.vps_analyzer:868 — [VpsAnalyzer] ⚡ Circuit OPEN → Algorithmic for #1
+2026-06-06 01:24:44,926 [INFO] database:90 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_confidence_edge_cases_50_1\test_vbs.db
+2026-06-06 01:24:44,940 [INFO] database:223 — VBS Queue Signal #1 stored: buy ETHUSDT (expires at 2026-06-05 22:24:44 UTC)
+2026-06-06 01:24:44,964 [INFO] workers.vps_analyzer:440 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited 0s)
+2026-06-06 01:24:44,966 [INFO] workers.vps_analyzer:706 — [VpsAnalyzer] Analysing #1: ETHUSDT buy @ 3000.0
+2026-06-06 01:24:44,966 [INFO] workers.vps_analyzer:868 — [VpsAnalyzer] ⚡ Circuit OPEN → Algorithmic for #1
+2026-06-06 01:24:45,046 [INFO] database:90 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_confidence_edge_cases_51_1\test_vbs.db
+2026-06-06 01:24:45,064 [INFO] database:223 — VBS Queue Signal #1 stored: buy ETHUSDT (expires at 2026-06-05 22:24:45 UTC)
+2026-06-06 01:24:45,085 [INFO] workers.vps_analyzer:440 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited 0s)
+2026-06-06 01:24:45,086 [INFO] workers.vps_analyzer:706 — [VpsAnalyzer] Analysing #1: ETHUSDT buy @ 3000.0
+2026-06-06 01:24:45,086 [INFO] workers.vps_analyzer:868 — [VpsAnalyzer] ⚡ Circuit OPEN → Algorithmic for #1
+2026-06-06 01:24:45,086 [INFO] workers.vps_analyzer:1012 — [VpsAnalyzer] #1 APPROVED [algorithmic]: ETHUSDT buy qty=0.08333333 sl=2760.0 tp=3600.0 conf=51%
+2026-06-06 01:24:45,171 [INFO] database:90 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_fallback_routing_and_reco0\test_vbs.db
+2026-06-06 01:24:45,173 [INFO] workers.vps_analyzer:1750 — [VpsAnalyzer] Attempting LOCAL execution: http://local-execute/api/execute-trade
+2026-06-06 01:24:45,175 [INFO] workers.vps_analyzer:1762 — [VpsAnalyzer] LOCAL executed: BTCUSDT buy
+2026-06-06 01:24:45,177 [INFO] workers.vps_analyzer:1750 — [VpsAnalyzer] Attempting LOCAL execution: http://local-execute/api/execute-trade
+2026-06-06 01:24:45,178 [WARNING] workers.vps_analyzer:1777 — [VpsAnalyzer] LOCAL offline/error: Connection refused. Falling back to Server B.
+2026-06-06 01:24:45,181 [INFO] workers.vps_analyzer:1797 — [VpsAnalyzer] Forwarding to Server B: http://server-b-execute/api/execute-trade
+2026-06-06 01:24:45,181 [INFO] workers.vps_analyzer:1806 — [VpsAnalyzer] Server B accepted: BTCUSDT buy
+2026-06-06 01:24:45,183 [INFO] workers.vps_analyzer:1750 — [VpsAnalyzer] Attempting LOCAL execution: http://local-execute/api/execute-trade
+2026-06-06 01:24:45,184 [WARNING] workers.vps_analyzer:1777 — [VpsAnalyzer] LOCAL offline/error: Connection refused. Falling back to Server B.
+2026-06-06 01:24:45,187 [INFO] workers.vps_analyzer:1797 — [VpsAnalyzer] Forwarding to Server B: http://server-b-execute/api/execute-trade
+2026-06-06 01:24:45,187 [ERROR] workers.vps_analyzer:1816 — [VpsAnalyzer] Server B rejected (HTTP 500): {'detail': 'Server B down'}
+2026-06-06 01:24:45,188 [INFO] workers.vps_analyzer:1750 — [VpsAnalyzer] Attempting LOCAL execution: http://local-execute/api/execute-trade
+2026-06-06 01:24:45,190 [INFO] workers.vps_analyzer:1762 — [VpsAnalyzer] LOCAL executed: BTCUSDT buy
+2026-06-06 01:24:45,285 [INFO] database:90 — VPS database initialized at: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_end_to_end_duplicate_sign0\test_vbs.db
+2026-06-06 01:24:45,306 [INFO] database:223 — VBS Queue Signal #1 stored: buy SOLUSDT (expires at 2026-06-05 22:24:45 UTC)
+2026-06-06 01:24:45,314 [INFO] router:93 — VBS Dedup: SOLUSDT buy @ 150.0 is duplicate of #1 (within 5s window)
+2026-06-06 01:25:07,364 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_get_stats_empty0\test.db
+2026-06-06 01:25:07,434 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_get_stats_with_data0\test.db
+2026-06-06 01:25:07,447 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:07,462 [INFO] data.persistence_store:43 — Signal #2 saved: sell BTCUSDT
+2026-06-06 01:25:07,479 [INFO] data.persistence_store:43 — Signal #3 saved: buy ETHUSDT
+2026-06-06 01:25:07,496 [INFO] data.persistence_store:43 — Signal #4 saved: buy BTCUSDT
+2026-06-06 01:25:07,519 [INFO] data.persistence_store:43 — Signal #5 saved: sell BTCUSDT
+2026-06-06 01:25:07,539 [INFO] data.persistence_store:166 — Trade #1 saved: BUY BTCUSDT on binance (signal #1, vbs_queue_id=None)
+2026-06-06 01:25:07,562 [INFO] data.persistence_store:166 — Trade #2 saved: SELL BTCUSDT on binance (signal #2, vbs_queue_id=None)
+2026-06-06 01:25:07,583 [INFO] data.persistence_store:166 — Trade #3 saved: BUY ETHUSDT on binance (signal #3, vbs_queue_id=None)
+2026-06-06 01:25:07,604 [INFO] data.persistence_store:166 — Trade #4 saved: BUY BTCUSDT on binance (signal #4, vbs_queue_id=None)
+2026-06-06 01:25:07,625 [INFO] data.persistence_store:166 — Trade #5 saved: SELL BTCUSDT on binance (signal #5, vbs_queue_id=None)
+2026-06-06 01:25:07,749 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_get_trades_empty0\test.db
+2026-06-06 01:25:07,847 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_get_trades_with_data0\test.db
+2026-06-06 01:25:07,859 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:07,876 [INFO] data.persistence_store:43 — Signal #2 saved: sell BTCUSDT
+2026-06-06 01:25:07,891 [INFO] data.persistence_store:43 — Signal #3 saved: buy ETHUSDT
+2026-06-06 01:25:07,905 [INFO] data.persistence_store:43 — Signal #4 saved: buy BTCUSDT
+2026-06-06 01:25:07,920 [INFO] data.persistence_store:43 — Signal #5 saved: sell BTCUSDT
+2026-06-06 01:25:07,935 [INFO] data.persistence_store:166 — Trade #1 saved: BUY BTCUSDT on binance (signal #1, vbs_queue_id=None)
+2026-06-06 01:25:07,951 [INFO] data.persistence_store:166 — Trade #2 saved: SELL BTCUSDT on binance (signal #2, vbs_queue_id=None)
+2026-06-06 01:25:07,965 [INFO] data.persistence_store:166 — Trade #3 saved: BUY ETHUSDT on binance (signal #3, vbs_queue_id=None)
+2026-06-06 01:25:07,981 [INFO] data.persistence_store:166 — Trade #4 saved: BUY BTCUSDT on binance (signal #4, vbs_queue_id=None)
+2026-06-06 01:25:07,997 [INFO] data.persistence_store:166 — Trade #5 saved: SELL BTCUSDT on binance (signal #5, vbs_queue_id=None)
+2026-06-06 01:25:08,075 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_get_trades_pagination0\test.db
+2026-06-06 01:25:08,087 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:08,103 [INFO] data.persistence_store:43 — Signal #2 saved: sell BTCUSDT
+2026-06-06 01:25:08,117 [INFO] data.persistence_store:43 — Signal #3 saved: buy ETHUSDT
+2026-06-06 01:25:08,133 [INFO] data.persistence_store:43 — Signal #4 saved: buy BTCUSDT
+2026-06-06 01:25:08,151 [INFO] data.persistence_store:43 — Signal #5 saved: sell BTCUSDT
+2026-06-06 01:25:08,167 [INFO] data.persistence_store:166 — Trade #1 saved: BUY BTCUSDT on binance (signal #1, vbs_queue_id=None)
+2026-06-06 01:25:08,183 [INFO] data.persistence_store:166 — Trade #2 saved: SELL BTCUSDT on binance (signal #2, vbs_queue_id=None)
+2026-06-06 01:25:08,200 [INFO] data.persistence_store:166 — Trade #3 saved: BUY ETHUSDT on binance (signal #3, vbs_queue_id=None)
+2026-06-06 01:25:08,216 [INFO] data.persistence_store:166 — Trade #4 saved: BUY BTCUSDT on binance (signal #4, vbs_queue_id=None)
+2026-06-06 01:25:08,233 [INFO] data.persistence_store:166 — Trade #5 saved: SELL BTCUSDT on binance (signal #5, vbs_queue_id=None)
+2026-06-06 01:25:08,314 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_get_trades_filter_by_symb0\test.db
+2026-06-06 01:25:08,327 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:08,344 [INFO] data.persistence_store:43 — Signal #2 saved: sell BTCUSDT
+2026-06-06 01:25:08,363 [INFO] data.persistence_store:43 — Signal #3 saved: buy ETHUSDT
+2026-06-06 01:25:08,379 [INFO] data.persistence_store:43 — Signal #4 saved: buy BTCUSDT
+2026-06-06 01:25:08,396 [INFO] data.persistence_store:43 — Signal #5 saved: sell BTCUSDT
+2026-06-06 01:25:08,415 [INFO] data.persistence_store:166 — Trade #1 saved: BUY BTCUSDT on binance (signal #1, vbs_queue_id=None)
+2026-06-06 01:25:08,437 [INFO] data.persistence_store:166 — Trade #2 saved: SELL BTCUSDT on binance (signal #2, vbs_queue_id=None)
+2026-06-06 01:25:08,459 [INFO] data.persistence_store:166 — Trade #3 saved: BUY ETHUSDT on binance (signal #3, vbs_queue_id=None)
+2026-06-06 01:25:08,482 [INFO] data.persistence_store:166 — Trade #4 saved: BUY BTCUSDT on binance (signal #4, vbs_queue_id=None)
+2026-06-06 01:25:08,501 [INFO] data.persistence_store:166 — Trade #5 saved: SELL BTCUSDT on binance (signal #5, vbs_queue_id=None)
+2026-06-06 01:25:08,588 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_webhook_buy_order_success0\test.db
+2026-06-06 01:25:08,625 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:08,639 [INFO] gateway.webhook:176 — ALERT #1  action=buy  symbol=BTCUSDT  price=68000  qty=10.0  time=
+2026-06-06 01:25:08,653 [WARNING] gateway.webhook:190 — SRA Ingestion warning: No module named 'nerves'
+2026-06-06 01:25:08,655 [INFO] core.event_bus:98 — EventBus: Emitting SignalReceived (72172da7857e) → 2 handler(s)
+2026-06-06 01:25:08,719 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_webhook_validation_error0\test.db
+2026-06-06 01:25:09,072 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 0 (signal)
+2026-06-06 01:25:09,074 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 0 (100ms, method=fallback)
+2026-06-06 01:25:09,084 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for QACJ1J (signal)
+2026-06-06 01:25:09,086 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for QACJ1J (100ms, method=fallback)
+2026-06-06 01:25:09,096 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 6ZPT (signal)
+2026-06-06 01:25:09,097 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 6ZPT (100ms, method=fallback)
+2026-06-06 01:25:09,105 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for JPP9 (signal)
+2026-06-06 01:25:09,107 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for JPP9 (100ms, method=fallback)
+2026-06-06 01:25:09,115 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for A6GOWPCYLM (signal)
+2026-06-06 01:25:09,117 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for A6GOWPCYLM (100ms, method=fallback)
+2026-06-06 01:25:09,125 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 0319VMQAPNH8LZPRLAQV (signal)
+2026-06-06 01:25:09,126 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 0319VMQAPNH8LZPRLAQV (100ms, method=fallback)
+2026-06-06 01:25:09,136 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for B3K (signal)
+2026-06-06 01:25:09,137 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for B3K (100ms, method=fallback)
+2026-06-06 01:25:09,146 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for F2ZJEJ (signal)
+2026-06-06 01:25:09,147 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for F2ZJEJ (100ms, method=fallback)
+2026-06-06 01:25:09,154 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for EV95DFWG3AHSAFP28DO4 (signal)
+2026-06-06 01:25:09,158 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for EV95DFWG3AHSAFP28DO4 (100ms, method=fallback)
+2026-06-06 01:25:09,166 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for PF1SSO7MQG1HS6Y7 (signal)
+2026-06-06 01:25:09,167 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for PF1SSO7MQG1HS6Y7 (100ms, method=fallback)
+2026-06-06 01:25:09,174 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for Y6D4OZ30N (signal)
+2026-06-06 01:25:09,176 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for Y6D4OZ30N (100ms, method=fallback)
+2026-06-06 01:25:09,183 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for ULMMNS3PRVE555W (signal)
+2026-06-06 01:25:09,184 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for ULMMNS3PRVE555W (100ms, method=fallback)
+2026-06-06 01:25:09,191 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for AXTJV3NJA6A6BWG5Q (signal)
+2026-06-06 01:25:09,193 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for AXTJV3NJA6A6BWG5Q (100ms, method=fallback)
+2026-06-06 01:25:09,200 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for I23XP (signal)
+2026-06-06 01:25:09,201 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for I23XP (100ms, method=fallback)
+2026-06-06 01:25:09,209 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 49M5VOJE9JVY5S0YWW3H (signal)
+2026-06-06 01:25:09,209 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 49M5VOJE9JVY5S0YWW3H (100ms, method=fallback)
+2026-06-06 01:25:09,217 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for D (signal)
+2026-06-06 01:25:09,219 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for D (100ms, method=fallback)
+2026-06-06 01:25:09,227 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 00S9 (signal)
+2026-06-06 01:25:09,227 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 00S9 (100ms, method=fallback)
+2026-06-06 01:25:09,236 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 1 (signal)
+2026-06-06 01:25:09,237 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 1 (100ms, method=fallback)
+2026-06-06 01:25:09,244 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for SRUEBC0 (signal)
+2026-06-06 01:25:09,246 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for SRUEBC0 (100ms, method=fallback)
+2026-06-06 01:25:09,253 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 3 (signal)
+2026-06-06 01:25:09,255 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 3 (100ms, method=fallback)
+2026-06-06 01:25:09,265 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for YY (signal)
+2026-06-06 01:25:09,266 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for YY (100ms, method=fallback)
+2026-06-06 01:25:09,274 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for B02UJADC5IPXUNWK0 (signal)
+2026-06-06 01:25:09,276 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for B02UJADC5IPXUNWK0 (100ms, method=fallback)
+2026-06-06 01:25:09,287 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for OW (signal)
+2026-06-06 01:25:09,288 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for OW (100ms, method=fallback)
+2026-06-06 01:25:09,296 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 3OKB8EQDM (signal)
+2026-06-06 01:25:09,299 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 3OKB8EQDM (100ms, method=fallback)
+2026-06-06 01:25:09,307 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 02M (signal)
+2026-06-06 01:25:09,309 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 02M (100ms, method=fallback)
+2026-06-06 01:25:09,320 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for O3CF (signal)
+2026-06-06 01:25:09,321 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for O3CF (100ms, method=fallback)
+2026-06-06 01:25:09,333 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 5T (signal)
+2026-06-06 01:25:09,333 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 5T (100ms, method=fallback)
+2026-06-06 01:25:09,344 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for XF7X9S45D (signal)
+2026-06-06 01:25:09,347 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for XF7X9S45D (100ms, method=fallback)
+2026-06-06 01:25:09,364 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for NULL (signal)
+2026-06-06 01:25:09,365 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for NULL (100ms, method=fallback)
+2026-06-06 01:25:09,374 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for IBJ (signal)
+2026-06-06 01:25:09,375 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for IBJ (100ms, method=fallback)
+2026-06-06 01:25:09,384 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for EKV4O8CYX1FREH (signal)
+2026-06-06 01:25:09,384 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for EKV4O8CYX1FREH (100ms, method=fallback)
+2026-06-06 01:25:09,393 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for LPE (signal)
+2026-06-06 01:25:09,395 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for LPE (100ms, method=fallback)
+2026-06-06 01:25:09,405 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 240 (signal)
+2026-06-06 01:25:09,406 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 240 (100ms, method=fallback)
+2026-06-06 01:25:09,415 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for AY0X9JYVM26O (signal)
+2026-06-06 01:25:09,416 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for AY0X9JYVM26O (100ms, method=fallback)
+2026-06-06 01:25:09,426 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 2A1 (signal)
+2026-06-06 01:25:09,429 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 2A1 (100ms, method=fallback)
+2026-06-06 01:25:09,438 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 7SP (signal)
+2026-06-06 01:25:09,440 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 7SP (100ms, method=fallback)
+2026-06-06 01:25:09,449 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for U475TXIB (signal)
+2026-06-06 01:25:09,450 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for U475TXIB (100ms, method=fallback)
+2026-06-06 01:25:09,459 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 2 (signal)
+2026-06-06 01:25:09,460 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 2 (100ms, method=fallback)
+2026-06-06 01:25:09,469 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for CYS7TBR8ER (signal)
+2026-06-06 01:25:09,470 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for CYS7TBR8ER (100ms, method=fallback)
+2026-06-06 01:25:09,479 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for NIL (signal)
+2026-06-06 01:25:09,480 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for NIL (100ms, method=fallback)
+2026-06-06 01:25:09,489 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 6CWGULQB (signal)
+2026-06-06 01:25:09,491 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 6CWGULQB (100ms, method=fallback)
+2026-06-06 01:25:09,499 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for P4C2 (signal)
+2026-06-06 01:25:09,500 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for P4C2 (100ms, method=fallback)
+2026-06-06 01:25:09,509 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for AAWOFK6W800TF9XJO9MU (signal)
+2026-06-06 01:25:09,510 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for AAWOFK6W800TF9XJO9MU (100ms, method=fallback)
+2026-06-06 01:25:09,519 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for R16CML (signal)
+2026-06-06 01:25:09,519 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for R16CML (100ms, method=fallback)
+2026-06-06 01:25:09,528 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for APQ (signal)
+2026-06-06 01:25:09,530 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for APQ (100ms, method=fallback)
+2026-06-06 01:25:09,538 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for XH3 (signal)
+2026-06-06 01:25:09,539 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for XH3 (100ms, method=fallback)
+2026-06-06 01:25:09,548 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 7B (signal)
+2026-06-06 01:25:09,549 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 7B (100ms, method=fallback)
+2026-06-06 01:25:09,557 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 2340XE8KHT2IVICMYHPS (signal)
+2026-06-06 01:25:09,559 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 2340XE8KHT2IVICMYHPS (100ms, method=fallback)
+2026-06-06 01:25:09,567 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for IE1ONZG5U (signal)
+2026-06-06 01:25:09,567 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for IE1ONZG5U (100ms, method=fallback)
+2026-06-06 01:25:09,579 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for YG (signal)
+2026-06-06 01:25:09,581 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for YG (100ms, method=fallback)
+2026-06-06 01:25:09,603 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 9P67MI (signal)
+2026-06-06 01:25:09,606 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 9P67MI (100ms, method=fallback)
+2026-06-06 01:25:09,630 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for TRUE (signal)
+2026-06-06 01:25:09,633 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for TRUE (100ms, method=fallback)
+2026-06-06 01:25:09,649 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for RZG3DJ15 (signal)
+2026-06-06 01:25:09,649 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for RZG3DJ15 (100ms, method=fallback)
+2026-06-06 01:25:09,662 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for GA1FR (signal)
+2026-06-06 01:25:09,662 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for GA1FR (100ms, method=fallback)
+2026-06-06 01:25:09,671 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 8 (signal)
+2026-06-06 01:25:09,673 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 8 (100ms, method=fallback)
+2026-06-06 01:25:09,684 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 1ZZZ7T (signal)
+2026-06-06 01:25:09,686 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 1ZZZ7T (100ms, method=fallback)
+2026-06-06 01:25:09,693 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 4ZJ3XAE (signal)
+2026-06-06 01:25:09,694 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 4ZJ3XAE (100ms, method=fallback)
+2026-06-06 01:25:09,702 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for DG98N (signal)
+2026-06-06 01:25:09,703 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for DG98N (100ms, method=fallback)
+2026-06-06 01:25:09,709 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 2PRO6A0 (signal)
+2026-06-06 01:25:09,711 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 2PRO6A0 (100ms, method=fallback)
+2026-06-06 01:25:09,717 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 1DM (signal)
+2026-06-06 01:25:09,718 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 1DM (100ms, method=fallback)
+2026-06-06 01:25:09,725 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for XB (signal)
+2026-06-06 01:25:09,726 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for XB (100ms, method=fallback)
+2026-06-06 01:25:09,732 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for D6 (signal)
+2026-06-06 01:25:09,734 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for D6 (100ms, method=fallback)
+2026-06-06 01:25:09,745 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for INF (signal)
+2026-06-06 01:25:09,746 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for INF (100ms, method=fallback)
+2026-06-06 01:25:09,757 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for PAPY2W76AEJXIIB0N6B4 (signal)
+2026-06-06 01:25:09,759 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for PAPY2W76AEJXIIB0N6B4 (100ms, method=fallback)
+2026-06-06 01:25:09,774 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for U (signal)
+2026-06-06 01:25:09,775 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for U (100ms, method=fallback)
+2026-06-06 01:25:09,924 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 6IAJMMHVPSD (signal)
+2026-06-06 01:25:09,926 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 6IAJMMHVPSD (100ms, method=fallback)
+2026-06-06 01:25:09,934 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for BR70HQD6 (signal)
+2026-06-06 01:25:09,936 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for BR70HQD6 (100ms, method=fallback)
+2026-06-06 01:25:09,946 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for Q (signal)
+2026-06-06 01:25:09,947 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for Q (100ms, method=fallback)
+2026-06-06 01:25:09,959 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for KC06WZM5 (signal)
+2026-06-06 01:25:09,962 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for KC06WZM5 (100ms, method=fallback)
+2026-06-06 01:25:09,974 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for SH0 (signal)
+2026-06-06 01:25:09,977 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for SH0 (100ms, method=fallback)
+2026-06-06 01:25:09,992 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 7 (signal)
+2026-06-06 01:25:09,996 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 7 (100ms, method=fallback)
+2026-06-06 01:25:10,012 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 6B6FSE3 (signal)
+2026-06-06 01:25:10,015 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 6B6FSE3 (100ms, method=fallback)
+2026-06-06 01:25:10,024 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for E (signal)
+2026-06-06 01:25:10,025 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for E (100ms, method=fallback)
+2026-06-06 01:25:10,037 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for V (signal)
+2026-06-06 01:25:10,038 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for V (100ms, method=fallback)
+2026-06-06 01:25:10,049 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for KQQ8JT (signal)
+2026-06-06 01:25:10,050 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for KQQ8JT (100ms, method=fallback)
+2026-06-06 01:25:10,067 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for IE9 (signal)
+2026-06-06 01:25:10,069 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for IE9 (100ms, method=fallback)
+2026-06-06 01:25:10,086 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 59PP7Z49D (signal)
+2026-06-06 01:25:10,089 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 59PP7Z49D (100ms, method=fallback)
+2026-06-06 01:25:10,106 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 4MT (signal)
+2026-06-06 01:25:10,108 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 4MT (100ms, method=fallback)
+2026-06-06 01:25:10,122 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for BZSSKB0 (signal)
+2026-06-06 01:25:10,125 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for BZSSKB0 (100ms, method=fallback)
+2026-06-06 01:25:10,139 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for U2ZF (signal)
+2026-06-06 01:25:10,141 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for U2ZF (100ms, method=fallback)
+2026-06-06 01:25:10,152 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for CVS9BI (signal)
+2026-06-06 01:25:10,154 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for CVS9BI (100ms, method=fallback)
+2026-06-06 01:25:10,164 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for WEBP (signal)
+2026-06-06 01:25:10,167 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for WEBP (100ms, method=fallback)
+2026-06-06 01:25:10,180 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for CP1KQA (signal)
+2026-06-06 01:25:10,182 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for CP1KQA (100ms, method=fallback)
+2026-06-06 01:25:10,195 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 1P (signal)
+2026-06-06 01:25:10,196 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 1P (100ms, method=fallback)
+2026-06-06 01:25:10,209 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for D7OBQM4 (signal)
+2026-06-06 01:25:10,211 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for D7OBQM4 (100ms, method=fallback)
+2026-06-06 01:25:10,222 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for BR823KJ5 (signal)
+2026-06-06 01:25:10,224 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for BR823KJ5 (100ms, method=fallback)
+2026-06-06 01:25:10,237 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for H (signal)
+2026-06-06 01:25:10,239 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for H (100ms, method=fallback)
+2026-06-06 01:25:10,249 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for BU2UF1OWBZN4GV (signal)
+2026-06-06 01:25:10,250 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for BU2UF1OWBZN4GV (100ms, method=fallback)
+2026-06-06 01:25:10,264 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for X1ZD6V (signal)
+2026-06-06 01:25:10,267 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for X1ZD6V (100ms, method=fallback)
+2026-06-06 01:25:10,281 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for MP (signal)
+2026-06-06 01:25:10,286 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for MP (100ms, method=fallback)
+2026-06-06 01:25:10,301 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for NQGTQFSF4 (signal)
+2026-06-06 01:25:10,303 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for NQGTQFSF4 (100ms, method=fallback)
+2026-06-06 01:25:10,317 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for A1CCA4E702 (signal)
+2026-06-06 01:25:10,320 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for A1CCA4E702 (100ms, method=fallback)
+2026-06-06 01:25:10,336 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for DCURD (signal)
+2026-06-06 01:25:10,337 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for DCURD (100ms, method=fallback)
+2026-06-06 01:25:10,352 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for 04 (signal)
+2026-06-06 01:25:10,354 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for 04 (100ms, method=fallback)
+2026-06-06 01:25:10,369 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for PTDDX2 (signal)
+2026-06-06 01:25:10,370 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for PTDDX2 (100ms, method=fallback)
+2026-06-06 01:25:10,383 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for CFXDL8JSYH68RWKQQY25 (signal)
+2026-06-06 01:25:10,385 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for CFXDL8JSYH68RWKQQY25 (100ms, method=fallback)
+2026-06-06 01:25:10,397 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for CQ4X8S73QN (signal)
+2026-06-06 01:25:10,399 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for CQ4X8S73QN (100ms, method=fallback)
+2026-06-06 01:25:10,410 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for YX3DNH (signal)
+2026-06-06 01:25:10,412 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for YX3DNH (100ms, method=fallback)
+2026-06-06 01:25:10,421 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for NTV4C7 (signal)
+2026-06-06 01:25:10,422 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for NTV4C7 (100ms, method=fallback)
+2026-06-06 01:25:10,430 [INFO] capture_hooks:91 — HookDispatcher: Triggering capture for X5J (signal)
+2026-06-06 01:25:10,432 [INFO] capture_hooks:109 — HookDispatcher: ✅ Capture complete for X5J (100ms, method=fallback)
+2026-06-06 01:25:10,455 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 0
+2026-06-06 01:25:10,466 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 20
+2026-06-06 01:25:10,475 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 82
+2026-06-06 01:25:10,484 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 3
+2026-06-06 01:25:10,493 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 7GK
+2026-06-06 01:25:10,501 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for VMG
+2026-06-06 01:25:10,508 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for IU4CABUPYT9263
+2026-06-06 01:25:10,515 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 5
+2026-06-06 01:25:10,525 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for O8VSK5Z5FZTV8YR5K73O
+2026-06-06 01:25:10,532 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 7S
+2026-06-06 01:25:10,550 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for Q9RDQ3XF4AFW1G4M9EWZ
+2026-06-06 01:25:10,572 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for NUOARY8FW9ZC8OAHRQ0B
+2026-06-06 01:25:10,594 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for X1GVC
+2026-06-06 01:25:10,608 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for FSY
+2026-06-06 01:25:10,621 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for HVGHW1DO70HCBWIUW
+2026-06-06 01:25:10,631 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for FU
+2026-06-06 01:25:10,643 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for TFRWOCJNAZRJLBOE91W3
+2026-06-06 01:25:10,659 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for LIB
+2026-06-06 01:25:10,675 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 0UP2
+2026-06-06 01:25:10,696 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for S
+2026-06-06 01:25:10,711 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for U
+2026-06-06 01:25:10,730 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 8KWX
+2026-06-06 01:25:10,746 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for WNOYL0R
+2026-06-06 01:25:10,761 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 4
+2026-06-06 01:25:10,777 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for INF
+2026-06-06 01:25:10,795 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for IV7
+2026-06-06 01:25:10,807 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for A
+2026-06-06 01:25:10,821 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 7OWPADQ
+2026-06-06 01:25:10,832 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for TCR
+2026-06-06 01:25:10,844 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 9
+2026-06-06 01:25:10,856 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for H7K4
+2026-06-06 01:25:10,870 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for G1N
+2026-06-06 01:25:10,883 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 9D58TSJ
+2026-06-06 01:25:10,894 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 6Y7XL
+2026-06-06 01:25:10,906 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for NULL
+2026-06-06 01:25:10,920 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for V69CL
+2026-06-06 01:25:10,936 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for TDJX5GJX3PALUGDF4P
+2026-06-06 01:25:10,950 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for SIOT1NON
+2026-06-06 01:25:10,961 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for SG
+2026-06-06 01:25:10,970 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for JFW
+2026-06-06 01:25:10,979 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for V
+2026-06-06 01:25:10,987 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for ABJFJD6I
+2026-06-06 01:25:10,996 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for AIJ
+2026-06-06 01:25:11,007 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for ASK6NEG057SNP425QK4
+2026-06-06 01:25:11,016 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for HQ7
+2026-06-06 01:25:11,025 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for T6D2R
+2026-06-06 01:25:11,034 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for P7I
+2026-06-06 01:25:11,044 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for NIL
+2026-06-06 01:25:11,055 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 1SA
+2026-06-06 01:25:11,064 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for B
+2026-06-06 01:25:11,073 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for J
+2026-06-06 01:25:11,081 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for ISF
+2026-06-06 01:25:11,089 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for U3BO4EBD
+2026-06-06 01:25:11,097 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for L21X07WTWV3EOTQOW
+2026-06-06 01:25:11,105 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for UI
+2026-06-06 01:25:11,113 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 17G
+2026-06-06 01:25:11,122 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 9UPRH3Z
+2026-06-06 01:25:11,129 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for GQE82FV
+2026-06-06 01:25:11,139 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 7D2
+2026-06-06 01:25:11,155 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 7X
+2026-06-06 01:25:11,168 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for TY29M7M5RIGCL1OVU
+2026-06-06 01:25:11,183 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 1XPX887OHL
+2026-06-06 01:25:11,196 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for G77LYA30RR
+2026-06-06 01:25:11,207 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for AA
+2026-06-06 01:25:11,223 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for JKKKG
+2026-06-06 01:25:11,242 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for L69Z1BM4
+2026-06-06 01:25:11,258 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for C2SF81CU4
+2026-06-06 01:25:11,274 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for QIR
+2026-06-06 01:25:11,289 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for Z6AJ3AYQIG
+2026-06-06 01:25:11,304 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for MRUAGR4MB7
+2026-06-06 01:25:11,318 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for Y
+2026-06-06 01:25:11,329 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for NCFCHTK734BKB
+2026-06-06 01:25:11,342 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for W
+2026-06-06 01:25:11,355 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for N695N
+2026-06-06 01:25:11,367 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 4RBT6IYU82VZRJ86
+2026-06-06 01:25:11,377 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for TWO
+2026-06-06 01:25:11,386 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for PYA6HU
+2026-06-06 01:25:11,395 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for X
+2026-06-06 01:25:11,404 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 1PZ
+2026-06-06 01:25:11,415 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for XTR09G
+2026-06-06 01:25:11,428 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 1JTK20ZWPA
+2026-06-06 01:25:11,438 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for PC7BO
+2026-06-06 01:25:11,447 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 4V145
+2026-06-06 01:25:11,458 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for YAU1X45O6UUC3YJDLPE
+2026-06-06 01:25:11,469 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for QREANEFDYSGWCU1
+2026-06-06 01:25:11,481 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for C2BJ3ZS9
+2026-06-06 01:25:11,492 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 42XR8RF
+2026-06-06 01:25:11,503 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 7
+2026-06-06 01:25:11,512 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for PZ0AHA0H7S
+2026-06-06 01:25:11,523 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for BPKE4N1L6MK43J
+2026-06-06 01:25:11,532 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for KKP2V
+2026-06-06 01:25:11,543 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for C1PCRD86C7
+2026-06-06 01:25:11,559 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for J4CB0EF
+2026-06-06 01:25:11,574 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for 9T1DY
+2026-06-06 01:25:11,588 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for Q
+2026-06-06 01:25:11,603 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for BBM4ZF
+2026-06-06 01:25:11,618 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for LKRVD
+2026-06-06 01:25:11,633 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for MLFCF
+2026-06-06 01:25:11,646 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for RRU
+2026-06-06 01:25:11,660 [INFO] capture_hooks:135 — HookDispatcher: on_command triggered for WUB3
+2026-06-06 01:25:11,682 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: []
+2026-06-06 01:25:11,689 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: []
+2026-06-06 01:25:11,694 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['e', 'gcj']
+2026-06-06 01:25:11,694 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'e', skipping
+2026-06-06 01:25:11,696 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'gcj', skipping
+2026-06-06 01:25:11,701 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['s']
+2026-06-06 01:25:11,701 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 's', skipping
+2026-06-06 01:25:11,727 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['anthropic_api']
+2026-06-06 01:25:11,727 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'anthropic_api', skipping
+2026-06-06 01:25:11,733 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['c62a0l2xpy']
+2026-06-06 01:25:11,734 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'c62a0l2xpy', skipping
+2026-06-06 01:25:11,739 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['j7b']
+2026-06-06 01:25:11,739 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'j7b', skipping
+2026-06-06 01:25:11,744 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['0lq12x8']
+2026-06-06 01:25:11,746 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '0lq12x8', skipping
+2026-06-06 01:25:11,751 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['0lq12x8', 'n']
+2026-06-06 01:25:11,751 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '0lq12x8', skipping
+2026-06-06 01:25:11,752 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'n', skipping
+2026-06-06 01:25:11,756 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['nosbj3']
+2026-06-06 01:25:11,756 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'nosbj3', skipping
+2026-06-06 01:25:11,761 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: []
+2026-06-06 01:25:11,765 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['6i2clfp0q\nw0']
+2026-06-06 01:25:11,767 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '6i2clfp0q
+w0', skipping
+2026-06-06 01:25:11,777 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['r', 'o9g', 'e', 'pcx4rk8_npby_', 'dsa1he0jjzcl3r', 's', 'hq5yej dpfd5\n5ul4tna74']
+2026-06-06 01:25:11,777 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'r', skipping
+2026-06-06 01:25:11,778 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'o9g', skipping
+2026-06-06 01:25:11,779 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'e', skipping
+2026-06-06 01:25:11,779 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'pcx4rk8_npby_', skipping
+2026-06-06 01:25:11,780 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'dsa1he0jjzcl3r', skipping
+2026-06-06 01:25:11,780 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 's', skipping
+2026-06-06 01:25:11,781 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hq5yej dpfd5
+5ul4tna74', skipping
+2026-06-06 01:25:11,787 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['r', 'o9g', 'e', 'pcx4rk8_npby_', 'dsa1he0jjzcl3r', 's', 'o9g', 'hq5yej dpfd5\n5ul4tna74']
+2026-06-06 01:25:11,787 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'r', skipping
+2026-06-06 01:25:11,787 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'o9g', skipping
+2026-06-06 01:25:11,789 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'e', skipping
+2026-06-06 01:25:11,789 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'pcx4rk8_npby_', skipping
+2026-06-06 01:25:11,789 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'dsa1he0jjzcl3r', skipping
+2026-06-06 01:25:11,790 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 's', skipping
+2026-06-06 01:25:11,790 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'o9g', skipping
+2026-06-06 01:25:11,791 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hq5yej dpfd5
+5ul4tna74', skipping
+2026-06-06 01:25:11,797 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['o9g', 'o9g', 'e', 'pcx4rk8_npby_', 'dsa1he0jjzcl3r', 's', 'o9g', 'hq5yej dpfd5\n5ul4tna74']
+2026-06-06 01:25:11,797 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'o9g', skipping
+2026-06-06 01:25:11,797 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'o9g', skipping
+2026-06-06 01:25:11,798 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'e', skipping
+2026-06-06 01:25:11,799 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'pcx4rk8_npby_', skipping
+2026-06-06 01:25:11,799 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'dsa1he0jjzcl3r', skipping
+2026-06-06 01:25:11,799 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 's', skipping
+2026-06-06 01:25:11,799 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'o9g', skipping
+2026-06-06 01:25:11,801 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hq5yej dpfd5
+5ul4tna74', skipping
+2026-06-06 01:25:11,806 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['o9g', 'e', 'e', 'pcx4rk8_npby_', 'dsa1he0jjzcl3r', 's', 'o9g', 'hq5yej dpfd5\n5ul4tna74']
+2026-06-06 01:25:11,806 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'o9g', skipping
+2026-06-06 01:25:11,807 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'e', skipping
+2026-06-06 01:25:11,808 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'e', skipping
+2026-06-06 01:25:11,808 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'pcx4rk8_npby_', skipping
+2026-06-06 01:25:11,808 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'dsa1he0jjzcl3r', skipping
+2026-06-06 01:25:11,809 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 's', skipping
+2026-06-06 01:25:11,809 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'o9g', skipping
+2026-06-06 01:25:11,809 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hq5yej dpfd5
+5ul4tna74', skipping
+2026-06-06 01:25:11,814 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['o9g', 'e', 'e', 'pcx4rk8_npby_', 's', 's', 'o9g', 'hq5yej dpfd5\n5ul4tna74']
+2026-06-06 01:25:11,816 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'o9g', skipping
+2026-06-06 01:25:11,817 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'e', skipping
+2026-06-06 01:25:11,818 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'e', skipping
+2026-06-06 01:25:11,818 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'pcx4rk8_npby_', skipping
+2026-06-06 01:25:11,819 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 's', skipping
+2026-06-06 01:25:11,819 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 's', skipping
+2026-06-06 01:25:11,819 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'o9g', skipping
+2026-06-06 01:25:11,820 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hq5yej dpfd5
+5ul4tna74', skipping
+2026-06-06 01:25:11,825 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['o9g', 'e', 'e', 'pcx4rk8_npby_', 's', 's', 'hq5yej dpfd5\n5ul4tna74', 'hq5yej dpfd5\n5ul4tna74']
+2026-06-06 01:25:11,827 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'o9g', skipping
+2026-06-06 01:25:11,827 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'e', skipping
+2026-06-06 01:25:11,828 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'e', skipping
+2026-06-06 01:25:11,828 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'pcx4rk8_npby_', skipping
+2026-06-06 01:25:11,829 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 's', skipping
+2026-06-06 01:25:11,829 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 's', skipping
+2026-06-06 01:25:11,830 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hq5yej dpfd5
+5ul4tna74', skipping
+2026-06-06 01:25:11,830 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hq5yej dpfd5
+5ul4tna74', skipping
+2026-06-06 01:25:11,836 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['e', 'e', 'e', 'pcx4rk8_npby_', 's', 's', 'hq5yej dpfd5\n5ul4tna74', 'hq5yej dpfd5\n5ul4tna74']
+2026-06-06 01:25:11,836 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'e', skipping
+2026-06-06 01:25:11,837 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'e', skipping
+2026-06-06 01:25:11,837 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'e', skipping
+2026-06-06 01:25:11,838 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'pcx4rk8_npby_', skipping
+2026-06-06 01:25:11,839 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 's', skipping
+2026-06-06 01:25:11,839 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 's', skipping
+2026-06-06 01:25:11,839 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hq5yej dpfd5
+5ul4tna74', skipping
+2026-06-06 01:25:11,840 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hq5yej dpfd5
+5ul4tna74', skipping
+2026-06-06 01:25:11,846 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['3ictz9\newjr8w\tf']
+2026-06-06 01:25:11,846 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3ictz9
+ewjr8w	f', skipping
+2026-06-06 01:25:11,852 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['s2zg t_']
+2026-06-06 01:25:11,852 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 's2zg t_', skipping
+2026-06-06 01:25:11,859 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['z9yaw9', '8fcpmom69f']
+2026-06-06 01:25:11,859 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'z9yaw9', skipping
+2026-06-06 01:25:11,859 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '8fcpmom69f', skipping
+2026-06-06 01:25:11,864 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['z9yaw9', 'z9yaw9']
+2026-06-06 01:25:11,864 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'z9yaw9', skipping
+2026-06-06 01:25:11,864 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'z9yaw9', skipping
+2026-06-06 01:25:11,871 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['2ccj5f l4bz', 'undefined', '3j', 'cf', 'l8b jm\n\t6xi8vk7a5rr2s_o', 'q', '4okg', 'hutwlad2xjrzkv3_uj']
+2026-06-06 01:25:11,873 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2ccj5f l4bz', skipping
+2026-06-06 01:25:11,873 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'undefined', skipping
+2026-06-06 01:25:11,874 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3j', skipping
+2026-06-06 01:25:11,874 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'cf', skipping
+2026-06-06 01:25:11,874 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'l8b jm
+	6xi8vk7a5rr2s_o', skipping
+2026-06-06 01:25:11,876 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'q', skipping
+2026-06-06 01:25:11,876 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '4okg', skipping
+2026-06-06 01:25:11,877 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,882 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['2ccj5f l4bz', 'undefined', '3j', 'cf', 'l8b jm\n\t6xi8vk7a5rr2s_o', 'hutwlad2xjrzkv3_uj', '4okg', 'hutwlad2xjrzkv3_uj']
+2026-06-06 01:25:11,882 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2ccj5f l4bz', skipping
+2026-06-06 01:25:11,883 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'undefined', skipping
+2026-06-06 01:25:11,883 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3j', skipping
+2026-06-06 01:25:11,885 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'cf', skipping
+2026-06-06 01:25:11,885 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'l8b jm
+	6xi8vk7a5rr2s_o', skipping
+2026-06-06 01:25:11,886 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,886 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '4okg', skipping
+2026-06-06 01:25:11,887 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,893 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['2ccj5f l4bz', 'undefined', '3j', 'cf', 'l8b jm\n\t6xi8vk7a5rr2s_o', 'hutwlad2xjrzkv3_uj', 'hutwlad2xjrzkv3_uj', 'hutwlad2xjrzkv3_uj']
+2026-06-06 01:25:11,893 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2ccj5f l4bz', skipping
+2026-06-06 01:25:11,894 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'undefined', skipping
+2026-06-06 01:25:11,895 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3j', skipping
+2026-06-06 01:25:11,895 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'cf', skipping
+2026-06-06 01:25:11,896 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'l8b jm
+	6xi8vk7a5rr2s_o', skipping
+2026-06-06 01:25:11,896 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,896 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,898 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,902 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['2ccj5f l4bz', 'cf', '3j', 'cf', 'l8b jm\n\t6xi8vk7a5rr2s_o', 'hutwlad2xjrzkv3_uj', 'hutwlad2xjrzkv3_uj', 'hutwlad2xjrzkv3_uj']
+2026-06-06 01:25:11,902 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2ccj5f l4bz', skipping
+2026-06-06 01:25:11,904 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'cf', skipping
+2026-06-06 01:25:11,904 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3j', skipping
+2026-06-06 01:25:11,905 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'cf', skipping
+2026-06-06 01:25:11,905 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'l8b jm
+	6xi8vk7a5rr2s_o', skipping
+2026-06-06 01:25:11,905 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,906 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,907 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,913 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['2ccj5f l4bz', 'cf', '3j', 'cf', 'l8b jm\n\t6xi8vk7a5rr2s_o', 'hutwlad2xjrzkv3_uj', 'hutwlad2xjrzkv3_uj', 'l8b jm\n\t6xi8vk7a5rr2s_o']
+2026-06-06 01:25:11,914 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2ccj5f l4bz', skipping
+2026-06-06 01:25:11,915 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'cf', skipping
+2026-06-06 01:25:11,915 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3j', skipping
+2026-06-06 01:25:11,915 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'cf', skipping
+2026-06-06 01:25:11,916 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'l8b jm
+	6xi8vk7a5rr2s_o', skipping
+2026-06-06 01:25:11,917 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,918 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,918 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'l8b jm
+	6xi8vk7a5rr2s_o', skipping
+2026-06-06 01:25:11,925 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['2ccj5f l4bz', 'cf', '3j', 'hutwlad2xjrzkv3_uj', 'l8b jm\n\t6xi8vk7a5rr2s_o', 'hutwlad2xjrzkv3_uj', 'hutwlad2xjrzkv3_uj', 'l8b jm\n\t6xi8vk7a5rr2s_o']
+2026-06-06 01:25:11,925 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2ccj5f l4bz', skipping
+2026-06-06 01:25:11,925 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'cf', skipping
+2026-06-06 01:25:11,927 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3j', skipping
+2026-06-06 01:25:11,927 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,927 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'l8b jm
+	6xi8vk7a5rr2s_o', skipping
+2026-06-06 01:25:11,927 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,929 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,930 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'l8b jm
+	6xi8vk7a5rr2s_o', skipping
+2026-06-06 01:25:11,937 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['2ccj5f l4bz', 'cf', '3j', 'hutwlad2xjrzkv3_uj', 'l8b jm\n\t6xi8vk7a5rr2s_o', 'l8b jm\n\t6xi8vk7a5rr2s_o', 'hutwlad2xjrzkv3_uj', 'l8b jm\n\t6xi8vk7a5rr2s_o']
+2026-06-06 01:25:11,938 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2ccj5f l4bz', skipping
+2026-06-06 01:25:11,938 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'cf', skipping
+2026-06-06 01:25:11,939 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3j', skipping
+2026-06-06 01:25:11,940 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,940 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'l8b jm
+	6xi8vk7a5rr2s_o', skipping
+2026-06-06 01:25:11,941 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'l8b jm
+	6xi8vk7a5rr2s_o', skipping
+2026-06-06 01:25:11,942 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hutwlad2xjrzkv3_uj', skipping
+2026-06-06 01:25:11,942 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'l8b jm
+	6xi8vk7a5rr2s_o', skipping
+2026-06-06 01:25:11,949 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['x\txr1vlrf1rfxhu', 'criteria', 'ofia']
+2026-06-06 01:25:11,950 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'x	xr1vlrf1rfxhu', skipping
+2026-06-06 01:25:11,952 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'criteria', skipping
+2026-06-06 01:25:11,952 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'ofia', skipping
+2026-06-06 01:25:11,961 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['x\txr1vlrf1rfxhu']
+2026-06-06 01:25:11,962 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'x	xr1vlrf1rfxhu', skipping
+2026-06-06 01:25:11,976 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['u', 'undefined', '5', '_v3', '9']
+2026-06-06 01:25:11,977 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'u', skipping
+2026-06-06 01:25:11,977 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'undefined', skipping
+2026-06-06 01:25:11,979 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '5', skipping
+2026-06-06 01:25:11,980 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '_v3', skipping
+2026-06-06 01:25:11,981 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '9', skipping
+2026-06-06 01:25:11,987 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['u', 'undefined', '5', '_v3']
+2026-06-06 01:25:11,988 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'u', skipping
+2026-06-06 01:25:11,989 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'undefined', skipping
+2026-06-06 01:25:11,989 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '5', skipping
+2026-06-06 01:25:11,990 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '_v3', skipping
+2026-06-06 01:25:12,000 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['u', 'undefined', '5']
+2026-06-06 01:25:12,001 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'u', skipping
+2026-06-06 01:25:12,002 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'undefined', skipping
+2026-06-06 01:25:12,003 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '5', skipping
+2026-06-06 01:25:12,013 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['u', 'u', 'undefined', '5']
+2026-06-06 01:25:12,014 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'u', skipping
+2026-06-06 01:25:12,016 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'u', skipping
+2026-06-06 01:25:12,017 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'undefined', skipping
+2026-06-06 01:25:12,018 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '5', skipping
+2026-06-06 01:25:12,027 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['u', 'u', '5', '5']
+2026-06-06 01:25:12,029 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'u', skipping
+2026-06-06 01:25:12,029 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'u', skipping
+2026-06-06 01:25:12,029 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '5', skipping
+2026-06-06 01:25:12,031 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '5', skipping
+2026-06-06 01:25:12,041 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['u', '5', '5', '5']
+2026-06-06 01:25:12,042 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'u', skipping
+2026-06-06 01:25:12,043 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '5', skipping
+2026-06-06 01:25:12,044 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '5', skipping
+2026-06-06 01:25:12,045 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '5', skipping
+2026-06-06 01:25:12,055 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['u', '5']
+2026-06-06 01:25:12,056 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'u', skipping
+2026-06-06 01:25:12,057 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '5', skipping
+2026-06-06 01:25:12,066 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['shubz9v2ed', 'qq7tbun4qk\nit84fsj', '6o_pftko8dbscit47jncsfja\ndgc', 'mhi5gunndn3lvhhdot3', 'shoenei', 'd', 'a']
+2026-06-06 01:25:12,068 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'shubz9v2ed', skipping
+2026-06-06 01:25:12,068 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,069 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '6o_pftko8dbscit47jncsfja
+dgc', skipping
+2026-06-06 01:25:12,069 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'mhi5gunndn3lvhhdot3', skipping
+2026-06-06 01:25:12,070 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'shoenei', skipping
+2026-06-06 01:25:12,070 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'd', skipping
+2026-06-06 01:25:12,072 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'a', skipping
+2026-06-06 01:25:12,083 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['shubz9v2ed', 'qq7tbun4qk\nit84fsj', '6o_pftko8dbscit47jncsfja\ndgc', 'qq7tbun4qk\nit84fsj', 'shoenei', 'd', 'a']
+2026-06-06 01:25:12,083 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'shubz9v2ed', skipping
+2026-06-06 01:25:12,084 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,086 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '6o_pftko8dbscit47jncsfja
+dgc', skipping
+2026-06-06 01:25:12,087 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,087 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'shoenei', skipping
+2026-06-06 01:25:12,089 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'd', skipping
+2026-06-06 01:25:12,090 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'a', skipping
+2026-06-06 01:25:12,101 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['shubz9v2ed', 'qq7tbun4qk\nit84fsj', '6o_pftko8dbscit47jncsfja\ndgc', 'qq7tbun4qk\nit84fsj', 'qq7tbun4qk\nit84fsj', 'd', 'a']
+2026-06-06 01:25:12,101 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'shubz9v2ed', skipping
+2026-06-06 01:25:12,101 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,103 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '6o_pftko8dbscit47jncsfja
+dgc', skipping
+2026-06-06 01:25:12,104 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,105 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,105 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'd', skipping
+2026-06-06 01:25:12,105 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'a', skipping
+2026-06-06 01:25:12,117 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['shubz9v2ed', 'qq7tbun4qk\nit84fsj', '6o_pftko8dbscit47jncsfja\ndgc', 'qq7tbun4qk\nit84fsj', 'd', 'a']
+2026-06-06 01:25:12,117 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'shubz9v2ed', skipping
+2026-06-06 01:25:12,118 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,118 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '6o_pftko8dbscit47jncsfja
+dgc', skipping
+2026-06-06 01:25:12,119 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,119 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'd', skipping
+2026-06-06 01:25:12,121 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'a', skipping
+2026-06-06 01:25:12,125 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['shubz9v2ed', 'qq7tbun4qk\nit84fsj', 'qq7tbun4qk\nit84fsj', '6o_pftko8dbscit47jncsfja\ndgc', 'qq7tbun4qk\nit84fsj', 'd', 'a']
+2026-06-06 01:25:12,127 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'shubz9v2ed', skipping
+2026-06-06 01:25:12,127 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,127 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,128 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '6o_pftko8dbscit47jncsfja
+dgc', skipping
+2026-06-06 01:25:12,129 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,129 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'd', skipping
+2026-06-06 01:25:12,129 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'a', skipping
+2026-06-06 01:25:12,136 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['qq7tbun4qk\nit84fsj', 'qq7tbun4qk\nit84fsj', '6o_pftko8dbscit47jncsfja\ndgc', 'qq7tbun4qk\nit84fsj', 'd', 'a']
+2026-06-06 01:25:12,137 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,137 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,137 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '6o_pftko8dbscit47jncsfja
+dgc', skipping
+2026-06-06 01:25:12,139 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,139 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'd', skipping
+2026-06-06 01:25:12,140 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'a', skipping
+2026-06-06 01:25:12,147 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['qq7tbun4qk\nit84fsj', 'qq7tbun4qk\nit84fsj', '6o_pftko8dbscit47jncsfja\ndgc', 'd', 'a']
+2026-06-06 01:25:12,148 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,148 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'qq7tbun4qk
+it84fsj', skipping
+2026-06-06 01:25:12,149 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '6o_pftko8dbscit47jncsfja
+dgc', skipping
+2026-06-06 01:25:12,149 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'd', skipping
+2026-06-06 01:25:12,150 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'a', skipping
+2026-06-06 01:25:12,153 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['ndb', '2']
+2026-06-06 01:25:12,155 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'ndb', skipping
+2026-06-06 01:25:12,155 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2', skipping
+2026-06-06 01:25:12,161 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['ndb', '2', '2']
+2026-06-06 01:25:12,161 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'ndb', skipping
+2026-06-06 01:25:12,163 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2', skipping
+2026-06-06 01:25:12,163 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2', skipping
+2026-06-06 01:25:12,168 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['ndb', '2']
+2026-06-06 01:25:12,168 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'ndb', skipping
+2026-06-06 01:25:12,169 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2', skipping
+2026-06-06 01:25:12,172 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['ndb', 'ndb']
+2026-06-06 01:25:12,173 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'ndb', skipping
+2026-06-06 01:25:12,173 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'ndb', skipping
+2026-06-06 01:25:12,180 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['f6cfsiq 55h38hw41gopa4oe2gkr1', '8nbh9', '_6', 'x5x7sziic3yg_nnew115', 'ua3j']
+2026-06-06 01:25:12,180 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f6cfsiq 55h38hw41gopa4oe2gkr1', skipping
+2026-06-06 01:25:12,180 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '8nbh9', skipping
+2026-06-06 01:25:12,181 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '_6', skipping
+2026-06-06 01:25:12,182 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'x5x7sziic3yg_nnew115', skipping
+2026-06-06 01:25:12,182 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'ua3j', skipping
+2026-06-06 01:25:12,187 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['f6cfsiq 55h38hw41gopa4oe2gkr1', '8nbh9', 'ua3j', 'x5x7sziic3yg_nnew115', 'ua3j']
+2026-06-06 01:25:12,188 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f6cfsiq 55h38hw41gopa4oe2gkr1', skipping
+2026-06-06 01:25:12,189 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '8nbh9', skipping
+2026-06-06 01:25:12,189 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'ua3j', skipping
+2026-06-06 01:25:12,189 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'x5x7sziic3yg_nnew115', skipping
+2026-06-06 01:25:12,190 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'ua3j', skipping
+2026-06-06 01:25:12,195 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['f6cfsiq 55h38hw41gopa4oe2gkr1', '8nbh9', 'ua3j', 'x5x7sziic3yg_nnew115', '8nbh9']
+2026-06-06 01:25:12,196 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f6cfsiq 55h38hw41gopa4oe2gkr1', skipping
+2026-06-06 01:25:12,196 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '8nbh9', skipping
+2026-06-06 01:25:12,197 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'ua3j', skipping
+2026-06-06 01:25:12,197 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'x5x7sziic3yg_nnew115', skipping
+2026-06-06 01:25:12,197 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '8nbh9', skipping
+2026-06-06 01:25:12,203 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['f6cfsiq 55h38hw41gopa4oe2gkr1', '8nbh9', 'x5x7sziic3yg_nnew115', 'x5x7sziic3yg_nnew115', '8nbh9']
+2026-06-06 01:25:12,203 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f6cfsiq 55h38hw41gopa4oe2gkr1', skipping
+2026-06-06 01:25:12,203 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '8nbh9', skipping
+2026-06-06 01:25:12,205 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'x5x7sziic3yg_nnew115', skipping
+2026-06-06 01:25:12,205 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'x5x7sziic3yg_nnew115', skipping
+2026-06-06 01:25:12,205 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '8nbh9', skipping
+2026-06-06 01:25:12,211 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['f6cfsiq 55h38hw41gopa4oe2gkr1', '8nbh9', 'x5x7sziic3yg_nnew115', 'f6cfsiq 55h38hw41gopa4oe2gkr1', '8nbh9']
+2026-06-06 01:25:12,212 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f6cfsiq 55h38hw41gopa4oe2gkr1', skipping
+2026-06-06 01:25:12,212 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '8nbh9', skipping
+2026-06-06 01:25:12,213 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'x5x7sziic3yg_nnew115', skipping
+2026-06-06 01:25:12,213 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f6cfsiq 55h38hw41gopa4oe2gkr1', skipping
+2026-06-06 01:25:12,214 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '8nbh9', skipping
+2026-06-06 01:25:12,219 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['f6cfsiq 55h38hw41gopa4oe2gkr1', '8nbh9', 'x5x7sziic3yg_nnew115', 'f6cfsiq 55h38hw41gopa4oe2gkr1', 'f6cfsiq 55h38hw41gopa4oe2gkr1']
+2026-06-06 01:25:12,219 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f6cfsiq 55h38hw41gopa4oe2gkr1', skipping
+2026-06-06 01:25:12,220 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '8nbh9', skipping
+2026-06-06 01:25:12,220 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'x5x7sziic3yg_nnew115', skipping
+2026-06-06 01:25:12,220 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f6cfsiq 55h38hw41gopa4oe2gkr1', skipping
+2026-06-06 01:25:12,222 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f6cfsiq 55h38hw41gopa4oe2gkr1', skipping
+2026-06-06 01:25:12,228 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['8nbh9', '8nbh9', 'x5x7sziic3yg_nnew115', 'f6cfsiq 55h38hw41gopa4oe2gkr1', 'f6cfsiq 55h38hw41gopa4oe2gkr1']
+2026-06-06 01:25:12,229 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '8nbh9', skipping
+2026-06-06 01:25:12,229 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '8nbh9', skipping
+2026-06-06 01:25:12,229 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'x5x7sziic3yg_nnew115', skipping
+2026-06-06 01:25:12,230 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f6cfsiq 55h38hw41gopa4oe2gkr1', skipping
+2026-06-06 01:25:12,230 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f6cfsiq 55h38hw41gopa4oe2gkr1', skipping
+2026-06-06 01:25:12,235 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['r_ txe1jxqc2yvk7cbgz cnw05i9ya', 'h4bt']
+2026-06-06 01:25:12,237 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'r_ txe1jxqc2yvk7cbgz cnw05i9ya', skipping
+2026-06-06 01:25:12,237 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'h4bt', skipping
+2026-06-06 01:25:12,243 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['r_ txe1jxqc2yvk7cbgz cnw05i9ya']
+2026-06-06 01:25:12,244 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'r_ txe1jxqc2yvk7cbgz cnw05i9ya', skipping
+2026-06-06 01:25:12,248 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: []
+2026-06-06 01:25:12,253 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['2gs', '2qqj g5lu2iv7qj', '7r7', '31c01']
+2026-06-06 01:25:12,254 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2gs', skipping
+2026-06-06 01:25:12,254 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2qqj g5lu2iv7qj', skipping
+2026-06-06 01:25:12,254 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '7r7', skipping
+2026-06-06 01:25:12,255 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '31c01', skipping
+2026-06-06 01:25:12,260 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['2gs', '7r7', '2qqj g5lu2iv7qj', '7r7', '31c01']
+2026-06-06 01:25:12,260 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2gs', skipping
+2026-06-06 01:25:12,260 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '7r7', skipping
+2026-06-06 01:25:12,262 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2qqj g5lu2iv7qj', skipping
+2026-06-06 01:25:12,262 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '7r7', skipping
+2026-06-06 01:25:12,262 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '31c01', skipping
+2026-06-06 01:25:12,268 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['2gs', '7r7', '31c01', '7r7', '31c01']
+2026-06-06 01:25:12,269 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '2gs', skipping
+2026-06-06 01:25:12,269 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '7r7', skipping
+2026-06-06 01:25:12,269 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '31c01', skipping
+2026-06-06 01:25:12,269 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '7r7', skipping
+2026-06-06 01:25:12,269 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '31c01', skipping
+2026-06-06 01:25:12,278 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['31c01', '7r7', '31c01', '7r7', '31c01']
+2026-06-06 01:25:12,279 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '31c01', skipping
+2026-06-06 01:25:12,279 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '7r7', skipping
+2026-06-06 01:25:12,280 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '31c01', skipping
+2026-06-06 01:25:12,280 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '7r7', skipping
+2026-06-06 01:25:12,280 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '31c01', skipping
+2026-06-06 01:25:12,285 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['31c01', '31c01', '31c01', '7r7', '31c01']
+2026-06-06 01:25:12,285 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '31c01', skipping
+2026-06-06 01:25:12,285 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '31c01', skipping
+2026-06-06 01:25:12,287 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '31c01', skipping
+2026-06-06 01:25:12,287 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '7r7', skipping
+2026-06-06 01:25:12,287 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '31c01', skipping
+2026-06-06 01:25:12,293 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['31c01', '31c01', '31c01', '7r7', '7r7']
+2026-06-06 01:25:12,294 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '31c01', skipping
+2026-06-06 01:25:12,294 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '31c01', skipping
+2026-06-06 01:25:12,295 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '31c01', skipping
+2026-06-06 01:25:12,296 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '7r7', skipping
+2026-06-06 01:25:12,296 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '7r7', skipping
+2026-06-06 01:25:12,301 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['e']
+2026-06-06 01:25:12,301 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'e', skipping
+2026-06-06 01:25:12,309 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['zi', '1', 'wpfa', '1iq', 't8', 'w2p9n']
+2026-06-06 01:25:12,309 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'zi', skipping
+2026-06-06 01:25:12,309 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1', skipping
+2026-06-06 01:25:12,311 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'wpfa', skipping
+2026-06-06 01:25:12,311 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1iq', skipping
+2026-06-06 01:25:12,311 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 't8', skipping
+2026-06-06 01:25:12,312 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'w2p9n', skipping
+2026-06-06 01:25:12,316 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['zi', '1', 'wpfa', '1iq', '1iq', 't8', 'w2p9n']
+2026-06-06 01:25:12,317 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'zi', skipping
+2026-06-06 01:25:12,318 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1', skipping
+2026-06-06 01:25:12,318 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'wpfa', skipping
+2026-06-06 01:25:12,319 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1iq', skipping
+2026-06-06 01:25:12,319 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1iq', skipping
+2026-06-06 01:25:12,319 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 't8', skipping
+2026-06-06 01:25:12,320 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'w2p9n', skipping
+2026-06-06 01:25:12,327 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['1', 'wpfa', '1iq', '1iq', 't8', 'w2p9n']
+2026-06-06 01:25:12,327 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1', skipping
+2026-06-06 01:25:12,327 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'wpfa', skipping
+2026-06-06 01:25:12,329 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1iq', skipping
+2026-06-06 01:25:12,329 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1iq', skipping
+2026-06-06 01:25:12,330 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 't8', skipping
+2026-06-06 01:25:12,330 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'w2p9n', skipping
+2026-06-06 01:25:12,336 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['1', 'wpfa', '1iq', '1iq', 't8']
+2026-06-06 01:25:12,337 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1', skipping
+2026-06-06 01:25:12,337 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'wpfa', skipping
+2026-06-06 01:25:12,337 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1iq', skipping
+2026-06-06 01:25:12,339 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1iq', skipping
+2026-06-06 01:25:12,339 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 't8', skipping
+2026-06-06 01:25:12,345 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['1', 't8', '1iq', '1iq', 't8']
+2026-06-06 01:25:12,345 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1', skipping
+2026-06-06 01:25:12,345 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 't8', skipping
+2026-06-06 01:25:12,346 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1iq', skipping
+2026-06-06 01:25:12,347 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1iq', skipping
+2026-06-06 01:25:12,348 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 't8', skipping
+2026-06-06 01:25:12,353 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['1', '1', 't8', '1iq', '1iq', 't8']
+2026-06-06 01:25:12,355 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1', skipping
+2026-06-06 01:25:12,355 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1', skipping
+2026-06-06 01:25:12,355 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 't8', skipping
+2026-06-06 01:25:12,356 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1iq', skipping
+2026-06-06 01:25:12,357 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1iq', skipping
+2026-06-06 01:25:12,357 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 't8', skipping
+2026-06-06 01:25:12,362 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['1iq', '1', '1', 't8', '1iq', '1iq', 't8']
+2026-06-06 01:25:12,363 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1iq', skipping
+2026-06-06 01:25:12,364 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1', skipping
+2026-06-06 01:25:12,364 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1', skipping
+2026-06-06 01:25:12,364 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 't8', skipping
+2026-06-06 01:25:12,364 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1iq', skipping
+2026-06-06 01:25:12,366 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1iq', skipping
+2026-06-06 01:25:12,366 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 't8', skipping
+2026-06-06 01:25:12,371 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['volume ma', 'pczh8gi8p', 'f9 8']
+2026-06-06 01:25:12,371 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'volume ma', skipping
+2026-06-06 01:25:12,372 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'pczh8gi8p', skipping
+2026-06-06 01:25:12,372 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f9 8', skipping
+2026-06-06 01:25:12,378 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['volume ma', 'f9 8', 'f9 8']
+2026-06-06 01:25:12,378 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'volume ma', skipping
+2026-06-06 01:25:12,379 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f9 8', skipping
+2026-06-06 01:25:12,379 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f9 8', skipping
+2026-06-06 01:25:12,385 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['volume ma', 'f9 8']
+2026-06-06 01:25:12,385 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'volume ma', skipping
+2026-06-06 01:25:12,386 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f9 8', skipping
+2026-06-06 01:25:12,392 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['f9 8', 'f9 8']
+2026-06-06 01:25:12,392 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f9 8', skipping
+2026-06-06 01:25:12,393 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f9 8', skipping
+2026-06-06 01:25:12,401 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['234j', '9vkw', 'kk', 'c1i55azc4c2']
+2026-06-06 01:25:12,401 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '234j', skipping
+2026-06-06 01:25:12,401 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '9vkw', skipping
+2026-06-06 01:25:12,403 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'kk', skipping
+2026-06-06 01:25:12,404 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'c1i55azc4c2', skipping
+2026-06-06 01:25:12,412 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['9vkw', '9vkw', 'kk', 'c1i55azc4c2']
+2026-06-06 01:25:12,413 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '9vkw', skipping
+2026-06-06 01:25:12,414 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '9vkw', skipping
+2026-06-06 01:25:12,414 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'kk', skipping
+2026-06-06 01:25:12,414 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'c1i55azc4c2', skipping
+2026-06-06 01:25:12,424 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['0', 'fvh3l3', '1g']
+2026-06-06 01:25:12,424 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '0', skipping
+2026-06-06 01:25:12,426 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'fvh3l3', skipping
+2026-06-06 01:25:12,427 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1g', skipping
+2026-06-06 01:25:12,433 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['0', '1g']
+2026-06-06 01:25:12,435 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '0', skipping
+2026-06-06 01:25:12,435 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1g', skipping
+2026-06-06 01:25:12,443 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['1g']
+2026-06-06 01:25:12,443 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1g', skipping
+2026-06-06 01:25:12,457 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['1e100', '6p\t2_ 2b0uedx536z3x3dwxq', 'm2bbcy4rdh87at', 'av', 'zaml6s_u  gox', 'd_2c', 'hm']
+2026-06-06 01:25:12,457 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '1e100', skipping
+2026-06-06 01:25:12,458 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '6p	2_ 2b0uedx536z3x3dwxq', skipping
+2026-06-06 01:25:12,459 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'm2bbcy4rdh87at', skipping
+2026-06-06 01:25:12,459 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'av', skipping
+2026-06-06 01:25:12,461 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'zaml6s_u  gox', skipping
+2026-06-06 01:25:12,462 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'd_2c', skipping
+2026-06-06 01:25:12,462 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hm', skipping
+2026-06-06 01:25:12,472 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['zaml6s_u  gox', '6p\t2_ 2b0uedx536z3x3dwxq', 'm2bbcy4rdh87at', 'av', 'zaml6s_u  gox', 'd_2c', 'hm']
+2026-06-06 01:25:12,472 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'zaml6s_u  gox', skipping
+2026-06-06 01:25:12,473 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '6p	2_ 2b0uedx536z3x3dwxq', skipping
+2026-06-06 01:25:12,474 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'm2bbcy4rdh87at', skipping
+2026-06-06 01:25:12,476 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'av', skipping
+2026-06-06 01:25:12,476 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'zaml6s_u  gox', skipping
+2026-06-06 01:25:12,477 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'd_2c', skipping
+2026-06-06 01:25:12,477 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hm', skipping
+2026-06-06 01:25:12,487 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['6p\t2_ 2b0uedx536z3x3dwxq', 'm2bbcy4rdh87at', 'av', 'zaml6s_u  gox', 'd_2c', 'hm']
+2026-06-06 01:25:12,487 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '6p	2_ 2b0uedx536z3x3dwxq', skipping
+2026-06-06 01:25:12,488 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'm2bbcy4rdh87at', skipping
+2026-06-06 01:25:12,489 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'av', skipping
+2026-06-06 01:25:12,489 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'zaml6s_u  gox', skipping
+2026-06-06 01:25:12,491 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'd_2c', skipping
+2026-06-06 01:25:12,491 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'hm', skipping
+2026-06-06 01:25:12,501 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['6p\t2_ 2b0uedx536z3x3dwxq']
+2026-06-06 01:25:12,502 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '6p	2_ 2b0uedx536z3x3dwxq', skipping
+2026-06-06 01:25:12,516 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['_h1dw', 'z', '7nu478', '3\nb', 'f3nox3s', 'nil', 'b\n__anh0k']
+2026-06-06 01:25:12,517 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '_h1dw', skipping
+2026-06-06 01:25:12,518 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'z', skipping
+2026-06-06 01:25:12,519 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '7nu478', skipping
+2026-06-06 01:25:12,520 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,520 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f3nox3s', skipping
+2026-06-06 01:25:12,521 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'nil', skipping
+2026-06-06 01:25:12,522 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'b
+__anh0k', skipping
+2026-06-06 01:25:12,530 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['_h1dw', 'z', '3\nb', '7nu478', '3\nb', 'f3nox3s', 'nil', 'b\n__anh0k']
+2026-06-06 01:25:12,530 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '_h1dw', skipping
+2026-06-06 01:25:12,531 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'z', skipping
+2026-06-06 01:25:12,532 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,532 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '7nu478', skipping
+2026-06-06 01:25:12,533 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,533 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f3nox3s', skipping
+2026-06-06 01:25:12,535 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'nil', skipping
+2026-06-06 01:25:12,536 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'b
+__anh0k', skipping
+2026-06-06 01:25:12,544 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['_h1dw', '3\nb', '3\nb', '7nu478', '3\nb', 'f3nox3s', 'nil', 'b\n__anh0k']
+2026-06-06 01:25:12,544 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '_h1dw', skipping
+2026-06-06 01:25:12,544 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,546 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,547 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '7nu478', skipping
+2026-06-06 01:25:12,548 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,549 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f3nox3s', skipping
+2026-06-06 01:25:12,549 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'nil', skipping
+2026-06-06 01:25:12,550 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'b
+__anh0k', skipping
+2026-06-06 01:25:12,558 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['_h1dw', '3\nb', '3\nb', '7nu478', '3\nb', 'f3nox3s', '3\nb', 'b\n__anh0k']
+2026-06-06 01:25:12,558 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '_h1dw', skipping
+2026-06-06 01:25:12,559 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,559 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,560 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '7nu478', skipping
+2026-06-06 01:25:12,560 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,560 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f3nox3s', skipping
+2026-06-06 01:25:12,561 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,561 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'b
+__anh0k', skipping
+2026-06-06 01:25:12,571 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['_h1dw', '3\nb', '3\nb', '3\nb', 'f3nox3s', '3\nb', 'b\n__anh0k']
+2026-06-06 01:25:12,572 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '_h1dw', skipping
+2026-06-06 01:25:12,573 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,573 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,574 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,574 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f3nox3s', skipping
+2026-06-06 01:25:12,576 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,576 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'b
+__anh0k', skipping
+2026-06-06 01:25:12,583 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['_h1dw', '3\nb', '3\nb', '3\nb', 'f3nox3s', 'f3nox3s', 'b\n__anh0k']
+2026-06-06 01:25:12,584 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '_h1dw', skipping
+2026-06-06 01:25:12,584 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,585 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,585 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,585 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f3nox3s', skipping
+2026-06-06 01:25:12,586 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f3nox3s', skipping
+2026-06-06 01:25:12,587 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'b
+__anh0k', skipping
+2026-06-06 01:25:12,594 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['_h1dw', '3\nb', '3\nb', '3\nb', '3\nb', 'f3nox3s', 'f3nox3s', 'b\n__anh0k']
+2026-06-06 01:25:12,594 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '_h1dw', skipping
+2026-06-06 01:25:12,594 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,596 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,597 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,597 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3
+b', skipping
+2026-06-06 01:25:12,597 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f3nox3s', skipping
+2026-06-06 01:25:12,598 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f3nox3s', skipping
+2026-06-06 01:25:12,599 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'b
+__anh0k', skipping
+2026-06-06 01:25:12,607 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['678de8', 'o', 'f70']
+2026-06-06 01:25:12,608 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '678de8', skipping
+2026-06-06 01:25:12,609 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'o', skipping
+2026-06-06 01:25:12,609 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f70', skipping
+2026-06-06 01:25:12,615 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['f70', 'o', 'f70']
+2026-06-06 01:25:12,615 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f70', skipping
+2026-06-06 01:25:12,615 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'o', skipping
+2026-06-06 01:25:12,617 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f70', skipping
+2026-06-06 01:25:12,624 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['f70', 'f70', 'f70']
+2026-06-06 01:25:12,624 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f70', skipping
+2026-06-06 01:25:12,624 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f70', skipping
+2026-06-06 01:25:12,624 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f70', skipping
+2026-06-06 01:25:12,632 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['f70', 'f70', 'f70', 'f70']
+2026-06-06 01:25:12,632 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f70', skipping
+2026-06-06 01:25:12,633 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f70', skipping
+2026-06-06 01:25:12,633 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f70', skipping
+2026-06-06 01:25:12,634 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'f70', skipping
+2026-06-06 01:25:12,644 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['h6_', '3io', 'jy9j3x']
+2026-06-06 01:25:12,644 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'h6_', skipping
+2026-06-06 01:25:12,645 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook '3io', skipping
+2026-06-06 01:25:12,646 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'jy9j3x', skipping
+2026-06-06 01:25:12,650 [INFO] capture_hooks:46 — HookDispatcher: Registering hooks: ['h6_', 'h6_', 'jy9j3x']
+2026-06-06 01:25:12,652 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'h6_', skipping
+2026-06-06 01:25:12,653 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'h6_', skipping
+2026-06-06 01:25:12,653 [WARNING] capture_hooks:62 — HookDispatcher: Unknown hook 'jy9j3x', skipping
+2026-06-06 01:25:15,992 [INFO] claude_cli.service:187 — ContextManager: context cleared for A (2 turns)
+2026-06-06 01:25:15,995 [INFO] claude_cli.service:187 — ContextManager: context cleared for MTSQAW (2 turns)
+2026-06-06 01:25:15,997 [INFO] claude_cli.service:187 — ContextManager: context cleared for MTSQAW (2 turns)
+2026-06-06 01:25:15,999 [INFO] claude_cli.service:187 — ContextManager: context cleared for PX (2 turns)
+2026-06-06 01:25:16,003 [INFO] claude_cli.service:187 — ContextManager: context cleared for PX (2 turns)
+2026-06-06 01:25:16,006 [INFO] claude_cli.service:187 — ContextManager: context cleared for P (2 turns)
+2026-06-06 01:25:16,010 [INFO] claude_cli.service:187 — ContextManager: context cleared for H (2 turns)
+2026-06-06 01:25:16,018 [INFO] claude_cli.service:187 — ContextManager: context cleared for FAIL (2 turns)
+2026-06-06 01:25:16,020 [INFO] claude_cli.service:187 — ContextManager: context cleared for FAIL (2 turns)
+2026-06-06 01:25:16,022 [INFO] claude_cli.service:187 — ContextManager: context cleared for H (2 turns)
+2026-06-06 01:25:16,026 [INFO] claude_cli.service:187 — ContextManager: context cleared for H (2 turns)
+2026-06-06 01:25:16,034 [INFO] claude_cli.service:187 — ContextManager: context cleared for YYG (2 turns)
+2026-06-06 01:25:16,042 [INFO] claude_cli.service:187 — ContextManager: context cleared for DDJCZAWMZJ (2 turns)
+2026-06-06 01:25:16,045 [INFO] claude_cli.service:187 — ContextManager: context cleared for OC (2 turns)
+2026-06-06 01:25:16,051 [INFO] claude_cli.service:187 — ContextManager: context cleared for YLYRLEMWMI (2 turns)
+2026-06-06 01:25:16,053 [INFO] claude_cli.service:187 — ContextManager: context cleared for YLYRLEMWMI (2 turns)
+2026-06-06 01:25:16,058 [INFO] claude_cli.service:187 — ContextManager: context cleared for YLYRLEMWMI (2 turns)
+2026-06-06 01:25:16,060 [INFO] claude_cli.service:187 — ContextManager: context cleared for GZTY (2 turns)
+2026-06-06 01:25:16,062 [INFO] claude_cli.service:187 — ContextManager: context cleared for GZTY (2 turns)
+2026-06-06 01:25:16,065 [INFO] claude_cli.service:187 — ContextManager: context cleared for GZTY (2 turns)
+2026-06-06 01:25:16,069 [INFO] claude_cli.service:187 — ContextManager: context cleared for KOZMZDCKVW (2 turns)
+2026-06-06 01:25:16,073 [INFO] claude_cli.service:187 — ContextManager: context cleared for EELIFYZHU (2 turns)
+2026-06-06 01:25:16,075 [INFO] claude_cli.service:187 — ContextManager: context cleared for EELIFYZHU (2 turns)
+2026-06-06 01:25:16,080 [INFO] claude_cli.service:187 — ContextManager: context cleared for FHNPJI (2 turns)
+2026-06-06 01:25:16,084 [INFO] claude_cli.service:187 — ContextManager: context cleared for UQJGPIKMER (2 turns)
+2026-06-06 01:25:16,087 [INFO] claude_cli.service:187 — ContextManager: context cleared for UQJGPIKMER (2 turns)
+2026-06-06 01:25:16,090 [INFO] claude_cli.service:187 — ContextManager: context cleared for UQJGPIKMER (2 turns)
+2026-06-06 01:25:16,092 [INFO] claude_cli.service:187 — ContextManager: context cleared for KUMMY (2 turns)
+2026-06-06 01:25:16,097 [INFO] claude_cli.service:187 — ContextManager: context cleared for IWDUF (2 turns)
+2026-06-06 01:25:16,106 [INFO] claude_cli.service:187 — ContextManager: context cleared for WU (2 turns)
+2026-06-06 01:25:16,110 [INFO] claude_cli.service:187 — ContextManager: context cleared for PDXIZPPK (2 turns)
+2026-06-06 01:25:16,112 [INFO] claude_cli.service:187 — ContextManager: context cleared for PDXIZPPK (2 turns)
+2026-06-06 01:25:16,117 [INFO] claude_cli.service:187 — ContextManager: context cleared for PDXIZPPK (2 turns)
+2026-06-06 01:25:16,120 [INFO] claude_cli.service:187 — ContextManager: context cleared for AVI (2 turns)
+2026-06-06 01:25:16,131 [INFO] claude_cli.service:187 — ContextManager: context cleared for GATZS (2 turns)
+2026-06-06 01:25:16,135 [INFO] claude_cli.service:187 — ContextManager: context cleared for GATZS (2 turns)
+2026-06-06 01:25:16,137 [INFO] claude_cli.service:187 — ContextManager: context cleared for GATZS (2 turns)
+2026-06-06 01:25:16,143 [INFO] claude_cli.service:187 — ContextManager: context cleared for QKFYXCX (2 turns)
+2026-06-06 01:25:16,149 [INFO] claude_cli.service:187 — ContextManager: context cleared for OTFYVB (2 turns)
+2026-06-06 01:25:16,153 [INFO] claude_cli.service:187 — ContextManager: context cleared for KKGXRNSABP (2 turns)
+2026-06-06 01:25:16,157 [INFO] claude_cli.service:187 — ContextManager: context cleared for KKGXRNSABP (2 turns)
+2026-06-06 01:25:16,161 [INFO] claude_cli.service:187 — ContextManager: context cleared for F (2 turns)
+2026-06-06 01:25:16,164 [INFO] claude_cli.service:187 — ContextManager: context cleared for SYDYW (2 turns)
+2026-06-06 01:25:16,167 [INFO] claude_cli.service:187 — ContextManager: context cleared for WDLVYVHOGQ (2 turns)
+2026-06-06 01:25:16,169 [INFO] claude_cli.service:187 — ContextManager: context cleared for Q (2 turns)
+2026-06-06 01:25:16,172 [INFO] claude_cli.service:187 — ContextManager: context cleared for Q (2 turns)
+2026-06-06 01:25:16,174 [INFO] claude_cli.service:187 — ContextManager: context cleared for Q (2 turns)
+2026-06-06 01:25:16,176 [INFO] claude_cli.service:187 — ContextManager: context cleared for QXYWS (2 turns)
+2026-06-06 01:25:16,180 [INFO] claude_cli.service:187 — ContextManager: context cleared for F (2 turns)
+2026-06-06 01:25:16,184 [INFO] claude_cli.service:187 — ContextManager: context cleared for ULJ (2 turns)
+2026-06-06 01:25:16,187 [INFO] claude_cli.service:187 — ContextManager: context cleared for D (2 turns)
+2026-06-06 01:25:16,190 [INFO] claude_cli.service:187 — ContextManager: context cleared for D (2 turns)
+2026-06-06 01:25:16,194 [INFO] claude_cli.service:187 — ContextManager: context cleared for K (2 turns)
+2026-06-06 01:25:16,196 [INFO] claude_cli.service:187 — ContextManager: context cleared for WMBNTBAL (2 turns)
+2026-06-06 01:25:16,204 [INFO] claude_cli.service:187 — ContextManager: context cleared for WMBNTBAL (2 turns)
+2026-06-06 01:25:16,206 [INFO] claude_cli.service:187 — ContextManager: context cleared for WMBNTBAL (2 turns)
+2026-06-06 01:25:16,208 [INFO] claude_cli.service:187 — ContextManager: context cleared for XV (2 turns)
+2026-06-06 01:25:16,211 [INFO] claude_cli.service:187 — ContextManager: context cleared for B (2 turns)
+2026-06-06 01:25:16,214 [INFO] claude_cli.service:187 — ContextManager: context cleared for B (2 turns)
+2026-06-06 01:25:16,218 [INFO] claude_cli.service:187 — ContextManager: context cleared for TGRKCKYKYV (2 turns)
+2026-06-06 01:25:16,222 [INFO] claude_cli.service:187 — ContextManager: context cleared for XNDTCU (2 turns)
+2026-06-06 01:25:16,225 [INFO] claude_cli.service:187 — ContextManager: context cleared for FEW (2 turns)
+2026-06-06 01:25:16,229 [INFO] claude_cli.service:187 — ContextManager: context cleared for U (2 turns)
+2026-06-06 01:25:16,230 [INFO] claude_cli.service:187 — ContextManager: context cleared for U (2 turns)
+2026-06-06 01:25:16,234 [INFO] claude_cli.service:187 — ContextManager: context cleared for U (2 turns)
+2026-06-06 01:25:16,237 [INFO] claude_cli.service:187 — ContextManager: context cleared for U (2 turns)
+2026-06-06 01:25:16,241 [INFO] claude_cli.service:187 — ContextManager: context cleared for XBTUSDT (2 turns)
+2026-06-06 01:25:16,245 [INFO] claude_cli.service:187 — ContextManager: context cleared for JF (2 turns)
+2026-06-06 01:25:16,249 [INFO] claude_cli.service:187 — ContextManager: context cleared for J (2 turns)
+2026-06-06 01:25:16,254 [INFO] claude_cli.service:187 — ContextManager: context cleared for J (2 turns)
+2026-06-06 01:25:16,258 [INFO] claude_cli.service:187 — ContextManager: context cleared for ROSYVA (2 turns)
+2026-06-06 01:25:16,260 [INFO] claude_cli.service:187 — ContextManager: context cleared for ROSYVA (2 turns)
+2026-06-06 01:25:16,264 [INFO] claude_cli.service:187 — ContextManager: context cleared for ZDU (2 turns)
+2026-06-06 01:25:16,269 [INFO] claude_cli.service:187 — ContextManager: context cleared for F (2 turns)
+2026-06-06 01:25:16,274 [INFO] claude_cli.service:187 — ContextManager: context cleared for KQ (2 turns)
+2026-06-06 01:25:16,276 [INFO] claude_cli.service:187 — ContextManager: context cleared for TXMPUI (2 turns)
+2026-06-06 01:25:16,280 [INFO] claude_cli.service:187 — ContextManager: context cleared for TXMPUI (2 turns)
+2026-06-06 01:25:16,282 [INFO] claude_cli.service:187 — ContextManager: context cleared for CBILGZOR (2 turns)
+2026-06-06 01:25:16,286 [INFO] claude_cli.service:187 — ContextManager: context cleared for CBILGZOR (2 turns)
+2026-06-06 01:25:16,291 [INFO] claude_cli.service:187 — ContextManager: context cleared for ROXLS (2 turns)
+2026-06-06 01:25:16,295 [INFO] claude_cli.service:187 — ContextManager: context cleared for ARB (2 turns)
+2026-06-06 01:25:16,300 [INFO] claude_cli.service:187 — ContextManager: context cleared for ARB (2 turns)
+2026-06-06 01:25:16,303 [INFO] claude_cli.service:187 — ContextManager: context cleared for ARB (2 turns)
+2026-06-06 01:25:16,307 [INFO] claude_cli.service:187 — ContextManager: context cleared for ARB (2 turns)
+2026-06-06 01:25:16,315 [INFO] claude_cli.service:187 — ContextManager: context cleared for FVL (2 turns)
+2026-06-06 01:25:16,323 [INFO] claude_cli.service:187 — ContextManager: context cleared for FVL (2 turns)
+2026-06-06 01:25:16,328 [INFO] claude_cli.service:187 — ContextManager: context cleared for FVL (2 turns)
+2026-06-06 01:25:16,337 [INFO] claude_cli.service:187 — ContextManager: context cleared for R (2 turns)
+2026-06-06 01:25:16,346 [INFO] claude_cli.service:187 — ContextManager: context cleared for BDAFUBV (2 turns)
+2026-06-06 01:25:16,355 [INFO] claude_cli.service:187 — ContextManager: context cleared for ACGMYWWXOS (2 turns)
+2026-06-06 01:25:16,360 [INFO] claude_cli.service:187 — ContextManager: context cleared for WRFXZPS (2 turns)
+2026-06-06 01:25:16,364 [INFO] claude_cli.service:187 — ContextManager: context cleared for QGZANQMJIG (2 turns)
+2026-06-06 01:25:16,369 [INFO] claude_cli.service:187 — ContextManager: context cleared for QGZANQMJIG (2 turns)
+2026-06-06 01:25:16,377 [INFO] claude_cli.service:187 — ContextManager: context cleared for LIMIT (2 turns)
+2026-06-06 01:25:16,383 [INFO] claude_cli.service:187 — ContextManager: context cleared for LIMIT (2 turns)
+2026-06-06 01:25:16,386 [INFO] claude_cli.service:187 — ContextManager: context cleared for A (2 turns)
+2026-06-06 01:25:16,392 [INFO] claude_cli.service:187 — ContextManager: context cleared for WY (2 turns)
+2026-06-06 01:25:16,401 [INFO] claude_cli.service:187 — ContextManager: context cleared for GEKTKZDFUW (2 turns)
+2026-06-06 01:25:16,412 [INFO] claude_cli.service:187 — ContextManager: context cleared for JT (2 turns)
+2026-06-06 01:25:16,426 [INFO] claude_cli.service:187 — ContextManager: context cleared for B (2 turns)
+2026-06-06 01:25:16,445 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,451 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,457 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,464 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,471 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,477 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,484 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,489 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,495 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,500 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,503 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,509 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,519 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,531 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,537 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (10 total turns)
+2026-06-06 01:25:16,543 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,547 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,551 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,558 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,573 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,580 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (8 total turns)
+2026-06-06 01:25:16,591 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (6 total turns)
+2026-06-06 01:25:16,594 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,597 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,604 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (12 total turns)
+2026-06-06 01:25:16,609 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (10 total turns)
+2026-06-06 01:25:16,611 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (8 total turns)
+2026-06-06 01:25:16,615 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (8 total turns)
+2026-06-06 01:25:16,621 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,625 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,631 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,641 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (6 total turns)
+2026-06-06 01:25:16,644 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,647 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,651 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,657 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (10 total turns)
+2026-06-06 01:25:16,661 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (6 total turns)
+2026-06-06 01:25:16,667 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (6 total turns)
+2026-06-06 01:25:16,677 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,679 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,687 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (12 total turns)
+2026-06-06 01:25:16,691 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (10 total turns)
+2026-06-06 01:25:16,693 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,696 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,702 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (8 total turns)
+2026-06-06 01:25:16,708 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,712 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,717 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (10 total turns)
+2026-06-06 01:25:16,720 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (8 total turns)
+2026-06-06 01:25:16,722 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (6 total turns)
+2026-06-06 01:25:16,725 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (6 total turns)
+2026-06-06 01:25:16,731 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (12 total turns)
+2026-06-06 01:25:16,736 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (6 total turns)
+2026-06-06 01:25:16,738 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,740 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,744 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (10 total turns)
+2026-06-06 01:25:16,747 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (8 total turns)
+2026-06-06 01:25:16,749 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,751 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,753 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (12 total turns)
+2026-06-06 01:25:16,757 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (8 total turns)
+2026-06-06 01:25:16,759 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (6 total turns)
+2026-06-06 01:25:16,761 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (6 total turns)
+2026-06-06 01:25:16,765 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,767 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,768 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (6 total turns)
+2026-06-06 01:25:16,773 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,775 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,782 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,788 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (8 total turns)
+2026-06-06 01:25:16,790 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,795 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (12 total turns)
+2026-06-06 01:25:16,798 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (8 total turns)
+2026-06-06 01:25:16,801 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (8 total turns)
+2026-06-06 01:25:16,803 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,805 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,809 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (12 total turns)
+2026-06-06 01:25:16,812 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (10 total turns)
+2026-06-06 01:25:16,814 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,817 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,821 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,824 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,830 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,839 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (12 total turns)
+2026-06-06 01:25:16,844 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (10 total turns)
+2026-06-06 01:25:16,848 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (8 total turns)
+2026-06-06 01:25:16,850 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,851 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,855 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (2 total turns)
+2026-06-06 01:25:16,861 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (8 total turns)
+2026-06-06 01:25:16,866 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (6 total turns)
+2026-06-06 01:25:16,867 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (4 total turns)
+2026-06-06 01:25:16,872 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (12 total turns)
+2026-06-06 01:25:16,875 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (10 total turns)
+2026-06-06 01:25:16,877 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (10 total turns)
+2026-06-06 01:25:16,880 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (6 total turns)
+2026-06-06 01:25:16,884 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (6 total turns)
+2026-06-06 01:25:16,889 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (12 total turns)
+2026-06-06 01:25:16,891 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (10 total turns)
+2026-06-06 01:25:16,893 [INFO] claude_cli.service:191 — ContextManager: ALL context cleared (8 total turns)
+2026-06-06 01:25:16,950 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_webhook_missing_secret0\test.db
+2026-06-06 01:25:16,956 [WARNING] gateway.webhook:79 — Unauthorized webhook attempt (secret mismatch): received='' expected='test-secret'
+2026-06-06 01:25:17,014 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_webhook_invalid_secret_pa0\test.db
+2026-06-06 01:25:17,019 [WARNING] gateway.webhook:79 — Unauthorized webhook attempt (secret mismatch): received='wrong-secret' expected='test-secret'
+2026-06-06 01:25:17,077 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_webhook_valid_secret_payl0\test.db
+2026-06-06 01:25:17,093 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:17,098 [INFO] gateway.webhook:176 — ALERT #1  action=buy  symbol=BTCUSDT  price=None  qty=10.0  time=
+2026-06-06 01:25:17,104 [WARNING] gateway.webhook:190 — SRA Ingestion warning: No module named 'nerves'
+2026-06-06 01:25:17,105 [INFO] core.event_bus:98 — EventBus: Emitting SignalReceived (f6c3f488473a) → 2 handler(s)
+2026-06-06 01:25:17,105 [WARNING] processor.signal_processor:136 — SignalProcessor: Duplicate signal rejected — buy BTCUSDT
+2026-06-06 01:25:17,107 [INFO] core.event_bus:98 — EventBus: Emitting SignalRejected (9f10ff884a9d) → 1 handler(s)
+2026-06-06 01:25:17,107 [INFO] hub.notification_hub:359 — NotificationHub: Rejected signal #1 on binance — duplicate_signal
+2026-06-06 01:25:17,170 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_webhook_invalid_secret_he0\test.db
+2026-06-06 01:25:17,181 [WARNING] gateway.webhook:79 — Unauthorized webhook attempt (secret mismatch): received='' expected='test-secret'
+2026-06-06 01:25:17,264 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_dashboard_auth_unauthoriz0\test.db
+2026-06-06 01:25:20,096 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_dashboard_auth_with_token0\test.db
+2026-06-06 01:25:20,177 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_low_confidence_auto_rejec0\test_exec.db
+2026-06-06 01:25:20,209 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:20,272 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_medium_confidence_holding0\test_exec.db
+2026-06-06 01:25:20,292 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:20,359 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_hold_for_approval_true_ho0\test_exec.db
+2026-06-06 01:25:20,377 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:20,451 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_high_confidence_bypass0\test_exec.db
+2026-06-06 01:25:20,470 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:20,477 [INFO] core.event_bus:98 — EventBus: Emitting TradeExecuted (ddb38022e286) → 2 handler(s)
+2026-06-06 01:25:20,479 [INFO] core.event_bus:98 — EventBus: Emitting TradeExecuted (ddb38022e286) → 1 handler(s)
+2026-06-06 01:25:20,479 [INFO] hub.notification_hub:846 — NotificationHub: Trade executed #1 on binance
+2026-06-06 01:25:20,539 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_simulate_button_callback_0\test_exec.db
+2026-06-06 01:25:20,559 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:20,581 [INFO] core.event_bus:98 — EventBus: Emitting TradeApproved (bfcdba431f2c) → 1 handler(s)
+2026-06-06 01:25:20,771 [INFO] engine.regime_switcher:84 — RegimeSwitcher: BTCUSDT - Aligned: False, Volatility: 0.0698, Spread: 0.0258
+2026-06-06 01:25:20,771 [INFO] engine.regime_switcher:105 — RegimeSwitcher: BTCUSDT classified as TRENDING
+2026-06-06 01:25:20,776 [INFO] engine.trade_engine:525 — TradeEngine: Market Price=68000.0, Webhook Price=68000.0, Slippage=0.0000
+2026-06-06 01:25:20,784 [WARNING] engine.trade_engine:666 — SRA Ingestion warning: No module named 'nerves'
+2026-06-06 01:25:20,786 [INFO] engine.trade_engine:704 — TradeEngine: Smart Order Success #ORD-CALLBACK-001 on binance (type=DRY_RUN)
+2026-06-06 01:25:20,787 [INFO] core.event_bus:98 — EventBus: Emitting TradeExecuted (96718bb78b3d) → 2 handler(s)
+2026-06-06 01:25:20,788 [INFO] hub.notification_hub:846 — NotificationHub: Trade executed #101 on binance
+2026-06-06 01:25:20,964 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_health_endpoint0\test_exec.db
+2026-06-06 01:25:21,027 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_invalid_secret_returns_400\test_exec.db
+2026-06-06 01:25:21,091 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_missing_secret_returns_400\test_exec.db
+2026-06-06 01:25:21,159 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_missing_symbol_returns_400\test_exec.db
+2026-06-06 01:25:21,230 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_missing_action_returns_400\test_exec.db
+2026-06-06 01:25:21,299 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_valid_trade_execution_suc0\test_exec.db
+2026-06-06 01:25:21,318 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:21,325 [INFO] core.event_bus:98 — EventBus: Emitting TradeExecuted (4e52a8fd1f2a) → 1 handler(s)
+2026-06-06 01:25:21,385 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_valid_trade_persists_sign0\test_exec.db
+2026-06-06 01:25:21,403 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:21,409 [INFO] core.event_bus:98 — EventBus: Emitting TradeExecuted (3fd59c06d878) → 1 handler(s)
+2026-06-06 01:25:21,473 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_trade_engine_failure_retu0\test_exec.db
+2026-06-06 01:25:21,488 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:21,494 [INFO] core.event_bus:98 — EventBus: Emitting TradeFailed (327f0a31688a) → 1 handler(s)
+2026-06-06 01:25:21,556 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_trade_engine_exception_re0\test_exec.db
+2026-06-06 01:25:21,574 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:21,582 [ERROR] execution_server:374 — Execute trade error: Exchange connection timeout
+Traceback (most recent call last):
+  File "C:\Users\pesil\working\mj_trading\TradingViewProject\nerves\workers\trading\execution_server.py", line 332, in execute_trade
+    await trade_engine.execute_trade(approved)
+  File "C:\Python311\Lib\unittest\mock.py", line 2251, in _execute_mock_call
+    result = await effect(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pesil\working\mj_trading\TradingViewProject\nerves\workers\trading\tests\test_execution_server.py", line 270, in mock_execute_trade
+    raise RuntimeError("Exchange connection timeout")
+RuntimeError: Exchange connection timeout
+2026-06-06 01:25:21,673 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_unconfigured_secret_retur0\test_exec.db
+2026-06-06 01:25:21,738 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_bus_restored_after_execut0\test_exec.db
+2026-06-06 01:25:21,754 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:21,761 [ERROR] execution_server:374 — Execute trade error: Simulated failure
+Traceback (most recent call last):
+  File "C:\Users\pesil\working\mj_trading\TradingViewProject\nerves\workers\trading\execution_server.py", line 332, in execute_trade
+    await trade_engine.execute_trade(approved)
+  File "C:\Python311\Lib\unittest\mock.py", line 2251, in _execute_mock_call
+    result = await effect(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\pesil\working\mj_trading\TradingViewProject\nerves\workers\trading\tests\test_execution_server.py", line 320, in mock_execute_trade
+    raise RuntimeError("Simulated failure")
+RuntimeError: Simulated failure
+2026-06-06 01:25:21,819 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_telegram_notification_sen0\test_exec.db
+2026-06-06 01:25:21,835 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:21,840 [INFO] core.event_bus:98 — EventBus: Emitting TradeExecuted (0e1086f0dedf) → 1 handler(s)
+2026-06-06 01:25:21,894 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_secret_validation_uses_co0\test_exec.db
+2026-06-06 01:25:21,909 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:21,915 [INFO] core.event_bus:98 — EventBus: Emitting TradeExecuted (dce19b57a85b) → 1 handler(s)
+2026-06-06 01:25:21,969 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_execute_trade_fallback_qu0\test_exec.db
+2026-06-06 01:25:21,983 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:21,992 [INFO] core.event_bus:98 — EventBus: Emitting TradeExecuted (1b760b0f294f) → 1 handler(s)
+2026-06-06 01:25:22,054 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_execute_trade_fallback_qu1\test_exec.db
+2026-06-06 01:25:22,070 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:22,077 [INFO] core.event_bus:98 — EventBus: Emitting TradeExecuted (8e2ca7388066) → 1 handler(s)
+2026-06-06 01:25:22,132 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_execute_trade_quote_qty_e0\test_exec.db
+2026-06-06 01:25:22,147 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:22,154 [INFO] core.event_bus:98 — EventBus: Emitting TradeExecuted (0a691a8ac6ec) → 1 handler(s)
+2026-06-06 01:25:22,210 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_execute_trade_quote_qty_i0\test_exec.db
+2026-06-06 01:25:22,227 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:22,232 [INFO] core.event_bus:98 — EventBus: Emitting TradeExecuted (bc0be3f39342) → 1 handler(s)
+2026-06-06 01:25:22,298 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_execute_trade_price_inval0\test_exec.db
+2026-06-06 01:25:22,322 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:22,330 [INFO] core.event_bus:98 — EventBus: Emitting TradeExecuted (fa9b7c368658) → 1 handler(s)
+2026-06-06 01:25:22,400 [INFO] database:246 — Database initialized: C:\Users\pesil\AppData\Local\Temp\pytest-of-pesil\pytest-596\test_execute_trade_invalid_qty0\test_exec.db
+2026-06-06 01:25:22,421 [INFO] data.persistence_store:43 — Signal #1 saved: buy BTCUSDT
+2026-06-06 01:25:22,427 [INFO] core.event_bus:98 — EventBus: Emitting TradeExecuted (1e46ae4e4d95) → 1 handler(s)
+2026-06-06 01:25:22,447 [INFO] workers.vps_analyzer:440 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited ?s)
+2026-06-06 01:25:22,448 [INFO] workers.vps_analyzer:706 — [VpsAnalyzer] Analysing #101: BTCUSDT buy @ 50000.0
+2026-06-06 01:25:22,449 [INFO] workers.vps_analyzer:848 — [VpsAnalyzer] AI advice #101 (conf=85%): 🟢 Tín hiệu Mạnh. Nên BUY tại pivot. SL -8%....
+2026-06-06 01:25:22,450 [INFO] workers.vps_analyzer:1012 — [VpsAnalyzer] #101 APPROVED [ai]: BTCUSDT buy qty=0.005 sl=46000.0 tp=60000.0 conf=85%
+2026-06-06 01:25:22,453 [INFO] workers.vps_analyzer:1750 — [VpsAnalyzer] Attempting LOCAL execution: http://local-execute/api/execute-trade
+2026-06-06 01:25:22,454 [INFO] workers.vps_analyzer:1762 — [VpsAnalyzer] LOCAL executed: BTCUSDT buy
+2026-06-06 01:25:22,471 [INFO] workers.vps_analyzer:440 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited ?s)
+2026-06-06 01:25:22,473 [INFO] workers.vps_analyzer:706 — [VpsAnalyzer] Analysing #202: ETHUSDT buy @ 3500.0
+2026-06-06 01:25:22,474 [INFO] workers.vps_analyzer:848 — [VpsAnalyzer] AI advice #202 (conf=50%): ⚠️ RAG Analysis không khả dụng (thiếu API key)....
+2026-06-06 01:25:22,491 [INFO] workers.vps_analyzer:440 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited ?s)
+2026-06-06 01:25:22,493 [INFO] workers.vps_analyzer:706 — [VpsAnalyzer] Analysing #303: SOLUSDT buy @ 150.0
+2026-06-06 01:25:22,494 [INFO] workers.vps_analyzer:848 — [VpsAnalyzer] AI advice #303 (conf=85%): 🟢 Tín hiệu Mạnh. Nên BUY tại pivot. SL -8%....
+2026-06-06 01:25:22,496 [INFO] workers.vps_analyzer:1012 — [VpsAnalyzer] #303 APPROVED [ai]: SOLUSDT buy qty=1.66666667 sl=138.0 tp=180.0 conf=85%
+2026-06-06 01:25:22,499 [INFO] workers.vps_analyzer:1750 — [VpsAnalyzer] Attempting LOCAL execution: http://local-execute/api/execute-trade
+2026-06-06 01:25:22,499 [WARNING] workers.vps_analyzer:1772 — [VpsAnalyzer] LOCAL rejected trade (HTTP 500): {'detail': 'Insufficient margin', 'success': False}. Falling back to Server B.
+2026-06-06 01:25:22,502 [INFO] workers.vps_analyzer:1797 — [VpsAnalyzer] Forwarding to Server B: http://server-b-execute/api/execute-trade
+2026-06-06 01:25:22,502 [ERROR] workers.vps_analyzer:1816 — [VpsAnalyzer] Server B rejected (HTTP 500): {'detail': 'Insufficient margin', 'success': False}
+2026-06-06 01:25:22,516 [WARNING] workers.vps_analyzer:454 — [VpsAnalyzer] Long-poll connection error: Connection refused to VBS on Server A
+2026-06-06 01:25:22,533 [INFO] workers.vps_analyzer:1750 — [VpsAnalyzer] Attempting LOCAL execution: http://local-execute/api/execute-trade
+2026-06-06 01:25:22,534 [WARNING] workers.vps_analyzer:1772 — [VpsAnalyzer] LOCAL rejected trade (HTTP 401): {'detail': 'Unauthorized'}. Falling back to Server B.
+2026-06-06 01:25:22,535 [INFO] workers.vps_analyzer:1797 — [VpsAnalyzer] Forwarding to Server B: http://server-b-execute/api/execute-trade
+2026-06-06 01:25:22,536 [ERROR] workers.vps_analyzer:1816 — [VpsAnalyzer] Server B rejected (HTTP 401): {'detail': 'Unauthorized'}
+2026-06-06 01:25:22,552 [INFO] rag:176 — RAG: Connected to remote ChromaDB at chroma.internal.vpn:9200
+2026-06-06 01:25:22,554 [INFO] rag:234 — RAG: Bắt đầu embed 43 Minervini chunks → ChromaDB...
+2026-06-06 01:25:22,587 [INFO] rag:261 — RAG: ✅ Đã embed và lưu 43 chunks vào ChromaDB.
+2026-06-06 01:25:22,607 [INFO] workers.vps_analyzer:440 — [VpsAnalyzer] Long-poll: 1 signal(s) (waited ?s)
+2026-06-06 01:25:22,608 [INFO] workers.vps_analyzer:706 — [VpsAnalyzer] Analysing #701: TESTUSDT buy @ 100.0
+2026-06-06 01:25:22,609 [INFO] workers.vps_analyzer:848 — [VpsAnalyzer] AI advice #701 (conf=85%): 🟢 Tín hiệu Mạnh. Nên BUY tại pivot. SL -8%....
+2026-06-06 01:25:22,611 [INFO] workers.vps_analyzer:1012 — [VpsAnalyzer] #701 APPROVED [ai]: TESTUSDT buy qty=2.5 sl=92.0 tp=120.0 conf=85%
+2026-06-06 01:25:22,613 [INFO] workers.vps_analyzer:1750 — [VpsAnalyzer] Attempting LOCAL execution: http://local-execute/api/execute-trade
+2026-06-06 01:25:22,615 [INFO] workers.vps_analyzer:1762 — [VpsAnalyzer] LOCAL executed: TESTUSDT buy
+2026-06-06 01:25:22,632 [INFO] root:138 — Logging configured: level=INFO, file=test_trades.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-06 01:25:22,632 [INFO] workers.vps_analyzer:470 — [VpsAnalyzer] V2 Starting (consumer=server-c-analyzer, long_poll_timeout=30s, circuit_threshold=3)
