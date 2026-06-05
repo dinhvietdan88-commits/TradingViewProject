@@ -583,12 +583,12 @@ jobs:
                 # Pre-check: verify Docker data dir is writable before pulling images
                 # Catches overlay2 read-only filesystem early (avoids cryptic OCI errors)
                 DOCKER_ROOT=$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo '/home/docker-data')
-                if ! touch "${DOCKER_ROOT}/.write-test" 2>/dev/null; then
+                if ! sudo touch "${DOCKER_ROOT}/.write-test" 2>/dev/null; then
                   echo "❌ Docker root ${DOCKER_ROOT} is NOT writable — aborting Tier 2 deploy"
                   echo "   Run: sudo systemctl restart docker  (on Server C)"
                   exit 1
                 fi
-                rm -f "${DOCKER_ROOT}/.write-test"
+                sudo rm -f "${DOCKER_ROOT}/.write-test"
                 echo "✅ Docker filesystem writable"
                 echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
                 docker compose -f deploy/docker-compose.server-c.yml pull
