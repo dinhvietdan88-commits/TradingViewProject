@@ -198,7 +198,6 @@ def prepare_telegram_photo(photo_path) -> Optional["io.BytesIO"]:
     otherwise reads it into a BytesIO buffer. Always returns a seeked BytesIO buffer.
     """
     import io
-    from PIL import Image
     from pathlib import Path
 
     photo_path = Path(photo_path)
@@ -218,6 +217,8 @@ def prepare_telegram_photo(photo_path) -> Optional["io.BytesIO"]:
 
     if is_webp:
         try:
+            from PIL import Image
+
             with Image.open(io.BytesIO(data)) as img:
                 img.save(bio, format="PNG")
                 bio.seek(0)
