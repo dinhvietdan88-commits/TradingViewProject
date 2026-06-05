@@ -43,7 +43,7 @@ jobs:
     # ─ push (normal commit): SKIP — workflow_run will handle it once ci.yml completes
     # This prevents the double-run waste where push fires immediately but is always
     # blocked by check-ci-gate anyway (sentinel cache miss at push time).
-    if: |
+    if: >-
       github.event_name == 'workflow_run' ||
       (github.event_name == 'push' && contains(github.event.head_commit.message, '[force deploy]'))
     outputs:
