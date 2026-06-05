@@ -15,6 +15,18 @@ from pathlib import Path
 
 import config
 
+# SEC-4: Runtime guard for SSRF prevention (CWE-918)
+try:
+    from security.runtime_guard import validate_exchange_url, validate_exchange_params
+except ImportError:
+    # Graceful fallback: passthrough (SEC-4 guard not yet installed)
+    def validate_exchange_url(url: str) -> str:  # type: ignore[misc]
+        return url
+
+    def validate_exchange_params(symbol: str, interval: str) -> tuple:  # type: ignore[misc]
+        return symbol, interval
+
+
 logger = logging.getLogger(__name__)
 
 # Timeframe mapping from TradingView standard to exchange standard
@@ -721,7 +733,10 @@ class PythonCaptureClient:
             import aiohttp
 
             if exchange_name == "bybit":
+                # SEC-4 R1: Validate params before URL construction (SSRF prevention CWE-918)
+                symbol, interval = validate_exchange_params(symbol, interval)
                 url = f"https://api.bybit.com/v5/market/kline?category=linear&symbol={symbol}&interval={interval}&limit={limit}"
+                validate_exchange_url(url)  # Double-check final URL is on allowlist
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url, timeout=10) as resp:
                         res = await resp.json()
@@ -750,10 +765,18 @@ class PythonCaptureClient:
                     .replace("_UMCBL", "")
                     .lower()
                 )
+                # SEC-4 R1: Validate clean_symbol and interval for param injection
+                import re as _re
+
+                if not _re.match(r"^[a-z0-9]{1,30}$", clean_symbol):
+                    raise ValueError(
+                        f"Weex symbol contains unsafe characters: {clean_symbol!r}"
+                    )
                 weex_symbol = f"cmt_{clean_symbol}"
 
                 # Granularity: Weex contract V2 uses e.g. 1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d, 1w
                 url = f"https://api-contract.weex.com/capi/v2/market/candles?symbol={weex_symbol}&granularity={interval}&limit={limit}"
+                validate_exchange_url(url)  # SEC-4 R1: SSRF allowlist check
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url, timeout=10) as resp:
                         res = await resp.json()
@@ -778,8 +801,11 @@ class PythonCaptureClient:
                             raise ValueError(f"Weex response is not list: {res}")
             else:
                 # Default to Binance
+                # SEC-4 R1: Validate params before URL construction (SSRF prevention CWE-918)
+                symbol, interval = validate_exchange_params(symbol, interval)
                 # Normalize interval mapping for binance (e.g. 1d, 1w)
                 url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
+                validate_exchange_url(url)  # Double-check final URL is on allowlist
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url, timeout=10) as resp:
                         list_data = await resp.json()

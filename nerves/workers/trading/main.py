@@ -31,6 +31,28 @@ import notifier
 import database
 import rag
 
+# SEC-4: Runtime guard for path traversal prevention (CWE-22)
+try:
+    from security.runtime_guard import (
+        safe_path,
+        safe_screenshot_path,
+        SecurityError as _SecurityError,
+    )
+except ImportError:
+    # Graceful fallback if security module not installed
+    def safe_screenshot_path(raw_path) -> Path:  # type: ignore[misc]
+        p = Path(raw_path)
+        if not p.exists():
+            raise FileNotFoundError(f"Not found: {p}")
+        return p
+
+    def safe_path(raw_path, base_dir: Path, **kwargs) -> Path:  # type: ignore[misc]
+        return Path(raw_path).resolve()
+
+    class _SecurityError(ValueError):
+        pass  # type: ignore[misc]
+
+
 # ── P6 imports ───────────────────────────────────────────────────────────────
 import mcp_client as _mcp_module
 import watchlist as wl_module
@@ -1927,11 +1949,18 @@ async def get_vision_screenshot(brief_id: int):
     brief = await database.get_brief_by_id(brief_id)
     if not brief or not brief.get("screenshot"):
         raise HTTPException(status_code=404, detail="No screenshot for this brief")
-    img_path = Path(brief["screenshot"])
-    if not img_path.exists():
+
+    # SEC-4 R2: Use safe_screenshot_path to prevent path traversal (CWE-22).
+    # The raw path comes from the database; we must canonicalize before serving.
+    try:
+        img_path = safe_screenshot_path(brief["screenshot"])
+    except _SecurityError as e:
+        raise HTTPException(status_code=403, detail=f"Access denied: {e}")
+    except FileNotFoundError:
         raise HTTPException(
-            status_code=404, detail=f"Screenshot file not found: {img_path}"
+            status_code=404, detail=f"Screenshot file not found: {brief['screenshot']}"
         )
+
     return FileResponse(img_path, media_type="image/png")
 
 

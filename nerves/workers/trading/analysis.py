@@ -299,7 +299,8 @@ async def _run_rest_scan_for_symbols(symbols: list[str]) -> list[ScanResult]:
 async def scan_symbols(symbols: list[str], mcp_client) -> list[ScanResult]:
     """
     Batch scan symbols: fetch data from MCP, score TT + VCP.
-    Falls back to REST scanning if MCP is unavailable, fails, or returns incomplete data.
+    Falls back to REST scanning if MCP is unavailable, fails,
+    or returns incomplete data.
     Returns sorted by VCP detected first, then by TT score descending.
     """
     raw_data = None
@@ -321,7 +322,8 @@ async def scan_symbols(symbols: list[str], mcp_client) -> list[ScanResult]:
 
     if raw_data is None:
         logger.info(
-            "MCP is not healthy or batch_run failed. Globally falling back to REST scan."
+            "MCP is not healthy or batch_run failed. "
+            "Globally falling back to REST scan."
         )
         results = await _run_rest_scan_for_symbols(symbols)
         results.sort(
@@ -337,7 +339,8 @@ async def scan_symbols(symbols: list[str], mcp_client) -> list[ScanResult]:
 
         if item.get("error"):
             logger.warning(
-                f"MCP error for {sym}: {item.get('error')}. Adding to REST fallback scan."
+                f"MCP error for {sym}: {item.get('error')}. "
+                "Adding to REST fallback scan."
             )
             symbols_for_rest_fallback.append(sym)
             continue
@@ -357,7 +360,8 @@ async def scan_symbols(symbols: list[str], mcp_client) -> list[ScanResult]:
 
         if not has_essential_indicators:
             logger.warning(
-                f"MCP returned incomplete indicator/quote data for {sym}. Adding to REST fallback scan."
+                f"MCP returned incomplete indicator/quote data for {sym}. "
+                "Adding to REST fallback scan."
             )
             symbols_for_rest_fallback.append(sym)
             continue
@@ -429,7 +433,9 @@ async def fetch_candles_with_retry(
     backoff_factor: float = 1.5,
     semaphore: Optional[asyncio.Semaphore] = None,
 ) -> List[List[Any]]:
-    """Fetch candles directly from public REST endpoints with retry-on-429 rate limit protection."""
+    """Fetch candles directly from public REST endpoints
+    with retry-on-429 rate limit protection.
+    """
     exchange_name = exchange_name.lower()
     if ":" in symbol:
         symbol = symbol.split(":")[-1]
@@ -505,7 +511,8 @@ async def fetch_candles_with_retry(
                             retry_after = 1.0
                 wait_time = max(retry_after, backoff_factor**retries)
                 logger.warning(
-                    f"Rate limited (429) for {symbol} on {exchange_name}. Waiting {wait_time}s..."
+                    f"Rate limited (429) for {symbol} on {exchange_name}. "
+                    f"Waiting {wait_time}s..."
                 )
                 await asyncio.sleep(wait_time)
                 retries += 1
@@ -595,10 +602,12 @@ async def fetch_candles_with_retry(
             retries += 1
 
     logger.error(
-        f"Failed to fetch candles for {symbol} on {exchange_name} after {max_retries} attempts."
+        f"Failed to fetch candles for {symbol} on {exchange_name} "
+        f"after {max_retries} attempts."
     )
     raise RuntimeError(
-        f"Failed to fetch candles for {symbol} on {exchange_name} after {max_retries} attempts."
+        f"Failed to fetch candles for {symbol} on {exchange_name} "
+        f"after {max_retries} attempts."
     )
 
 
@@ -609,7 +618,9 @@ def _calculate_scan_result(
     btc_closes: Dict[int, float],
     btc_candles: List[List[Any]],
 ) -> ScanResult:
-    """Analyze ohlcv to construct a ScanResult containing Trend Template & VCP scorecards."""
+    """Analyze ohlcv to construct a ScanResult
+    containing Trend Template & VCP scorecards.
+    """
     if not ohlcv or len(ohlcv) < 50:
         return ScanResult(
             symbol=symbol,
@@ -955,7 +966,8 @@ async def scan_all_configured_exchanges() -> List[ScanResult]:
             if tasks:
                 results = list(await asyncio.gather(*tasks))
 
-        # Sort: VCP setups first, then by trend template score desc, then by change_pct desc
+        # Sort: VCP setups first, then by trend template score desc,
+        # then by change_pct desc
         results.sort(
             key=lambda r: (
                 1 if r.vcp and r.vcp.detected else 0,

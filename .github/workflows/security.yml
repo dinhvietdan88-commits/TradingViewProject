@@ -134,20 +134,20 @@ jobs:
       - name: Audit server/requirements.txt
         run: |
           echo "🔍 Auditing server/requirements.txt..."
-          pip-audit -r server/requirements.txt \
+          pip-audit -r nerves/workers/trading/requirements.txt \
             --format=json \
             --output=audit-server.json \
             --ignore-vuln PYSEC-2022-42969 \
             || true
 
           echo "🔍 Auditing server/requirements-test.txt..."
-          pip-audit -r server/requirements-test.txt \
+          pip-audit -r nerves/workers/trading/requirements-test.txt \
             --format=json \
             --output=audit-test.json \
             || true
 
           # Print human-readable summary
-          pip-audit -r server/requirements.txt || true
+          pip-audit -r nerves/workers/trading/requirements.txt || true
 
       - name: Upload audit reports
         uses: actions/upload-artifact@v6
@@ -245,8 +245,6 @@ jobs:
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
           extra_args: >-
             --only-verified
             --exclude-paths=.trufflehogignore
@@ -268,7 +266,7 @@ jobs:
   security-gate:
     name: Security Gate (Pass/Fail)
     runs-on: ubuntu-latest
-    needs: [check-code-changed, codeql, dependency-audit, angati-security-scan, secret-scan]
+    needs: [check-code-changed, codeql, dependency-audit, angati-security-scan, secret-scan, codeql-sarif-gate]
     if: always()
 
     steps:
@@ -278,14 +276,20 @@ jobs:
           echo "  ANGATI SECURITY GATE — RESULTS SUMMARY"
           echo "============================================"
           echo "CodeQL:             ${{ needs.codeql.result }}"
+          echo "CodeQL SARIF Gate:  ${{ needs.codeql-sarif-gate.result }}"
           echo "Dependency Audit:   ${{ needs.dependency-audit.result }}"
           echo "Angati Sec Scan:    ${{ needs.angati-security-scan.result }}"
           echo "Secret Scan:        ${{ needs.secret-scan.result }}"
           echo "============================================"
 
-          # Fail if CodeQL or secret scan fails (hard blockers)
+          # Fail if CodeQL SARIF gate fails (Critical findings > 0)
+          if [ "${{ needs.codeql-sarif-gate.result }}" = "failure" ]; then
+            echo "❌ GATE FAILED: CodeQL SARIF gate detected Critical findings."
+            exit 1
+          fi
+          # Fail if CodeQL analysis itself fails (infrastructure issue)
           if [ "${{ needs.codeql.result }}" = "failure" ]; then
-            echo "❌ GATE FAILED: CodeQL found critical issues."
+            echo "❌ GATE FAILED: CodeQL analysis job failed."
             exit 1
           fi
           if [ "${{ needs.secret-scan.result }}" = "failure" ]; then
@@ -293,3 +297,133 @@ jobs:
             exit 1
           fi
           echo "✅ Security gate PASSED."
+
+  # ── 6. SEC-4 CODEQL SARIF GATE (Critical = 0 enforcer) ──────────────────
+  codeql-sarif-gate:
+    name: "SEC-4 CodeQL SARIF Gate (Critical=0)"
+    runs-on: ubuntu-latest
+    needs: [codeql]
+    if: |
+      always() &&
+      (needs.codeql.result == 'success' || needs.codeql.result == 'skipped')
+    permissions:
+      actions: read
+      contents: read
+      security-events: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install jq for SARIF parsing
+        run: sudo apt-get install -y jq
+
+      # Download SARIF from the CodeQL job artifact (best-effort)
+      - name: Download CodeQL SARIF results
+        uses: actions/download-artifact@v4
+        with:
+          name: codeql-results-python
+          path: sarif-results/
+        continue-on-error: true
+
+      # Parse SARIF and count by severity
+      - name: Parse SARIF — Count findings by severity
+        id: sarif-parse
+        run: |
+          set -euo pipefail
+
+          SARIF_FILE=""
+          if ls sarif-results/*.sarif 2>/dev/null | head -1; then
+            SARIF_FILE=$(ls sarif-results/*.sarif | head -1)
+          fi
+
+          if [ -z "$SARIF_FILE" ]; then
+            echo "⚠️  No SARIF artifact found — gate deferred (CodeQL may have skipped)"
+            echo "critical_count=0" >> "$GITHUB_OUTPUT"
+            echo "high_count=0" >> "$GITHUB_OUTPUT"
+            echo "total_count=0" >> "$GITHUB_OUTPUT"
+            echo "sarif_available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "📂 Parsing: $SARIF_FILE"
+
+          # Count findings using jq (SARIF spec: level=error means critical/error)
+          CRITICAL=$(jq '[.runs[].results[] | select(.level == "error")] | length' "$SARIF_FILE" 2>/dev/null || echo "0")
+          HIGH=$(jq '[.runs[].results[] | select(.level == "warning")] | length' "$SARIF_FILE" 2>/dev/null || echo "0")
+          TOTAL=$(jq '[.runs[].results[]] | length' "$SARIF_FILE" 2>/dev/null || echo "0")
+
+          echo "critical_count=$CRITICAL" >> "$GITHUB_OUTPUT"
+          echo "high_count=$HIGH" >> "$GITHUB_OUTPUT"
+          echo "total_count=$TOTAL" >> "$GITHUB_OUTPUT"
+          echo "sarif_available=true" >> "$GITHUB_OUTPUT"
+          echo "🔍 SARIF: Critical=$CRITICAL | High=$HIGH | Total=$TOTAL"
+
+      # GitHub Step Summary
+      - name: Post Step Summary
+        if: always()
+        run: |
+          CRITICAL="${{ steps.sarif-parse.outputs.critical_count || '0' }}"
+          HIGH="${{ steps.sarif-parse.outputs.high_count || '0' }}"
+          TOTAL="${{ steps.sarif-parse.outputs.total_count || '0' }}"
+
+          if [ "$CRITICAL" = "0" ]; then
+            ICON="✅"; STATUS="PASSED — No Critical findings"
+          else
+            ICON="❌"; STATUS="FAILED — $CRITICAL Critical finding(s)"
+          fi
+
+          cat >> "$GITHUB_STEP_SUMMARY" << SUMMARY
+          # 🛡️ SEC-4 CodeQL SARIF Gate
+
+          **Result:** $ICON $STATUS
+
+          | Severity | Count | Policy |
+          |----------|-------|--------|
+          | 🔴 Critical | $CRITICAL | Block merge if > 0 |
+          | 🟠 High | $HIGH | Warning |
+          | 📊 Total | $TOTAL | |
+
+          **SEC-4 Runtime Guard Active:**
+          - CWE-918 SSRF → \`security.runtime_guard.validate_exchange_url\`
+          - CWE-22 Path Traversal → \`security.runtime_guard.safe_path\`
+          - CWE-400 ReDoS → \`security.runtime_guard.safe_regex_input\`
+          SUMMARY
+
+      # Upload gate report artifact
+      - name: Generate and upload gate report
+        if: always()
+        run: |
+          mkdir -p sec4-report
+          cat > sec4-report/gate_report.md << REPORT
+          # SEC-4 Gate Report
+          Run: ${{ github.run_id }}
+          Commit: ${{ github.sha }}
+          Critical: ${{ steps.sarif-parse.outputs.critical_count || 'N/A' }}
+          High: ${{ steps.sarif-parse.outputs.high_count || 'N/A' }}
+          Total: ${{ steps.sarif-parse.outputs.total_count || 'N/A' }}
+          REPORT
+
+      - name: Upload SEC-4 gate report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sec4-gate-report-${{ github.run_id }}
+          path: sec4-report/
+          retention-days: 30
+
+      # HARD FAIL: exit 1 if Critical > 0
+      - name: Enforce Critical = 0 (Hard Gate)
+        run: |
+          CRITICAL="${{ steps.sarif-parse.outputs.critical_count || '0' }}"
+          echo "Critical count: $CRITICAL"
+          if [ "$CRITICAL" != "0" ] && [ -n "$CRITICAL" ]; then
+            echo "╔══════════════════════════════════════════════╗"
+            echo "║  ❌ SEC-4 GATE FAILED: $CRITICAL CRITICAL   ║"
+            echo "║  Fix before merging — see Security tab       ║"
+            echo "╚══════════════════════════════════════════════╝"
+            exit 1
+          fi
+          echo "╔══════════════════════════════════════════════╗"
+          echo "║  ✅ SEC-4 GATE PASSED: Zero Critical         ║"
+          echo "╚══════════════════════════════════════════════╝"

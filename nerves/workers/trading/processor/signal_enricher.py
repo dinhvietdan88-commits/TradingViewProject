@@ -68,6 +68,13 @@ async def _validate_vision_and_route(
 
         mcp = get_mcp_client()
 
+        try:
+            sl_float = float(sl)
+            tp_float = float(tp)
+        except (ValueError, TypeError):
+            sl_float = None
+            tp_float = None
+
         drawings = [
             {
                 "price": event.price,
@@ -75,23 +82,21 @@ async def _validate_vision_and_route(
                 "color": "#26a69a",
             }
         ]
-        try:
+        if sl_float is not None and tp_float is not None:
             drawings.append(
                 {
-                    "price": float(sl),
-                    "label": f"SL ({float(sl):.2f})",
+                    "price": sl_float,
+                    "label": f"SL ({sl_float:.2f})",
                     "color": "#ef5350",
                 }
             )
             drawings.append(
                 {
-                    "price": float(tp),
-                    "label": f"TP ({float(tp):.2f})",
+                    "price": tp_float,
+                    "label": f"TP ({tp_float:.2f})",
                     "color": "#2962ff",
                 }
             )
-        except (ValueError, TypeError):
-            pass
 
         import re
         from pathlib import Path

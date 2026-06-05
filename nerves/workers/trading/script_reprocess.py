@@ -9,7 +9,7 @@ import sys
 sys.path.append(str(Path(__file__).parent))
 
 import config
-from workers.vps_analyzer import process_signal
+from processor.signal_processor import process_signal
 
 logging.basicConfig(level=logging.INFO)
 

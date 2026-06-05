@@ -79,4 +79,7 @@ angati.exe
 
 # sec-02 Security gate local files
 .codeql/
+
 .secrets.baseline
+nerves/workers/trading/test_trades.log
+*.log

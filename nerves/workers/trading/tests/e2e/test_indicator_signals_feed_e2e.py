@@ -11,7 +11,16 @@ import sys
 from pathlib import Path
 
 # Add project root to sys.path so 'nerves' can be imported in all contexts
-project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+# Find the project root by searching upwards for a directory containing 'nerves'
+current = Path(__file__).resolve()
+project_root = None
+for parent in current.parents:
+    if (parent / "nerves").exists() and (parent / "pyproject.toml").exists():
+        project_root = parent
+        break
+if not project_root:
+    project_root = current.parent.parent.parent.parent.parent.parent
+
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 

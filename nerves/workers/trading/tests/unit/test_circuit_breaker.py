@@ -1,4 +1,5 @@
 import pytest
+import pytest_asyncio
 import aiosqlite
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -8,12 +9,18 @@ import database
 import config
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def isolated_db(tmp_path):
+    """Tao file DB rieng cho moi test, xoa sau khi xong."""
+    db_file = str(tmp_path / "test_cb.db")
+    config.DB_PATH = db_file
+    await database.init_db()
+    yield
+
+
 @pytest.mark.asyncio
 async def test_database_risk_settings_and_logs():
     """Verify database helpers for risk settings and circuit breaker logs."""
-    # Ensure tables are initialized
-    await database.init_db()
-
     # Get settings for non-existent exchange (should return defaults)
     settings = await database.get_risk_settings("non_existent")
     assert settings["exchange"] == "non_existent"
