@@ -17,6 +17,10 @@ on:
         required: false
         default: '7000'
 
+concurrency:
+  group: cache-eviction
+  cancel-in-progress: false  # Eviction must complete to avoid partial deletions
+
 jobs:
   evict-stale-caches:
     name: Evict Stale GHA Caches

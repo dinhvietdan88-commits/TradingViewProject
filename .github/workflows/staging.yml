@@ -10,6 +10,13 @@ on:
         required: false
         default: 'http://localhost:5000'
 
+concurrency:
+  group: staging-smoke-${{ github.ref }}
+  cancel-in-progress: true  # Newer push supersedes pending smoke
+
+permissions:
+  contents: read
+
 jobs:
   # Step 1: Check staging config AND whether code actually changed
   check-config:

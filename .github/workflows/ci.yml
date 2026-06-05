@@ -36,6 +36,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  actions:  read
+
 jobs:
   # ── 0. SMART CHANGE CLASSIFICATION ─────────────────────────────────
   classify:
