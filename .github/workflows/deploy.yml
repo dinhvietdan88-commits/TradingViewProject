@@ -50,11 +50,25 @@ jobs:
         with:
           fetch-depth: 2
 
+      - name: Resolve base SHA for paths-filter
+        id: base_sha
+        run: |
+          # For workflow_run: github.event.before is absent, resolve HEAD~1 to an actual SHA
+          # For push: use github.event.before if valid, else default branch
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            SHA=$(git rev-parse HEAD~1 2>/dev/null || echo "")
+            echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          elif [ -n "${{ github.event.before }}" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            echo "sha=${{ github.event.before }}" >> $GITHUB_OUTPUT
+          else
+            echo "sha=${{ github.event.repository.default_branch }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Check for changes
         id: filter
         uses: dorny/paths-filter@v4
         with:
-          base: ${{ github.event_name == 'workflow_run' && 'HEAD~1' || (github.event.before && github.event.before != '0000000000000000000000000000000000000000' && github.event.before || github.event.repository.default_branch) }}
+          base: ${{ steps.base_sha.outputs.sha }}
           filters: |
             code:
               - 'nerves/workers/trading/**'
