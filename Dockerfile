@@ -36,8 +36,8 @@ LABEL maintainer="PessiloGroup" \
       description="Minervini AI Trading Bot — Multi-stage Split Image"
 RUN groupadd -r trader && useradd -r -g trader -d /app -s /sbin/nologin trader
 WORKDIR /app
-RUN mkdir -p /app/data /app/screenshots /app/logs && \
-    chown -R trader:trader /app
+RUN mkdir -p /app/data /app/screenshots /app/logs /logs && \
+    chown -R trader:trader /app /logs
 ENV HOST=0.0.0.0 \
     DB_PATH=/app/data/trades.db \
     LOG_FILE=/app/logs/trades.log \
