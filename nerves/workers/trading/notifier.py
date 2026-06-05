@@ -5,7 +5,37 @@ import config
 import re
 from typing import Optional
 
+# SEC-4: Import runtime guard for ReDoS prevention
+try:
+    from security.runtime_guard import safe_regex_input
+except ImportError:
+    # Graceful fallback if security module not available
+    def safe_regex_input(
+        text: str, max_len: int = 10000, *, truncate: bool = True
+    ) -> str:  # type: ignore[misc]
+        return text[:max_len] if len(text) > max_len else text
+
+
 log = logging.getLogger(__name__)
+
+# ── SEC-4 R3: Pre-compiled module-level patterns (avoids ReDoS via module cache) ──
+# All patterns are compiled once at import; avoid recompiling inside hot paths.
+_RE_BOLD = re.compile(r"\*\*([^*]{1,2000}?)\*\*")  # **text** -> <b>text</b>
+_RE_STRIKETHROUGH = re.compile(r"~~([^~]{1,2000}?)~~")  # ~~text~~ -> <s>text</s>
+_RE_ITALIC = re.compile(
+    r"(?<!\w)\*(?!\s)([^*]{1,2000}?)(?<!\s)\*(?!\w)"
+)  # *text* -> <i>text</i>
+_RE_CODE_BLOCK = re.compile(
+    r"```(?:[a-zA-Z]{0,20}\n)?([\s\S]{1,5000}?)```"
+)  # ``` blocks
+_RE_CODE_INLINE = re.compile(r"`([^`]{1,500})`")  # `code`
+_RE_HEADING = re.compile(r"^#{1,6}\s+(.{1,500})$", re.MULTILINE)  # # Heading
+_RE_LIST_ITEM = re.compile(r"^[*-]\s+", re.MULTILINE)  # * item / - item
+
+# Maximum input length before applying markdown conversion (ReDoS guard)
+_MAX_TELEGRAM_MSG_LEN = (
+    10_000  # Telegram hard-limits messages to 4096, but we guard at 10K
+)
 
 
 def sanitize_for_telegram_html(text: str) -> str:
@@ -15,6 +45,12 @@ def sanitize_for_telegram_html(text: str) -> str:
     """
     if not text:
         return ""
+
+    # SEC-4 R3: Guard input length before applying backtracking regex patterns
+    # Prevents ReDoS (CWE-400) on adversarial or unexpectedly large inputs.
+    # Truncate to _MAX_TELEGRAM_MSG_LEN (10K) rather than raise, since this is
+    # a best-effort formatting function — data loss is preferable to denial-of-service.
+    text = safe_regex_input(text, max_len=_MAX_TELEGRAM_MSG_LEN, truncate=True)
 
     # First, recursively unescape HTML entities to get raw HTML tags
     # This prevents double-escaping if the AI model already returned escaped HTML tags (like &lt;b&gt;)
@@ -40,30 +76,28 @@ def sanitize_for_telegram_html(text: str) -> str:
         "&lt;/strike&gt;", "</strike>"
     )
 
-    # 2. Convert Bold: **text** -> <b>text</b>
-    text = re.compile(r"\*\*(.*?)\*\*").sub(r"<b>\1</b>", text)
+    # 2. Convert Bold: **text** -> <b>text</b> (SEC-4: use pre-compiled _RE_BOLD)
+    text = _RE_BOLD.sub(r"<b>\1</b>", text)
 
-    # Convert ~~text~~ -> <s>text</s>
-    text = re.compile(r"~~(.*?)~~").sub(r"<s>\1</s>", text)
+    # Convert ~~text~~ -> <s>text</s> (SEC-4: use pre-compiled _RE_STRIKETHROUGH)
+    text = _RE_STRIKETHROUGH.sub(r"<s>\1</s>", text)
 
-    # 3. Convert Italic: *text* -> <i>text</i>
+    # 3. Convert Italic: *text* -> <i>text</i> (SEC-4: use pre-compiled _RE_ITALIC)
     # Note: Using a more restrictive regex for italics to avoid catching lone asterisks or sub-parts of words
-    text = re.compile(r"(?<!\w)\*(?!\s)(.*?)(?<!\s)\*(?!\w)").sub(r"<i>\1</i>", text)
+    text = _RE_ITALIC.sub(r"<i>\1</i>", text)
 
-    # 4. Convert Code Blocks: ```code``` -> <pre>code</pre>
+    # 4. Convert Code Blocks: ```code``` -> <pre>code</pre> (SEC-4: use pre-compiled _RE_CODE_BLOCK)
     # Note: Telegram HTML uses <pre><code>...</code></pre> for full blocks
-    text = re.compile(r"```(?:[a-zA-Z]+\n)?(.*?)```", re.DOTALL).sub(
-        r"<pre>\1</pre>", text
-    )
+    text = _RE_CODE_BLOCK.sub(r"<pre>\1</pre>", text)
 
-    # 5. Convert Monospace: `text` -> <code>text</code>
-    text = re.compile(r"`([^`]+)`").sub(r"<code>\1</code>", text)
+    # 5. Convert Monospace: `text` -> <code>text</code> (SEC-4: use pre-compiled _RE_CODE_INLINE)
+    text = _RE_CODE_INLINE.sub(r"<code>\1</code>", text)
 
-    # 6. Convert Headings: # Heading -> <b>Heading</b>
-    text = re.compile(r"^#+\s+(.*)$", re.MULTILINE).sub(r"<b>\1</b>", text)
+    # 6. Convert Headings: # Heading -> <b>Heading</b> (SEC-4: use pre-compiled _RE_HEADING)
+    text = _RE_HEADING.sub(r"<b>\1</b>", text)
 
-    # 7. Convert Lists: * item or - item -> • item
-    text = re.compile(r"^[*-]\s+", re.MULTILINE).sub(r"• ", text)
+    # 7. Convert Lists: * item or - item -> • item (SEC-4: use pre-compiled _RE_LIST_ITEM)
+    text = _RE_LIST_ITEM.sub(r"• ", text)
 
     return text
 

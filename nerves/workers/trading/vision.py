@@ -25,6 +25,43 @@ GENAI_AVAILABLE = True
 
 import config
 
+# SEC-4: Runtime guard for path traversal prevention (CWE-22)
+try:
+    from security.runtime_guard import (
+        safe_path as _safe_path,
+        SecurityError as _SecurityError,
+    )
+
+    # Allowed base directories for vision image files
+    _VISION_ALLOWED_BASES = [
+        Path(config.SCREENSHOTS_DIR)
+        if hasattr(config, "SCREENSHOTS_DIR")
+        else Path.cwd() / "screenshots",
+        Path.cwd() / "logs",
+        Path.cwd() / "captures",
+        Path.cwd(),  # fallback: any path under cwd
+    ]
+except ImportError:
+
+    def _safe_path(p, base_dir, **kwargs):  # type: ignore[misc]
+        return Path(p).resolve()
+
+    class _SecurityError(ValueError):
+        pass  # type: ignore[misc]
+
+    _VISION_ALLOWED_BASES = [Path.cwd()]
+
+
+def _validate_image_path(raw_path: str) -> Optional[Path]:
+    """SEC-4 R2: Validate and resolve an image path against allowed base directories."""
+    for base in _VISION_ALLOWED_BASES:
+        try:
+            resolved = _safe_path(raw_path, base, must_exist=True)
+            return resolved
+        except (_SecurityError, FileNotFoundError, Exception):
+            continue
+    return None  # path not allowed or doesn't exist
+
 
 # ── Vision Analysis Prompt ────────────────────────────────────────────────
 
@@ -918,8 +955,19 @@ async def analyze_chart_vision_mtf(
                 result["error"] = "Anthropic API not available or configured"
                 return result
 
-    # Check images exist
-    valid_paths = [Path(p) for p in image_paths if Path(p).exists()]
+    # SEC-4 R2: Use _validate_image_path() to prevent path traversal (CWE-22).
+    # The image_paths list comes from external callers (e.g. main.py passing screenshot paths).
+    # We must canonicalize and validate each path before reading or passing to the AI API.
+    valid_paths = []
+    for p in image_paths:
+        validated = _validate_image_path(str(p))
+        if validated is not None:
+            valid_paths.append(validated)
+        else:
+            log.warning(
+                "[SEC-4] Rejected image path (outside allowed dirs or not found): %r",
+                str(p)[:200],
+            )
     if not valid_paths:
         log.warning(
             f"No valid images found from paths: {image_paths}. Triggering Tier 3 SDK Fallback directly..."
