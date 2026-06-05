@@ -1816,6 +1816,29 @@ async def system_status_endpoint():
         except Exception as e:
             vbs_status = {"enabled": True, "connected": False, "error": str(e)}
 
+    try:
+        regime = await database.get_setting("market_regime", "TRENDING")
+    except Exception:
+        regime = "TRENDING"
+
+    try:
+        safe_mode_str = await database.get_setting("safe_mode_active", "false")
+        safe_mode_active = (safe_mode_str.lower() == "true")
+    except Exception:
+        safe_mode_active = False
+
+    try:
+        dd_str = await database.get_setting("safe_mode_drawdown", "0.0")
+        safe_mode_drawdown = float(dd_str)
+    except Exception:
+        safe_mode_drawdown = 0.0
+
+    protection = {
+        "market_regime": regime,
+        "safe_mode_active": safe_mode_active,
+        "safe_mode_drawdown": safe_mode_drawdown,
+    }
+
     return {
         "server": {
             "version": "7.6",
@@ -1841,6 +1864,7 @@ async def system_status_endpoint():
         "test_runner_status": test_runner_status,
         "last_test_run": last_test_run,
         "vbs": vbs_status,
+        "protection": protection,
     }
 
 
@@ -1973,6 +1997,14 @@ async def get_risk_status():
     """Get dynamic status and circuit breaker state of security gates."""
     try:
         return await database.get_all_risk_statuses()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/risk/logs")
+async def get_risk_logs(limit: int = Query(10, ge=1, le=50)):
+    """Get recent circuit breaker logs."""
+    try:
+        return await database.get_recent_circuit_breaker_logs(limit)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

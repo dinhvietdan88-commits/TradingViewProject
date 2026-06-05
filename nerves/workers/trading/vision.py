@@ -115,15 +115,35 @@ Trả lời bằng Tiếng Việt ngắn gọn, format Telegram-friendly (sử d
 Bắt đầu bằng: 👁️ MULTI-TIMEFRAME ANALYSIS — {symbol}"""
 
 
-def _encode_image(image_path: Path) -> Optional[str]:
+from typing import Tuple
 
-    """Encode image to base64 for Claude Vision API."""
+def _encode_image(image_path: Path, max_width: int = 1024) -> Tuple[Optional[str], str]:
+    """Encode image to base64, compressing/resizing to WebP if PIL is available."""
+    mime_type = _get_media_type(image_path)
     try:
-        with open(image_path, "rb") as f:
-            return base64.b64encode(f.read()).decode("utf-8")
+        from PIL import Image
+        import io
+        
+        with Image.open(image_path) as img:
+            # Resize if too large
+            if img.width > max_width:
+                height = int((max_width / img.width) * img.height)
+                img = img.resize((max_width, height), Image.Resampling.LANCZOS)
+            
+            # Save to bytes in WebP format
+            output = io.BytesIO()
+            img.save(output, format="WEBP", quality=80)
+            base64_str = base64.b64encode(output.getvalue()).decode("utf-8")
+            return base64_str, "image/webp"
     except Exception as e:
-        log.error(f"Failed to encode image {image_path}: {e}")
-        return None
+        log.warning(f"PIL compression failed for {image_path}, falling back to raw: {e}")
+        try:
+            with open(image_path, "rb") as f:
+                base64_str = base64.b64encode(f.read()).decode("utf-8")
+                return base64_str, mime_type
+        except Exception as read_err:
+            log.error(f"Failed to read image file {image_path}: {read_err}")
+            return None, mime_type
 
 
 def _get_media_type(image_path: Path) -> str:
@@ -458,13 +478,12 @@ async def analyze_chart_vision(
         if provider == "anthropic":
             try:
                 # Encode image for Anthropic
-                image_data = _encode_image(image_path)
+                image_data, mime_type = _encode_image(image_path)
                 if not image_data:
                     raise ValueError("Failed to encode image")
 
                 import anthropic
                 client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
-                mime_type = _get_media_type(image_path)
                 message = client.messages.create(
                     model=model,
                     max_tokens=800,
@@ -520,12 +539,11 @@ async def analyze_chart_vision(
                     log.warning(f"Vision: Claude CLI fail ({cli_err}). Fallback SDK.")
                     provider = "anthropic"  # try Anthropic SDK
                     # try Anthropic SDK logic
-                    image_data = _encode_image(image_path)
+                    image_data, mime_type = _encode_image(image_path)
                     if not image_data:
                         raise ValueError("Failed to encode image")
                     import anthropic
                     client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
-                    mime_type = _get_media_type(image_path)
                     message = client.messages.create(
                         model=model,
                         max_tokens=800,
@@ -839,13 +857,13 @@ async def analyze_chart_vision_mtf(
             try:
                 content_blocks = []
                 for path in valid_paths:
-                    image_data = _encode_image(path)
+                    image_data, mime_type = _encode_image(path)
                     if image_data:
                         content_blocks.append({
                             "type": "image",
                             "source": {
                                 "type": "base64",
-                                "media_type": _get_media_type(path),
+                                "media_type": mime_type,
                                 "data": image_data,
                             },
                         })

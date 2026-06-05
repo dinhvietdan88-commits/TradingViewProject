@@ -53,6 +53,7 @@ from core.events import (
     TradeApprovalTimeout,
     IndicatorSignalReceived,
     IndicatorSignalRejected,
+    CircuitBreakerTripped,
 )
 
 log = logging.getLogger(__name__)
@@ -830,3 +831,61 @@ async def handle_approval_timeout(event: TradeApprovalTimeout) -> None:
         )
     else:
         log.debug(f"NotificationHub: Timeout for #{event.signal_id} but no pending trade found (already processed).")
+
+
+# ═══════════════════════════════════════════════════════════════
+# HANDLER: CircuitBreakerTripped → Emergency Telegram Notification
+# ═══════════════════════════════════════════════════════════════
+
+@_default_bus.on(CircuitBreakerTripped)
+async def notify_circuit_breaker_tripped(event: CircuitBreakerTripped) -> None:
+    """
+    Format and send an emergency Telegram alert when a circuit breaker trips to OPEN.
+    Includes the inline buttons [Reset Closed] and [Bypass 1h] to let the admin
+    approve/reset directly from Telegram.
+    """
+    exchange = event.exchange.upper()
+    reason = event.reason
+    prev_state = event.prev_state
+
+    msg = (
+        f"🚨 **CẢNH BÁO KHẨN CẤP: BỘ NGẮT MẠCH BỊ KÍCH HOẠT (OPEN)**\n\n"
+        f"🏦 Sàn giao dịch: <code>{exchange}</code>\n"
+        f"📌 Mã giao dịch: <code>{event.symbol or 'N/A'}</code>\n"
+        f"📉 Trạng thái trước: <code>{prev_state}</code>\n"
+        f"⚠️ Lý do: <b>{reason}</b>\n\n"
+        f"<i>Hệ thống đã chặn toàn bộ lệnh giao dịch trên sàn này và chuyển sang các sàn Fallback dự phòng.</i>"
+    )
+
+    log.info(f"NotificationHub: Circuit Breaker Tripped for {exchange} to OPEN. Reason: {reason}")
+
+    # Render chart if possible
+    chart_path = None
+    if event.symbol:
+        try:
+            dummy_analysis = AnalysisComplete(symbol=event.symbol)
+            chart_path = await _render_chart_for_event(dummy_analysis)
+        except Exception as chart_err:
+            log.warning(f"NotificationHub: Failed to render chart for circuit breaker trip: {chart_err}")
+
+    try:
+        import telegram_bot
+        sent_pairs = await telegram_bot.send_circuit_breaker_alert(
+            exchange=event.exchange,
+            symbol=event.symbol,
+            message=msg,
+            photo_path=chart_path,
+        )
+        if not sent_pairs:
+            # Fallback to normal notify if bot not running
+            await notifier.notify_all(msg + "\n\n*(Bot chưa bật, không thể dùng nút bấm tương tác)*")
+            if chart_path:
+                import asyncio
+                await asyncio.to_thread(notifier.send_telegram_photo, chart_path, f"🚨 {exchange} Circuit Breaker Tripped")
+    except Exception as e:
+        log.error(f"NotificationHub: Failed to trigger interactive circuit breaker message: {e}")
+        await notifier.notify_all(msg + f"\n\n*(Lỗi tương tác: {e})*")
+        if chart_path:
+            import asyncio
+            await asyncio.to_thread(notifier.send_telegram_photo, chart_path, f"🚨 {exchange} Circuit Breaker Tripped")
+
