@@ -54,7 +54,7 @@ jobs:
         id: filter
         uses: dorny/paths-filter@v4
         with:
-          base: ${{ github.event_name != 'pull_request' && (github.event.before && github.event.before != '0000000000000000000000000000000000000000' && github.event.before || github.event.repository.default_branch) || '' }}
+          base: ${{ github.event_name == 'workflow_run' && 'HEAD~1' || (github.event.before && github.event.before != '0000000000000000000000000000000000000000' && github.event.before || github.event.repository.default_branch) }}
           filters: |
             code:
               - 'nerves/workers/trading/**'
@@ -331,8 +331,8 @@ jobs:
       - name: Connect to Tailscale VPN
         uses: tailscale/github-action@v4
         with:
-          oauth-client-id:     ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-client-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret:    ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci-deploy
 
       - name: Setup SSH Agent
@@ -501,8 +501,8 @@ jobs:
       - name: Connect to Tailscale VPN
         uses: tailscale/github-action@v4
         with:
-          oauth-client-id:     ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-client-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret:    ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci-deploy
 
       - name: Setup SSH Agent
@@ -771,8 +771,8 @@ jobs:
       - name: Connect to Tailscale VPN
         uses: tailscale/github-action@v4
         with:
-          oauth-client-id:     ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-client-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret:    ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci-deploy
 
       - name: Setup SSH Agent
