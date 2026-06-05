@@ -78,3 +78,17 @@ uv run python scripts/verify_server_c_gaps.py
 | Regression sau fix | 37 | ✅ 37 PASSED |
 | Feature test (indicator chart) | 2 | ✅ 2 PASSED |
 | **Tổng** | **593** | **✅ 0 failures** |
+
+---
+
+## 🖼️ Tương Thích Định Dạng Ảnh (WebP Fallback)
+
+Để tối ưu dung lượng lưu trữ trên đĩa, hệ thống visual pipeline đã chuyển sang sử dụng định dạng ảnh **WebP**. Tuy nhiên, do Telegram Bot API (`sendPhoto`) không hỗ trợ tải lên trực tiếp tệp tin `.webp`, hệ thống đã phát triển thêm cơ chế chuyển đổi tự động:
+
+1. **Nhận dạng (Detection):**
+   - Hàm `prepare_telegram_photo(photo_path)` trong `notifier.py` kiểm tra phần mở rộng tệp tin (`.webp`) hoặc dữ liệu byte đầu (magic bytes `RIFF` và `WEBP`).
+2. **Chuyển đổi in-memory (In-memory Conversion):**
+   - Nếu phát hiện WebP, thư viện PIL (Pillow) được gọi để giải nén hình ảnh và lưu lại dưới dạng **PNG** vào luồng bộ nhớ `io.BytesIO()`.
+   - Thuộc tính `.name` của luồng bộ nhớ được đặt thành `.png` tương ứng để thư viện tải lên của Telegram nhận diện đúng kiểu multipart form-data.
+3. **Hiệu năng & Tài nguyên:**
+   - Hoàn toàn xử lý trên RAM, không ghi tệp đệm xuống ổ đĩa nhằm hạn chế side-effects lên đĩa cứng và tăng tốc độ xử lý.

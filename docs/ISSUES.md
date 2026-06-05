@@ -151,3 +151,9 @@ Resolved 11 issues in a single /goal deep-search session.
 * **Fix:** Replaced with `Path.parts` set membership check (`SKIP_PARTS = {'.venv', 'venv', 'site-packages', ...}`).
 * **Commit:** `5ab7b4b`
 * **Status:** FIXED ✅
+
+### #73 — Telegram Chart Delivery Failure (WebP Compatibility)
+* **Files:** `nerves/workers/trading/notifier.py`, `nerves/workers/trading/telegram_bot.py`
+* **Root cause:** Telegram Bot API does not natively support WebP images via the `sendPhoto` endpoint (returns `400 Bad Request`). Upgrading visual pipeline output to WebP caused Telegram chart delivery to fail.
+* **Fix:** Implemented `prepare_telegram_photo` utility in `notifier.py` to detect WebP files (by magic bytes or extension) and convert them to PNG in-memory using PIL (Pillow) before uploading to Telegram.
+* **Status:** FIXED ✅
