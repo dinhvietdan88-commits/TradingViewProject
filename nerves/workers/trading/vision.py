@@ -120,11 +120,44 @@ from typing import Tuple
 def _encode_image(image_path: Path, max_width: int = 1024) -> Tuple[Optional[str], str]:
     """Encode image to base64, compressing/resizing to WebP if PIL is available."""
     mime_type = _get_media_type(image_path)
+    
+    # ── PATH & LOG INJECTION SANITIZATION (CodeQL CWE-22, CWE-117) ──
+    import os
+    import tempfile
+    
+    # Resolve the path to absolute
+    resolved_path = image_path.resolve()
+    
+    # Define allowed directories (Workspace, Temp, or User Home)
+    allowed_roots = [
+        Path(tempfile.gettempdir()).resolve(),
+        Path(os.path.expanduser("~")).resolve(),
+        Path(__file__).parent.parent.parent.resolve()
+    ]
+    
+    is_safe = False
+    for root in allowed_roots:
+        try:
+            if resolved_path.is_relative_to(root):
+                is_safe = True
+                break
+        except (ValueError, AttributeError):
+            if str(resolved_path).startswith(str(root)):
+                is_safe = True
+                break
+                
+    if not is_safe:
+        clean_path_log = str(resolved_path).replace('\r', '').replace('\n', '')
+        log.error(f"Security Rejection: Path is outside allowed directories: {clean_path_log}")
+        return None, mime_type
+
+    clean_path_str = str(resolved_path).replace('\r', '').replace('\n', '')
+
     try:
         from PIL import Image
         import io
         
-        with Image.open(image_path) as img:
+        with Image.open(resolved_path) as img:
             # Resize if too large
             if img.width > max_width:
                 height = int((max_width / img.width) * img.height)
@@ -136,13 +169,13 @@ def _encode_image(image_path: Path, max_width: int = 1024) -> Tuple[Optional[str
             base64_str = base64.b64encode(output.getvalue()).decode("utf-8")
             return base64_str, "image/webp"
     except Exception as e:
-        log.warning(f"PIL compression failed for {image_path}, falling back to raw: {e}")
+        log.warning(f"PIL compression failed for {clean_path_str}, falling back to raw: {e}")
         try:
-            with open(image_path, "rb") as f:
+            with open(resolved_path, "rb") as f:
                 base64_str = base64.b64encode(f.read()).decode("utf-8")
                 return base64_str, mime_type
         except Exception as read_err:
-            log.error(f"Failed to read image file {image_path}: {read_err}")
+            log.error(f"Failed to read image file {clean_path_str}: {read_err}")
             return None, mime_type
 
 
