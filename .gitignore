@@ -79,4 +79,3 @@ angati.exe
 
 # sec-02 Security gate local files
 .codeql/
-.secrets.baseline

@@ -1,20 +1,43 @@
 {
-  "warnings": [],
+  "warnings": [
+    {
+      "file": ".secrets.baseline",
+      "reason": "File name matches sensitive patterns (.env, keys, credentials)."
+    }
+  ],
   "groups": [
     {
-      "scope": "ci",
-      "type": "ci",
-      "subject": "ci: patch workflows for Node.js 24 and fix security scan issues",
+      "scope": "core",
+      "type": "chore",
+      "subject": "update .gitignore and 3 other files",
       "files": [
-        ".github/workflows/_ci-gate.yml",
-        ".github/workflows/automation.yml",
-        ".github/workflows/ci.yml",
-        ".github/workflows/nightly.yml",
-        ".github/workflows/security.yml",
-        ".github/workflows/staging.yml",
-        ".trufflehogignore",
-        "nerves/workers/trading/vision.py",
-        "proposal.json"
+        ".gitignore",
+        ".pre-commit-config.yaml",
+        "proposal.json",
+        ".secrets.baseline"
+      ]
+    },
+    {
+      "scope": "workers",
+      "type": "feat",
+      "subject": "update analysis.py and 3 other files",
+      "files": [
+        "nerves/workers/trading/analysis.py",
+        "nerves/workers/trading/notifier.py",
+        "nerves/workers/trading/processor/signal_enricher.py",
+        "nerves/workers/trading/telegram_bot.py"
+      ]
+    },
+    {
+      "scope": "test",
+      "type": "test",
+      "subject": "update test_trades.log and 4 other files",
+      "files": [
+        "nerves/workers/trading/test_trades.log",
+        "nerves/workers/trading/tests/e2e/test_indicator_signals_feed_e2e.py",
+        "nerves/workers/trading/tests/unit/test_autotest_watcher_adversarial.py",
+        "nerves/workers/trading/tests/unit/test_circuit_breaker.py",
+        "nerves/workers/trading/tests/unit/test_webp_fallback.py"
       ]
     }
   ]

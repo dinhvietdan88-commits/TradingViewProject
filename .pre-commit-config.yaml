@@ -14,7 +14,7 @@ repos:
       # Lint: catches E/W/F/S/B errors before they reach CI
       - id: ruff
         name: "🔍 Ruff Lint (E/W/F/S/B)"
-        args: [check, --fix, --exit-non-zero-on-fix]
+        args: [--fix, --exit-non-zero-on-fix]
         types_or: [python, pyi]
 
       # Format: consistent code style
