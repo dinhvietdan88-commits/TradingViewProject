@@ -288,7 +288,7 @@ async def test_data_facade_get_recent_trades_limit():
         mock_connect.return_value = mock_db
 
         with patch("config.DB_PATH", ":memory:"):
-            _trades = await facade.get_recent_trades(limit=100)  # noqa: F841 — result unused, testing execute args
+            await facade.get_recent_trades(limit=100)
 
         # fetchall called → execute was called with limit <= 50
         call_args = mock_db.execute.call_args
@@ -334,7 +334,7 @@ async def test_exchange_facade_get_open_positions_empty_registry():
 @pytest.mark.asyncio
 async def test_send_circuit_breaker_alert_broadcasts():
     """send_circuit_breaker_alert should send to all TELEGRAM_CHAT_IDS and return tuples."""
-    import telegram_bot  # module-level access needed for _bot_app; other tests use from-import for classes
+    from telegram_bot import send_circuit_breaker_alert
     from telegram import InlineKeyboardMarkup
 
     mock_msg = MagicMock()
@@ -345,30 +345,26 @@ async def test_send_circuit_breaker_alert_broadcasts():
     mock_app = MagicMock()
     mock_app.bot = mock_bot
 
-    original = telegram_bot._bot_app
-    try:
-        telegram_bot._bot_app = mock_app
+    with patch("telegram_bot._bot_app", mock_app):
         with patch("config.TELEGRAM_CHAT_IDS", ["555", "777"]):
             with patch("notifier.sanitize_for_telegram_html", side_effect=lambda x: x):
-                results = await telegram_bot.send_circuit_breaker_alert(
+                results = await send_circuit_breaker_alert(
                     exchange="weex",
                     symbol="BTCUSDT",
                     message="circuit breaker triggered"
                 )
-        
+
         assert isinstance(results, list)
         assert len(results) == 2
         assert results[0] == (555, 101)
         assert results[1] == (777, 101)
-        
+
         # Verify that send_message was called with correct markup and text
         mock_bot.send_message.assert_called()
         call_args = mock_bot.send_message.call_args[1]
         assert call_args["text"] == "circuit breaker triggered"
         assert call_args["parse_mode"] == "HTML"
         assert isinstance(call_args["reply_markup"], InlineKeyboardMarkup)
-    finally:
-        telegram_bot._bot_app = original
 
 
 @pytest.mark.asyncio

@@ -103,18 +103,21 @@ Bắt đầu bằng: 👁️ MULTI-TIMEFRAME ANALYSIS — {symbol}"""
 
 
 
-def _encode_image(image_path: Path, max_width: int = 1024) -> Tuple[Optional[str], str]:
-    """Encode image to base64, compressing/resizing to WebP if PIL is available."""
-    mime_type = _get_media_type(image_path)
+def _validate_and_read_image(image_path: Path) -> Optional[bytes]:
+    """Validate that image_path is within allowed dirs, then read and return bytes.
 
-    # ── PATH & LOG INJECTION SANITIZATION (CodeQL CWE-22, CWE-117) ──
+    Returns file content bytes if safe, or None if the path is rejected.
+    This is a dedicated validation+read function so that file I/O only
+    happens AFTER the path has been fully validated. CodeQL sees the
+    ``open()`` call guarded by ``startswith()`` in the same scope.
+    """
     import os
     import tempfile
 
-    # Resolve user-provided path to absolute canonical string
-    resolved_str = os.path.realpath(str(image_path))
+    # Resolve and normalize the user-supplied path
+    abs_path = os.path.realpath(os.path.normpath(str(image_path)))
 
-    # Define allowed root directories (Workspace, Temp, User Home)
+    # Allowed roots (all fully resolved at module-load time)
     allowed_roots = [
         os.path.realpath(tempfile.gettempdir()),
         os.path.realpath(os.path.expanduser("~")),
@@ -123,67 +126,66 @@ def _encode_image(image_path: Path, max_width: int = 1024) -> Tuple[Optional[str
         ),
     ]
 
-    # Validate: the resolved path MUST fall under an allowed root
-    matched_root = None
+    # Validate: resolved path MUST be under an allowed root
+    safe = False
     for root in allowed_roots:
-        # Ensure root ends with separator for prefix-safety
-        prefix = root if root.endswith(os.sep) else root + os.sep
-        if resolved_str == root or resolved_str.startswith(prefix):
-            matched_root = root
+        root_prefix = root if root.endswith(os.sep) else root + os.sep
+        if abs_path == root or abs_path.startswith(root_prefix):
+            safe = True
             break
 
-    if matched_root is None:
-        sanitized_log = resolved_str.replace("\r", "").replace("\n", "")
+    if not safe:
+        sanitized = abs_path.replace("\r", "").replace("\n", "")
         log.error(
             "Security Rejection: Path is outside allowed "
-            f"directories: {sanitized_log}"
+            f"directories: {sanitized}"
         )
-        return None, mime_type
+        return None
 
-    # ── TAINT-BREAK: rebuild path from safe root + validated relative ──
-    # This breaks the CodeQL data-flow from user input to open().
-    rel = os.path.relpath(resolved_str, matched_root)
-    # Guard against path traversal components in the relative path
-    rel_parts = rel.replace("\\", "/").split("/")
-    if ".." in rel_parts:
-        sanitized_log = resolved_str.replace("\r", "").replace("\n", "")
-        log.error(
-            "Security Rejection: Path traversal "
-            f"detected: {sanitized_log}"
-        )
+    # Path is validated — read the file content
+    try:
+        with open(abs_path, "rb") as fh:  # abs_path passed startswith gate
+            return fh.read()
+    except OSError as exc:
+        sanitized = abs_path.replace("\r", "").replace("\n", "")
+        log.error(f"Failed to read image file {sanitized}: {exc}")
+        return None
+
+
+def _encode_image(
+    image_path: Path, max_width: int = 1024
+) -> Tuple[Optional[str], str]:
+    """Encode image to base64, compressing/resizing to WebP if PIL is available."""
+    mime_type = _get_media_type(image_path)
+
+    # ── SECURE FILE READ (CodeQL CWE-22 safe) ──
+    raw_bytes = _validate_and_read_image(image_path)
+    if raw_bytes is None:
         return None, mime_type
-    safe_path = os.path.join(matched_root, rel)  # known-safe construction
-    clean_path_str = safe_path.replace("\r", "").replace("\n", "")
 
     try:
         from PIL import Image
         import io
 
-        with Image.open(safe_path) as img:
+        with Image.open(io.BytesIO(raw_bytes)) as img:
             # Resize if too large
             if img.width > max_width:
                 height = int((max_width / img.width) * img.height)
-                img = img.resize((max_width, height), Image.Resampling.LANCZOS)
+                img = img.resize(
+                    (max_width, height), Image.Resampling.LANCZOS
+                )
 
             # Save to bytes in WebP format
             output = io.BytesIO()
             img.save(output, format="WEBP", quality=80)
-            base64_str = base64.b64encode(output.getvalue()).decode("utf-8")
+            base64_str = base64.b64encode(
+                output.getvalue()
+            ).decode("utf-8")
             return base64_str, "image/webp"
     except Exception as e:
-        log.warning(
-            f"PIL compression failed for {clean_path_str}, "
-            f"falling back to raw: {e}"
-        )
-        try:
-            with open(safe_path, "rb") as f:
-                base64_str = base64.b64encode(f.read()).decode("utf-8")
-                return base64_str, mime_type
-        except Exception as read_err:
-            log.error(
-                f"Failed to read image file {clean_path_str}: {read_err}"
-            )
-            return None, mime_type
+        log.warning(f"PIL compression failed, falling back to raw: {e}")
+        base64_str = base64.b64encode(raw_bytes).decode("utf-8")
+        return base64_str, mime_type
 
 
 def _get_media_type(image_path: Path) -> str:

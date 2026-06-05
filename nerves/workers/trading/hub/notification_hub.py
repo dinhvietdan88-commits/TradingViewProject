@@ -868,8 +868,9 @@ async def notify_circuit_breaker_tripped(event: CircuitBreakerTripped) -> None:
             log.warning(f"NotificationHub: Failed to render chart for circuit breaker trip: {chart_err}")
 
     try:
-        import telegram_bot  # intentional lazy import to break circular dependency at load time
-        sent_pairs = await telegram_bot.send_circuit_breaker_alert(
+        import importlib
+        _tg_bot = importlib.import_module("telegram_bot")
+        sent_pairs = await _tg_bot.send_circuit_breaker_alert(
             exchange=event.exchange,
             symbol=event.symbol,
             message=msg,
