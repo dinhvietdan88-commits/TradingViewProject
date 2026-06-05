@@ -20,11 +20,12 @@ trading_dir = Path(__file__).resolve().parent.parent.parent
 if str(trading_dir) not in sys.path:
     sys.path.insert(0, str(trading_dir))
 
-import pytest
-import asyncio
-from unittest.mock import AsyncMock
+import pytest  # noqa: E402
+import asyncio  # noqa: E402
+from unittest.mock import AsyncMock  # noqa: E402
 
 # Explicitly import persistence module to register the EventBus handler in tests
+import data.indicator_persistence  # noqa: F401, E402
 
 
 @pytest.mark.asyncio
