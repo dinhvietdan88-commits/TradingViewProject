@@ -174,7 +174,10 @@ def score_trend_template(
     # Summary
     passed = [k for k, v in criteria.items() if v is True]
     failed = [k for k, v in criteria.items() if v is False]
-    summary = f"Score {score}/8 — {stage}. Regime: {macro_regime}. ✅ {len(passed)} passed, ❌ {len(failed)} failed"
+    summary = (
+        f"Score {score}/8 — {stage}. Regime: {macro_regime}. "
+        f"✅ {len(passed)} passed, ❌ {len(failed)} failed"
+    )
 
     return TrendTemplateResult(
         score=score,
@@ -217,9 +220,15 @@ def detect_vcp(
     pivot_level = round(high * 1.005, 2) if detected else None
 
     if detected and near_high:
-        note = f"VCP xác nhận: vol={volume_ratio:.0%} avg, range={range_ratio:.0%} ATR — gần 52w high ⭐ WATCH"
+        note = (
+            f"VCP xác nhận: vol={volume_ratio:.0%} avg, "
+            f"range={range_ratio:.0%} ATR — gần 52w high ⭐ WATCH"
+        )
     elif detected:
-        note = f"VCP contraction: vol={volume_ratio:.0%} avg, range={range_ratio:.0%} ATR"
+        note = (
+            f"VCP contraction: vol={volume_ratio:.0%} avg, "
+            f"range={range_ratio:.0%} ATR"
+        )
     elif vol_contracting:
         note = f"Volume co lại ({volume_ratio:.0%} avg) nhưng range chưa hẹp"
     elif range_contracting:
@@ -246,24 +255,39 @@ async def _run_rest_scan_for_symbols(symbols: list[str]) -> list[ScanResult]:
     
     async with aiohttp.ClientSession() as session:
         btc_benchmarks = {}
-        
+
         # Sequentially pre-fetch BTC benchmarks to avoid Thundering Herd
-        unique_eids = set("weex" if sym.endswith("_UMCBL") else "binance" for sym in symbols)
+        unique_eids = {
+            "weex" if sym.endswith("_UMCBL") else "binance"
+            for sym in symbols
+        }
         for eid in unique_eids:
             btc_symbol = "BTCUSDT_UMCBL" if eid == "weex" else "BTCUSDT"
             try:
-                btc_candles = await fetch_candles_with_retry(session, eid, btc_symbol, limit=365, semaphore=semaphore)
-                btc_closes = {c[0]: c[4] for c in btc_candles} if btc_candles else {}
+                btc_candles = await fetch_candles_with_retry(
+                    session, eid, btc_symbol,
+                    limit=365, semaphore=semaphore,
+                )
+                btc_closes = (
+                    {c[0]: c[4] for c in btc_candles}
+                    if btc_candles else {}
+                )
                 btc_benchmarks[eid] = (btc_candles, btc_closes)
             except Exception as ex:
-                logger.warning(f"Could not fetch BTC benchmark for exchange {eid}: {ex}")
+                logger.warning(
+                    f"Could not fetch BTC benchmark "
+                    f"for exchange {eid}: {ex}"
+                )
                 btc_benchmarks[eid] = ([], {})
 
         tasks = []
         for sym in symbols:
             eid = "weex" if sym.endswith("_UMCBL") else "binance"
             btc_candles, btc_closes = btc_benchmarks[eid]
-            tasks.append(scan_single_symbol_rest(session, eid, sym, btc_closes, btc_candles, semaphore))
+            tasks.append(scan_single_symbol_rest(
+                session, eid, sym,
+                btc_closes, btc_candles, semaphore,
+            ))
         
         results = await asyncio.gather(*tasks)
         return [r for r in results if r is not None]
