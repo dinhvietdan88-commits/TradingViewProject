@@ -252,7 +252,7 @@ async def _run_rest_scan_for_symbols(symbols: list[str]) -> list[ScanResult]:
         return []
     logger.info(f"Performing REST scan for symbols: {symbols}...")
     semaphore = asyncio.Semaphore(15)
-    
+
     async with aiohttp.ClientSession() as session:
         btc_benchmarks = {}
 
@@ -288,7 +288,7 @@ async def _run_rest_scan_for_symbols(symbols: list[str]) -> list[ScanResult]:
                 session, eid, sym,
                 btc_closes, btc_candles, semaphore,
             ))
-        
+
         results = await asyncio.gather(*tasks)
         return [r for r in results if r is not None]
 
@@ -301,7 +301,7 @@ async def scan_symbols(symbols: list[str], mcp_client) -> list[ScanResult]:
     """
     raw_data = None
     mcp_healthy = False
-    
+
     if mcp_client is not None:
         try:
             health = await mcp_client.health_check()
@@ -421,10 +421,10 @@ async def fetch_candles_with_retry(
     exchange_name = exchange_name.lower()
     if ":" in symbol:
         symbol = symbol.split(":")[-1]
-    
+
     # Map standard timeframes to exchange standard
     bybit_tf_map = {"1d": "D", "4h": "240", "1h": "60"}
-    
+
     # 1. Determine URL and params based on exchange
     if exchange_name == "weex":
         clean_symbol = symbol.upper().replace("/", "").replace("-", "").replace("_UMCBL", "").lower()
@@ -699,7 +699,7 @@ async def scan_symbol_multi_timeframe(
     """Scan 1D, 4H, and 1H timeframes for a symbol, verifying trend alignment."""
     timeframes = ["1d", "4h", "1h"]
     scans = {}
-    
+
     btc_symbol = "BTCUSDT_UMCBL" if exchange_name == "weex" else "BTCUSDT"
 
     async def fetch_tf(tf):
@@ -713,7 +713,7 @@ async def scan_symbol_multi_timeframe(
             except Exception:
                 btc_candles = []
                 btc_closes = {}
-            
+
             # Analyze ohlcv
             result = _calculate_scan_result(ohlcv, exchange_name, symbol, btc_closes, btc_candles)
             return tf, result
@@ -739,11 +739,11 @@ async def scan_symbol_multi_timeframe(
 
     aligned_long = False
     aligned_short = False
-    
+
     scan_1d = scans.get("1d")
     scan_4h = scans.get("4h")
     scan_1h = scans.get("1h")
-    
+
     if scan_1d and scan_4h and scan_1h and not scan_1d.error and not scan_4h.error and not scan_1h.error:
         aligned_long = (
             scan_1d.trend_template.score >= 6 and
@@ -793,7 +793,7 @@ async def scan_all_configured_exchanges() -> List[ScanResult]:
         from exchanges.registry import get_registry
         registry = get_registry()
         exchange_ids = registry.list_exchange_ids()
-        
+
         results = []
         semaphore = asyncio.Semaphore(15)
 
