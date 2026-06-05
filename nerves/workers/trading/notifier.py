@@ -1,7 +1,9 @@
+import io
 import logging
 import aiohttp
 import config
 import re
+from typing import Optional
 
 log = logging.getLogger(__name__)
 
@@ -190,6 +192,50 @@ def send_telegram_message(message: str):
         asyncio.run(send_telegram_alert(message))
 
 
+def prepare_telegram_photo(photo_path) -> Optional["io.BytesIO"]:
+    """
+    Checks if the photo is WebP, converts it to PNG in-memory if needed,
+    otherwise reads it into a BytesIO buffer. Always returns a seeked BytesIO buffer.
+    """
+    import io
+    from PIL import Image
+    from pathlib import Path
+
+    photo_path = Path(photo_path)
+    bio = io.BytesIO()
+
+    try:
+        with open(photo_path, "rb") as f:
+            data = f.read()
+    except Exception as e:
+        log.error(f"Failed to read photo file {photo_path}: {e}")
+        return None
+
+    # Check magic bytes of WebP or file extension
+    is_webp = (len(data) >= 12 and data[0:4] == b"RIFF" and data[8:12] == b"WEBP") or (
+        photo_path.suffix.lower() == ".webp"
+    )
+
+    if is_webp:
+        try:
+            with Image.open(io.BytesIO(data)) as img:
+                img.save(bio, format="PNG")
+                bio.seek(0)
+                bio.name = photo_path.with_suffix(".png").name
+                log.info(
+                    f"Converted WebP photo to PNG in-memory: {photo_path.name} -> {bio.name}"
+                )
+                return bio
+        except Exception as e:
+            log.error(f"Failed to convert WebP to PNG for Telegram: {e}")
+            # Fallback to returning raw WebP data if PIL fails
+
+    bio.write(data)
+    bio.seek(0)
+    bio.name = photo_path.name
+    return bio
+
+
 def send_telegram_photo(photo_path, caption: str = ""):
     """
     Gửi ảnh (screenshot chart) qua Telegram Bot API.
@@ -208,25 +254,33 @@ def send_telegram_photo(photo_path, caption: str = ""):
         log.warning(f"Photo not found: {photo_path}")
         return
 
+    photo_buf = prepare_telegram_photo(photo_path)
+    if not photo_buf:
+        log.error(f"Failed to prepare photo for Telegram: {photo_path}")
+        return
+
     html_caption = sanitize_for_telegram_html(caption)
 
     for chat_id in config.TELEGRAM_CHAT_IDS:
         try:
-            with open(photo_path, "rb") as photo_file:
-                data = {
-                    "chat_id": chat_id,
-                    "caption": html_caption[:1024],  # Telegram caption limit
-                    "parse_mode": "HTML",
-                }
-                files = {"photo": (photo_path.name, photo_file, "image/png")}
-                response = requests.post(url, data=data, files=files, timeout=30)
+            photo_buf.seek(0)  # Reset buffer position for each recipient
+            data = {
+                "chat_id": chat_id,
+                "caption": html_caption[:1024],  # Telegram caption limit
+                "parse_mode": "HTML",
+            }
+            mime_type = (
+                "image/jpeg"
+                if photo_buf.name.lower().endswith((".jpg", ".jpeg"))
+                else "image/png"
+            )
+            files = {"photo": (photo_buf.name, photo_buf, mime_type)}
+            response = requests.post(url, data=data, files=files, timeout=30)
 
-                if response.status_code != 200:
-                    log.error(
-                        f"Telegram Photo API Error (chat={chat_id}): {response.text}"
-                    )
-                else:
-                    log.info(f"Telegram photo sent to {chat_id}: {photo_path.name}")
+            if response.status_code != 200:
+                log.error(f"Telegram Photo API Error (chat={chat_id}): {response.text}")
+            else:
+                log.info(f"Telegram photo sent to {chat_id}: {photo_buf.name}")
         except Exception as e:
             log.error(f"Failed to send Telegram photo to {chat_id}: {e}")
 

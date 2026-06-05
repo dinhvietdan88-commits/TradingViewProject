@@ -108,14 +108,16 @@ async def send_interactive_trade_approval(
                 if photo_path:
                     try:
                         from pathlib import Path
+                        from notifier import prepare_telegram_photo
 
                         photo_file_path = Path(photo_path)
                         if photo_file_path.exists():
                             caption = f"📊 Chart Analysis — Signal #{signal_id}"
-                            with open(photo_file_path, "rb") as f:
+                            photo_buf = prepare_telegram_photo(photo_file_path)
+                            if photo_buf:
                                 await _bot_app.bot.send_photo(
                                     chat_id=chat_id,
-                                    photo=f,
+                                    photo=photo_buf,
                                     caption=caption,
                                 )
                             log.info(
@@ -185,16 +187,18 @@ async def send_interactive_indicator_alert(
                 if photo_path:
                     try:
                         from pathlib import Path
+                        from notifier import prepare_telegram_photo
 
                         photo_file_path = Path(photo_path)
                         if photo_file_path.exists():
                             caption = (
                                 f"📊 Indicator Chart — {symbol} (Signal #{signal_id})"
                             )
-                            with open(photo_file_path, "rb") as f:
+                            photo_buf = prepare_telegram_photo(photo_file_path)
+                            if photo_buf:
                                 await _bot_app.bot.send_photo(
                                     chat_id=chat_id,
-                                    photo=f,
+                                    photo=photo_buf,
                                     caption=caption,
                                 )
                             log.info(
@@ -256,14 +260,16 @@ async def send_circuit_breaker_alert(
                 if photo_path:
                     try:
                         from pathlib import Path
+                        from notifier import prepare_telegram_photo
 
                         photo_file_path = Path(photo_path)
                         if photo_file_path.exists():
                             caption = f"🚨 Circuit Breaker Alert — {exchange.upper()}"
-                            with open(photo_file_path, "rb") as f:
+                            photo_buf = prepare_telegram_photo(photo_file_path)
+                            if photo_buf:
                                 await _bot_app.bot.send_photo(
                                     chat_id=chat_id,
-                                    photo=f,
+                                    photo=photo_buf,
                                     caption=caption,
                                 )
                     except Exception as photo_err:
@@ -564,7 +570,7 @@ async def cmd_scan(update, context):
                     from mcp_client import get_mcp_client
 
                     mcp = get_mcp_client()
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
 
             results = await scan_symbols(symbols, mcp)
@@ -1456,7 +1462,7 @@ async def cmd_scan_enhanced(update, context):
                     from mcp_client import get_mcp_client
 
                     mcp = get_mcp_client()
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
 
             results = await scan_symbols(symbols, mcp)
@@ -2509,7 +2515,7 @@ async def cmd_status_inline(message):
 
         wl = get_watchlist()
         lines.append(f"📋 Watchlist: {len(wl)} symbols")
-    except Exception:
+    except Exception:  # noqa: S110
         pass
 
     from notifier import sanitize_for_telegram_html
@@ -2555,7 +2561,7 @@ async def cmd_scan_inline(message):
                 from mcp_client import get_mcp_client
 
                 mcp = get_mcp_client()
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
 
         results = await scan_symbols(symbols, mcp)
@@ -2752,7 +2758,7 @@ class TelegramSender:
             await self._app.bot.send_chat_action(
                 chat_id=chat_id, action=ChatAction.TYPING
             )
-        except Exception:
+        except Exception:  # noqa: S110
             pass
 
 
@@ -2941,7 +2947,7 @@ class DataQueryFacade:
                     ) as _probe:
                         await _probe.fetchone()
                     has_exchange_col = True
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
 
                 if has_exchange_col:
@@ -3309,7 +3315,7 @@ class ApprovalTimeoutManager:
                         await sender.edit_message(
                             chat_id, message_id, f"<i>[HẾT HẠN]</i>{expired_suffix}"
                         )
-                    except Exception:
+                    except Exception:  # noqa: S110
                         pass
                 await sender.send_message(timeout_text)
 
@@ -3577,7 +3583,7 @@ def start_bot():
             request = HTTPXRequest(proxy=_proxy)
             # Inject IPv4-only transport (overrides default which allows IPv6)
             request._client_kwargs["transport"] = _httpx.AsyncHTTPTransport(
-                local_address="0.0.0.0",
+                local_address="0.0.0.0",  # noqa: S104
             )
             request._client = request._build_client()
 
@@ -3710,7 +3716,7 @@ def start_bot():
                 _bot_loop = None
                 try:
                     loop.close()
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
 
         _bot_thread = threading.Thread(
