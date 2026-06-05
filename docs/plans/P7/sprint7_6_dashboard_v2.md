@@ -7,7 +7,7 @@
 
 ## Mục tiêu
 
-Nâng cấp Dashboard từ **v1 (single-page performance view)** thành **premium 4-tab SPA** 
+Nâng cấp Dashboard từ **v1 (single-page performance view)** thành **premium 4-tab SPA**
 với Morning Brief viewer, Scanner table, Watchlist management và System Status panel.
 
 **Dashboard v1 chỉ có:** KPI cards + Equity chart + Trade history.  
@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS briefs (
 ### [MODIFY] `server/brief.py`
 
 - Import `database` module
-- Step 9: Sau khi build brief dict → `await database.insert_brief(...)` 
+- Step 9: Sau khi build brief dict → `await database.insert_brief(...)`
 - Persist scan_data + ai_analysis + vision_data dạng JSON string
 
 ### [MODIFY] `server/main.py`

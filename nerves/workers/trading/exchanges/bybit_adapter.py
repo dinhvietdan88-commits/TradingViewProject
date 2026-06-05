@@ -7,10 +7,11 @@ import aiohttp
 import uuid
 from typing import Dict, Any, List, Optional
 
-from .base import ExchangeAdapter, OrderResult, RiskParams, ExchangeError, ExchangeErrorCategory
+from .base import OrderResult, RiskParams, ExchangeError, ExchangeErrorCategory
 import config
 
 log = logging.getLogger(__name__)
+
 
 class BybitAdapter:
     """Bybit V5 API adapter implementing ExchangeAdapter protocol."""
@@ -24,7 +25,7 @@ class BybitAdapter:
         self.testnet = testnet
         self.dry_run = dry_run
         self.base_url = self.TESTNET_URL if testnet else self.MAINNET_URL
-        
+
         mode = []
         if dry_run:
             mode.append("DRY-RUN")
@@ -62,12 +63,18 @@ class BybitAdapter:
             "X-BAPI-RECV-WINDOW": recv_window,
             "Content-Type": "application/json",
         }
-        
-    async def _request(self, method: str, endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
+
+    async def _request(
+        self, method: str, endpoint: str, params: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
         params = params or {}
         # Simple retry logic for demonstration, a real exponential backoff could be added here
-        headers = self._sign_request(params) if method in ["POST", "PUT"] else self._sign_request({})
-        
+        headers = (
+            self._sign_request(params)
+            if method in ["POST", "PUT"]
+            else self._sign_request({})
+        )
+
         url = f"{self.base_url}{endpoint}"
         async with aiohttp.ClientSession() as session:
             try:
@@ -91,27 +98,46 @@ class BybitAdapter:
                 else:
                     async with session.post(url, json=params, headers=headers) as resp:
                         data = await resp.json()
-                
+
                 if data.get("retCode") != 0:
                     retCode = data.get("retCode")
                     msg = data.get("retMsg", "")
                     category = ExchangeErrorCategory.UNKNOWN
-                    if retCode in [110007]: category = ExchangeErrorCategory.INSUFFICIENT_BALANCE
-                    elif retCode in [110008]: category = ExchangeErrorCategory.INVALID_SYMBOL
-                    elif retCode in [10006]: category = ExchangeErrorCategory.RATE_LIMITED
-                    elif retCode in [10003, 10004]: category = ExchangeErrorCategory.AUTHENTICATION_ERROR
-                    elif retCode in [110001, 110003]: category = ExchangeErrorCategory.ORDER_REJECTED
-                    raise ExchangeError(category, f"Bybit Error [{retCode}]: {msg}", str(retCode), self.exchange_name)
-                
+                    if retCode in [110007]:
+                        category = ExchangeErrorCategory.INSUFFICIENT_BALANCE
+                    elif retCode in [110008]:
+                        category = ExchangeErrorCategory.INVALID_SYMBOL
+                    elif retCode in [10006]:
+                        category = ExchangeErrorCategory.RATE_LIMITED
+                    elif retCode in [10003, 10004]:
+                        category = ExchangeErrorCategory.AUTHENTICATION_ERROR
+                    elif retCode in [110001, 110003]:
+                        category = ExchangeErrorCategory.ORDER_REJECTED
+                    raise ExchangeError(
+                        category,
+                        f"Bybit Error [{retCode}]: {msg}",
+                        str(retCode),
+                        self.exchange_name,
+                    )
+
                 return data
             except aiohttp.ClientError as e:
-                raise ExchangeError(ExchangeErrorCategory.CONNECTION_ERROR, str(e), None, self.exchange_name)
+                raise ExchangeError(
+                    ExchangeErrorCategory.CONNECTION_ERROR,
+                    str(e),
+                    None,
+                    self.exchange_name,
+                )
 
     async def get_account_balance(self, asset: str = "USDT") -> float:
         if self.dry_run:
             return 10000.0
-        
-        data = await self._request("GET", "/v5/account/wallet-balance", {"accountType": "UNIFIED", "coin": asset})
+
+        data = await self._request(
+            "GET",
+            "/v5/account/wallet-balance",
+            {"accountType": "UNIFIED", "coin": asset},
+        )
         balances = data.get("result", {}).get("list", [])
         if balances and balances[0].get("coin", []):
             coins = balances[0]["coin"]
@@ -123,15 +149,19 @@ class BybitAdapter:
     async def get_symbol_info(self, symbol: str) -> Dict[str, Any]:
         if self.dry_run:
             return {"symbol": symbol, "status": "Trading"}
-            
-        data = await self._request("GET", "/v5/market/instruments-info", {"category": "spot", "symbol": symbol})
+
+        data = await self._request(
+            "GET", "/v5/market/instruments-info", {"category": "spot", "symbol": symbol}
+        )
         return data.get("result", {}).get("list", [{}])[0]
 
     async def get_active_symbols(self) -> List[str]:
         if self.dry_run:
             return ["BTCUSDT", "ETHUSDT", "SOLUSDT", "ADAUSDT", "XRPUSDT"]
         try:
-            data = await self._request("GET", "/v5/market/instruments-info", {"category": "spot"})
+            data = await self._request(
+                "GET", "/v5/market/instruments-info", {"category": "spot"}
+            )
             instruments = data.get("result", {}).get("list", [])
             active_symbols = []
             for inst in instruments:
@@ -144,7 +174,13 @@ class BybitAdapter:
             log.error(f"Error fetching active symbols from Bybit: {e}")
             return ["BTCUSDT", "ETHUSDT"]
 
-    async def place_market_order(self, symbol: str, side: str, quote_qty: Optional[float] = None, base_qty: Optional[float] = None) -> Dict[str, Any]:
+    async def place_market_order(
+        self,
+        symbol: str,
+        side: str,
+        quote_qty: Optional[float] = None,
+        base_qty: Optional[float] = None,
+    ) -> Dict[str, Any]:
         params = {
             "category": "spot",
             "symbol": symbol,
@@ -156,36 +192,44 @@ class BybitAdapter:
         elif quote_qty:
             params["qty"] = str(round(quote_qty, 8))
             params["marketUnit"] = "quoteCoin"
-            
+
         if self.dry_run:
-            fill_price = 67500.0 # Mock price
+            fill_price = 67500.0  # Mock price
             qty = quote_qty / fill_price if quote_qty else base_qty
             return {
                 "orderId": f"DRY-BYB-{uuid.uuid4().hex[:8]}",
                 "executedQty": str(round(qty, 8)),
                 "cummulativeQuoteQty": str(round(qty * fill_price, 2)),
-                "_dry_run": True
+                "_dry_run": True,
             }
-            
+
         data = await self._request("POST", "/v5/order/create", params)
         # We need to fetch order details to get executedQty. For now, returning standard format
         res = data.get("result", {})
         return {
             "orderId": res.get("orderId"),
-            "executedQty": params.get("qty"), # Approximate for Market
-            "cummulativeQuoteQty": str(quote_qty) if quote_qty else "0"
+            "executedQty": params.get("qty"),  # Approximate for Market
+            "cummulativeQuoteQty": str(quote_qty) if quote_qty else "0",
         }
 
-    async def place_oco_order(self, symbol: str, side: str, quantity: float, take_profit_price: float, stop_price: float, stop_limit_price: float) -> Dict[str, Any]:
+    async def place_oco_order(
+        self,
+        symbol: str,
+        side: str,
+        quantity: float,
+        take_profit_price: float,
+        stop_price: float,
+        stop_limit_price: float,
+    ) -> Dict[str, Any]:
         # Bybit SPOT OCO is not strictly OCO natively via v5 in the same way, but it supports TP/SL on spot orders using specific categories.
         # For simplicity, we create conditional orders or mock them.
         if self.dry_run:
             return {
                 "orderListId": f"DRY-BYB-OCO-{uuid.uuid4().hex[:8]}",
                 "orders": [],
-                "_dry_run": True
+                "_dry_run": True,
             }
-            
+
         # Place TP
         tp_params = {
             "category": "spot",
@@ -196,7 +240,7 @@ class BybitAdapter:
             "price": str(round(take_profit_price, 2)),
         }
         await self._request("POST", "/v5/order/create", tp_params)
-        
+
         # Place SL
         sl_params = {
             "category": "spot",
@@ -209,10 +253,10 @@ class BybitAdapter:
             "triggerDirection": 1 if side.upper() == "BUY" else 2,
         }
         res = await self._request("POST", "/v5/order/create", sl_params)
-        
+
         return {
             "orderListId": res.get("result", {}).get("orderId"),
-            "type": "SIMULATED_OCO"
+            "type": "SIMULATED_OCO",
         }
 
     async def get_ticker_price(self, symbol: str) -> float:
@@ -220,7 +264,11 @@ class BybitAdapter:
             return 67500.0
         try:
             symbol_clean = symbol.replace("/", "").upper()
-            data = await self._request("GET", "/v5/market/tickers", {"category": "spot", "symbol": symbol_clean})
+            data = await self._request(
+                "GET",
+                "/v5/market/tickers",
+                {"category": "spot", "symbol": symbol_clean},
+            )
             list_data = data.get("result", {}).get("list", [])
             if list_data:
                 return float(list_data[0].get("lastPrice", 0.0))
@@ -246,20 +294,25 @@ class BybitAdapter:
                 "status": "NEW",
                 "price": str(price),
                 "qty": str(quantity),
-                "_dry_run": True
+                "_dry_run": True,
             }
         data = await self._request("POST", "/v5/order/create", params)
         res = data.get("result", {})
-        return {
-            "orderId": res.get("orderId"),
-            "status": "NEW"
-        }
+        return {"orderId": res.get("orderId"), "status": "NEW"}
 
     async def get_order(self, symbol: str, order_id: str) -> Dict[str, Any]:
         if self.dry_run:
             return {"status": "NEW"}
         try:
-            data = await self._request("GET", "/v5/order/realtime-order", {"category": "spot", "symbol": symbol.replace("/", "").upper(), "orderId": order_id})
+            data = await self._request(
+                "GET",
+                "/v5/order/realtime-order",
+                {
+                    "category": "spot",
+                    "symbol": symbol.replace("/", "").upper(),
+                    "orderId": order_id,
+                },
+            )
             res = data.get("result", {}).get("list", [{}])[0]
             status = res.get("orderStatus", "New")
             return {"status": "FILLED" if status.upper() == "FILLED" else "NEW"}
@@ -269,13 +322,34 @@ class BybitAdapter:
     async def cancel_order(self, symbol: str, order_id: str) -> Dict[str, Any]:
         if self.dry_run:
             return {"status": "CANCELED"}
-        await self._request("POST", "/v5/order/cancel", {"category": "spot", "symbol": symbol.replace("/", "").upper(), "orderId": order_id})
+        await self._request(
+            "POST",
+            "/v5/order/cancel",
+            {
+                "category": "spot",
+                "symbol": symbol.replace("/", "").upper(),
+                "orderId": order_id,
+            },
+        )
         return {"status": "CANCELED"}
 
     async def cancel_oco_order(self, symbol: str, order_list_id: str) -> Dict[str, Any]:
         return await self.cancel_order(symbol, order_list_id)
 
-    async def execute_smart_order(self, symbol: str, side: str, entry_price: Optional[float] = None, quote_qty: Optional[float] = None, sl_pct: Optional[float] = None, tp_pct: Optional[float] = None, risk_pct: Optional[float] = None, sl_price: Optional[float] = None, tp_price: Optional[float] = None, asset: str = "USDT", order_type: str = "MARKET") -> OrderResult:
+    async def execute_smart_order(
+        self,
+        symbol: str,
+        side: str,
+        entry_price: Optional[float] = None,
+        quote_qty: Optional[float] = None,
+        sl_pct: Optional[float] = None,
+        tp_pct: Optional[float] = None,
+        risk_pct: Optional[float] = None,
+        sl_price: Optional[float] = None,
+        tp_price: Optional[float] = None,
+        asset: str = "USDT",
+        order_type: str = "MARKET",
+    ) -> OrderResult:
         """Simplified smart order for Bybit, mimicking Binance logic."""
         symbol_clean = symbol.replace("/", "").upper()
         side_upper = side.upper()
@@ -285,7 +359,7 @@ class BybitAdapter:
 
         try:
             balance = await self.get_account_balance(asset)
-            
+
             # SL/TP
             if side_upper == "BUY":
                 sl = entry_price * (1 - sl_pct)
@@ -293,11 +367,15 @@ class BybitAdapter:
             else:
                 sl = entry_price * (1 + sl_pct)
                 tp = entry_price * (1 - tp_pct)
-                
+
             sl_price = sl_price or sl
             tp_price = tp_price or tp
-            rr_ratio = abs(tp_price - entry_price) / abs(sl_price - entry_price) if abs(sl_price - entry_price) > 0 else 0
-            
+            rr_ratio = (
+                abs(tp_price - entry_price) / abs(sl_price - entry_price)
+                if abs(sl_price - entry_price) > 0
+                else 0
+            )
+
             # Risk Sizing
             risk_amount = balance * risk_pct
             distance = abs(entry_price - sl_price)
@@ -305,7 +383,7 @@ class BybitAdapter:
             if quote_qty:
                 qty = quote_qty / entry_price if entry_price > 0 else qty
             cost = qty * entry_price
-            
+
             # Cap at 95%
             if cost > balance * 0.95:
                 qty = (balance * 0.95) / entry_price
@@ -327,16 +405,22 @@ class BybitAdapter:
 
             # 4. entry
             if order_type.upper() == "LIMIT":
-                entry_result = await self.place_limit_order(symbol_clean, side_upper, price=entry_price, quantity=qty)
+                entry_result = await self.place_limit_order(
+                    symbol_clean, side_upper, price=entry_price, quantity=qty
+                )
             elif quote_qty:
-                entry_result = await self.place_market_order(symbol_clean, side_upper, quote_qty=quote_qty)
+                entry_result = await self.place_market_order(
+                    symbol_clean, side_upper, quote_qty=quote_qty
+                )
             else:
-                entry_result = await self.place_market_order(symbol_clean, side_upper, base_qty=qty)
+                entry_result = await self.place_market_order(
+                    symbol_clean, side_upper, base_qty=qty
+                )
 
             # 5. OCO exit
             exit_side = "SELL" if side_upper == "BUY" else "BUY"
             stop_limit = sl_price * 0.995 if exit_side == "SELL" else sl_price * 1.005
-            
+
             oco_result = await self.place_oco_order(
                 symbol=symbol_clean,
                 side=exit_side,
@@ -356,11 +440,27 @@ class BybitAdapter:
                 oco_order=oco_result,
                 risk=risk_params,
             )
-            
+
         except ExchangeError as e:
-            return OrderResult(success=False, dry_run=self.dry_run, side=side_upper, symbol=symbol_clean, exchange=self.exchange_name, error=str(e), error_category=e.category)
+            return OrderResult(
+                success=False,
+                dry_run=self.dry_run,
+                side=side_upper,
+                symbol=symbol_clean,
+                exchange=self.exchange_name,
+                error=str(e),
+                error_category=e.category,
+            )
         except Exception as e:
-            return OrderResult(success=False, dry_run=self.dry_run, side=side_upper, symbol=symbol_clean, exchange=self.exchange_name, error=str(e), error_category=ExchangeErrorCategory.UNKNOWN)
+            return OrderResult(
+                success=False,
+                dry_run=self.dry_run,
+                side=side_upper,
+                symbol=symbol_clean,
+                exchange=self.exchange_name,
+                error=str(e),
+                error_category=ExchangeErrorCategory.UNKNOWN,
+            )
 
     async def health_check(self) -> Dict[str, Any]:
         try:
@@ -371,4 +471,3 @@ class BybitAdapter:
             return {"healthy": True, "latency_ms": round(latency, 1), "error": None}
         except Exception as e:
             return {"healthy": False, "latency_ms": 0, "error": str(e)}
-

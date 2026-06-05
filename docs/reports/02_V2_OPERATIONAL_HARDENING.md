@@ -157,15 +157,15 @@ async def check_clock_drift():
     """So sánh timestamp trả về từ /health endpoint với thời gian local."""
     async with httpx.AsyncClient(timeout=5.0) as client:
         local_time = time.time()
-        
+
         for name, url in SERVERS.items():
             try:
                 resp = await client.get(url)
                 remote_ts = resp.json().get("server_time_epoch", 0)
-                
+
                 if remote_ts:
                     drift_ms = abs(local_time - remote_ts) * 1000
-                    
+
                     if drift_ms > DRIFT_THRESHOLD_MS:
                         log.critical(
                             f"⏰ CLOCK DRIFT ALERT: {name} drift = {drift_ms:.0f}ms "
@@ -175,7 +175,7 @@ async def check_clock_drift():
                         await _send_drift_alert(name, drift_ms)
                     else:
                         log.info(f"⏰ {name} clock OK: drift = {drift_ms:.1f}ms")
-                        
+
             except Exception as e:
                 log.warning(f"⏰ Cannot reach {name} for clock check: {e}")
 
@@ -285,15 +285,15 @@ async def consume_long_poll(
     Nếu không có → giữ kết nối tối đa `timeout` giây, trả về khi có signal mới.
     """
     verify_buffer_secret(x_buffer_secret)
-    
+
     # 1. Kiểm tra ngay lập tức
     signals = await database.consume_signals(consumer_id, limit)
     if signals:
         return {"signals": signals, "count": len(signals), "waited_seconds": 0}
-    
+
     # 2. Không có signal → chờ (Long Poll)
     _new_signal_event.clear()
-    
+
     try:
         await asyncio.wait_for(_new_signal_event.wait(), timeout=timeout)
         # Signal mới đã đến! Fetch lại
@@ -309,10 +309,10 @@ async def consume_long_poll(
 async def ingest_signal(request: Request, ...):
     # ... (logic hiện tại) ...
     queue_id, expires_at = await database.insert_signal(payload)
-    
+
     # ← THÊM: Đánh thức Long Poll waiters
     notify_new_signal()
-    
+
     return {"queued": True, "queue_id": queue_id, ...}
 ```
 
@@ -323,27 +323,27 @@ async def ingest_signal(request: Request, ...):
 
 class VpsAnalyzerWorker:
     """Analyzer Worker chạy trên SERVER C."""
-    
+
     LONG_POLL_TIMEOUT = 30  # Giữ kết nối tối đa 30s
-    
+
     async def poll_loop(self):
         """Main loop — sử dụng Long Polling thay vì Short Polling."""
         log.info("[Analyzer] Starting long-poll loop...")
-        
+
         while True:
             try:
                 signals = await self._long_poll()
-                
+
                 for signal in signals:
                     await self.analyze_and_forward(signal)
-                    
+
             except asyncio.CancelledError:
                 log.info("[Analyzer] Poll loop cancelled.")
                 break
             except Exception as e:
                 log.exception(f"[Analyzer] Error in poll loop: {e}")
                 await asyncio.sleep(5)  # Back-off khi lỗi
-    
+
     async def _long_poll(self) -> list:
         """Gọi /consume-long — kết nối sẽ giữ tối đa 30s."""
         url = f"{config.VPS_BUFFER_URL}/consume-long"
@@ -353,7 +353,7 @@ class VpsAnalyzerWorker:
             "timeout": self.LONG_POLL_TIMEOUT,
         }
         headers = {"X-Buffer-Secret": config.VPS_BUFFER_SECRET}
-        
+
         async with httpx.AsyncClient() as client:
             resp = await client.get(
                 url, params=params, headers=headers,
@@ -399,33 +399,33 @@ class VpsAnalyzerWorker:
 ```mermaid
 flowchart TB
     Signal["📡 Signal từ SERVER A"]
-    
+
     subgraph AI_MODE["🧠 AI Mode (Primary)"]
         RAG["RAG Query ChromaDB"]
         LLM["Claude/Gemini API Call"]
         AI_SIZE["AI-Enhanced Position Sizing"]
     end
-    
+
     subgraph ALGO_MODE["⚡ Algorithmic Mode (Fallback)"]
         TREND["Trend Template Check\n(8 tiêu chí Minervini)"]
         VCP["VCP Pattern Validation\n(Volume, Contraction)"]
         RISK["Rule-Based Position Sizing\n(RISK_PER_TRADE × Portfolio)"]
     end
-    
+
     DECIDE{"🔀 LLM Available?"}
     TIMEOUT{"⏰ Timeout 2s?"}
-    
+
     Signal --> DECIDE
     DECIDE -->|"✅ Yes"| RAG --> LLM
     LLM --> TIMEOUT
     TIMEOUT -->|"✅ Response OK"| AI_SIZE --> FORWARD
     TIMEOUT -->|"❌ Timeout/Error"| ALGO_MODE
     DECIDE -->|"❌ No (Circuit Open)"| ALGO_MODE
-    
+
     TREND --> VCP --> RISK --> FORWARD
-    
+
     FORWARD["📤 Forward to SERVER B\n(POST /api/execute-trade)"]
-    
+
     style AI_MODE fill:#1a2e0d,color:#90EE90,stroke:#2ecc71
     style ALGO_MODE fill:#2e1a0d,color:#FFD700,stroke:#f39c12
     style FORWARD fill:#0d1a2e,color:#87CEEB,stroke:#3498db
@@ -463,23 +463,23 @@ class CircuitState(Enum):
 @dataclass
 class LLMCircuitBreaker:
     """Circuit Breaker bảo vệ hệ thống khỏi LLM downtime."""
-    
+
     # Cấu hình
     failure_threshold: int = 3          # Số lần lỗi liên tiếp → mở circuit
     recovery_timeout_sec: float = 60.0  # Thời gian chờ trước khi thử lại
     call_timeout_sec: float = 2.0       # Timeout mỗi LLM call (2 giây!)
-    
+
     # Trạng thái nội bộ
     state: CircuitState = CircuitState.CLOSED
     failure_count: int = 0
     last_failure_time: float = 0.0
     total_fallbacks: int = 0
-    
+
     def is_available(self) -> bool:
         """Kiểm tra LLM có sẵn sàng không."""
         if self.state == CircuitState.CLOSED:
             return True
-        
+
         if self.state == CircuitState.OPEN:
             # Đã đủ thời gian recovery chưa?
             elapsed = time.time() - self.last_failure_time
@@ -488,29 +488,29 @@ class LLMCircuitBreaker:
                 self.state = CircuitState.HALF_OPEN
                 return True
             return False
-        
+
         if self.state == CircuitState.HALF_OPEN:
             return True  # Cho phép 1 request thử
-        
+
         return False
-    
+
     def record_success(self):
         """Ghi nhận LLM call thành công."""
         if self.state == CircuitState.HALF_OPEN:
             log.info("[CircuitBreaker] ✅ LLM phục hồi → CLOSED")
         self.state = CircuitState.CLOSED
         self.failure_count = 0
-    
+
     def record_failure(self, error: str):
         """Ghi nhận LLM call thất bại."""
         self.failure_count += 1
         self.last_failure_time = time.time()
-        
+
         if self.state == CircuitState.HALF_OPEN:
             log.warning(f"[CircuitBreaker] ❌ Half-open test failed: {error} → OPEN")
             self.state = CircuitState.OPEN
             return
-        
+
         if self.failure_count >= self.failure_threshold:
             log.critical(
                 f"[CircuitBreaker] 🚨 {self.failure_count} failures → OPEN "
@@ -534,7 +534,7 @@ import config
 from workers.ai_circuit_breaker import llm_breaker
 
 class VpsAnalyzerWorker:
-    
+
     async def analyze_signal(self, signal: dict) -> dict:
         """
         Phân tích signal với AI Mode hoặc Algorithmic Fallback.
@@ -544,37 +544,37 @@ class VpsAnalyzerWorker:
         action = signal["action"]
         price = signal.get("price", 0)
         payload = signal.get("payload", {})
-        
+
         analysis_mode = "ai"
         rag_advice = ""
         ai_confidence = 0
-        
+
         # ═══ AI MODE (Primary) ═══
         if llm_breaker.is_available():
             try:
                 # 1. RAG Query — ChromaDB local (nhanh, không cần circuit breaker)
                 from rag import query_knowledge, build_rag_query, generate_trading_advice
-                
+
                 rag_query = build_rag_query(symbol, action, payload)
                 rag_chunks = query_knowledge(rag_query, n_results=3)
-                
+
                 # 2. LLM Call — CÓ timeout chặt chẽ
                 rag_advice = await asyncio.wait_for(
                     generate_trading_advice(symbol, action, str(price), payload, rag_chunks),
                     timeout=llm_breaker.call_timeout_sec  # 2 giây!
                 )
-                
+
                 # 3. Parse confidence từ AI response
                 ai_confidence = self._extract_confidence(rag_advice)
-                
+
                 llm_breaker.record_success()
                 analysis_mode = "ai"
-                
+
             except asyncio.TimeoutError:
                 llm_breaker.record_failure("LLM timeout (>2s)")
                 log.warning(f"[Analyzer] ⏰ LLM timeout for {symbol}. Falling back to algorithmic mode.")
                 analysis_mode = "algorithmic"
-                
+
             except Exception as e:
                 llm_breaker.record_failure(str(e))
                 log.warning(f"[Analyzer] ❌ LLM error for {symbol}: {e}. Falling back.")
@@ -582,15 +582,15 @@ class VpsAnalyzerWorker:
         else:
             analysis_mode = "algorithmic"
             log.info(f"[Analyzer] ⚡ Circuit OPEN — Using algorithmic mode for {symbol}")
-        
+
         # ═══ ALGORITHMIC MODE (Fallback) ═══
         if analysis_mode == "algorithmic":
             rag_advice, ai_confidence = self._algorithmic_analysis(signal)
-        
+
         # ═══ POSITION SIZING (Chung cho cả 2 mode) ═══
         quantity = self._calculate_position_size(price, action)
         sl_price, tp_price = self._calculate_sl_tp(price, action)
-        
+
         return {
             "symbol": symbol,
             "action": action,
@@ -604,7 +604,7 @@ class VpsAnalyzerWorker:
             "analysis_mode": analysis_mode,  # "ai" hoặc "algorithmic"
             "vbs_queue_id": signal["queue_id"],
         }
-    
+
     def _algorithmic_analysis(self, signal: dict) -> tuple[str, int]:
         """
         Phân tích thuần thuật toán — KHÔNG cần LLM.
@@ -614,11 +614,11 @@ class VpsAnalyzerWorker:
         symbol = signal["symbol"]
         action = signal["action"]
         price = signal.get("price", 0)
-        
+
         checks = []
         score = 0
         total = 5  # Số tiêu chí kiểm tra
-        
+
         # 1. Volume Check
         volume = float(payload.get("volume", 0) or 0)
         volume_avg = float(payload.get("volume_avg", 0) or 0)
@@ -629,7 +629,7 @@ class VpsAnalyzerWorker:
             checks.append(f"⚠️ Volume = {volume/volume_avg*100:.0f}% trung bình")
         else:
             checks.append("⬜ Volume data không có")
-        
+
         # 2. RSI Check
         rsi = float(payload.get("rsi", 0) or 0)
         if 50 < rsi < 80:
@@ -639,7 +639,7 @@ class VpsAnalyzerWorker:
             checks.append(f"⚠️ RSI = {rsi:.0f} (Quá mua — cẩn thận)")
         elif rsi > 0:
             checks.append(f"⬜ RSI = {rsi:.0f} (Chưa đủ momentum)")
-        
+
         # 3. Signal Type Check
         alert_type = payload.get("alert_type", "").lower()
         if "vcp" in alert_type or "breakout" in alert_type:
@@ -650,7 +650,7 @@ class VpsAnalyzerWorker:
             score += 1
         else:
             checks.append(f"⬜ Pattern: {alert_type or 'generic'}")
-        
+
         # 4. Price vs SL distance
         sl = float(payload.get("sl", 0) or 0)
         if sl > 0 and price > 0:
@@ -660,15 +660,15 @@ class VpsAnalyzerWorker:
                 score += 1
             else:
                 checks.append(f"⚠️ Risk = {risk_pct:.1f}% (> 8% — vượt ngưỡng)")
-        
+
         # 5. Action validation
         if action in ("buy", "sell"):
             checks.append(f"✅ Action = {action.upper()} (hợp lệ)")
             score += 1
-        
+
         # Tính confidence
         confidence = int(score / total * 100) if total > 0 else 50
-        
+
         # Build report
         advice = (
             f"⚡ **ALGORITHMIC MODE** (LLM unavailable)\n\n"
@@ -676,37 +676,37 @@ class VpsAnalyzerWorker:
             + "\n".join(checks)
             + f"\n\n{'✅ PASS — Đủ điều kiện đặt lệnh' if score >= 3 else '❌ FAIL — Chưa đủ tiêu chí'}"
         )
-        
+
         return advice, confidence
-    
+
     def _calculate_position_size(self, price: float, action: str) -> float:
         """Tính position size theo Minervini SEPA risk rules."""
         if not price or price <= 0:
             return 0.0
-        
+
         portfolio = float(getattr(config, "MAX_QUOTE_QTY", 1000))
         risk_pct = float(getattr(config, "RISK_PER_TRADE", 0.02))
         sl_pct = float(getattr(config, "STOP_LOSS_PCT", 0.08))
-        
+
         risk_amount = portfolio * risk_pct  # 2% of portfolio
         quantity = risk_amount / (price * sl_pct) if sl_pct > 0 else 0
-        
+
         return round(quantity, 6)
-    
+
     def _calculate_sl_tp(self, price: float, action: str) -> tuple[float, float]:
         """Tính SL/TP theo Minervini default ratios."""
         sl_pct = float(getattr(config, "STOP_LOSS_PCT", 0.08))
         tp_pct = float(getattr(config, "TAKE_PROFIT_PCT", 0.20))
-        
+
         if action == "buy":
             sl = round(price * (1 - sl_pct), 2)
             tp = round(price * (1 + tp_pct), 2)
         else:
             sl = round(price * (1 + sl_pct), 2)
             tp = round(price * (1 - tp_pct), 2)
-        
+
         return sl, tp
-    
+
     def _extract_confidence(self, advice: str) -> int:
         """Trích xuất confidence score từ AI advice text."""
         advice_lower = advice.lower()
@@ -809,7 +809,7 @@ import config
 
 class StructuredFormatter(logging.Formatter):
     """JSON structured logging — dễ parse bằng tool monitoring."""
-    
+
     def format(self, record):
         log_entry = {
             "ts": datetime.now(timezone.utc).isoformat(),
@@ -826,16 +826,16 @@ class StructuredFormatter(logging.Formatter):
 
 def setup_logging():
     """Cấu hình logging với rotation cho production."""
-    
+
     # Tạo thư mục logs nếu chưa có
     log_dir = os.path.dirname(config.LOG_FILE)
     if log_dir:
         os.makedirs(log_dir, exist_ok=True)
-    
+
     # Root logger
     root = logging.getLogger()
     root.setLevel(getattr(logging, config.LOG_LEVEL, logging.INFO))
-    
+
     # ── Console Handler (stdout — Docker captures this) ──
     console = logging.StreamHandler()
     console.setLevel(logging.INFO)  # Console luôn INFO
@@ -844,10 +844,10 @@ def setup_logging():
         datefmt="%H:%M:%S"
     ))
     root.addHandler(console)
-    
+
     # ── File Handler với Rotation ──
     max_bytes = config.LOG_MAX_SIZE_MB * 1024 * 1024  # MB → bytes
-    
+
     file_handler = logging.handlers.RotatingFileHandler(
         filename=config.LOG_FILE,
         maxBytes=max_bytes,          # 10 MB mỗi file
@@ -855,7 +855,7 @@ def setup_logging():
         encoding="utf-8",
     )
     file_handler.setLevel(getattr(logging, config.LOG_LEVEL, logging.INFO))
-    
+
     # Chọn format: JSON (production) hoặc plaintext (dev)
     if config.LOG_JSON_FORMAT:
         file_handler.setFormatter(StructuredFormatter())
@@ -863,15 +863,15 @@ def setup_logging():
         file_handler.setFormatter(logging.Formatter(
             "%(asctime)s [%(levelname)s] %(name)s:%(lineno)d — %(message)s"
         ))
-    
+
     root.addHandler(file_handler)
-    
+
     # ── Giảm noise từ thư viện bên thứ 3 ──
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("chromadb").setLevel(logging.WARNING)
-    
+
     logging.info(
         f"Logging configured: level={config.LOG_LEVEL}, "
         f"file={config.LOG_FILE}, "
@@ -939,10 +939,10 @@ DISK_CRITICAL_THRESHOLD_PCT = 90  # Critical khi > 90%
 async def check_disk_usage():
     """Kiểm tra dung lượng đĩa, alert Telegram nếu sắp đầy."""
     total, used, free = shutil.disk_usage("/")
-    
+
     used_pct = (used / total) * 100
     free_gb = free / (1024 ** 3)
-    
+
     if used_pct >= DISK_CRITICAL_THRESHOLD_PCT:
         log.critical(f"🚨 DISK CRITICAL: {used_pct:.0f}% used, {free_gb:.1f}GB free")
         await _send_disk_alert("CRITICAL", used_pct, free_gb)
@@ -1121,22 +1121,22 @@ async def run_liveness_check():
     async with httpx.AsyncClient(timeout=10.0) as client:
         for server in SERVERS:
             server.last_check = time.time()
-            
+
             try:
                 resp = await client.get(server.url)
                 data = resp.json()
-                
+
                 if resp.status_code == 200 and data.get("status") == "healthy":
                     # ✅ Server healthy
                     was_unhealthy = not server.is_healthy
                     server.is_healthy = True
                     server.consecutive_failures = 0
                     server.last_success = time.time()
-                    
+
                     # Thông báo phục hồi
                     if was_unhealthy and RECOVERY_NOTIFY:
                         await _send_recovery_alert(server, data)
-                    
+
                     log.info(
                         f"✅ {server.name} healthy "
                         f"(uptime: {data.get('uptime_seconds', 0)}s, "
@@ -1144,7 +1144,7 @@ async def run_liveness_check():
                     )
                 else:
                     await _handle_failure(server, f"Unhealthy response: {data}")
-                    
+
             except httpx.ConnectError:
                 await _handle_failure(server, "Connection refused")
             except httpx.ReadTimeout:
@@ -1157,11 +1157,11 @@ async def _handle_failure(server: ServerHealth, error: str):
     """Xử lý khi health check thất bại."""
     server.consecutive_failures += 1
     server.is_healthy = False
-    
+
     log.warning(
         f"❌ {server.name} FAILED (attempt #{server.consecutive_failures}): {error}"
     )
-    
+
     if server.consecutive_failures >= ALERT_AFTER_FAILURES:
         await _send_down_alert(server, error)
 
@@ -1171,7 +1171,7 @@ async def _send_down_alert(server: ServerHealth, error: str):
     downtime_min = 0
     if server.last_success > 0:
         downtime_min = int((time.time() - server.last_success) / 60)
-    
+
     msg = (
         f"🚨 <b>SERVER DOWN</b>\n\n"
         f"Server: <b>{server.name}</b>\n"
@@ -1212,9 +1212,9 @@ _START_TIME = time.time()
 @router.get("/health")
 async def health():
     """Comprehensive health check — hỗ trợ cả external và internal monitoring."""
-    
+
     uptime_s = int(time.time() - _START_TIME)
-    
+
     response = {
         "status": "healthy",
         "server_time_epoch": time.time(),
@@ -1222,7 +1222,7 @@ async def health():
         "uptime_seconds": uptime_s,
         "hostname": platform.node(),
     }
-    
+
     # Database check
     try:
         pending_count = await database.get_pending_count()
@@ -1231,7 +1231,7 @@ async def health():
     except Exception as e:
         response["status"] = "degraded"
         response["db"] = f"error: {str(e)}"
-    
+
     # System resources (nếu psutil có sẵn)
     try:
         response["system"] = {
@@ -1241,7 +1241,7 @@ async def health():
         }
     except Exception:
         pass  # psutil optional
-    
+
     return response
 ```
 
@@ -1333,7 +1333,7 @@ scheduler.add_job(
 
 > [!IMPORTANT]
 > **Ưu tiên triển khai:** NTP (#1) → Fail-safe (#3) → Log Rotation (#4) → Liveness (#5) → Long Polling (#2)
-> 
+>
 > NTP phải được setup **TRƯỚC KHI** deploy bất kỳ service nào lên production.
 > Fail-safe cần có ngay từ ngày đầu để tránh mất signal.
 > Log Rotation phải có trước khi chạy 24/7 để tránh disk full.

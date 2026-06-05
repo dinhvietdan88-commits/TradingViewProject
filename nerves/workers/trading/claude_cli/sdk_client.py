@@ -11,6 +11,7 @@ Design invariants (Core Layer):
 - Never raises exceptions to callers — all errors wrapped in AnalysisResponse.
 - check_availability() validates ANTHROPIC_API_KEY presence (no binary check).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -50,9 +51,7 @@ class SdkClient:
     ):
         self._api_key = api_key or getattr(config, "ANTHROPIC_API_KEY", "")
         self._model = (
-            model
-            or getattr(config, "CLAUDE_CLI_MODEL", "")
-            or "claude-sonnet-4-5"
+            model or getattr(config, "CLAUDE_CLI_MODEL", "") or "claude-sonnet-4-5"
         )
         self._timeout = timeout or getattr(config, "CLAUDE_CLI_TIMEOUT", 120)
         self._rate_limit = rate_limit or getattr(config, "CLAUDE_CLI_RATE_LIMIT", 10)
@@ -78,8 +77,7 @@ class SdkClient:
 
         if not self._api_key:
             log.warning(
-                "SdkClient: ANTHROPIC_API_KEY not configured. "
-                "SDK calls will fail."
+                "SdkClient: ANTHROPIC_API_KEY not configured. SDK calls will fail."
             )
             self._available = False
             return False
@@ -206,7 +204,7 @@ class SdkClient:
                         log.warning(f"SdkClient: Timeout after {duration:.1f}s")
                     elif isinstance(exc, _anthropic.RateLimitError):
                         rate_limited = True
-                        log.warning(f"SdkClient: Anthropic rate limit hit")
+                        log.warning("SdkClient: Anthropic rate limit hit")
                     elif isinstance(exc, _anthropic.AuthenticationError):
                         log.error("SdkClient: Invalid API key — disabling client")
                         self._available = False
@@ -238,6 +236,4 @@ class SdkClient:
     def _prune_timestamps(self) -> None:
         """Remove timestamps older than 60 seconds."""
         cutoff = time.monotonic() - 60.0
-        self._request_timestamps = [
-            t for t in self._request_timestamps if t > cutoff
-        ]
+        self._request_timestamps = [t for t in self._request_timestamps if t > cutoff]

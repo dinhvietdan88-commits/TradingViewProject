@@ -6,14 +6,14 @@ Focuses on concurrent requests (idempotency race conditions), Server B execute e
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
-import aiohttp
 from aiohttp import ContentTypeError
 
 import config
 import database
-from core.events import TradeExecuted, TradeFailed, SignalRejected, SignalReceived
+from core.events import SignalReceived
 from workers.vps_consumer import VpsSignalConsumer
 from workers.vps_analyzer import VpsAnalyzerWorker
+
 
 def _make_vbs_signal(queue_id=1, symbol="BTCUSDT", action="buy", price=100.0, atr=None):
     """Create a sample VBS signal dict with optional ATR."""
@@ -43,6 +43,7 @@ def _make_vbs_signal(queue_id=1, symbol="BTCUSDT", action="buy", price=100.0, at
 
 class NonJsonResponse:
     """Fake aiohttp response that raises ContentTypeError on json()."""
+
     def __init__(self, status=200, text_data="HTML page"):
         self.status = status
         self._text_data = text_data
@@ -51,7 +52,11 @@ class NonJsonResponse:
         self.headers = {}
 
     async def json(self):
-        raise ContentTypeError(MagicMock(), MagicMock(), message="Attempt to decode JSON with unexpected mimetype")
+        raise ContentTypeError(
+            MagicMock(),
+            MagicMock(),
+            message="Attempt to decode JSON with unexpected mimetype",
+        )
 
     async def text(self):
         return self._text_data
@@ -65,6 +70,7 @@ class NonJsonResponse:
 
 class FakeResponse:
     """Fake aiohttp response for mocking session.get/post."""
+
     def __init__(self, status=200, json_data=None, text_data=""):
         self.status = status
         self._json_data = json_data or {}
@@ -88,6 +94,7 @@ class FakeResponse:
 
 # ── Concurrent duplicate queue ID (idempotency checks) ───────────────────
 
+
 @pytest.mark.asyncio
 async def test_concurrent_duplicate_queue_id(tmp_path):
     """
@@ -100,7 +107,9 @@ async def test_concurrent_duplicate_queue_id(tmp_path):
     consumer = VpsSignalConsumer()
     consumer.send_acks = AsyncMock(return_value=True)
 
-    signal = _make_vbs_signal(queue_id=201, symbol="BTCUSDT", action="buy", price=68000.0)
+    signal = _make_vbs_signal(
+        queue_id=201, symbol="BTCUSDT", action="buy", price=68000.0
+    )
 
     # To force the race condition deterministically, we synchronize both tasks
     # so they both perform their check (SELECT) before either performs their insert.
@@ -118,24 +127,28 @@ async def test_concurrent_duplicate_queue_id(tmp_path):
         return await original_insert(*args, **kwargs)
 
     # We will gather two concurrent runs of _process_signal for the same queue_id
-    with patch('database.insert_signal', side_effect=mock_insert_signal):
-        with patch('core.event_bus.bus.emit_background', new_callable=AsyncMock) as mock_emit:
+    with patch("database.insert_signal", side_effect=mock_insert_signal):
+        with patch(
+            "core.event_bus.bus.emit_background", new_callable=AsyncMock
+        ) as mock_emit:
             await asyncio.gather(
-                consumer._process_signal(signal),
-                consumer._process_signal(signal)
+                consumer._process_signal(signal), consumer._process_signal(signal)
             )
 
             # Check DB count of signals with vbs_queue_id = 201
             import aiosqlite
+
             async with aiosqlite.connect(config.DB_PATH) as db:
-                async with db.execute("SELECT id FROM signals WHERE vbs_queue_id = 201") as cur:
+                async with db.execute(
+                    "SELECT id FROM signals WHERE vbs_queue_id = 201"
+                ) as cur:
                     rows = await cur.fetchall()
                     # Verify that only one signal is inserted (idempotency enforced by DB constraint)
                     assert len(rows) == 1
-                    
+
             # Only one call to _process_signal proceeds to insert and emit SignalReceived event.
             assert mock_emit.call_count == 1
-            
+
             # Verify the event is indeed SignalReceived
             event1 = mock_emit.call_args_list[0][0][0]
             assert isinstance(event1, SignalReceived)
@@ -145,8 +158,8 @@ async def test_concurrent_duplicate_queue_id(tmp_path):
         await consumer.close()
 
 
-
 # ── Server B Failures (500, 404, Invalid JSON) ───────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_forward_to_server_b_500():
@@ -160,7 +173,9 @@ async def test_forward_to_server_b_500():
 
     try:
         # Mock Server B responding with 500
-        server_b_resp = FakeResponse(status=500, json_data={"detail": "Server B Internal Error"})
+        server_b_resp = FakeResponse(
+            status=500, json_data={"detail": "Server B Internal Error"}
+        )
         mock_session = MagicMock()
         mock_session.post = MagicMock(return_value=server_b_resp)
         worker.get_session = AsyncMock(return_value=mock_session)
@@ -212,7 +227,9 @@ async def test_forward_to_server_b_non_json():
 
     try:
         # Mock non-JSON response (e.g. status 502 with HTML from cloud provider)
-        server_b_resp = NonJsonResponse(status=502, text_data="<html>Bad Gateway</html>")
+        server_b_resp = NonJsonResponse(
+            status=502, text_data="<html>Bad Gateway</html>"
+        )
         mock_session = MagicMock()
         mock_session.post = MagicMock(return_value=server_b_resp)
         worker.get_session = AsyncMock(return_value=mock_session)
@@ -228,6 +245,7 @@ async def test_forward_to_server_b_non_json():
 
 
 # ── Webhook payload with invalid types for ATR ───────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_invalid_types_for_atr_list():
@@ -248,7 +266,7 @@ async def test_invalid_types_for_atr_list():
 
         # ATR is a list (invalid type)
         signal_invalid_atr = _make_vbs_signal(atr=[1.5, 2.3])
-        
+
         # Verify SL/TP calculation falls back to default percentages
         sl, tp = worker._calculate_sl_tp(price, "buy", signal=signal_invalid_atr)
         assert sl == price * (1 - config.STOP_LOSS_PCT)  # 92.0
@@ -286,7 +304,7 @@ async def test_invalid_types_for_atr_dict():
 
         # ATR is a dict (invalid type)
         signal_invalid_atr = _make_vbs_signal(atr={"val": 3.4})
-        
+
         sl, tp = worker._calculate_sl_tp(price, "buy", signal=signal_invalid_atr)
         assert sl == price * (1 - config.STOP_LOSS_PCT)  # 92.0
         assert tp == price * (1 + config.TAKE_PROFIT_PCT)  # 120.0
@@ -320,7 +338,7 @@ async def test_invalid_types_for_atr_string_fail():
 
         # ATR is an invalid string
         signal_invalid_atr = _make_vbs_signal(atr="not_a_float")
-        
+
         sl, tp = worker._calculate_sl_tp(price, "buy", signal=signal_invalid_atr)
         assert sl == price * (1 - config.STOP_LOSS_PCT)  # 92.0
         assert tp == price * (1 + config.TAKE_PROFIT_PCT)  # 120.0
@@ -354,7 +372,7 @@ async def test_valid_types_for_atr_string_pass():
 
         # ATR is a numeric string
         signal_valid_atr = _make_vbs_signal(atr="1.5")
-        
+
         # SL = 100.0 - 2 * 1.5 = 97.0
         # TP = 100.0 + 5 * 1.5 = 107.5
         sl, tp = worker._calculate_sl_tp(price, "buy", signal=signal_valid_atr)
@@ -373,4 +391,3 @@ async def test_valid_types_for_atr_string_pass():
         config.RISK_PER_TRADE = original_risk
         config.MAX_QUOTE_QTY = original_max
         await worker.close()
-

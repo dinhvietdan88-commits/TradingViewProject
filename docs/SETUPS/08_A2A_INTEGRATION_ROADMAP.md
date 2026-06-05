@@ -23,7 +23,7 @@ graph TD
         SG -- 3. Local Execute as Root --> Core[Server C AI Core]
         Core -- 4. Telemetry / Results --> IDE
     end
-    
+
     style SG fill:#1e222d,stroke:#2962ff,stroke-width:2px;
     style IDE fill:#1c1c1e,stroke:#34c759,stroke-width:2px;
 ```

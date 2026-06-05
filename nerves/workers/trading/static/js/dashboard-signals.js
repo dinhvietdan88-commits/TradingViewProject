@@ -248,14 +248,14 @@ function renderSignalCardHtml(s) {
     const atrVal = parseFloat(s.metadata?.atr_value || 0);
     const pr = parseFloat(s.price || 0);
     let slVal = 0, tpVal = 0;
-    
+
     if (dir === 'long') {
       if (atrVal && pr) {
         slVal = Math.round(pr - atrVal * 2);
         tpVal = Math.round(pr + atrVal * 3);
       }
       tradeBtnHtml = `
-        <button class="sig-trade-btn btn-buy" 
+        <button class="sig-trade-btn btn-buy"
                 onclick="executeRealtimeSignalTrade('${s.symbol}', 'buy', ${pr}, '${s.exchange}', '${s.interval}', '${escHtml(s.indicator_name)}', '${atrVal}')">
           ⚡ Buy
         </button>
@@ -266,7 +266,7 @@ function renderSignalCardHtml(s) {
         tpVal = Math.round(pr - atrVal * 3);
       }
       tradeBtnHtml = `
-        <button class="sig-trade-btn btn-sell" 
+        <button class="sig-trade-btn btn-sell"
                 onclick="executeRealtimeSignalTrade('${s.symbol}', 'sell', ${pr}, '${s.exchange}', '${s.interval}', '${escHtml(s.indicator_name)}', '${atrVal}')">
           ⚡ Sell
         </button>
@@ -339,7 +339,7 @@ function renderHistoricalSignalCardHtml(s) {
     const atrVal = parseFloat(s.metadata?.atr_value || 0);
     const pr = parseFloat(s.price || 0);
     let slVal = 0, tpVal = 0;
-    
+
     if (dir === 'long' && atrVal && pr) {
       slVal = Math.round(pr - atrVal * 2);
       tpVal = Math.round(pr + atrVal * 3);
@@ -402,13 +402,13 @@ function renderHistoricalSignalCardHtml(s) {
 function renderSignalGroupCardHtml(symbol, exchangeMap) {
   const exchanges = Object.keys(exchangeMap);
   const groupSignals = Object.values(exchangeMap);
-  
+
   // Custom tabs
   const tabsHtml = exchanges.map((ex, idx) => {
     const s = exchangeMap[ex];
     const typeEmoji = { entry: '🟢', exit: '🔴', info: '🔵' }[s.signal_type] || '⚪';
     return `
-      <button class="sig-ex-tab ${idx === 0 ? 'active' : ''} type-${s.signal_type}" 
+      <button class="sig-ex-tab ${idx === 0 ? 'active' : ''} type-${s.signal_type}"
               onclick="switchExTab('${symbol}', '${ex}', event)">
         ${typeEmoji} ${ex.toUpperCase()}
       </button>
@@ -435,14 +435,14 @@ function renderSignalGroupCardHtml(symbol, exchangeMap) {
       const atrVal = parseFloat(s.metadata?.atr_value || 0);
       const pr = parseFloat(s.price || 0);
       let slVal = 0, tpVal = 0;
-      
+
       if (dir === 'long') {
         if (atrVal && pr) {
           slVal = Math.round(pr - atrVal * 2);
           tpVal = Math.round(pr + atrVal * 3);
         }
         tradeBtnHtml = `
-          <button class="sig-trade-btn btn-buy" 
+          <button class="sig-trade-btn btn-buy"
                   onclick="executeRealtimeSignalTrade('${symbol}', 'buy', ${pr}, '${ex}', '${s.interval}', '${escHtml(s.indicator_name)}', '${atrVal}')">
             ⚡ Buy
           </button>
@@ -453,7 +453,7 @@ function renderSignalGroupCardHtml(symbol, exchangeMap) {
           tpVal = Math.round(pr - atrVal * 3);
         }
         tradeBtnHtml = `
-          <button class="sig-trade-btn btn-sell" 
+          <button class="sig-trade-btn btn-sell"
                   onclick="executeRealtimeSignalTrade('${symbol}', 'sell', ${pr}, '${ex}', '${s.interval}', '${escHtml(s.indicator_name)}', '${atrVal}')">
             ⚡ Sell
           </button>
@@ -472,7 +472,7 @@ function renderSignalGroupCardHtml(symbol, exchangeMap) {
     }
 
     return `
-      <div class="sig-ex-content ${ex} ${typeClass} ${idx === 0 ? 'active' : ''}" 
+      <div class="sig-ex-content ${ex} ${typeClass} ${idx === 0 ? 'active' : ''}"
            style="${idx === 0 ? 'display: block;' : 'display: none;'}">
         <div class="sig-card-header">
           <div class="sig-card-left">
@@ -529,21 +529,21 @@ function renderSignalGroupCardHtml(symbol, exchangeMap) {
 /* ── Global tab switcher ─────────────────────────────────────────── */
 window.switchExTab = function(symbol, exchange, event) {
   if (event) event.stopPropagation();
-  
+
   const card = document.getElementById(`sig-group-${symbol}`);
   if (!card) return;
-  
+
   // Toggle tab buttons
   card.querySelectorAll('.sig-ex-tab').forEach(btn => {
     btn.classList.toggle('active', btn.textContent.toLowerCase().includes(exchange.toLowerCase()));
   });
-  
+
   // Toggle content blocks and update parent border
   card.querySelectorAll('.sig-ex-content').forEach(block => {
     if (block.classList.contains(exchange)) {
       block.style.display = 'block';
       block.classList.add('active');
-      
+
       card.classList.remove('border-entry', 'border-exit', 'border-info');
       if (block.classList.contains('sig-card-entry')) card.classList.add('border-entry');
       else if (block.classList.contains('sig-card-exit')) card.classList.add('border-exit');
@@ -654,7 +654,7 @@ function renderSignalFeed(signals) {
         flex-direction: column;
         gap: 10px;
       }
-      
+
       /* Grouped symbols styles */
       .sig-group-card {
         border-radius: 12px;
@@ -730,7 +730,7 @@ function renderSignalFeed(signals) {
       .sig-group-card .sig-ex-content {
         border-left: none !important;
       }
-      
+
       /* Direction Mix styles */
       .sig-direction-mix {
         margin-top: 16px;
@@ -885,7 +885,7 @@ function renderSignalFeed(signals) {
         color: #22c55e;
         font-weight: 700;
       }
-      
+
       /* Collapsed Historical Cards */
       .sig-hist-card {
         border-radius: 10px;
@@ -1573,7 +1573,7 @@ function renderDirectionMix(dirMix, regime) {
   }
 
   const upperRegime = (regime || 'CHOP').toUpperCase();
-  
+
   // Calculate counts to check if there are active signals in the last 5 minutes
   const longEntryCount = dirMix.long?.entry?.count || 0;
   const longExitCount = dirMix.long?.exit?.count || 0;
@@ -1694,7 +1694,7 @@ function renderDirectionMix(dirMix, regime) {
 /* ── Execute real-time signal manual trade order ───────────────── */
 async function executeRealtimeSignalTrade(symbol, action, price, exchange, interval, indicatorName, atrValue) {
   const side = action === 'buy' ? 'BUY' : 'SELL';
-  
+
   let sl = '';
   let tp = '';
   if (atrValue && atrValue !== '0') {
@@ -1711,7 +1711,7 @@ async function executeRealtimeSignalTrade(symbol, action, price, exchange, inter
 
   const confirmMsg = `Bạn có chắc chắn muốn thực hiện lệnh ${side} ${symbol} tại mức giá $${Number(price).toLocaleString()}?\n` +
                      (sl && tp ? `Khuyến nghị:\n- Stop Loss: $${Number(sl).toLocaleString()}\n- Take Profit: $${Number(tp).toLocaleString()}` : '');
-  
+
   if (!confirm(confirmMsg)) return;
 
   const payload = {
@@ -1755,7 +1755,7 @@ window.toggleHistoricalCard = function(cardId, event) {
   const body = card.querySelector('.sig-hist-body');
   const arrow = card.querySelector('.sig-hist-arrow');
   if (!body) return;
-  
+
   const isExpanded = body.style.display === 'block';
   if (isExpanded) {
     body.style.display = 'none';

@@ -6,6 +6,7 @@ Design Invariant:
 - Each event carries a unique event_id for tracing.
 - Events do NOT carry references to mutable state.
 """
+
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
@@ -24,9 +25,11 @@ def _uid() -> str:
 # BASE EVENT
 # ═══════════════════════════════════════════════════════════════
 
+
 @dataclass(frozen=True)
 class Event:
     """Base class for all domain events. Frozen = immutable after creation."""
+
     event_id: str = field(default_factory=_uid)
     timestamp: str = field(default_factory=_now)
 
@@ -35,9 +38,11 @@ class Event:
 # SIGNAL EVENTS (WebhookGateway → SignalProcessor)
 # ═══════════════════════════════════════════════════════════════
 
+
 @dataclass(frozen=True)
 class SignalReceived(Event):
     """Emitted by WebhookGateway when a webhook payload is parsed and authenticated."""
+
     signal_id: int = 0
     symbol: str = ""
     action: str = ""
@@ -50,7 +55,7 @@ class SignalReceived(Event):
     payload: Optional[Dict[str, Any]] = None
     exchange: str = "binance"
     rag_advice: str = ""
-    mode: str = ""            # "MTT" | "MIS" | "" (empty = not specified)
+    mode: str = ""  # "MTT" | "MIS" | "" (empty = not specified)
     is_recovered: bool = False
     age_minutes: float = 0.0
 
@@ -58,6 +63,7 @@ class SignalReceived(Event):
 @dataclass(frozen=True)
 class IndicatorSignalReceived(Event):
     """Emitted by WebhookGateway when an indicator payload is parsed and authenticated."""
+
     signal_id: int = 0
     symbol: str = ""
     indicator_name: str = ""
@@ -76,6 +82,7 @@ class IndicatorSignalReceived(Event):
 @dataclass(frozen=True)
 class IndicatorSignalValidated(Event):
     """Emitted by SignalProcessor after indicator signal passes validation."""
+
     signal_id: int = 0
     symbol: str = ""
     indicator_name: str = ""
@@ -90,6 +97,7 @@ class IndicatorSignalValidated(Event):
 @dataclass(frozen=True)
 class IndicatorSignalRejected(Event):
     """Emitted by SignalProcessor when an indicator signal fails validation."""
+
     signal_id: int = 0
     symbol: str = ""
     indicator_name: str = ""
@@ -103,6 +111,7 @@ class IndicatorSignalRejected(Event):
 @dataclass(frozen=True)
 class SignalValidated(Event):
     """Emitted by SignalProcessor after dedup + timeframe validation passes."""
+
     signal_id: int = 0
     symbol: str = ""
     action: str = ""
@@ -111,15 +120,15 @@ class SignalValidated(Event):
     sl: str = ""
     tp: str = ""
     exchange: str = "binance"
-    mode: str = ""            # "MTT" | "MIS" | "" — forwarded from SignalReceived
+    mode: str = ""  # "MTT" | "MIS" | "" — forwarded from SignalReceived
     is_recovered: bool = False
     age_minutes: float = 0.0
-
 
 
 @dataclass(frozen=True)
 class SignalRejected(Event):
     """Emitted by SignalProcessor when a signal fails validation."""
+
     signal_id: int = 0
     symbol: str = ""
     action: str = ""
@@ -133,9 +142,11 @@ class SignalRejected(Event):
 # TRADE EVENTS (TradeEngine → PersistenceStore, NotificationHub)
 # ═══════════════════════════════════════════════════════════════
 
+
 @dataclass(frozen=True)
 class TradeApproved(Event):
     """Emitted by AIAnalyzer (auto) or Telegram Bot (human) when a trade is approved to execute."""
+
     signal_id: int = 0
     symbol: str = ""
     action: str = ""
@@ -146,7 +157,7 @@ class TradeApproved(Event):
     exchange: str = "binance"
     approved_by: str = "AI"  # "AI" or "Human"
     analysis_text: str = ""
-    mode: str = ""            # "MTT" | "MIS" | "" — forwarded from SignalValidated
+    mode: str = ""  # "MTT" | "MIS" | "" — forwarded from SignalValidated
     is_recovered: bool = False
     age_minutes: float = 0.0
 
@@ -154,6 +165,7 @@ class TradeApproved(Event):
 @dataclass(frozen=True)
 class TradeExecuted(Event):
     """Emitted by TradeEngine on successful order execution."""
+
     signal_id: int = 0
     trade_id: int = 0
     symbol: str = ""
@@ -176,6 +188,7 @@ class TradeExecuted(Event):
 @dataclass(frozen=True)
 class TradeFailed(Event):
     """Emitted by TradeEngine on order execution failure."""
+
     signal_id: int = 0
     symbol: str = ""
     side: str = ""
@@ -188,6 +201,7 @@ class TradeFailed(Event):
 @dataclass(frozen=True)
 class CircuitBreakerTripped(Event):
     """Emitted by TradeEngine when a circuit breaker trips to OPEN."""
+
     exchange: str = ""
     symbol: str = ""
     prev_state: str = ""
@@ -196,10 +210,10 @@ class CircuitBreakerTripped(Event):
     metrics: Optional[Dict[str, Any]] = None
 
 
-
 @dataclass(frozen=True)
 class TradeApprovalTimeout(Event):
     """Emitted by NotificationHub or ApprovalTimeoutManager when an interactive request expires."""
+
     signal_id: int = 0
     symbol: str = ""
     reason: str = "Timeout exceeded (5 mins)"
@@ -212,6 +226,7 @@ class PositionClosed(Event):
     REQ2: P&L Notification on SL/TP Hit.
     exit_reason: 'STOP_LOSS' | 'TAKE_PROFIT' | 'MANUAL'
     """
+
     symbol: str = ""
     side: str = ""
     entry_price: float = 0.0
@@ -227,9 +242,11 @@ class PositionClosed(Event):
 # AI EVENTS (AIAnalyzer → TradeEngine, NotificationHub)
 # ═══════════════════════════════════════════════════════════════
 
+
 @dataclass(frozen=True)
 class AlertTriggered(Event):
     """Emitted by SignalProcessor when action='alert' (stealth capture path)."""
+
     signal_id: int = 0
     symbol: str = ""
     price: str = ""
@@ -243,6 +260,7 @@ class AlertTriggered(Event):
 @dataclass(frozen=True)
 class AnalysisComplete(Event):
     """Emitted by AIAnalyzer after Vision AI + RAG completes."""
+
     signal_id: int = 0
     symbol: str = ""
     action: str = ""
@@ -266,15 +284,18 @@ class AnalysisComplete(Event):
 # BRIEF / SCHEDULER EVENTS
 # ═══════════════════════════════════════════════════════════════
 
+
 @dataclass(frozen=True)
 class BriefTriggered(Event):
     """Emitted by SchedulerDaemon or manual trigger to start Morning Brief."""
+
     source: str = "scheduler"  # "scheduler" | "manual" | "bot"
 
 
 @dataclass(frozen=True)
 class BriefCompleted(Event):
     """Emitted after Morning Brief generation completes."""
+
     brief_id: int = 0
     symbols_scanned: int = 0
     success: bool = True
@@ -285,10 +306,11 @@ class BriefCompleted(Event):
 # CAPTURE EVENTS (HookDispatcher → PythonCaptureClient)
 # ═══════════════════════════════════════════════════════════════
 
+
 @dataclass(frozen=True)
 class CaptureTriggered(Event):
     """Emitted by HookDispatcher when a capture is triggered."""
-    symbol: str = ""
-    trigger: str = ""      # "signal" | "schedule" | "command"
-    source_event_id: str = ""
 
+    symbol: str = ""
+    trigger: str = ""  # "signal" | "schedule" | "command"
+    source_event_id: str = ""

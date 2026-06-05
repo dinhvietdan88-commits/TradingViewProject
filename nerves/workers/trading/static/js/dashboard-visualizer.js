@@ -42,14 +42,14 @@ function initVisualizerTab() {
   // Sync state values to UI controls on tab open
   document.getElementById('visDirection').value = VIS.direction;
   document.getElementById('visEntryPriceInput').value = VIS.entryPrice.toFixed(2);
-  
+
   const slider = document.getElementById('visEntryPrice');
   if (slider) {
     slider.min = (VIS.entryPrice * 0.9).toFixed(2);
     slider.max = (VIS.entryPrice * 1.1).toFixed(2);
     slider.value = VIS.entryPrice;
   }
-  
+
   const display = document.getElementById('visValEntryPrice');
   if (display) display.textContent = '$' + VIS.entryPrice.toLocaleString(undefined, {minimumFractionDigits: 2});
 
@@ -76,7 +76,7 @@ function initVisChart() {
   if (!container || VIS.chart) return;
 
   const h = Math.max(container.clientHeight || 480, 480);
-  
+
   VIS.chart = LightweightCharts.createChart(container, {
     width: container.clientWidth || 600,
     height: h,
@@ -146,7 +146,7 @@ async function loadVisChartData(symbol) {
   else if (sym.includes('ETH')) sym = 'ETHUSDT';
   else if (sym.includes('SOL')) sym = 'SOLUSDT';
   else if (sym.includes('BNB')) sym = 'BNBUSDT';
-  
+
   if (VIS.currentSymbol === sym && VIS.candleSeries && VIS.candleSeries.data && VIS.candleSeries.data.length > 0) return;
 
   VIS.currentSymbol = sym;
@@ -166,7 +166,7 @@ async function loadVisChartData(symbol) {
       low: parseFloat(c[3]),
       close: parseFloat(c[4]),
     }));
-    
+
     if (VIS.candleSeries) {
       VIS.candleSeries.setData(ohlcv);
       VIS.chart.timeScale().fitContent();
@@ -305,7 +305,7 @@ function updateVisCalculation() {
     if (slDescEl) slDescEl.textContent = 'Với vị thế SHORT, Stop Loss được đặt CAO hơn Giá vào lệnh để bảo vệ nguồn vốn.';
     if (tpFormulaEl) tpFormulaEl.innerHTML = `Take Profit = Price - Reward = ${VIS.entryPrice.toFixed(2)} - ${reward.toFixed(2)} = <span class="val-tp">${tpPrice.toFixed(2)}</span>`;
     if (tpDescEl) tpDescEl.textContent = 'Với vị thế SHORT, Take Profit được đặt DƯỚI Giá vào lệnh.';
-    
+
     setText('visStateBadge', 'Short Setup');
     document.getElementById('visStateBadge').className = 'state-badge short';
   } else {
@@ -429,7 +429,7 @@ function drawOverlayCanvas() {
   if (!timeScaleWidth) return;
 
   const entryY = VIS.candleSeries.priceToCoordinate(VIS.entryPrice);
-  
+
   const risk = VIS.atrValue * VIS.slMultiplier;
   const reward = risk * VIS.rrrRatio;
   const trail = VIS.atrValue * VIS.trailMultiplier;
@@ -505,7 +505,7 @@ function drawOverlayCanvas() {
     ctx.font = 'normal 9px "JetBrains Mono", monospace';
     const vWidth = ctx.measureText(valText).width;
     const pWidth = percentageText ? ctx.measureText(percentageText).width + 8 : 0;
-    
+
     const badgeW = tWidth + vWidth + pWidth + 20;
     const badgeH = 18;
     const badgeY = y - badgeH / 2;
@@ -605,14 +605,14 @@ function loadVisPreset(name) {
   // Update UI values
   document.getElementById('visDirection').value = direction;
   document.getElementById('visEntryPriceInput').value = price.toFixed(2);
-  
+
   const slider = document.getElementById('visEntryPrice');
   if (slider) {
     slider.min = (price * 0.9).toFixed(2);
     slider.max = (price * 1.1).toFixed(2);
     slider.value = price;
   }
-  
+
   const display = document.getElementById('visValEntryPrice');
   if (display) display.textContent = '$' + price.toLocaleString(undefined, {minimumFractionDigits: 2});
 
@@ -662,7 +662,7 @@ function parseVisMetadata() {
 
     const parsed = JSON.parse(cleanText);
     let sym = parsed.symbol || 'BTCUSDT';
-    
+
     if (parsed.direction) {
       document.getElementById('visDirection').value = parsed.direction.toLowerCase();
     }
@@ -672,7 +672,7 @@ function parseVisMetadata() {
     if (parsed.rrr_ratio) {
       document.getElementById('visRrrRatio').value = parseFloat(parsed.rrr_ratio);
     }
-    
+
     // Automatically query symbol scale based on current selected symbol
     let price = parseFloat(parsed.entry || parsed.price) || 0;
     if (!price) {
@@ -681,14 +681,14 @@ function parseVisMetadata() {
     }
 
     document.getElementById('visEntryPriceInput').value = price.toFixed(2);
-    
+
     const slider = document.getElementById('visEntryPrice');
     if (slider) {
       slider.min = (price * 0.9).toFixed(2);
       slider.max = (price * 1.1).toFixed(2);
       slider.value = price;
     }
-    
+
     const display = document.getElementById('visValEntryPrice');
     if (display) display.textContent = '$' + price.toLocaleString(undefined, {minimumFractionDigits: 2});
 
@@ -730,9 +730,9 @@ window.refreshVisSignals = async function(event) {
       const isExit = sig.signal_type === 'exit';
       const badgeColor = isEntry ? 'rgba(0, 200, 150, 0.15)' : isExit ? 'rgba(255, 77, 109, 0.15)' : 'rgba(59, 130, 246, 0.15)';
       const textColor = isEntry ? '#00c896' : isExit ? '#ff4d6d' : '#3b82f6';
-      
+
       const timeStr = new Date(sig.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-      
+
       // Parse metadata details
       let metaStr = '';
       const meta = typeof sig.metadata === 'object' ? sig.metadata : {};
@@ -847,7 +847,7 @@ window.openInVisualizer = function(data) {
     tp_mode: "Fixed RRR",
     trail_stop: "0"
   };
-  
+
   const textarea = document.getElementById('visRawMetadata');
   if (textarea) textarea.value = JSON.stringify(payload, null, 2);
 
@@ -863,7 +863,7 @@ window.visualizeCSCapture = function(event) {
 
   const sym = document.getElementById('csVerdictSym')?.textContent;
   const analysis = document.getElementById('csAnalysisText')?.textContent || '';
-  
+
   // Extract price from live ticker
   let entry = 72704.49;
   const symDefaults = getSymbolDefaults(sym);
@@ -930,7 +930,7 @@ window.visualizeSignalCard = function(signalId, event) {
   try {
     const symEl = card.querySelector('.sig-hist-symbol') || card.querySelector('.sig-symbol');
     if (symEl) sym = symEl.textContent.trim();
-    
+
     const prEl = card.querySelector('.sig-hist-price') || card.querySelector('.sig-price');
     if (prEl) price = parseFloat(prEl.textContent.replace('$', '').replace(/,/g, '')) || price;
 
@@ -980,7 +980,7 @@ window.visualizeLiveTickerSymbol = function(symbol, event) {
 
   const sym = String(symbol || 'BTCUSDT').toUpperCase();
   const defaults = getSymbolDefaults(sym);
-  
+
   // Extract price
   let price = defaults.atr > 50 ? 72000 : (defaults.atr > 5 ? 3400 : 160);
   const priceEl = document.getElementById(`tp-${sym}`);

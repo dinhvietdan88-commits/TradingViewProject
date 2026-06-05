@@ -25,9 +25,8 @@ import sys
 import tempfile
 import textwrap
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 log = logging.getLogger("harness_prover")
 
@@ -36,9 +35,11 @@ log = logging.getLogger("harness_prover")
 # Data Models
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ProofResult:
     """Result of a single PoC execution."""
+
     finding_id: str
     rule_id: str
     status: str = "INCONCLUSIVE"  # PROVEN | THEORETICAL | INCONCLUSIVE | SAFE_SKIP
@@ -77,7 +78,6 @@ POC_TEMPLATES = {
             print(f"EXPLOIT_ERROR: {{e}}")
             sys.exit(2)
     """),
-
     "TVP-002": textwrap.dedent("""\
         # PoC: TVP-002 — Missing symbol validation
         # Check if webhook validates the symbol field
@@ -108,7 +108,6 @@ POC_TEMPLATES = {
             print(f"EXPLOIT_ERROR: {{e}}")
             sys.exit(2)
     """),
-
     "TVP-003": textwrap.dedent("""\
         # PoC: TVP-003 — Missing indicator_name validation
         import sys
@@ -125,7 +124,6 @@ POC_TEMPLATES = {
             print(f"EXPLOIT_ERROR: {{e}}")
             sys.exit(2)
     """),
-
     "TVP-004": textwrap.dedent("""\
         # PoC: TVP-004 — No rate limiting on webhook
         import sys
@@ -145,7 +143,6 @@ POC_TEMPLATES = {
             print(f"EXPLOIT_ERROR: {{e}}")
             sys.exit(2)
     """),
-
     "TVP-005": textwrap.dedent("""\
         # PoC: TVP-005 — Missing exchange field passthrough
         import sys
@@ -162,7 +159,6 @@ POC_TEMPLATES = {
             print(f"EXPLOIT_ERROR: {{e}}")
             sys.exit(2)
     """),
-
     "TVP-007": textwrap.dedent("""\
         # PoC: TVP-007 — No position size guard
         import sys
@@ -182,7 +178,6 @@ POC_TEMPLATES = {
             print(f"EXPLOIT_ERROR: {{e}}")
             sys.exit(2)
     """),
-
     # --- STA (Static Analysis) rules ---
     "STA-001": textwrap.dedent("""\
         # PoC: STA-001 — Dynamic import (potential code injection)
@@ -211,7 +206,6 @@ POC_TEMPLATES = {
             print(f"EXPLOIT_ERROR: {{e}}")
             sys.exit(2)
     """),
-
     "STA-002": textwrap.dedent("""\
         # PoC: STA-002 — eval()/exec() usage
         import sys, ast
@@ -233,7 +227,6 @@ POC_TEMPLATES = {
             print(f"EXPLOIT_ERROR: {{e}}")
             sys.exit(2)
     """),
-
     "STA-003": textwrap.dedent("""\
         # PoC: STA-003 — subprocess with shell=True
         import sys, ast
@@ -258,7 +251,6 @@ POC_TEMPLATES = {
             print(f"EXPLOIT_ERROR: {{e}}")
             sys.exit(2)
     """),
-
     "STA-005": textwrap.dedent("""\
         # PoC: STA-005 — Unsafe deserialization (pickle)
         import sys
@@ -279,7 +271,6 @@ POC_TEMPLATES = {
             print(f"EXPLOIT_ERROR: {{e}}")
             sys.exit(2)
     """),
-
     "SEC-001": textwrap.dedent("""\
         # PoC: SEC-001 — Hardcoded secret detection
         import sys, re
@@ -311,6 +302,7 @@ POC_TEMPLATES = {
 # ---------------------------------------------------------------------------
 # Harness Prover
 # ---------------------------------------------------------------------------
+
 
 class HarnessProver:
     """
@@ -352,7 +344,9 @@ class HarnessProver:
         # Check for SAFE_SKIP rules
         if rule_id in SAFE_SKIP_RULES:
             result.status = "SAFE_SKIP"
-            result.poc_output = f"Rule {rule_id} is safety-critical. PoC execution skipped."
+            result.poc_output = (
+                f"Rule {rule_id} is safety-critical. PoC execution skipped."
+            )
             result.duration_ms = int((time.time() - start) * 1000)
             return result
 
@@ -456,8 +450,8 @@ class HarnessProver:
         skipped = [r for r in results if r.status == "SAFE_SKIP"]
         inconclusive = [r for r in results if r.status == "INCONCLUSIVE"]
 
-        lines.append(f"| Status | Count |")
-        lines.append(f"|:-------|------:|")
+        lines.append("| Status | Count |")
+        lines.append("|:-------|------:|")
         lines.append(f"| 🔴 PROVEN | {len(proven)} |")
         lines.append(f"| 🟡 THEORETICAL | {len(theoretical)} |")
         lines.append(f"| ⚪ INCONCLUSIVE | {len(inconclusive)} |")

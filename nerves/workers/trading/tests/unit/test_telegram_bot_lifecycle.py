@@ -1,11 +1,13 @@
 """
 Unit tests for Telegram Bot lifecycle thread safety and event loop management.
 """
+
 import asyncio
 import threading
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import telegram_bot
+
 
 @pytest.mark.asyncio
 async def test_telegram_bot_lifecycle_start_stop():
@@ -16,6 +18,7 @@ async def test_telegram_bot_lifecycle_start_stop():
     telegram_bot._bot_loop = None
 
     thread_exception = None
+
     def hook(args):
         nonlocal thread_exception
         thread_exception = args.exc_value
@@ -55,19 +58,27 @@ async def test_telegram_bot_lifecycle_start_stop():
     mock_request._build_client.return_value = MagicMock()
 
     # Patch dependencies to avoid real networking or imports during start
-    with patch("telegram.ext.ApplicationBuilder", return_value=mock_builder), \
-         patch("telegram.request.HTTPXRequest", return_value=mock_request), \
-         patch("config.TELEGRAM_BOT_TOKEN", "mock_token"), \
-         patch("telegram_bot._get_imports", return_value=(None, None, None, None, None, None, None)), \
-         patch("telegram_bot._register_trade_lifecycle_handlers"), \
-         patch("telegram_bot.TelegramSender"):
-
+    with (
+        patch("telegram.ext.ApplicationBuilder", return_value=mock_builder),
+        patch("telegram.request.HTTPXRequest", return_value=mock_request),
+        patch("config.TELEGRAM_BOT_TOKEN", "mock_token"),
+        patch(
+            "telegram_bot._get_imports",
+            return_value=(None, None, None, None, None, None, None),
+        ),
+        patch("telegram_bot._register_trade_lifecycle_handlers"),
+        patch("telegram_bot.TelegramSender"),
+    ):
         # Start the bot
         telegram_bot.start_bot()
 
         # Wait until bot is initialized or timeout (up to 5 seconds)
         for _ in range(100):
-            if telegram_bot._bot_app is not None and telegram_bot._bot_loop is not None and telegram_bot._bot_loop.is_running():
+            if (
+                telegram_bot._bot_app is not None
+                and telegram_bot._bot_loop is not None
+                and telegram_bot._bot_loop.is_running()
+            ):
                 break
             await asyncio.sleep(0.05)
 

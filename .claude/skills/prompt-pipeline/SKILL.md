@@ -37,7 +37,7 @@ graph TD
 ### 2. Bước 2: Xây dựng Prompt & Gửi Gemini
 *   **Hàm gọi:** [generate_trading_advice](file:///home/botuser/trading-bot/nerves/workers/trading/rag.py#L285).
 *   **Prompt kết hợp:** Gộp dữ liệu realtime (Mã, hành động, giá, volume hiện tại, volume trung bình, RSI) và 3 chunks tri thức Minervini.
-*   **Truyền tin (Routing):** 
+*   **Truyền tin (Routing):**
     *   Hệ thống gọi API thông qua [AgyHarness](file:///home/botuser/trading-bot/nerves/workers/trading/agy_harness.py#L58) đến sidecar `agy-bridge` (FastAPI chạy trên host cổng `:9100`).
     *   `agy-bridge` sử dụng `google-genai` SDK để lấy câu phân tích từ Gemini và trả về.
 

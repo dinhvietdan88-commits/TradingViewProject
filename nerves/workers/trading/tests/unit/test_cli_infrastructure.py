@@ -9,6 +9,7 @@ Tests cover:
   - Semaphore concurrency bounding (max_parallel=1 serialises calls)
   - check_availability with present/absent binary
 """
+
 import asyncio
 import time
 import pytest
@@ -18,6 +19,7 @@ from claude_cli.infrastructure import CliInfrastructure, CliResult
 
 
 # ── helpers ────────────────────────────────────────────────────────────────────
+
 
 def _make_cli(**kwargs) -> CliInfrastructure:
     """Create a CliInfrastructure with sensible test defaults."""
@@ -48,6 +50,7 @@ def _mock_proc(stdout: bytes = b"ok", returncode: int = 0, delay: float = 0.0):
 
 # ── check_availability ──────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_check_availability_binary_present():
     cli = _make_cli()
@@ -68,6 +71,7 @@ async def test_check_availability_binary_absent():
 
 
 # ── invoke: success path ────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_invoke_success_returns_stdout():
@@ -98,6 +102,7 @@ async def test_invoke_nonzero_exit_returns_failure():
 
 # ── invoke: timeout ─────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_invoke_timeout_sets_timed_out_flag():
     cli = _make_cli(timeout=1)
@@ -118,6 +123,7 @@ async def test_invoke_timeout_sets_timed_out_flag():
 
 
 # ── rate limiting ───────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_rate_limit_rejects_excess_requests():
@@ -159,6 +165,7 @@ async def test_rate_limit_resets_after_window():
 
 
 # ── semaphore concurrency ────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_semaphore_serialises_at_max_parallel_1():

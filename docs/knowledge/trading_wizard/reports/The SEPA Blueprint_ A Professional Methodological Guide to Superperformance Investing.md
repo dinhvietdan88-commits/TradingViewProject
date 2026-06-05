@@ -101,4 +101,3 @@ To transform theory into a repeatable professional process, the strategist follo
 4. **Manual Scoring:**  Rank the final list using the  **Relative Prioritizing Checklist**  (surprises, revisions, guidance, and margins).  
 5. **Technical Evaluation:**  Monitor the chart for a  **VCP**  (Volatility Contraction Pattern) and volume dry-up.  
 6. **Execution:**  Buy at the  **Pivot Point**  breakout on heavy volume with a predefined, non-negotiable stop-loss.**Final Professional Directive:**  In the stock market, you can make excuses or you can make money, but you cannot do both. Success is not a matter of luck; it is the intersection of preparation and opportunity.  **Knowledge \+ Discipline \= Superperformance.**
-

@@ -173,7 +173,7 @@ To enforce the principle of least privilege, Tailscale ACL policies are defined 
     "server-b": "100.115.20.2",
     "server-c": "100.115.20.3"
   },
-  
+
   // Access Control Policy Rules
   "acls": [
     // 1. Server C can poll Server A for signals
@@ -190,7 +190,7 @@ To enforce the principle of least privilege, Tailscale ACL policies are defined 
     },
     // 3. Prevent Server A from initiating connection to Server B or C
     // (Tailscale denies by default, no rule allows this route)
-    
+
     // 4. Admin SSH access (if needed)
     {
       "action": "accept",
@@ -268,7 +268,7 @@ sequenceDiagram
     Server C->>LLM: Call Claude/Gemini API (timeout=2.0s)
     Note over LLM: Connection timeout or API 502 error
     LLM-->>Server C: Error / Timeout Exception
-    
+
     Note over Server C: Circuit Breaker counts error -> State: OPEN
     Note over Server C: Fallback to Algorithmic Mode
     Note over Server C: Verify setup against 8 Minervini Trend Rules
@@ -295,7 +295,7 @@ The security model assumes that any server exposed to the public internet (Serve
 
 ### Credential Isolation (API Keys Location)
 
-Exchange credentials and API access tokens are stored strictly on **Server B**. 
+Exchange credentials and API access tokens are stored strictly on **Server B**.
 * **Server A** and **Server C** have zero exposure to exchange keys.
 * If Server A is compromised via a public exploit, the attacker gains access only to a list of historical trade signals, but has no ability to extract trading funds or execute unauthorized trades.
 * If Server C is compromised via prompt injection, the attacker cannot execute orders directly, as Server B only executes trades matching strict validation contracts and limits configured locally on Server B.

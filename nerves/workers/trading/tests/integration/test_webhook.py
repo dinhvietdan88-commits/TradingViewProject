@@ -2,7 +2,9 @@
 Integration tests: test_webhook.py
 Tests the /webhook endpoint and standard execution logic.
 """
+
 import pytest
+
 
 @pytest.mark.asyncio
 async def test_webhook_buy_order_success(client):
@@ -11,11 +13,12 @@ async def test_webhook_buy_order_success(client):
         "symbol": "BTCUSDT",
         "side": "BUY",
         "price": 68000,
-        "risk_pct": 2
+        "risk_pct": 2,
     }
     response = await client.post("/webhook", json=payload)
     # Assuming a fully configured mock environment would return 200
     assert response.status_code in (200, 202)
+
 
 @pytest.mark.asyncio
 async def test_webhook_validation_error(client):

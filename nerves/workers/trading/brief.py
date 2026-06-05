@@ -2,6 +2,7 @@
 P6 — Morning Brief Generator
 Orchestrates: Watchlist scan → Screenshot → RAG → Claude → Telegram
 """
+
 import logging
 import asyncio
 from datetime import datetime
@@ -43,20 +44,20 @@ def _format_brief_text(
 
     # Per-symbol table inside code block for clean alignment
     lines.append("```")
-    lines.append(f"{'Symbol':<12} │ {'Price':>10} │ {'TT':^4} │ {'Vol%':>5} │ {'VCP':<3}")
+    lines.append(
+        f"{'Symbol':<12} │ {'Price':>10} │ {'TT':^4} │ {'Vol%':>5} │ {'VCP':<3}"
+    )
     lines.append("─" * 46)
 
     errors = []
     for r in scan_results:
         if r.error:
-            lines.append(
-                f"{r.symbol:<12} │ {0.0:>10.2f} │  ?/8 │ {'100%':>5} │ ❌"
-            )
+            lines.append(f"{r.symbol:<12} │ {0.0:>10.2f} │  ?/8 │ {'100%':>5} │ ❌")
             errors.append(f"❌ *{r.symbol}*: {r.error}")
             continue
 
         vcp_flag = "⭐" if r.vcp.detected else ""
-        vol_pct = f"{r.vcp.volume_ratio*100:.0f}%"
+        vol_pct = f"{r.vcp.volume_ratio * 100:.0f}%"
         price_str = f"{r.price:,.2f}" if r.price >= 1 else f"{r.price:.4f}"
 
         lines.append(
@@ -116,7 +117,9 @@ async def generate_morning_brief() -> Optional[dict]:
     # 2. MCP health check
     health = await mcp.health_check()
     if not health.get("connected") and config.MCP_ENABLED:
-        logger.warning("[Brief] TradingView MCP not connected — brief may have limited data")
+        logger.warning(
+            "[Brief] TradingView MCP not connected — brief may have limited data"
+        )
 
     # 3. Scan symbols
     logger.info(f"[Brief] Scanning {len(symbols)} symbols: {symbols}")
@@ -135,43 +138,64 @@ async def generate_morning_brief() -> Optional[dict]:
     if top_candidates:
         top = top_candidates[0]
         import re
-        safe_symbol = re.sub(r'[^A-Za-z0-9_\-]', '', top.symbol)
-        target_path = Path(__file__).parent / "screenshots" / f"brief_{safe_symbol}_{timestamp.strftime('%Y%m%d')}.png"
+
+        safe_symbol = re.sub(r"[^A-Za-z0-9_\-]", "", top.symbol)
+        target_path = (
+            Path(__file__).parent
+            / "screenshots"
+            / f"brief_{safe_symbol}_{timestamp.strftime('%Y%m%d')}.png"
+        )
 
         if config.MCP_ENABLED and health.get("connected"):
-            logger.info(f"[Brief] Capturing screenshot for {top.symbol} via TradingView Desktop (CDP)")
+            logger.info(
+                f"[Brief] Capturing screenshot for {top.symbol} via TradingView Desktop (CDP)"
+            )
             try:
                 screenshot_path = await mcp.capture_screenshot(
                     symbol=top.symbol,
                     timeframe="D",
                     region="chart",
-                    save_path=target_path
+                    save_path=target_path,
                 )
             except Exception as e:
                 logger.warning(f"[Brief] TradingView screenshot failed: {e}")
 
         # Fallback Option 2: Generate local minimalist chart if TV Desktop is offline or capture failed
         if not screenshot_path or not screenshot_path.exists():
-            logger.info(f"[Brief] TradingView Desktop offline or failed. Generating local minimalist chart (Option 2) for {top.symbol}...")
+            logger.info(
+                f"[Brief] TradingView Desktop offline or failed. Generating local minimalist chart (Option 2) for {top.symbol}..."
+            )
             try:
                 from capture_client import get_capture_client
+
                 cap_client = get_capture_client()
-                
+
                 # Fetch drawing and strategy specs from scan results to overlay on the chart
                 drawings = []
                 if top.vcp.pivot_level:
-                    drawings.append({"price": top.vcp.pivot_level, "label": "Pivot", "color": "#ff9800"})
-                
+                    drawings.append(
+                        {
+                            "price": top.vcp.pivot_level,
+                            "label": "Pivot",
+                            "color": "#ff9800",
+                        }
+                    )
+
                 strategy_table = {
                     "title": "Minervini Specs",
                     "rows": [
-                        ("Price", f"{top.price:,.2f}" if top.price >= 1 else f"{top.price:.4f}"),
+                        (
+                            "Price",
+                            f"{top.price:,.2f}"
+                            if top.price >= 1
+                            else f"{top.price:.4f}",
+                        ),
                         ("TT Score", f"{top.trend_template.score}/8"),
                         ("Stage", top.trend_template.stage),
-                        ("Vol/Avg", f"{top.vcp.volume_ratio*100:.0f}%"),
-                    ]
+                        ("Vol/Avg", f"{top.vcp.volume_ratio * 100:.0f}%"),
+                    ],
                 }
-                
+
                 res = await cap_client.capture_screenshot(
                     symbol=top.symbol,
                     timeframe="D",
@@ -180,29 +204,40 @@ async def generate_morning_brief() -> Optional[dict]:
                     save_path=target_path,
                     drawings=drawings,
                     strategy_table=strategy_table,
-                    method="mplfinance"
+                    method="mplfinance",
                 )
                 if res.success and res.file_path:
                     screenshot_path = Path(res.file_path)
-                    logger.info(f"[Brief] Successfully generated local minimalist fallback chart: {screenshot_path}")
+                    logger.info(
+                        f"[Brief] Successfully generated local minimalist fallback chart: {screenshot_path}"
+                    )
                 else:
-                    logger.warning(f"[Brief] Local fallback chart generation failed: {res.error}")
+                    logger.warning(
+                        f"[Brief] Local fallback chart generation failed: {res.error}"
+                    )
             except Exception as fallback_err:
-                logger.error(f"[Brief] Local fallback chart generation failed with exception: {fallback_err}")
+                logger.error(
+                    f"[Brief] Local fallback chart generation failed with exception: {fallback_err}"
+                )
 
     # 4b. AI Vision analysis on screenshot (P7)
     vision_result = None
     # Check if ANY AI vision provider is available (Gemini or Anthropic)
     _has_vision = (
-        (getattr(config, "AI_PROVIDER", "anthropic").lower() == "gemini" and
-         (getattr(config, "GEMINI_API_KEY", None) or getattr(config, "GCP_PROJECT_ID", None)))
-        or
-        (getattr(config, "AI_PROVIDER", "anthropic").lower() == "anthropic" and
-         getattr(config, "ANTHROPIC_API_KEY", None) and
-         not getattr(config, "ANTHROPIC_API_KEY", "").startswith("sk-ant-xxx"))
+        getattr(config, "AI_PROVIDER", "anthropic").lower() == "gemini"
+        and (
+            getattr(config, "GEMINI_API_KEY", None)
+            or getattr(config, "GCP_PROJECT_ID", None)
+        )
+    ) or (
+        getattr(config, "AI_PROVIDER", "anthropic").lower() == "anthropic"
+        and getattr(config, "ANTHROPIC_API_KEY", None)
+        and not getattr(config, "ANTHROPIC_API_KEY", "").startswith("sk-ant-xxx")
     )
     if screenshot_path and screenshot_path.exists() and _has_vision:
-        logger.info(f"[Brief] Running AI Vision analysis ({config.AI_PROVIDER}) on {screenshot_path.name}")
+        logger.info(
+            f"[Brief] Running AI Vision analysis ({config.AI_PROVIDER}) on {screenshot_path.name}"
+        )
         try:
             # Prepare scan result dict for combined scoring
             top_scan_dict = None
@@ -223,33 +258,49 @@ async def generate_morning_brief() -> Optional[dict]:
                 scan_result=top_scan_dict,
             )
             if vision_result and not vision_result.get("error"):
-                logger.info(f"[Brief] Vision: confidence={vision_result['confidence']}/10, "
-                           f"patterns={vision_result['patterns']}")
+                logger.info(
+                    f"[Brief] Vision: confidence={vision_result['confidence']}/10, "
+                    f"patterns={vision_result['patterns']}"
+                )
             else:
-                logger.warning(f"[Brief] Vision analysis error: {vision_result.get('error')}")
+                logger.warning(
+                    f"[Brief] Vision analysis error: {vision_result.get('error')}"
+                )
         except Exception as e:
             logger.warning(f"[Brief] Vision analysis failed: {e}")
     elif screenshot_path and not _has_vision:
-        logger.warning("[Brief] Vision skipped — no AI provider configured (check GEMINI_API_KEY or ANTHROPIC_API_KEY)")
+        logger.warning(
+            "[Brief] Vision skipped — no AI provider configured (check GEMINI_API_KEY or ANTHROPIC_API_KEY)"
+        )
 
     # 5. RAG + AI analysis (Claude CLI auth → SDK → Gemini fallback)
     ai_analysis = ""
     has_gemini = bool(config.GEMINI_API_KEY or config.GCP_PROJECT_ID)
-    has_anthropic_sdk = bool(config.ANTHROPIC_API_KEY and not config.ANTHROPIC_API_KEY.startswith("sk-ant-xxx"))
+    has_anthropic_sdk = bool(
+        config.ANTHROPIC_API_KEY
+        and not config.ANTHROPIC_API_KEY.startswith("sk-ant-xxx")
+    )
     # Claude CLI auth session (OAuth login) — always considered available
     # actual binary check happens inside rag._call_claude_cli()
-    has_claude_auth = (config.AI_PROVIDER in ("anthropic", "claude_cli"))
+    has_claude_auth = config.AI_PROVIDER in ("anthropic", "claude_cli")
 
     if config.RAG_ENABLED and (has_anthropic_sdk or has_gemini or has_claude_auth):
         try:
             # Build context from top results
-            vcp_symbols = [r.symbol for r in scan_results if r.vcp.detected and not r.error]
-            top_tt = sorted([r for r in scan_results if not r.error],
-                           key=lambda x: x.trend_template.score, reverse=True)[:3]
+            vcp_symbols = [
+                r.symbol for r in scan_results if r.vcp.detected and not r.error
+            ]
+            top_tt = sorted(
+                [r for r in scan_results if not r.error],
+                key=lambda x: x.trend_template.score,
+                reverse=True,
+            )[:3]
 
-            query = f"Morning brief scan: VCP setups {vcp_symbols}, " \
-                    f"top Trend Template scores {[f'{r.symbol}:{r.trend_template.score}/8' for r in top_tt]}, " \
-                    f"Stage 2 analysis market overview"
+            query = (
+                f"Morning brief scan: VCP setups {vcp_symbols}, "
+                f"top Trend Template scores {[f'{r.symbol}:{r.trend_template.score}/8' for r in top_tt]}, "
+                f"Stage 2 analysis market overview"
+            )
 
             chunks = query_knowledge(query, n_results=config.RAG_TOP_K)
 
@@ -258,7 +309,9 @@ async def generate_morning_brief() -> Optional[dict]:
                 "type": "morning_brief",
                 "symbols_scanned": len(symbols),
                 "vcp_detected": vcp_symbols,
-                "top_tt_scores": [f"{r.symbol}: {r.trend_template.score}/8" for r in top_tt],
+                "top_tt_scores": [
+                    f"{r.symbol}: {r.trend_template.score}/8" for r in top_tt
+                ],
                 "timestamp": timestamp.isoformat(),
             }
 
@@ -271,7 +324,9 @@ async def generate_morning_brief() -> Optional[dict]:
                     rag_chunks=chunks,
                 )
                 if "⚠️" in ai_analysis and has_gemini and config.AI_PROVIDER != "gemini":
-                    logger.warning("[Brief] Anthropic advice generation returned error. Trying Gemini fallback...")
+                    logger.warning(
+                        "[Brief] Anthropic advice generation returned error. Trying Gemini fallback..."
+                    )
                     original_provider = config.AI_PROVIDER
                     config.AI_PROVIDER = "gemini"
                     try:
@@ -286,7 +341,9 @@ async def generate_morning_brief() -> Optional[dict]:
                         config.AI_PROVIDER = original_provider
             except Exception as e:
                 if has_gemini and config.AI_PROVIDER != "gemini":
-                    logger.warning(f"[Brief] Anthropic advice generation failed: {e}. Trying Gemini fallback...")
+                    logger.warning(
+                        f"[Brief] Anthropic advice generation failed: {e}. Trying Gemini fallback..."
+                    )
                     original_provider = config.AI_PROVIDER
                     config.AI_PROVIDER = "gemini"
                     try:
@@ -318,7 +375,9 @@ async def generate_morning_brief() -> Optional[dict]:
     # 7. Send Telegram
     try:
         if screenshot_path and screenshot_path.exists():
-            await asyncio.to_thread(send_telegram_photo, screenshot_path, caption=brief_text[:1024])
+            await asyncio.to_thread(
+                send_telegram_photo, screenshot_path, caption=brief_text[:1024]
+            )
             # Send full text if caption truncated
             if len(brief_text) > 1024:
                 await asyncio.to_thread(send_telegram_message, brief_text)
@@ -358,6 +417,7 @@ async def generate_morning_brief() -> Optional[dict]:
     # 9. Persist to SQLite
     try:
         import json as _json
+
         await database.insert_brief(
             symbols_scanned=len(symbols),
             scan_data=_json.dumps(brief["scan_results"]),

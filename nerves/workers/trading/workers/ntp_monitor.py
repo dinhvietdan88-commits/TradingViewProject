@@ -32,7 +32,7 @@ log = logging.getLogger(__name__)
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 DRIFT_THRESHOLD_MS = int(os.getenv("NTP_DRIFT_THRESHOLD_MS", "500"))
-CHECK_TIMEOUT_SEC  = 5.0
+CHECK_TIMEOUT_SEC = 5.0
 
 # Health URLs — same as liveness_monitor to avoid extra env var clutter
 _SERVER_URLS: dict = {}
@@ -58,6 +58,7 @@ def _get_server_urls() -> dict:
 
 # ── Main check function ────────────────────────────────────────────────────────
 
+
 async def check_clock_drift() -> dict:
     """Compare server_time_epoch from each server's /health against local time.
 
@@ -76,7 +77,7 @@ async def check_clock_drift() -> dict:
             try:
                 t_before = time.time()
                 resp = await client.get(url)
-                t_after  = time.time()
+                t_after = time.time()
                 # One-way latency estimate (half of round-trip)
                 rtt_ms = (t_after - t_before) * 500
 
@@ -100,8 +101,7 @@ async def check_clock_drift() -> dict:
 
                 if ok:
                     log.info(
-                        f"⏰ NTP OK {name}: drift={drift_ms:.1f}ms "
-                        f"(rtt≈{rtt_ms:.0f}ms)"
+                        f"⏰ NTP OK {name}: drift={drift_ms:.1f}ms (rtt≈{rtt_ms:.0f}ms)"
                     )
                 else:
                     log.critical(
@@ -111,7 +111,9 @@ async def check_clock_drift() -> dict:
                     await _send_drift_alert(name, drift_ms, url)
 
             except httpx.ConnectError:
-                log.warning(f"[NtpMonitor] Cannot reach {name} ({url}): connection refused")
+                log.warning(
+                    f"[NtpMonitor] Cannot reach {name} ({url}): connection refused"
+                )
                 results[name] = {"drift_ms": None, "ok": False}
             except Exception as exc:
                 log.warning(f"[NtpMonitor] {name} error: {exc}")
@@ -137,6 +139,7 @@ async def _send_drift_alert(name: str, drift_ms: float, url: str) -> None:
     )
     try:
         from notifier import notify_all
+
         await notify_all(msg)
     except Exception as exc:
         log.error(f"[NtpMonitor] Failed to send drift alert: {exc}")

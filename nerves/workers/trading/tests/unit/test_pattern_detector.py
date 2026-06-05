@@ -1,7 +1,7 @@
 """Tests for utils/pattern_overlay.py — VCP, Cup&Handle, Double Bottom detection."""
+
 import sys
 from pathlib import Path
-import pytest
 
 # Fix path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -13,13 +13,11 @@ from utils.pattern_overlay import (
     detect_cup_handle,
     detect_double_bottom,
     detect_all_patterns,
-    VCPOverlay,
-    CupHandleOverlay,
-    DoubleBottomOverlay,
 )
 
 
 # ── Helpers ──────────────────────────────────────────────
+
 
 def _make_ohlcv(closes: list, spread: float = 0.5) -> list:
     """Build minimal OHLCV list-of-lists from close prices."""
@@ -30,6 +28,7 @@ def _make_ohlcv(closes: list, spread: float = 0.5) -> list:
 
 
 # ── Pivot Detection ──────────────────────────────────────
+
 
 def test_find_pivot_highs_basic():
     prices = [1, 2, 3, 4, 5, 4, 3, 2, 1, 2, 3, 4, 3, 2, 1]
@@ -46,19 +45,20 @@ def test_find_pivot_lows_basic():
 
 # ── VCP Detection ────────────────────────────────────────
 
+
 def test_vcp_3_contractions_detected():
     """Synthetic VCP: 3 contractions with decreasing depth."""
     # T1: rise to 100, drop -15% to 85
     # T2: rise to 98, drop -8% to 90
     # T3: rise to 97, drop -4% to 93
     prices = (
-        list(range(80, 100)) +          # uptrend to 100
-        list(range(100, 85, -1)) +      # T1 drop -15%
-        list(range(85, 98)) +           # recovery
-        list(range(98, 90, -1)) +       # T2 drop -8%
-        list(range(90, 97)) +           # recovery
-        list(range(97, 93, -1)) +       # T3 drop -4%
-        list(range(93, 97))             # final recovery
+        list(range(80, 100))  # uptrend to 100
+        + list(range(100, 85, -1))  # T1 drop -15%
+        + list(range(85, 98))  # recovery
+        + list(range(98, 90, -1))  # T2 drop -8%
+        + list(range(90, 97))  # recovery
+        + list(range(97, 93, -1))  # T3 drop -4%
+        + list(range(93, 97))  # final recovery
     )
     ohlcv = _make_ohlcv(prices)
     result = detect_vcp_contractions(ohlcv, pivot_window=3, min_contractions=2)
@@ -70,6 +70,7 @@ def test_vcp_3_contractions_detected():
 def test_vcp_random_noise_not_detected():
     """Random flat data should not detect VCP."""
     import random
+
     random.seed(42)
     prices = [100 + random.uniform(-1, 1) for _ in range(80)]
     ohlcv = _make_ohlcv(prices)
@@ -89,11 +90,11 @@ def test_vcp_too_short_data():
 def test_vcp_quality_score_range():
     """Quality score should be 0-100."""
     prices = (
-        list(range(50, 100)) +
-        list(range(100, 80, -1)) +
-        list(range(80, 98)) +
-        list(range(98, 90, -1)) +
-        list(range(90, 97))
+        list(range(50, 100))
+        + list(range(100, 80, -1))
+        + list(range(80, 98))
+        + list(range(98, 90, -1))
+        + list(range(90, 97))
     )
     ohlcv = _make_ohlcv(prices)
     result = detect_vcp_contractions(ohlcv, pivot_window=3, min_contractions=2)
@@ -103,16 +104,17 @@ def test_vcp_quality_score_range():
 
 # ── Cup & Handle Detection ───────────────────────────────
 
+
 def test_cup_handle_u_shape():
     """Synthetic U-shape should detect cup pattern."""
     # Left rim at 100, drop to 80, recover to 100, shallow handle
     prices = (
-        [100] * 5 +                    # left rim plateau
-        list(range(100, 80, -1)) +      # cup left side
-        [80] * 5 +                      # cup bottom
-        list(range(80, 100)) +          # cup right side
-        [100, 99, 98, 97, 98, 99] +    # shallow handle
-        [100]                           # breakout
+        [100] * 5  # left rim plateau
+        + list(range(100, 80, -1))  # cup left side
+        + [80] * 5  # cup bottom
+        + list(range(80, 100))  # cup right side
+        + [100, 99, 98, 97, 98, 99]  # shallow handle
+        + [100]  # breakout
     )
     ohlcv = _make_ohlcv(prices)
     result = detect_cup_handle(ohlcv, min_cup_bars=20, pivot_window=3)
@@ -124,11 +126,11 @@ def test_cup_handle_u_shape():
 def test_cup_handle_too_deep_rejected():
     """Cup deeper than 35% should be rejected."""
     prices = (
-        [100] * 5 +
-        list(range(100, 50, -1)) +      # -50% depth
-        [50] * 5 +
-        list(range(50, 100)) +
-        [100]
+        [100] * 5
+        + list(range(100, 50, -1))  # -50% depth
+        + [50] * 5
+        + list(range(50, 100))
+        + [100]
     )
     ohlcv = _make_ohlcv(prices)
     result = detect_cup_handle(ohlcv, min_cup_bars=20, max_cup_depth_pct=35.0)
@@ -143,30 +145,36 @@ def test_cup_handle_short_data():
 
 # ── Double Bottom Detection ──────────────────────────────
 
+
 def test_double_bottom_within_3pct():
     """Two lows within 3% should detect double bottom."""
     prices = (
-        list(range(100, 90, -1)) +      # drop to 90
-        list(range(90, 100)) +          # recovery to ~100
-        [100] * 5 +                     # neckline area
-        list(range(100, 91, -1)) +      # drop to 91 (within 3% of 90)
-        list(range(91, 100))            # recovery
+        list(range(100, 90, -1))  # drop to 90
+        + list(range(90, 100))  # recovery to ~100
+        + [100] * 5  # neckline area
+        + list(range(100, 91, -1))  # drop to 91 (within 3% of 90)
+        + list(range(91, 100))  # recovery
     )
     ohlcv = _make_ohlcv(prices)
     result = detect_double_bottom(ohlcv, pivot_window=3, min_bars_between=5)
     assert result.detected is True
-    assert abs(result.first_bottom_price - result.second_bottom_price) / result.first_bottom_price * 100 <= 3.0
+    assert (
+        abs(result.first_bottom_price - result.second_bottom_price)
+        / result.first_bottom_price
+        * 100
+        <= 3.0
+    )
     assert result.neckline_price > 0
 
 
 def test_double_bottom_too_far_apart():
     """Bottoms >80 bars apart should not detect."""
     prices = (
-        list(range(100, 80, -1)) +      # first bottom at 80
-        list(range(80, 120)) +          # long recovery (40 bars)
-        [120] * 50 +                     # plateau (50 bars) = total >80
-        list(range(120, 81, -1)) +      # second bottom
-        list(range(81, 100))
+        list(range(100, 80, -1))  # first bottom at 80
+        + list(range(80, 120))  # long recovery (40 bars)
+        + [120] * 50  # plateau (50 bars) = total >80
+        + list(range(120, 81, -1))  # second bottom
+        + list(range(81, 100))
     )
     ohlcv = _make_ohlcv(prices)
     result = detect_double_bottom(ohlcv, pivot_window=3, max_bars_between=80)
@@ -177,10 +185,10 @@ def test_double_bottom_too_far_apart():
 def test_double_bottom_bottoms_too_different():
     """Bottoms >3% apart should not detect."""
     prices = (
-        list(range(100, 85, -1)) +      # bottom at 85
-        list(range(85, 100)) +
-        list(range(100, 95, -1)) +      # bottom at 95 (>3% diff from 85)
-        list(range(95, 100))
+        list(range(100, 85, -1))  # bottom at 85
+        + list(range(85, 100))
+        + list(range(100, 95, -1))  # bottom at 95 (>3% diff from 85)
+        + list(range(95, 100))
     )
     ohlcv = _make_ohlcv(prices)
     result = detect_double_bottom(ohlcv, pivot_window=3, tolerance_pct=3.0)
@@ -189,14 +197,15 @@ def test_double_bottom_bottoms_too_different():
 
 # ── Unified detect_all_patterns ──────────────────────────
 
+
 def test_detect_all_returns_result():
     """detect_all_patterns should return PatternOverlayResult."""
     prices = list(range(50, 100)) + list(range(100, 50, -1)) + list(range(50, 100))
     ohlcv = _make_ohlcv(prices)
     result = detect_all_patterns(ohlcv, pivot_window=3)
-    assert hasattr(result, 'vcp')
-    assert hasattr(result, 'cup_handle')
-    assert hasattr(result, 'double_bottom')
-    assert hasattr(result, 'any_detected')
-    assert hasattr(result, 'summary')
+    assert hasattr(result, "vcp")
+    assert hasattr(result, "cup_handle")
+    assert hasattr(result, "double_bottom")
+    assert hasattr(result, "any_detected")
+    assert hasattr(result, "summary")
     assert isinstance(result.summary, str)

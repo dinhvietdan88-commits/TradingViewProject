@@ -111,4 +111,3 @@ Tỷ lệ hiệu suất chiến lược (P&L, Win Rate, Drawdown, Profit Factor,
 1. **Beta-Scaling Impact**: Khi Beta tăng từ $1.0$ (BTC) lên $1.25$ (ETH) và $1.6$ (SOL), biên độ lợi nhuận tuyệt đối tăng lên nhờ các con sóng biến động lớn hơn. Tuy nhiên, việc tăng độ nhiễu và biến động cũng kéo theo tỷ lệ sụt giảm tài sản tối đa (Max Drawdown) tăng tương ứng và làm suy giảm nhẹ tỷ lệ thắng (Win Rate) cũng như Profit Factor.
 2. **Recovery Factor & Capital Efficiency**: Chiến lược **MTT v1.005-b (Daily)** duy trì hiệu số phục hồi (Recovery Factor) cực cao ($\ge 12.5$) trên mọi tài sản nhờ mức sụt giảm tài sản cực kỳ nhỏ ($\le 5.80\%$). Đây là cấu hình tối ưu để nắm giữ tài sản trung và dài hạn.
 3. **Expectancy (Kỳ vọng toán học)**: Expectancy trên mỗi lệnh giao dịch giảm dần khi biến động của tài sản tăng lên, xác nhận cấu hình bảo vệ stop-loss và take-profit cần được nới rộng phù hợp như quy định trong `OPTIMIZED_PARAMETERS_MATRIX.md`.
-

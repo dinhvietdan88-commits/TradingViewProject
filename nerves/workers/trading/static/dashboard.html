@@ -625,7 +625,7 @@
           <div class="risk-gates-grid" id="riskGatesGrid">
             <div class="loading"><div class="spinner"></div></div>
           </div>
-          
+
           <!-- Circuit Breaker Logs Activity Feed -->
           <div class="cb-activity-logs-section">
             <div class="cb-activity-title">
@@ -802,7 +802,7 @@
         <!-- Top Symbols -->
         <section class="glass-section">
           <div class="section-title mb-12">💹 Active Symbols & Watchlist</div>
-          
+
           <div class="sig-watchlist-add" style="display: flex; gap: 8px; margin-bottom: 12px;">
             <input type="text" id="sigNewWatchlistSymbol" placeholder="BTCUSDT" class="form-input sig-input-sm text-uppercase" style="flex: 1; height: 32px; font-size: 0.8rem; padding: 0 10px;" title="Add symbol to watchlist">
             <button class="sig-refresh-btn" onclick="addSigWatchlistSymbol()" style="height: 32px; padding: 0 12px; font-size: 0.78rem;">➕ Add</button>
@@ -1298,7 +1298,7 @@
 
   <!-- ═══ TAB: REPORTS ═══ -->
   <div id="tab-reports" class="tab-panel">
-    
+
     <!-- Scoped Reports Styles -->
     <style>
       .rep-grid {
@@ -1593,7 +1593,7 @@
           </select>
         </div>
       </div>
-      
+
       <form class="risk-settings-form" id="tabRiskSettingsForm" onsubmit="event.preventDefault(); submitTabRiskSettings();" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 12px;">
         <div class="risk-settings-row">
           <label>Daily Loss Cap (USDT)</label>
@@ -1660,7 +1660,7 @@
 
   <!-- ═══ TAB: VISUALIZER ═══ -->
   <div id="tab-visualizer" class="tab-panel">
-    
+
     <!-- Scoped Visualizer Styles -->
     <style>
       .vis-grid {
@@ -2082,7 +2082,7 @@
             </div>
             <span id="visStateBadge" class="state-badge short" style="margin-left: auto;">Short Setup</span>
           </div>
-          
+
           <div class="vis-chart-panel" style="height: 480px; position: relative; background: #0a0b10;">
             <div id="visLiveChart" style="width:100%;height:100%;position:relative;">
               <canvas id="visOverlayCanvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></canvas>
@@ -2095,7 +2095,7 @@
           <!-- CALCULATION BOX -->
           <div class="vis-math-box">
             <div class="vis-math-title">⚙️ Risk metrics breakdown</div>
-            
+
             <div class="vis-params-display">
               <div class="vis-param-pill">
                 <span class="vis-param-lbl">Vol (ATR)</span>
@@ -2122,7 +2122,7 @@
                 <span class="vis-param-val" id="visPTrailPct" style="color: var(--accent-orange);">0.40%</span>
               </div>
             </div>
-            
+
             <div class="vis-param-pill" style="grid-column: span 2; margin-top: 4px;">
               <span class="vis-param-lbl">Real-time Risk-to-Reward Ratio</span>
               <span class="vis-param-val" style="color: var(--accent-orange); display: flex; align-items: center; gap: 8px;">
@@ -2135,7 +2135,7 @@
           <!-- FORMULA BOX -->
           <div class="vis-math-box">
             <div class="vis-math-title">🧠 ATR Risk Engine Math</div>
-            
+
             <div class="vis-math-step">
               <span class="vis-math-formula">
                 Risk (1R) = ATR (<span class="highlight" id="visFAtr">95.93</span>) &times; Multiplier (<span class="highlight" id="visFMul">2.0</span>) = <span class="highlight" id="visFRisk">191.86</span>

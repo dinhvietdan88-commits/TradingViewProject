@@ -19,14 +19,11 @@ trading_dir = pathlib.Path(__file__).resolve().parent.parent.parent
 if str(trading_dir) not in sys.path:
     sys.path.insert(0, str(trading_dir))
 
-from analysis import (
-    scan_all_configured_exchanges,
-    scan_single_symbol_rest,
-    ScanResult
-)
+from analysis import scan_all_configured_exchanges, ScanResult
 import analysis as analysis_module
 
 logger = logging.getLogger(__name__)
+
 
 @pytest.mark.asyncio
 async def test_scan_all_concurrency_and_stress():
@@ -63,19 +60,21 @@ async def test_scan_all_concurrency_and_stress():
     for i in range(365):
         ts = now_ms - (365 - i) * day_ms
         price = 100.0 + i * 0.5
-        mock_candles.append([
-            ts,
-            price,       # open
-            price + 2.0, # high
-            price - 2.0, # low
-            price + 0.1, # close
-            1000.0       # volume
-        ])
+        mock_candles.append(
+            [
+                ts,
+                price,  # open
+                price + 2.0,  # high
+                price - 2.0,  # low
+                price + 0.1,  # close
+                1000.0,  # volume
+            ]
+        )
 
     async def mock_fetch_candles_with_retry(session, exchange_name, symbol, **kwargs):
         nonlocal active_requests, max_active_requests, semaphore_violation
         semaphore = kwargs.get("semaphore")
-        
+
         if semaphore:
             await semaphore.acquire()
         try:
@@ -86,17 +85,19 @@ async def test_scan_all_concurrency_and_stress():
                 if active_requests > 15:
                     # If we exceed the semaphore limit, record it
                     semaphore_violation = True
-                    logger.error(f"Semaphore violation! Active requests: {active_requests}")
-                    
+                    logger.error(
+                        f"Semaphore violation! Active requests: {active_requests}"
+                    )
+
             # Simulate network latency of 15ms to make concurrent overlap visible
             await asyncio.sleep(0.015)
-            
+
             async with request_lock:
                 active_requests -= 1
         finally:
             if semaphore:
                 semaphore.release()
-            
+
         return mock_candles
 
     # Reset scan status
@@ -110,14 +111,20 @@ async def test_scan_all_concurrency_and_stress():
     gc.collect()
     initial_mem = 0
     if psutil:
-        initial_mem = psutil.Process(os.getpid()).memory_info().rss / (1024 * 1024) # MB
+        initial_mem = psutil.Process(os.getpid()).memory_info().rss / (
+            1024 * 1024
+        )  # MB
 
     # Run the scan with mocks patched
     start_time = time.perf_counter()
-    
-    with patch("exchanges.registry.get_registry", return_value=mock_registry), \
-         patch("analysis.fetch_candles_with_retry", side_effect=mock_fetch_candles_with_retry):
-        
+
+    with (
+        patch("exchanges.registry.get_registry", return_value=mock_registry),
+        patch(
+            "analysis.fetch_candles_with_retry",
+            side_effect=mock_fetch_candles_with_retry,
+        ),
+    ):
         results = await scan_all_configured_exchanges()
 
     duration = time.perf_counter() - start_time
@@ -126,23 +133,25 @@ async def test_scan_all_concurrency_and_stress():
     gc.collect()
     final_mem = 0
     if psutil:
-        final_mem = psutil.Process(os.getpid()).memory_info().rss / (1024 * 1024) # MB
+        final_mem = psutil.Process(os.getpid()).memory_info().rss / (1024 * 1024)  # MB
 
     # Assertions and Verifications
     print(f"\n--- Concurrency Stress Test Results ({num_symbols} symbols) ---")
     print(f"Total execution time: {duration:.2f} seconds")
     print(f"Max observed concurrent requests: {max_active_requests}")
-    print(f"Semaphore Limit: 15")
+    print("Semaphore Limit: 15")
     if psutil:
         print(f"Memory before: {initial_mem:.2f} MB")
         print(f"Memory after: {final_mem:.2f} MB")
         print(f"Memory diff: {final_mem - initial_mem:.2f} MB")
     print(f"Total symbols successfully scanned: {len(results)}")
-    
+
     # 1. Verify semaphore limit is respected (we allow for minor timing tolerances in lock releases if any, but it should be exactly <= 15)
-    assert max_active_requests <= 15, f"Concurrency limit exceeded: {max_active_requests} > 15"
+    assert max_active_requests <= 15, (
+        f"Concurrency limit exceeded: {max_active_requests} > 15"
+    )
     assert not semaphore_violation, "Semaphore violation was flagged during run."
-    
+
     # 2. Verify all results were scanned and returned correctly
     assert len(results) == num_symbols
     assert all(isinstance(r, ScanResult) for r in results)
@@ -157,19 +166,26 @@ async def test_scan_all_concurrency_and_stress():
         for run_idx in range(4):
             analysis_module._scan_status = "idle"
             analysis_module._latest_scan_results = []
-            
-            with patch("exchanges.registry.get_registry", return_value=mock_registry), \
-                 patch("analysis.fetch_candles_with_retry", side_effect=mock_fetch_candles_with_retry):
+
+            with (
+                patch("exchanges.registry.get_registry", return_value=mock_registry),
+                patch(
+                    "analysis.fetch_candles_with_retry",
+                    side_effect=mock_fetch_candles_with_retry,
+                ),
+            ):
                 await scan_all_configured_exchanges()
-            
+
             gc.collect()
             mem_now = psutil.Process(os.getpid()).memory_info().rss / (1024 * 1024)
             mems.append(mem_now)
-        
+
         print(f"Memory across 4 subsequent runs: {mems}")
         growth = mems[-1] - mems[0]
         print(f"Memory growth across runs: {growth:.2f} MB")
-        assert growth < 10.0, f"Potential memory leak detected: growth of {growth:.2f} MB"
+        assert growth < 10.0, (
+            f"Potential memory leak detected: growth of {growth:.2f} MB"
+        )
 
 
 @pytest.mark.asyncio
@@ -211,31 +227,34 @@ async def test_scan_all_endpoint_stress(client):
     analysis_module._scan_end_time = None
     analysis_module._scan_error = None
 
-    with patch("exchanges.registry.get_registry", return_value=mock_registry), \
-         patch("analysis.fetch_candles_with_retry", side_effect=mock_fetch_candles):
-         
-         # Trigger the scan via endpoint
-         response = await client.get("/api/scan/all?force=true")
-         assert response.status_code == 200
-         data = response.json()
-         assert data["status"] in ("idle", "running", "completed")
-         
-         # Wait for it to complete
-         max_wait = 20.0
-         start_wait = time.perf_counter()
-         while time.perf_counter() - start_wait < max_wait:
-             response = await client.get("/api/scan/all")
-             data = response.json()
-             if data["status"] == "completed":
-                 break
-             elif data["status"] == "failed":
-                 pytest.fail(f"Scan failed with error: {data.get('error')}")
-             await asyncio.sleep(0.1)
-             
-         assert data["status"] == "completed", f"Scan did not complete, current status: {data['status']}"
-         assert data["scanned"] == num_symbols
-         assert len(data["results"]) == num_symbols
-         print(f"REST API scan all stress verified. Scanned symbols: {data['scanned']}")
+    with (
+        patch("exchanges.registry.get_registry", return_value=mock_registry),
+        patch("analysis.fetch_candles_with_retry", side_effect=mock_fetch_candles),
+    ):
+        # Trigger the scan via endpoint
+        response = await client.get("/api/scan/all?force=true")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] in ("idle", "running", "completed")
+
+        # Wait for it to complete
+        max_wait = 20.0
+        start_wait = time.perf_counter()
+        while time.perf_counter() - start_wait < max_wait:
+            response = await client.get("/api/scan/all")
+            data = response.json()
+            if data["status"] == "completed":
+                break
+            elif data["status"] == "failed":
+                pytest.fail(f"Scan failed with error: {data.get('error')}")
+            await asyncio.sleep(0.1)
+
+        assert data["status"] == "completed", (
+            f"Scan did not complete, current status: {data['status']}"
+        )
+        assert data["scanned"] == num_symbols
+        assert len(data["results"]) == num_symbols
+        print(f"REST API scan all stress verified. Scanned symbols: {data['scanned']}")
 
 
 if __name__ == "__main__":

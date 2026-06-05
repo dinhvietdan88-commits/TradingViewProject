@@ -1,13 +1,13 @@
 import pytest
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 
 from core.event_bus import EventBus
-from core.events import TradeApproved, TradeExecuted, TradeFailed
+from core.events import TradeApproved, TradeFailed
 
 # Mock fixtures and helper components to mimic TradeEngine's expectations
+
 
 @dataclass
 class MockRiskParams:
@@ -23,23 +23,29 @@ class MockRiskParams:
     account_balance: float = 1000.0
     position_pct: float = 0.1
 
+
 @dataclass
 class MockOrderResult:
     success: bool = True
     dry_run: bool = True
     side: str = "BUY"
     symbol: str = "BTCUSDT"
-    entry_order: Dict[str, Any] = field(default_factory=lambda: {
-        "orderId": "LIMIT-12345",
-        "status": "NEW",  # Start as NEW to test monitoring / cancellation
-        "executedQty": "0.0",
-        "cummulativeQuoteQty": "0.00",
-    })
-    oco_order: Optional[Dict[str, Any]] = field(default_factory=lambda: {
-        "orderListId": "OCO-12345",
-    })
+    entry_order: Dict[str, Any] = field(
+        default_factory=lambda: {
+            "orderId": "LIMIT-12345",
+            "status": "NEW",  # Start as NEW to test monitoring / cancellation
+            "executedQty": "0.0",
+            "cummulativeQuoteQty": "0.00",
+        }
+    )
+    oco_order: Optional[Dict[str, Any]] = field(
+        default_factory=lambda: {
+            "orderListId": "OCO-12345",
+        }
+    )
     risk: Optional[MockRiskParams] = field(default_factory=MockRiskParams)
     error: Optional[str] = None
+
 
 def _make_mock_adapter(balance=1000.0, ticker_price=100.0):
     adapter = AsyncMock()
@@ -52,6 +58,7 @@ def _make_mock_adapter(balance=1000.0, ticker_price=100.0):
     adapter.cancel_oco_order = AsyncMock()
     return adapter
 
+
 # R1: Auto-Validation & Dynamic Slippage Control Tests
 @pytest.mark.asyncio
 async def test_r1_slippage_greater_than_05_percent_switches_to_limit():
@@ -63,36 +70,52 @@ async def test_r1_slippage_greater_than_05_percent_switches_to_limit():
 
     # Entry price is 100.0, market price is 101.0 -> slippage = 1.0% > 0.5%
     adapter = _make_mock_adapter(balance=1000.0, ticker_price=101.0)
-    
+
     event = TradeApproved(
-        signal_id=201, symbol="BTCUSDT", action="buy",
-        price=100.0, quote_qty=50.0, sl="90", tp="120",
-        approved_by="AI", analysis_text="Slippage test"
+        signal_id=201,
+        symbol="BTCUSDT",
+        action="buy",
+        price=100.0,
+        quote_qty=50.0,
+        sl="90",
+        tp="120",
+        approved_by="AI",
+        analysis_text="Slippage test",
     )
 
     mock_cursor = AsyncMock()
     mock_cursor.__aenter__ = AsyncMock(return_value=mock_cursor)
     mock_cursor.__aexit__ = AsyncMock(return_value=None)
-    mock_cursor.fetchone = AsyncMock(return_value={"action": "buy", "payload": '{"action": "buy"}'})
+    mock_cursor.fetchone = AsyncMock(
+        return_value={"action": "buy", "payload": '{"action": "buy"}'}
+    )
 
     mock_conn = AsyncMock()
     mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
     mock_conn.__aexit__ = AsyncMock(return_value=None)
     mock_conn.execute = MagicMock(return_value=mock_cursor)
 
-    with patch("exchanges.router.get_router") as mock_get_router, \
-         patch("engine.trade_engine.database") as mock_db, \
-         patch("aiosqlite.connect", return_value=mock_conn), \
-         patch("asyncio.create_task") as mock_create_task, \
-         patch("engine.regime_switcher.get_market_regime", AsyncMock(return_value="TRENDING")):
-
+    with (
+        patch("exchanges.router.get_router") as mock_get_router,
+        patch("engine.trade_engine.database") as mock_db,
+        patch("aiosqlite.connect", return_value=mock_conn),
+        patch("asyncio.create_task") as mock_create_task,
+        patch(
+            "engine.regime_switcher.get_market_regime",
+            AsyncMock(return_value="TRENDING"),
+        ),
+    ):
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = adapter
         mock_get_router.return_value = mock_router
 
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
-        mock_db.get_setting = AsyncMock(side_effect=lambda key, default: "false" if key == "safe_mode_active" else default)
+        mock_db.get_setting = AsyncMock(
+            side_effect=lambda key, default: "false"
+            if key == "safe_mode_active"
+            else default
+        )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=201)
         mock_db.update_trade_oco = AsyncMock()
@@ -111,7 +134,9 @@ async def test_r1_slippage_greater_than_05_percent_switches_to_limit():
         coro.close()
 
     from core.event_bus import bus as default_bus
+
     set_bus(default_bus)
+
 
 @pytest.mark.asyncio
 async def test_r1_slippage_less_than_05_percent_stays_market():
@@ -123,35 +148,51 @@ async def test_r1_slippage_less_than_05_percent_stays_market():
 
     # Entry price is 100.0, market price is 100.2 -> slippage = 0.2% <= 0.5%
     adapter = _make_mock_adapter(balance=1000.0, ticker_price=100.2)
-    
+
     event = TradeApproved(
-        signal_id=202, symbol="BTCUSDT", action="buy",
-        price=100.0, quote_qty=50.0, sl="90", tp="120",
-        approved_by="AI", analysis_text="No slippage test"
+        signal_id=202,
+        symbol="BTCUSDT",
+        action="buy",
+        price=100.0,
+        quote_qty=50.0,
+        sl="90",
+        tp="120",
+        approved_by="AI",
+        analysis_text="No slippage test",
     )
 
     mock_cursor = AsyncMock()
     mock_cursor.__aenter__ = AsyncMock(return_value=mock_cursor)
     mock_cursor.__aexit__ = AsyncMock(return_value=None)
-    mock_cursor.fetchone = AsyncMock(return_value={"action": "buy", "payload": '{"action": "buy"}'})
+    mock_cursor.fetchone = AsyncMock(
+        return_value={"action": "buy", "payload": '{"action": "buy"}'}
+    )
 
     mock_conn = AsyncMock()
     mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
     mock_conn.__aexit__ = AsyncMock(return_value=None)
     mock_conn.execute = MagicMock(return_value=mock_cursor)
 
-    with patch("exchanges.router.get_router") as mock_get_router, \
-         patch("engine.trade_engine.database") as mock_db, \
-         patch("aiosqlite.connect", return_value=mock_conn), \
-         patch("engine.regime_switcher.get_market_regime", AsyncMock(return_value="TRENDING")):
-
+    with (
+        patch("exchanges.router.get_router") as mock_get_router,
+        patch("engine.trade_engine.database") as mock_db,
+        patch("aiosqlite.connect", return_value=mock_conn),
+        patch(
+            "engine.regime_switcher.get_market_regime",
+            AsyncMock(return_value="TRENDING"),
+        ),
+    ):
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = adapter
         mock_get_router.return_value = mock_router
 
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
-        mock_db.get_setting = AsyncMock(side_effect=lambda key, default: "false" if key == "safe_mode_active" else default)
+        mock_db.get_setting = AsyncMock(
+            side_effect=lambda key, default: "false"
+            if key == "safe_mode_active"
+            else default
+        )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=202)
         mock_db.update_trade_oco = AsyncMock()
@@ -164,7 +205,9 @@ async def test_r1_slippage_less_than_05_percent_stays_market():
         assert called_kwargs["order_type"] == "MARKET"
 
     from core.event_bus import bus as default_bus
+
     set_bus(default_bus)
+
 
 @pytest.mark.asyncio
 async def test_r1_limit_order_monitoring_and_cancellation():
@@ -175,14 +218,15 @@ async def test_r1_limit_order_monitoring_and_cancellation():
     # Mock order stays unfilled ("NEW")
     adapter.get_order = AsyncMock(return_value={"status": "NEW"})
 
-    with patch("asyncio.sleep", AsyncMock()) as mock_sleep, \
-         patch("notifier.notify_all", AsyncMock()) as mock_notify:
-
+    with (
+        patch("asyncio.sleep", AsyncMock()) as mock_sleep,
+        patch("notifier.notify_all", AsyncMock()) as mock_notify,
+    ):
         await monitor_limit_order(adapter, "BTCUSDT", "LIMIT-12345", "OCO-12345", 100.0)
 
         # Assert sleep of 30 seconds was called
         mock_sleep.assert_awaited_once_with(30)
-        
+
         # Assert cancellation functions were called
         adapter.cancel_order.assert_awaited_once_with("BTCUSDT", "LIMIT-12345")
         adapter.cancel_oco_order.assert_awaited_once_with("BTCUSDT", "OCO-12345")
@@ -192,6 +236,7 @@ async def test_r1_limit_order_monitoring_and_cancellation():
         args = mock_notify.call_args[0][0]
         assert "Slippage Warning" in args
         assert "LIMIT-12345" in args
+
 
 # R2: ATR-Based Adaptive Position Sizing Tests
 @pytest.mark.asyncio
@@ -210,35 +255,51 @@ async def test_r2_atr_based_sl_tp_and_sizing():
     set_bus(test_bus)
 
     adapter = _make_mock_adapter(balance=1000.0, ticker_price=100.0)
-    
+
     event = TradeApproved(
-        signal_id=203, symbol="BTCUSDT", action="buy",
-        price=100.0, quote_qty=None, sl="", tp="",
-        approved_by="AI", analysis_text="ATR test"
+        signal_id=203,
+        symbol="BTCUSDT",
+        action="buy",
+        price=100.0,
+        quote_qty=None,
+        sl="",
+        tp="",
+        approved_by="AI",
+        analysis_text="ATR test",
     )
 
     mock_cursor = AsyncMock()
     mock_cursor.__aenter__ = AsyncMock(return_value=mock_cursor)
     mock_cursor.__aexit__ = AsyncMock(return_value=None)
-    mock_cursor.fetchone = AsyncMock(return_value={"action": "buy", "payload": '{"atr_value": 2.5}'})
+    mock_cursor.fetchone = AsyncMock(
+        return_value={"action": "buy", "payload": '{"atr_value": 2.5}'}
+    )
 
     mock_conn = AsyncMock()
     mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
     mock_conn.__aexit__ = AsyncMock(return_value=None)
     mock_conn.execute = MagicMock(return_value=mock_cursor)
 
-    with patch("exchanges.router.get_router") as mock_get_router, \
-         patch("engine.trade_engine.database") as mock_db, \
-         patch("aiosqlite.connect", return_value=mock_conn), \
-         patch("engine.regime_switcher.get_market_regime", AsyncMock(return_value="TRENDING")):
-
+    with (
+        patch("exchanges.router.get_router") as mock_get_router,
+        patch("engine.trade_engine.database") as mock_db,
+        patch("aiosqlite.connect", return_value=mock_conn),
+        patch(
+            "engine.regime_switcher.get_market_regime",
+            AsyncMock(return_value="TRENDING"),
+        ),
+    ):
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = adapter
         mock_get_router.return_value = mock_router
 
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
-        mock_db.get_setting = AsyncMock(side_effect=lambda key, default: "false" if key == "safe_mode_active" else default)
+        mock_db.get_setting = AsyncMock(
+            side_effect=lambda key, default: "false"
+            if key == "safe_mode_active"
+            else default
+        )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=203)
         mock_db.update_trade_oco = AsyncMock()
@@ -248,12 +309,16 @@ async def test_r2_atr_based_sl_tp_and_sizing():
 
         adapter.execute_smart_order.assert_awaited_once()
         called_kwargs = adapter.execute_smart_order.call_args[1]
-        assert called_kwargs["sl_price"] == 95.0   # entry - (atr_sl_mul=2.0 * atr=2.5)
-        assert called_kwargs["tp_price"] == 120.0  # entry + (atr_tp_mul=8.0 * atr=2.5) ← BTC Matrix
+        assert called_kwargs["sl_price"] == 95.0  # entry - (atr_sl_mul=2.0 * atr=2.5)
+        assert (
+            called_kwargs["tp_price"] == 120.0
+        )  # entry + (atr_tp_mul=8.0 * atr=2.5) ← BTC Matrix
         assert called_kwargs["quote_qty"] == 200.0  # (risk=10 / dist=5) * 100
 
     from core.event_bus import bus as default_bus
+
     set_bus(default_bus)
+
 
 @pytest.mark.asyncio
 async def test_r3_cdp_keep_alive_reload_on_failure():
@@ -263,43 +328,52 @@ async def test_r3_cdp_keep_alive_reload_on_failure():
     # Mock response for local json/list
     targets_resp = MagicMock()
     targets_resp.status = 200
-    targets_resp.json = AsyncMock(return_value=[
-        {
-            "type": "page",
-            "url": "https://www.tradingview.com/chart/abc/",
-            "webSocketDebuggerUrl": "ws://localhost:9222/devtools/page/1"
-        }
-    ])
+    targets_resp.json = AsyncMock(
+        return_value=[
+            {
+                "type": "page",
+                "url": "https://www.tradingview.com/chart/abc/",
+                "webSocketDebuggerUrl": "ws://localhost:9222/devtools/page/1",
+            }
+        ]
+    )
 
     class MockWS:
         async def __aenter__(self):
             return self
+
         async def __aexit__(self, exc_type, exc, tb):
             pass
+
         async def send(self, msg):
             pass
+
         async def recv(self):
             # Return an error or invalid response to trigger reload flow
             return '{"error": "tab crashed"}'
 
     # Configure mock session context manager
     mock_session_instance = MagicMock()
-    mock_session_instance.get = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=targets_resp)))
-    
+    mock_session_instance.get = MagicMock(
+        return_value=AsyncMock(__aenter__=AsyncMock(return_value=targets_resp))
+    )
+
     mock_session = MagicMock()
     mock_session.__aenter__ = AsyncMock(return_value=mock_session_instance)
     mock_session.__aexit__ = AsyncMock(return_value=None)
 
-    with patch("aiohttp.ClientSession", return_value=mock_session), \
-         patch("websockets.connect", return_value=MockWS()) as mock_ws_connect, \
-         patch("scheduler.logger") as mock_logger:
-
+    with (
+        patch("aiohttp.ClientSession", return_value=mock_session),
+        patch("websockets.connect", return_value=MockWS()) as mock_ws_connect,
+        patch("scheduler.logger") as mock_logger,
+    ):
         await check_and_keep_alive_tv_cdp()
 
         # Should log reload warning and attempt connection/message sending
         mock_logger.warning.assert_called_once()
         # Verify websockets was connected twice: once for evaluate test, and once for reload
         assert mock_ws_connect.call_count == 2
+
 
 # R4: AI Market Regime Filter Tests
 @pytest.mark.asyncio
@@ -311,35 +385,50 @@ async def test_r4_chop_regime_halves_normal_signals():
     set_bus(test_bus)
 
     adapter = _make_mock_adapter(balance=1000.0, ticker_price=100.0)
-    
+
     event = TradeApproved(
-        signal_id=204, symbol="BTCUSDT", action="buy",
-        price=100.0, quote_qty=100.0, sl="90", tp="120",
-        approved_by="AI", analysis_text="Normal signal in CHOP"
+        signal_id=204,
+        symbol="BTCUSDT",
+        action="buy",
+        price=100.0,
+        quote_qty=100.0,
+        sl="90",
+        tp="120",
+        approved_by="AI",
+        analysis_text="Normal signal in CHOP",
     )
 
     mock_cursor = AsyncMock()
     mock_cursor.__aenter__ = AsyncMock(return_value=mock_cursor)
     mock_cursor.__aexit__ = AsyncMock(return_value=None)
-    mock_cursor.fetchone = AsyncMock(return_value={"action": "buy", "payload": '{"action": "buy"}'})
+    mock_cursor.fetchone = AsyncMock(
+        return_value={"action": "buy", "payload": '{"action": "buy"}'}
+    )
 
     mock_conn = AsyncMock()
     mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
     mock_conn.__aexit__ = AsyncMock(return_value=None)
     mock_conn.execute = MagicMock(return_value=mock_cursor)
 
-    with patch("exchanges.router.get_router") as mock_get_router, \
-         patch("engine.trade_engine.database") as mock_db, \
-         patch("aiosqlite.connect", return_value=mock_conn), \
-         patch("engine.regime_switcher.get_market_regime", AsyncMock(return_value="CHOP")):
-
+    with (
+        patch("exchanges.router.get_router") as mock_get_router,
+        patch("engine.trade_engine.database") as mock_db,
+        patch("aiosqlite.connect", return_value=mock_conn),
+        patch(
+            "engine.regime_switcher.get_market_regime", AsyncMock(return_value="CHOP")
+        ),
+    ):
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = adapter
         mock_get_router.return_value = mock_router
 
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
-        mock_db.get_setting = AsyncMock(side_effect=lambda key, default: "false" if key == "safe_mode_active" else default)
+        mock_db.get_setting = AsyncMock(
+            side_effect=lambda key, default: "false"
+            if key == "safe_mode_active"
+            else default
+        )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=204)
         mock_db.update_trade_oco = AsyncMock()
@@ -352,7 +441,9 @@ async def test_r4_chop_regime_halves_normal_signals():
         assert called_kwargs["quote_qty"] == 50.0
 
     from core.event_bus import bus as default_bus
+
     set_bus(default_bus)
+
 
 @pytest.mark.asyncio
 async def test_r4_chop_regime_skips_breakout_signals():
@@ -361,42 +452,58 @@ async def test_r4_chop_regime_skips_breakout_signals():
 
     test_bus = EventBus()
     set_bus(test_bus)
-    
+
     failed_events = []
+
     @test_bus.on(TradeFailed)
     async def on_fail(event):
         failed_events.append(event)
 
     adapter = _make_mock_adapter(balance=1000.0, ticker_price=100.0)
-    
+
     event = TradeApproved(
-        signal_id=205, symbol="BTCUSDT", action="buy",
-        price=100.0, quote_qty=100.0, sl="90", tp="120",
-        approved_by="AI", analysis_text="Breakout signal in CHOP"
+        signal_id=205,
+        symbol="BTCUSDT",
+        action="buy",
+        price=100.0,
+        quote_qty=100.0,
+        sl="90",
+        tp="120",
+        approved_by="AI",
+        analysis_text="Breakout signal in CHOP",
     )
 
     mock_cursor = AsyncMock()
     mock_cursor.__aenter__ = AsyncMock(return_value=mock_cursor)
     mock_cursor.__aexit__ = AsyncMock(return_value=None)
-    mock_cursor.fetchone = AsyncMock(return_value={"action": "bo", "payload": '{"action": "bo"}'})
+    mock_cursor.fetchone = AsyncMock(
+        return_value={"action": "bo", "payload": '{"action": "bo"}'}
+    )
 
     mock_conn = AsyncMock()
     mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
     mock_conn.__aexit__ = AsyncMock(return_value=None)
     mock_conn.execute = MagicMock(return_value=mock_cursor)
 
-    with patch("exchanges.router.get_router") as mock_get_router, \
-         patch("engine.trade_engine.database") as mock_db, \
-         patch("aiosqlite.connect", return_value=mock_conn), \
-         patch("engine.regime_switcher.get_market_regime", AsyncMock(return_value="CHOP")):
-
+    with (
+        patch("exchanges.router.get_router") as mock_get_router,
+        patch("engine.trade_engine.database") as mock_db,
+        patch("aiosqlite.connect", return_value=mock_conn),
+        patch(
+            "engine.regime_switcher.get_market_regime", AsyncMock(return_value="CHOP")
+        ),
+    ):
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = adapter
         mock_get_router.return_value = mock_router
 
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
-        mock_db.get_setting = AsyncMock(side_effect=lambda key, default: "false" if key == "safe_mode_active" else default)
+        mock_db.get_setting = AsyncMock(
+            side_effect=lambda key, default: "false"
+            if key == "safe_mode_active"
+            else default
+        )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=205)
         mock_db.update_signal_status = AsyncMock()
@@ -411,4 +518,5 @@ async def test_r4_chop_regime_skips_breakout_signals():
         assert "CHOP regime" in failed_events[0].error
 
     from core.event_bus import bus as default_bus
+
     set_bus(default_bus)

@@ -27,6 +27,7 @@ from typing import Optional
 # ADK Event Representation (Simplified for interop)
 # ---------------------------------------------------------------------------
 
+
 class ADKEvent:
     """
     Represents an ADK Event for interoperability.
@@ -45,7 +46,7 @@ class ADKEvent:
         state_delta: dict = None,
         event_id: str = None,
         invocation_id: str = None,
-        partial: bool = False
+        partial: bool = False,
     ):
         self.author = author
         self.content_parts = content_parts or []
@@ -61,28 +62,22 @@ class ADKEvent:
             "id": self.id,
             "invocation_id": self.invocation_id,
             "author": self.author,
-            "content": {
-                "parts": self.content_parts
-            },
-            "actions": {
-                "state_delta": self.state_delta
-            },
+            "content": {"parts": self.content_parts},
+            "actions": {"state_delta": self.state_delta},
             "partial": self.partial,
-            "timestamp": self.timestamp
+            "timestamp": self.timestamp,
         }
 
     def is_function_call(self) -> bool:
         """Check if this event contains a function_call part."""
         return any(
-            isinstance(p, dict) and "function_call" in p
-            for p in self.content_parts
+            isinstance(p, dict) and "function_call" in p for p in self.content_parts
         )
 
     def is_function_response(self) -> bool:
         """Check if this event contains a function_response part."""
         return any(
-            isinstance(p, dict) and "function_response" in p
-            for p in self.content_parts
+            isinstance(p, dict) and "function_response" in p for p in self.content_parts
         )
 
     def is_final_response(self) -> bool:
@@ -97,6 +92,7 @@ class ADKEvent:
 # ---------------------------------------------------------------------------
 # Callback Context Adapter
 # ---------------------------------------------------------------------------
+
 
 class AngatiCallbackContext:
     """
@@ -119,7 +115,7 @@ class AngatiCallbackContext:
         tool_name: str,
         tool_input: dict,
         lifecycle: str = "before_tool",
-        session_id: str = None
+        session_id: str = None,
     ):
         self.tool_name = tool_name
         self.tool_input = tool_input
@@ -129,13 +125,15 @@ class AngatiCallbackContext:
         self.invocation_id = str(uuid.uuid4())
 
     @classmethod
-    def from_hook_data(cls, input_data: dict, lifecycle: str = "before_tool") -> "AngatiCallbackContext":
+    def from_hook_data(
+        cls, input_data: dict, lifecycle: str = "before_tool"
+    ) -> "AngatiCallbackContext":
         """Create a CallbackContext from Angati hook service input data."""
         return cls(
             tool_name=input_data.get("tool_name", ""),
             tool_input=input_data.get("tool_input", {}),
             lifecycle=lifecycle,
-            session_id=input_data.get("session_id")
+            session_id=input_data.get("session_id"),
         )
 
     def to_function_call_event(self) -> ADKEvent:
@@ -146,14 +144,11 @@ class AngatiCallbackContext:
         """
         return ADKEvent(
             author="angati-hook-service",
-            content_parts=[{
-                "function_call": {
-                    "name": self.tool_name,
-                    "args": self.tool_input
-                }
-            }],
+            content_parts=[
+                {"function_call": {"name": self.tool_name, "args": self.tool_input}}
+            ],
             state_delta=self.state,
-            invocation_id=self.invocation_id
+            invocation_id=self.invocation_id,
         )
 
     def to_function_response_event(self, result: dict) -> ADKEvent:
@@ -164,14 +159,11 @@ class AngatiCallbackContext:
         """
         return ADKEvent(
             author="angati-hook-service",
-            content_parts=[{
-                "function_response": {
-                    "name": self.tool_name,
-                    "response": result
-                }
-            }],
+            content_parts=[
+                {"function_response": {"name": self.tool_name, "response": result}}
+            ],
             state_delta=self.state,
-            invocation_id=self.invocation_id
+            invocation_id=self.invocation_id,
         )
 
     def to_guardrail_event(self, guardrail_result: dict) -> ADKEvent:
@@ -183,24 +175,29 @@ class AngatiCallbackContext:
         """
         return ADKEvent(
             author="angati-guardrail-engine",
-            content_parts=[{
-                "text": json.dumps({
-                    "tool": self.tool_name,
-                    "lifecycle": self.lifecycle,
-                    "guardrail_result": guardrail_result
-                })
-            }],
+            content_parts=[
+                {
+                    "text": json.dumps(
+                        {
+                            "tool": self.tool_name,
+                            "lifecycle": self.lifecycle,
+                            "guardrail_result": guardrail_result,
+                        }
+                    )
+                }
+            ],
             state_delta={
                 "last_guardrail_decision": guardrail_result.get("decision", "allow"),
-                "last_guardrail_verdicts": len(guardrail_result.get("verdicts", []))
+                "last_guardrail_verdicts": len(guardrail_result.get("verdicts", [])),
             },
-            invocation_id=self.invocation_id
+            invocation_id=self.invocation_id,
         )
 
 
 # ---------------------------------------------------------------------------
 # Telemetry Export
 # ---------------------------------------------------------------------------
+
 
 class ADKTelemetryExporter:
     """

@@ -1,7 +1,7 @@
-import time
 from enum import Enum
 from typing import Protocol, Dict, Any, List, Optional, runtime_checkable
 from dataclasses import dataclass, field
+
 
 class ExchangeErrorCategory(Enum):
     INSUFFICIENT_BALANCE = "INSUFFICIENT_BALANCE"
@@ -12,38 +12,50 @@ class ExchangeErrorCategory(Enum):
     ORDER_REJECTED = "ORDER_REJECTED"
     UNKNOWN = "UNKNOWN"
 
+
 class ExchangeError(Exception):
     """Unified exchange error with category and original details."""
-    def __init__(self, category: ExchangeErrorCategory, message: str,
-                 original_code: Optional[str] = None, exchange: str = ""):
+
+    def __init__(
+        self,
+        category: ExchangeErrorCategory,
+        message: str,
+        original_code: Optional[str] = None,
+        exchange: str = "",
+    ):
         super().__init__(message)
         self.category = category
         self.original_code = original_code
         self.exchange = exchange
 
+
 class ExchangeNotFoundError(Exception):
     pass
+
 
 class ExchangeUnavailableError(Exception):
     pass
 
+
 class SymbolMappingError(Exception):
     pass
+
 
 @dataclass
 class RiskParams:
     """Computed SL/TP levels and position sizing."""
+
     entry_price: float
     stop_loss_price: float
     take_profit_price: float
     stop_loss_pct: float
     take_profit_pct: float
     risk_reward_ratio: float
-    quantity: float           # base asset qty
-    cost: float               # quote asset cost
-    risk_amount: float        # $ at risk
+    quantity: float  # base asset qty
+    cost: float  # quote asset cost
+    risk_amount: float  # $ at risk
     account_balance: float
-    position_pct: float       # % of account
+    position_pct: float  # % of account
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -60,14 +72,16 @@ class RiskParams:
             "position_pct": round(self.position_pct * 100, 2),
         }
 
+
 @dataclass
 class OrderResult:
     """Unified result for order execution across all exchanges."""
+
     success: bool
     dry_run: bool
     side: str
     symbol: str
-    exchange: str = ""                              # exchange identifier
+    exchange: str = ""  # exchange identifier
     entry_order: Dict[str, Any] = field(default_factory=dict)
     oco_order: Optional[Dict[str, Any]] = None
     risk: Optional[RiskParams] = None
@@ -87,11 +101,14 @@ class OrderResult:
             "oco_order": self.oco_order,
             "risk": self.risk.to_dict() if self.risk else None,
             "error": self.error,
-            "error_category": self.error_category.value if self.error_category else None,
+            "error_category": self.error_category.value
+            if self.error_category
+            else None,
             "fallback_used": self.fallback_used,
             "original_exchange": self.original_exchange,
         }
         return d
+
 
 @runtime_checkable
 class ExchangeAdapter(Protocol):
@@ -103,57 +120,56 @@ class ExchangeAdapter(Protocol):
         ...
 
     @property
-    def is_testnet(self) -> bool:
-        ...
+    def is_testnet(self) -> bool: ...
 
     @property
-    def is_dry_run(self) -> bool:
-        ...
+    def is_dry_run(self) -> bool: ...
 
     @property
     def supported_order_types(self) -> List[str]:
         """e.g. ['MARKET', 'LIMIT', 'OCO', 'CONDITIONAL']"""
         ...
 
-    async def get_account_balance(self, asset: str = "USDT") -> float:
-        ...
+    async def get_account_balance(self, asset: str = "USDT") -> float: ...
 
-    async def get_symbol_info(self, symbol: str) -> Dict[str, Any]:
-        ...
+    async def get_symbol_info(self, symbol: str) -> Dict[str, Any]: ...
 
     async def place_market_order(
-        self, symbol: str, side: str,
+        self,
+        symbol: str,
+        side: str,
         quote_qty: Optional[float] = None,
         base_qty: Optional[float] = None,
-    ) -> Dict[str, Any]:
-        ...
+    ) -> Dict[str, Any]: ...
 
     async def place_oco_order(
-        self, symbol: str, side: str, quantity: float,
-        take_profit_price: float, stop_price: float,
+        self,
+        symbol: str,
+        side: str,
+        quantity: float,
+        take_profit_price: float,
+        stop_price: float,
         stop_limit_price: float,
-    ) -> Dict[str, Any]:
-        ...
+    ) -> Dict[str, Any]: ...
 
-    async def get_ticker_price(self, symbol: str) -> float:
-        ...
+    async def get_ticker_price(self, symbol: str) -> float: ...
 
     async def place_limit_order(
         self, symbol: str, side: str, price: float, quantity: float
-    ) -> Dict[str, Any]:
-        ...
+    ) -> Dict[str, Any]: ...
 
-    async def get_order(self, symbol: str, order_id: str) -> Dict[str, Any]:
-        ...
+    async def get_order(self, symbol: str, order_id: str) -> Dict[str, Any]: ...
 
-    async def cancel_order(self, symbol: str, order_id: str) -> Dict[str, Any]:
-        ...
+    async def cancel_order(self, symbol: str, order_id: str) -> Dict[str, Any]: ...
 
-    async def cancel_oco_order(self, symbol: str, order_list_id: str) -> Dict[str, Any]:
-        ...
+    async def cancel_oco_order(
+        self, symbol: str, order_list_id: str
+    ) -> Dict[str, Any]: ...
 
     async def execute_smart_order(
-        self, symbol: str, side: str,
+        self,
+        symbol: str,
+        side: str,
         entry_price: Optional[float] = None,
         quote_qty: Optional[float] = None,
         sl_pct: Optional[float] = None,
@@ -163,10 +179,8 @@ class ExchangeAdapter(Protocol):
         tp_price: Optional[float] = None,
         asset: str = "USDT",
         order_type: str = "MARKET",
-    ) -> OrderResult:
-        ...
+    ) -> OrderResult: ...
 
     async def health_check(self) -> Dict[str, Any]:
         """Returns {'healthy': bool, 'latency_ms': float, 'error': Optional[str]}"""
         ...
-

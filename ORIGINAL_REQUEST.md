@@ -204,7 +204,7 @@ Integrity mode: development (Forbidden to read test source code or hardcode veri
 - Verify connectivity to the Chrome DevTools Protocol server before proceeding.
 
 ### R2. Dynamic Symbol & Study Value Extraction
-- Dynamically parse the active symbol name directly from the open TradingView DOM layout. 
+- Dynamically parse the active symbol name directly from the open TradingView DOM layout.
 - Use `BTCUSDT` or `TAOUSDT` as fallback tickers only if the active symbol name cannot be parsed from the DOM.
 - Extract the current chart parameters, including the latest close price, timeframe interval, and study indicators (SMA50, SMA150, SMA200, and ATR14).
 
@@ -282,7 +282,7 @@ Integrity mode: development
 ## Requirements
 
 ### R1. Watcher-Based Auto-Test Execution
-Xây dựng một module Watcher giám sát thư mục mã nguồn (`nerves/workers/trading/`) và thư mục Pine Script (`pine/`). 
+Xây dựng một module Watcher giám sát thư mục mã nguồn (`nerves/workers/trading/`) và thư mục Pine Script (`pine/`).
 - Khi phát hiện thay đổi trên các file `.py` hoặc `.pine`, tự động kích hoạt `pytest` chạy lại các bài kiểm thử liên quan.
 - Đảm bảo cơ chế debounce để tránh chạy liên tiếp nhiều lần khi lưu nhiều file cùng lúc.
 

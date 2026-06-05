@@ -142,4 +142,3 @@ server over a Tailscale VPN.
 | `agy -i "prompt"` | Interactive session | N/A | ✅ Available |
 | A2A Gateway :9108 | Remote orchestration | TBD | 🔮 Planned |
 | `google.antigravity` Agent SDK | In-container direct | >20s timeout | ❌ Not suitable |
-

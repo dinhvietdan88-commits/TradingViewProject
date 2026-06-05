@@ -28,12 +28,10 @@ References:
 """
 
 import json
-import os
 import sqlite3
 import time
 import uuid
 from pathlib import Path
-from typing import Optional
 
 
 AGENTS_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -44,6 +42,7 @@ TRADES_DB = CORTEX_DB / "trades.db"
 # ---------------------------------------------------------------------------
 # Memory Bridge Core
 # ---------------------------------------------------------------------------
+
 
 class AngatiMemoryBridge:
     """
@@ -74,10 +73,11 @@ class AngatiMemoryBridge:
 
         try:
             import chromadb
+
             self._chroma_client = chromadb.PersistentClient(path=self._chroma_path)
             self._chroma_collection = self._chroma_client.get_or_create_collection(
                 name="angati_local_memory",
-                metadata={"description": "Angati V10 local memory store (ISOLATED)"}
+                metadata={"description": "Angati V10 local memory store (ISOLATED)"},
             )
             return True
         except ImportError:
@@ -106,8 +106,7 @@ class AngatiMemoryBridge:
         if self._ensure_chroma():
             try:
                 results = self._chroma_collection.query(
-                    query_texts=[query],
-                    n_results=min(top_k, 20)
+                    query_texts=[query], n_results=min(top_k, 20)
                 )
                 memories = []
                 if results and results.get("documents"):
@@ -117,13 +116,18 @@ class AngatiMemoryBridge:
                     ids = results.get("ids", [[]])[0]
 
                     for i, doc in enumerate(docs):
-                        memories.append({
-                            "id": ids[i] if i < len(ids) else str(uuid.uuid4()),
-                            "content": doc,
-                            "metadata": metas[i] if i < len(metas) else {},
-                            "score": round(1.0 - (distances[i] if i < len(distances) else 0.5), 4),
-                            "source": "chromadb"
-                        })
+                        memories.append(
+                            {
+                                "id": ids[i] if i < len(ids) else str(uuid.uuid4()),
+                                "content": doc,
+                                "metadata": metas[i] if i < len(metas) else {},
+                                "score": round(
+                                    1.0 - (distances[i] if i < len(distances) else 0.5),
+                                    4,
+                                ),
+                                "source": "chromadb",
+                            }
+                        )
                 return memories[:top_k]
             except Exception:
                 pass
@@ -164,7 +168,7 @@ class AngatiMemoryBridge:
                 cursor.execute(
                     "SELECT id, symbol, indicator_name, interval, close, timestamp "
                     "FROM indicator_signals ORDER BY timestamp DESC LIMIT ?",
-                    (top_k,)
+                    (top_k,),
                 )
 
             rows = cursor.fetchall()
@@ -179,10 +183,10 @@ class AngatiMemoryBridge:
                         "indicator": row["indicator_name"],
                         "interval": row["interval"],
                         "close": row["close"],
-                        "timestamp": row["timestamp"]
+                        "timestamp": row["timestamp"],
                     },
                     "score": 0.5,  # No semantic scoring in fallback
-                    "source": "sqlite_fallback"
+                    "source": "sqlite_fallback",
                 }
                 for row in rows
             ]
@@ -215,9 +219,7 @@ class AngatiMemoryBridge:
         if self._ensure_chroma():
             try:
                 self._chroma_collection.add(
-                    ids=[memory_id],
-                    documents=[content],
-                    metadatas=[meta]
+                    ids=[memory_id], documents=[content], metadatas=[meta]
                 )
                 return memory_id
             except Exception:
@@ -231,7 +233,7 @@ class AngatiMemoryBridge:
                 "id": memory_id,
                 "content": content,
                 "metadata": meta,
-                "timestamp": time.time()
+                "timestamp": time.time(),
             }
             with open(ledger_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
@@ -241,7 +243,9 @@ class AngatiMemoryBridge:
 
     # ----- Session History (ADK SessionService) -----
 
-    def get_session_history(self, session_id: str = None, limit: int = 50) -> list[dict]:
+    def get_session_history(
+        self, session_id: str = None, limit: int = 50
+    ) -> list[dict]:
         """
         Retrieve session context / recent activity.
 
@@ -264,13 +268,16 @@ class AngatiMemoryBridge:
             cursor = conn.cursor()
 
             # Get recent trading signals as session history
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, symbol, indicator_name, interval, close,
                        atr14, sma50, sma150, sma200, timestamp
                 FROM indicator_signals
                 ORDER BY timestamp DESC
                 LIMIT ?
-            """, (limit,))
+            """,
+                (limit,),
+            )
 
             rows = cursor.fetchall()
             conn.close()
@@ -287,8 +294,8 @@ class AngatiMemoryBridge:
                         "atr14": row["atr14"],
                         "sma50": row["sma50"],
                         "sma150": row["sma150"],
-                        "sma200": row["sma200"]
-                    }
+                        "sma200": row["sma200"],
+                    },
                 }
                 for row in rows
             ]
@@ -315,15 +322,12 @@ class AngatiMemoryBridge:
                 "chromadb": {
                     "available": chroma_ok,
                     "path": self._chroma_path,
-                    "count": chroma_count
+                    "count": chroma_count,
                 },
-                "sqlite": {
-                    "available": sqlite_ok,
-                    "path": self._db_path
-                }
+                "sqlite": {"available": sqlite_ok, "path": self._db_path},
             },
             "epoch": "V10",
-            "isolation": "ISOLATED (TradingViewProject satellite)"
+            "isolation": "ISOLATED (TradingViewProject satellite)",
         }
 
 
@@ -412,7 +416,9 @@ class MemoryEndpointMixin:
         content = data.get("content", "")
         metadata = data.get("metadata", {})
         memory_id = _memory_bridge.add_memory(content, metadata)
-        body = json.dumps({"id": memory_id, "status": "stored"}, ensure_ascii=False).encode("utf-8")
+        body = json.dumps(
+            {"id": memory_id, "status": "stored"}, ensure_ascii=False
+        ).encode("utf-8")
         self.send_response(201)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))

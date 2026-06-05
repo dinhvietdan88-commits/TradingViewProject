@@ -66,29 +66,29 @@ $editIconX    = 1140 # Where the edit/settings icon appears on hover
 foreach ($alert in $alertRows) {
     Write-Host ""
     Write-Host "Processing: $($alert.Name)" -ForegroundColor Green
-    
+
     # Step 1: Hover over the alert row to reveal buttons
     Write-Host "  Hovering at ($panelCenterX, $($alert.RowY))..." -ForegroundColor Gray
     [MouseHelper]::Move($panelCenterX, $alert.RowY)
     Sleep-Ms 600
-    
+
     # Move slowly to the right to trigger hover state
     for ($x = $panelCenterX; $x -le $editIconX; $x += 10) {
         [MouseHelper]::Move($x, $alert.RowY)
         Sleep-Ms 30
     }
     Sleep-Ms 400
-    
+
     # Step 2: Click the row's settings/edit button (right side)
     Write-Host "  Clicking edit icon at ($editIconX, $($alert.RowY))..." -ForegroundColor Gray
     [MouseHelper]::Click($editIconX, $alert.RowY)
     Sleep-Ms 1500
-    
-    # Check if dialog opened (take screenshot via CDP won't work here, 
+
+    # Check if dialog opened (take screenshot via CDP won't work here,
     # so just wait and proceed assuming it opened)
     Write-Host "  Dialog should be open now. Waiting..." -ForegroundColor Gray
     Sleep-Ms 500
-    
+
     Write-Host "  Alert $($alert.Name) - manual step complete" -ForegroundColor Green
 }
 

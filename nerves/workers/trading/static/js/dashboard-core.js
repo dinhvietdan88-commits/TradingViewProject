@@ -358,7 +358,7 @@ async function loadSystemStatus() {
   const tg = data.telegram_bot || {};
   const sched = data.scheduler || {};
   const db = data.database || {};
-  
+
   const apiHealth = data.health_api_server || 'UNKNOWN';
   const cdpHealth = data.health_cdp || 'UNKNOWN';
   const dbHealth = data.health_database || 'UNKNOWN';
@@ -417,7 +417,7 @@ function updateCDPBadge(mcp) {
 function updateProtectionStatus(protection) {
   const regimeBadge = document.getElementById('regimeBadge');
   const shieldBadge = document.getElementById('shieldBadge');
-  
+
   if (regimeBadge) {
     const regime = protection.market_regime || 'TRENDING';
     if (regime === 'CHOP') {
@@ -428,7 +428,7 @@ function updateProtectionStatus(protection) {
       regimeBadge.textContent = 'Trending 🟢';
     }
   }
-  
+
   if (shieldBadge) {
     const safeMode = protection.safe_mode_active || false;
     const dd = protection.safe_mode_drawdown || 0.0;
@@ -575,7 +575,7 @@ async function refreshVBSStatus() {
     `;
     return;
   }
-  
+
   if (data.error) {
     el.innerHTML = `
       <div class="status-card-val status-warn" style="grid-column: 1 / -1; padding: 20px; text-align: center;">
@@ -587,7 +587,7 @@ async function refreshVBSStatus() {
 
   const s = data.summary || {};
   const oldestStr = s.oldest_pending_age_minutes !== null ? `${Math.round(s.oldest_pending_age_minutes)}m` : '—';
-  
+
   let signalsHtml = '';
   if (data.pending_signals && data.pending_signals.length > 0) {
     signalsHtml = data.pending_signals.map(sig => `
@@ -714,14 +714,14 @@ window.toggleCircuitBreaker = async function(exchange, action) {
 window.openRiskSettings = async function(exchange) {
   // Switch to System Tab
   switchTab('status');
-  
+
   // Set dropdown value and load exchange settings
   const select = document.getElementById('riskSelectExchange');
   if (select) {
     select.value = exchange.toLowerCase();
     await window.onRiskExchangeChange();
   }
-  
+
   // Scroll to riskSettingsPanel with smooth animation
   const panel = document.getElementById('riskSettingsPanel');
   if (panel) {
@@ -739,19 +739,19 @@ window.onRiskExchangeChange = async function() {
   const select = document.getElementById('riskSelectExchange');
   if (!select) return;
   const exchange = select.value;
-  
+
   const settings = await apiFetch(`/api/risk/settings?exchange=${exchange}`);
   if (!settings) {
     showToast(`❌ Không thể tải cài đặt rủi ro cho ${exchange}`, 'error');
     return;
   }
-  
+
   const dailyLossEl = document.getElementById('tabRiskDailyLossCap');
   const ddCapEl = document.getElementById('tabRiskDrawdownCap');
   const maxQuoteEl = document.getElementById('tabRiskMaxQuoteQty');
   const slipEl = document.getElementById('tabRiskSlippageLimit');
   const safeModeEl = document.getElementById('tabRiskSafeMode');
-  
+
   if (dailyLossEl) dailyLossEl.value = settings.daily_loss_cap;
   if (ddCapEl) ddCapEl.value = settings.drawdown_cap;
   if (maxQuoteEl) maxQuoteEl.value = settings.max_quote_qty;
@@ -763,7 +763,7 @@ window.submitTabRiskSettings = async function() {
   const select = document.getElementById('riskSelectExchange');
   if (!select) return;
   const exchange = select.value;
-  
+
   const payload = {
     exchange: exchange,
     daily_loss_cap: parseFloat(document.getElementById('tabRiskDailyLossCap').value),
@@ -772,13 +772,13 @@ window.submitTabRiskSettings = async function() {
     slippage_limit: parseFloat(document.getElementById('tabRiskSlippageLimit').value),
     safe_mode: parseInt(document.getElementById('tabRiskSafeMode').value)
   };
-  
+
   showToast(`Đang lưu cài đặt rủi ro cho ${exchange}...`, 'info');
   const res = await apiFetch('/api/risk/settings', {
     method: 'POST',
     body: JSON.stringify(payload)
   });
-  
+
   if (res && res.status === 'success') {
     showToast(`✅ ${res.message}`, 'success');
     loadRiskGates();
@@ -793,20 +793,20 @@ async function loadRiskLogs() {
   const container = document.getElementById('cbActivityLogs');
   const countEl = document.getElementById('cbLogsCount');
   if (!container) return;
-  
+
   const logs = await apiFetch('/api/risk/logs?limit=10');
   if (!logs) {
     container.innerHTML = '<p class="muted-label">Logs unavailable</p>';
     return;
   }
-  
+
   if (countEl) countEl.textContent = `${logs.length} entries`;
-  
+
   if (logs.length === 0) {
     container.innerHTML = '<p class="muted-label" style="text-align:center; padding:10px; font-size:0.75rem;">No transitions logged</p>';
     return;
   }
-  
+
   container.innerHTML = logs.map(l => {
     const ts = l.timestamp ? l.timestamp.split(' ')[1] || l.timestamp : '—';
     const badgeClass = l.new_state.toUpperCase() === 'OPEN' ? 'open' : 'closed';
@@ -827,4 +827,3 @@ async function loadRiskLogs() {
 }
 
 document.addEventListener('DOMContentLoaded', init);
-

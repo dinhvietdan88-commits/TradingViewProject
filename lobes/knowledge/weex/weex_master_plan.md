@@ -89,7 +89,7 @@ RiskParams(
 To transition the WEEX integration safely to mainnet production, the system must adhere to a strict staging procedure, strict safety boundaries, and clear error recovery rules.
 
 ### 3.1 Credential Setup and Configuration
-Production credentials must be stored securely. 
+Production credentials must be stored securely.
 - Environment variables must be appended to the local `.env` configuration file.
 - **Strict Security Mandate**: Production credentials must never be committed to the Git repository. The `.gitignore` file must explicitly exclude `.env` files.
 

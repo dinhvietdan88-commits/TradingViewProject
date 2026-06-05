@@ -21,13 +21,14 @@ import shutil
 log = logging.getLogger(__name__)
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-DISK_WARNING_THRESHOLD_PCT  = int(os.getenv("DISK_WARNING_THRESHOLD_PCT",  "80"))
+DISK_WARNING_THRESHOLD_PCT = int(os.getenv("DISK_WARNING_THRESHOLD_PCT", "80"))
 DISK_CRITICAL_THRESHOLD_PCT = int(os.getenv("DISK_CRITICAL_THRESHOLD_PCT", "90"))
-LOG_DIR                      = os.getenv("LOG_DIR", "logs/")
-PARTITION                    = os.getenv("DISK_MONITOR_PARTITION", "/")
+LOG_DIR = os.getenv("LOG_DIR", "logs/")
+PARTITION = os.getenv("DISK_MONITOR_PARTITION", "/")
 
 
 # ── Main check function ────────────────────────────────────────────────────────
+
 
 async def check_disk_usage() -> dict:
     """Check disk usage and alert via Telegram if thresholds are exceeded.
@@ -38,32 +39,28 @@ async def check_disk_usage() -> dict:
     total, used, free = shutil.disk_usage(PARTITION)
 
     used_pct = (used / total) * 100
-    free_gb  = free  / (1024 ** 3)
-    total_gb = total / (1024 ** 3)
+    free_gb = free / (1024**3)
+    total_gb = total / (1024**3)
 
     # Calculate log directory size
     log_size_mb = _get_dir_size_mb(LOG_DIR)
 
     result = {
-        "used_pct":    round(used_pct, 1),
-        "free_gb":     round(free_gb, 2),
-        "total_gb":    round(total_gb, 2),
+        "used_pct": round(used_pct, 1),
+        "free_gb": round(free_gb, 2),
+        "total_gb": round(total_gb, 2),
         "log_size_mb": round(log_size_mb, 1),
-        "status":      "ok",
+        "status": "ok",
     }
 
     if used_pct >= DISK_CRITICAL_THRESHOLD_PCT:
         result["status"] = "critical"
-        log.critical(
-            f"🚨 DISK CRITICAL: {used_pct:.0f}% used, {free_gb:.1f} GB free"
-        )
+        log.critical(f"🚨 DISK CRITICAL: {used_pct:.0f}% used, {free_gb:.1f} GB free")
         await _send_disk_alert("CRITICAL", used_pct, free_gb, log_size_mb)
 
     elif used_pct >= DISK_WARNING_THRESHOLD_PCT:
         result["status"] = "warning"
-        log.warning(
-            f"⚠️ DISK WARNING: {used_pct:.0f}% used, {free_gb:.1f} GB free"
-        )
+        log.warning(f"⚠️ DISK WARNING: {used_pct:.0f}% used, {free_gb:.1f} GB free")
         await _send_disk_alert("WARNING", used_pct, free_gb, log_size_mb)
 
     else:
@@ -108,6 +105,7 @@ async def _send_disk_alert(
         )
     try:
         from notifier import notify_all
+
         await notify_all(msg)
     except Exception as exc:
         log.error(f"[DiskMonitor] Failed to send disk alert: {exc}")

@@ -50,7 +50,7 @@ import time
 def generate_weex_signature(secret_key: str, timestamp: str, method: str, request_path: str, body: str = "") -> str:
     """
     Generates the HMAC-SHA256 signature for WEEX platform authentication.
-    
+
     :param secret_key: The API Secret Key.
     :param timestamp: The string timestamp in milliseconds.
     :param method: The HTTP method (GET, POST, etc.) in uppercase.
@@ -60,14 +60,14 @@ def generate_weex_signature(secret_key: str, timestamp: str, method: str, reques
     """
     # 1. Construct signature payload string
     payload = f"{timestamp}{method.upper()}{request_path}{body}"
-    
+
     # 2. Compute HMAC-SHA256 signature using the secret key
     mac = hmac.new(
         bytes(secret_key, encoding='utf-8'),
         bytes(payload, encoding='utf-8'),
         digestmod=hashlib.sha256
     )
-    
+
     # 3. Base64 encode the binary HMAC output and convert to string
     signature = base64.b64encode(mac.digest()).decode('utf-8')
     return signature
@@ -78,30 +78,30 @@ if __name__ == "__main__":
     API_KEY = "weex_api_key_sample_123"
     SECRET_KEY = "weex_secret_key_sample_456"
     PASSPHRASE = "weex_passphrase_sample_789"
-    
+
     # 1. Sign a GET Request Example (e.g. order detail check)
     timestamp_get = "1684812345000"
     method_get = "GET"
     path_get = "/api/v1/spot/trade/order_info?symbol=BTCUSDT&orderId=8877665544332211"
-    
+
     sign_get = generate_weex_signature(
         secret_key=SECRET_KEY,
         timestamp=timestamp_get,
         method=method_get,
         request_path=path_get
     )
-    
+
     print("--- GET Request Signature Details ---")
     print(f"Timestamp: {timestamp_get}")
     print(f"Signature: {sign_get}")
     print(f"Expected signature format: Base64 HMAC-SHA256")
-    
+
     # 2. Sign a POST Request Example (e.g. place spot order)
     timestamp_post = "1684812348000"
     method_post = "POST"
     path_post = "/api/v1/spot/trade/order"
     body_post = '{"symbol":"BTCUSDT","side":"buy","type":"limit","price":"27500.50","quantity":"0.005","clientOrderId":"cl_ord_spot_001"}'
-    
+
     sign_post = generate_weex_signature(
         secret_key=SECRET_KEY,
         timestamp=timestamp_post,
@@ -109,11 +109,11 @@ if __name__ == "__main__":
         request_path=path_post,
         body=body_post
     )
-    
+
     print("\n--- POST Request Signature Details ---")
     print(f"Timestamp: {timestamp_post}")
     print(f"Signature: {sign_post}")
-    
+
     # 3. Headers Dict Example
     headers = {
         "ACCESS-KEY": API_KEY,

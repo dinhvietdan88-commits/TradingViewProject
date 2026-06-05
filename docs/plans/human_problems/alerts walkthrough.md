@@ -205,7 +205,7 @@ VCP (Volatility Contraction Pattern):
 > - **Essential:** 20 alerts  
 > - **Plus:** 100 alerts
 > - **Premium:** 400 alerts
-> 
+>
 > Hiện tại bạn đang có **5 active alerts**. Nếu gói của bạn giới hạn, hãy ưu tiên theo bảng dưới.
 
 ### Xếp Hạng Ưu Tiên (Nếu phải cắt giảm)
@@ -274,18 +274,18 @@ graph TB
 ```mermaid
 flowchart LR
     TV["TradingView<br/>5 Alerts"] -->|POST /ingest| GW["Gateway<br/>webhook.py"]
-    
+
     GW -->|"source=indicator"| IP["Indicator Pipeline<br/>IndicatorSignalReceived"]
     GW -->|"action=buy/sell"| TP["Trade Pipeline<br/>SignalReceived"]
-    
+
     IP --> DB1["DB: signals table"]
     IP --> SSE["SSE → Dashboard"]
     IP --> DASH["Signals Tab"]
-    
+
     TP --> DB2["DB: signals table"]
     TP --> TE["Trade Engine"]
     TP --> AI["AI Analyzer"]
-    
+
     subgraph "Alert → Pipeline Mapping"
         V1A["V1, FWD, V2"] --> TP
         MV3["MIS V3, ST Flip"] --> IP

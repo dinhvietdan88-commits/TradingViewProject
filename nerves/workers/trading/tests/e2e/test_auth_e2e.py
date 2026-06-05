@@ -28,7 +28,7 @@ os.environ["TELEGRAM_BOT_ENABLED"] = "false"
 os.environ["BRIEF_ENABLED"] = "false"
 os.environ["RAG_ENABLED"] = "false"
 os.environ["MCP_ENABLED"] = "false"
-os.environ["DASHBOARD_TOKEN"] = "legacy-token-abc"       # Enable auth gate
+os.environ["DASHBOARD_TOKEN"] = "legacy-token-abc"  # Enable auth gate
 os.environ["AUTH_SECRET_KEY"] = "e2e-test-secret-key-must-be-32-chars!!"
 os.environ["TELEGRAM_ALLOWED_USERS"] = "123456789"  # Plain int string, comma-sep
 os.environ["SESSION_EXPIRY_HOURS"] = "24"
@@ -40,6 +40,7 @@ from httpx import AsyncClient, ASGITransport
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
+
 
 @pytest_asyncio.fixture
 async def auth_client(tmp_path):
@@ -57,7 +58,7 @@ async def auth_client(tmp_path):
     config.BRIEF_ENABLED = False
     config.MCP_ENABLED = False
     config.RAG_ENABLED = False
-    config.DASHBOARD_TOKEN = "legacy-token-abc"    # Auth gate ON
+    config.DASHBOARD_TOKEN = "legacy-token-abc"  # Auth gate ON
     os.environ["DB_PATH"] = config.DB_PATH
     os.environ["DASHBOARD_TOKEN"] = "legacy-token-abc"
 
@@ -69,7 +70,7 @@ async def auth_client(tmp_path):
 
     # Build AuthService using env vars (AuthConfig reads os.environ at init time)
     # ENV is already patched above: AUTH_SECRET_KEY, TELEGRAM_ALLOWED_USERS, etc.
-    auth_cfg = AuthConfig()     # No-arg: reads from os.environ
+    auth_cfg = AuthConfig()  # No-arg: reads from os.environ
     svc = AuthService(auth_cfg)
     app.state.auth_service = svc
 
@@ -88,6 +89,7 @@ async def auth_client(tmp_path):
 async def auth_service(auth_client):
     """Return the AuthService injected into app.state."""
     from main import app
+
     svc = getattr(app.state, "auth_service", None)
     assert svc is not None, "AuthService not injected into app.state"
     return svc
@@ -100,6 +102,7 @@ def _session_cookie(response) -> str | None:
 def _make_code(svc, telegram_id=123456789, username="testuser"):
     """Helper: generate + store a one-time code."""
     import database
+
     code_obj = svc.generate_login_code(
         telegram_id=telegram_id,
         username=username,
@@ -118,8 +121,8 @@ def _make_code(svc, telegram_id=123456789, username="testuser"):
 # POSITIVE FLOWS
 # ═════════════════════════════════════════════════════════════════════════════
 
-class TestHappyPath:
 
+class TestHappyPath:
     @pytest.mark.asyncio
     async def test_login_page_accessible(self, auth_client):
         """GET /auth/login always returns 200 (no auth needed)."""
@@ -143,7 +146,9 @@ class TestHappyPath:
 
         # Step 2: [Browser] Follow login link
         r = await auth_client.get(f"/auth/callback?code={code_obj.code}")
-        assert r.status_code in (302, 303), f"Expected redirect, got {r.status_code}: {r.text}"
+        assert r.status_code in (302, 303), (
+            f"Expected redirect, got {r.status_code}: {r.text}"
+        )
 
         # Step 3: Session cookie must be present
         session_token = _session_cookie(r)
@@ -163,8 +168,9 @@ class TestHappyPath:
             "/trades",
             headers={"Authorization": "Bearer legacy-token-abc"},
         )
-        assert r.status_code == 200, \
+        assert r.status_code == 200, (
             f"Bearer token rejected - backward compat broken: {r.status_code}"
+        )
 
     @pytest.mark.asyncio
     async def test_logout_after_login(self, auth_client, auth_service):
@@ -186,14 +192,15 @@ class TestHappyPath:
 # SECURITY BOUNDARIES
 # ═════════════════════════════════════════════════════════════════════════════
 
-class TestSecurityBoundaries:
 
+class TestSecurityBoundaries:
     @pytest.mark.asyncio
     async def test_no_auth_blocked(self, auth_client):
         """Protected endpoint without credential -> 401 or 302."""
         r = await auth_client.get("/trades")
-        assert r.status_code in (401, 302), \
+        assert r.status_code in (401, 302), (
             f"Unauthenticated access succeeded: {r.status_code}"
+        )
 
     @pytest.mark.asyncio
     async def test_replay_attack_rejected(self, auth_client, auth_service):
@@ -204,8 +211,9 @@ class TestSecurityBoundaries:
         assert r1.status_code in (302, 303), "First use should succeed"
 
         r2 = await auth_client.get(f"/auth/callback?code={code_obj.code}")
-        assert r2.status_code in (400, 401, 404), \
+        assert r2.status_code in (400, 401, 404), (
             f"Replay attack succeeded with {r2.status_code}"
+        )
 
     @pytest.mark.asyncio
     async def test_invalid_code_rejected(self, auth_client):
@@ -241,18 +249,21 @@ class TestSecurityBoundaries:
     async def test_bearer_query_param_blocked(self, auth_client):
         """SEC-005: Token in query string must NOT grant access."""
         r = await auth_client.get("/trades?token=legacy-token-abc")
-        assert r.status_code in (401, 302), \
+        assert r.status_code in (401, 302), (
             f"Query-param token bypass succeeded - SEC-005 violation! Got {r.status_code}"
+        )
 
     @pytest.mark.asyncio
     async def test_expired_code_rejected(self, auth_client, auth_service):
         """Code with past expiry is rejected."""
         import database
+
         code_obj = auth_service.generate_login_code(
             telegram_id=123456789, username="testuser"
         )
         # Store with expiry 1 second in the past
         from datetime import datetime, timezone
+
         past = datetime.fromtimestamp(int(time.time()) - 1, tz=timezone.utc)
         database.store_auth_code(
             code=code_obj.code,
@@ -262,15 +273,17 @@ class TestSecurityBoundaries:
             expires_at=past.isoformat(),
         )
         r = await auth_client.get(f"/auth/callback?code={code_obj.code}")
-        assert r.status_code in (400, 401, 410), \
+        assert r.status_code in (400, 401, 410), (
             f"Expired code accepted: {r.status_code}"
+        )
 
     @pytest.mark.asyncio
     async def test_non_allowlisted_user_rejected(self, auth_client, auth_service):
         """Code from non-allowlisted Telegram ID -> rejected."""
         import database
+
         code_obj = auth_service.generate_login_code(
-            telegram_id=999999999,      # Not in TELEGRAM_ALLOWED_USERS
+            telegram_id=999999999,  # Not in TELEGRAM_ALLOWED_USERS
             username="hacker",
         )
         database.store_auth_code(
@@ -281,16 +294,17 @@ class TestSecurityBoundaries:
             expires_at=code_obj.expires_at.isoformat(),
         )
         r = await auth_client.get(f"/auth/callback?code={code_obj.code}")
-        assert r.status_code in (400, 401, 403), \
+        assert r.status_code in (400, 401, 403), (
             f"Unauthorized user got access: {r.status_code}"
+        )
 
 
 # ═════════════════════════════════════════════════════════════════════════════
 # PUBLIC PATH WHITELIST
 # ═════════════════════════════════════════════════════════════════════════════
 
-class TestPublicPaths:
 
+class TestPublicPaths:
     @pytest.mark.asyncio
     async def test_health_public(self, auth_client):
         r = await auth_client.get("/health")
@@ -316,4 +330,8 @@ class TestPublicPaths:
         )
         # Webhook handler itself may return various codes, but NOT due to auth middleware
         # A 401 from the webhook secret check is acceptable (not from AuthMiddleware)
-        assert r.status_code != 401 or "secret" in r.text.lower() or r.status_code in (200, 400, 401, 422)
+        assert (
+            r.status_code != 401
+            or "secret" in r.text.lower()
+            or r.status_code in (200, 400, 401, 422)
+        )

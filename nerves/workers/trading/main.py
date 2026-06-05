@@ -1,4 +1,5 @@
 import os
+
 # Force Hugging Face offline mode to load local models instantly (0.1s instead of 3.5m)
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
@@ -10,7 +11,15 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import FastAPI, Request, HTTPException, BackgroundTasks, Query, status, Body
+from fastapi import (
+    FastAPI,
+    Request,
+    HTTPException,
+    BackgroundTasks,
+    Query,
+    status,
+    Body,
+)
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
@@ -38,12 +47,13 @@ import binance_client as binance_module
 import asyncio
 import json as _json
 
-_sse_clients: set[asyncio.Queue] = set()   # one Queue per connected browser tab
+_sse_clients: set[asyncio.Queue] = set()  # one Queue per connected browser tab
 
 # ── Stats TTL cache (30s) — avoids repeated full-table GROUP BY scans ─────────
 import time as _time
-_stats_cache: dict[tuple, tuple] = {}   # key=(symbol,ind_name) → (result, expire_at)
-_STATS_TTL = 30.0   # seconds
+
+_stats_cache: dict[tuple, tuple] = {}  # key=(symbol,ind_name) → (result, expire_at)
+_STATS_TTL = 30.0  # seconds
 
 
 def _stats_cache_get(key: tuple):
@@ -84,6 +94,7 @@ def push_sse_event(event_type: str, data: dict) -> None:
             dead.add(q)
     _sse_clients.difference_update(dead)
 
+
 # ── P9: Claude SDK package ────────────────────────────────────────────────────
 from claude_cli import SdkClient, ClaudeService
 import claude_cli.telegram_commands as _claude_tg
@@ -107,15 +118,17 @@ _claude_service: Optional[ClaudeService] = None
 # so checking for 'buffer' is the safe sentinel. Direct replacement would
 # destroy pytest's capture file handle and cause ValueError on teardown.
 _is_pytest = "pytest" in sys.modules
-if not _is_pytest and sys.stdout and hasattr(sys.stdout, 'buffer'):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-if not _is_pytest and sys.stderr and hasattr(sys.stderr, 'buffer'):
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+if not _is_pytest and sys.stdout and hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+if not _is_pytest and sys.stderr and hasattr(sys.stderr, "buffer"):
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 # Setup logging — StreamHandler explicitly UTF-8 to avoid cp1252 crash on Windows
 Path(config.LOG_FILE).parent.mkdir(parents=True, exist_ok=True)
 _stream_handler = logging.StreamHandler(sys.stdout)
-_stream_handler.setFormatter(logging.Formatter("%(asctime)s  %(levelname)s  %(message)s"))
+_stream_handler.setFormatter(
+    logging.Formatter("%(asctime)s  %(levelname)s  %(message)s")
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -130,6 +143,7 @@ log = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).parent / "static"
 
+
 # ── Rate limiting state moved to gateway.webhook (Phase 5) ──
 # ═══ LIFESPAN (startup/shutdown) ═════════════════════════════
 @asynccontextmanager
@@ -137,7 +151,7 @@ async def lifespan(app: FastAPI):
     """Khoi tao database, RAG Vector DB, MCP client va Scheduler khi server start."""
     # Dynamic rate limit toggle for testing/stress-testing
     limiter.enabled = not getattr(config, "DISABLE_RATE_LIMIT", False)
-    
+
     await database.init_db()
     log.info("Database ready.")
 
@@ -146,19 +160,19 @@ async def lifespan(app: FastAPI):
         import sys
         import os
         import threading
-        
+
         # Add the nerves parent path to sys.path so hook_service can find local core
         project_root = Path(__file__).resolve().parent.parent.parent.parent
         if str(project_root) not in sys.path:
             sys.path.insert(0, str(project_root))
-        
+
         # Add nerves/core to sys.path
         core_path = project_root / "nerves" / "core"
         if str(core_path) not in sys.path:
             sys.path.insert(0, str(core_path))
-            
+
         import hook_service
-        
+
         def run_sra_server():
             bind_addr = os.getenv("ANGATI_BUS_BIND", "127.0.0.1:9105")
             port = 9105
@@ -167,46 +181,53 @@ async def lifespan(app: FastAPI):
                     port = int(bind_addr.split(":")[-1])
                 except Exception:
                     pass
-            server_address = ('', port)
+            server_address = ("", port)
             try:
                 hook_service.AGENTS_ROOT = project_root
-                if hasattr(hook_service, 'scar_memory') and hook_service.scar_memory:
+                if hasattr(hook_service, "scar_memory") and hook_service.scar_memory:
                     hook_service.scar_memory.AGENTS_ROOT = project_root
-                
-                httpd = hook_service.ThreadingHTTPServer(server_address, hook_service.SRAHookHandler)
+
+                httpd = hook_service.ThreadingHTTPServer(
+                    server_address, hook_service.SRAHookHandler
+                )
                 log.info(f"SRA Server: ✅ Starting local Hook Server on port {port}...")
                 httpd.serve_forever()
             except Exception as sra_err:
-                log.warning(f"SRA Server: ⚠️ Failed to run local Hook Server ({sra_err}). Port might be in use.")
-                
+                log.warning(
+                    f"SRA Server: ⚠️ Failed to run local Hook Server ({sra_err}). Port might be in use."
+                )
+
         sra_thread = threading.Thread(target=run_sra_server, daemon=True)
         sra_thread.start()
         app.state.sra_thread = sra_thread
     except Exception as sra_init_err:
         log.warning(f"SRA Server: ⚠️ Init failed ({sra_init_err})")
 
-
     # ── P10: Initialize Auth Service ──────────────────────────────────────────
     try:
         from auth.auth_config import AuthConfig
         from auth.service import AuthService
+
         auth_cfg = AuthConfig()
         auth_svc = AuthService(auth_cfg)
         app.state.auth_service = auth_svc
-        log.info(f"Auth: ✅ Initialized (allowed_users={len(auth_cfg.allowed_users)}, "
-                 f"expiry={auth_cfg.session_expiry_hours or 'never'}h, "
-                 f"widget={'ON' if auth_cfg.widget_enabled else 'OFF'})")
+        log.info(
+            f"Auth: ✅ Initialized (allowed_users={len(auth_cfg.allowed_users)}, "
+            f"expiry={auth_cfg.session_expiry_hours or 'never'}h, "
+            f"widget={'ON' if auth_cfg.widget_enabled else 'OFF'})"
+        )
     except Exception as auth_err:
         log.warning(f"Auth: ⚠️ Init failed ({auth_err}). Dashboard auth disabled.")
         app.state.auth_service = None
 
     # ── Phase 4: Register EventBus components (triggers @bus.on() decorators) ──
     import processor.signal_processor  # noqa: F401 — @bus.on(SignalReceived)
-    import processor.signal_enricher    # noqa: F401 — @bus.on(IndicatorSignalValidated)
-    import engine.trade_engine          # noqa: F401 — @bus.on(SignalValidated)
-    import analyzer.ai_analyzer         # noqa: F401 — @bus.on(AlertTriggered)
-    import hub.notification_hub          # noqa: F401 — @bus.on(SignalRejected)
-    import data.indicator_persistence   # noqa: F401 — @bus.on(IndicatorSignalReceived) DI-1
+    import processor.signal_enricher  # noqa: F401 — @bus.on(IndicatorSignalValidated)
+    import engine.trade_engine  # noqa: F401 — @bus.on(SignalValidated)
+    import analyzer.ai_analyzer  # noqa: F401 — @bus.on(AlertTriggered)
+    import hub.notification_hub  # noqa: F401 — @bus.on(SignalRejected)
+    import data.indicator_persistence  # noqa: F401 — @bus.on(IndicatorSignalReceived) DI-1
+
     log.info(
         f"EventBus: {_event_bus.metrics['total_handlers']} handlers registered "
         f"across {_event_bus.metrics['registered_topics']} topics."
@@ -215,6 +236,7 @@ async def lifespan(app: FastAPI):
     # ── Sprint 7.2: Multi-Exchange Initialization ─────────────────────────────
     from exchanges.registry import init_registry
     from exchanges.health_monitor import start_health_monitor
+
     init_registry()
     start_health_monitor()
     log.info("Exchange Registry initialized and Health Monitor started.")
@@ -226,7 +248,9 @@ async def lifespan(app: FastAPI):
         if success:
             log.info("RAG: ✅ Vector DB sẵn sàng.")
         else:
-            log.warning("RAG: ⚠️ Khởi tạo Vector DB thất bại. Server vẫn hoạt động bình thường.")
+            log.warning(
+                "RAG: ⚠️ Khởi tạo Vector DB thất bại. Server vẫn hoạt động bình thường."
+            )
     else:
         log.info("RAG: Tính năng RAG đang TẮT (RAG_ENABLED=false).")
 
@@ -237,7 +261,9 @@ async def lifespan(app: FastAPI):
         if health.get("connected"):
             log.info("MCP: ✅ TradingView Desktop connected (CDP:9222).")
         else:
-            log.warning(f"MCP: ⚠️ TradingView not connected — {health.get('error', 'unknown')}. Brief will retry at runtime.")
+            log.warning(
+                f"MCP: ⚠️ TradingView not connected — {health.get('error', 'unknown')}. Brief will retry at runtime."
+            )
     else:
         log.info("MCP: Tính năng MCP đang TẮT (MCP_ENABLED=false).")
 
@@ -258,18 +284,24 @@ async def lifespan(app: FastAPI):
             app.state.daemon_manager = daemon_mgr
             app.state.capture_client = capture_client
             app.state.hook_dispatcher = hook_dispatcher
-            log.info(f"Capture Daemon: ✅ Started (port {config.CAPTURE_DAEMON_PORT}, "
-                     f"hooks={config.CAPTURE_HOOKS})")
+            log.info(
+                f"Capture Daemon: ✅ Started (port {config.CAPTURE_DAEMON_PORT}, "
+                f"hooks={config.CAPTURE_HOOKS})"
+            )
         except Exception as daemon_err:
-            log.warning(f"Capture Daemon: ⚠️ Init failed ({daemon_err}). "
-                        "Falling back to subprocess mode.")
+            log.warning(
+                f"Capture Daemon: ⚠️ Init failed ({daemon_err}). "
+                "Falling back to subprocess mode."
+            )
     else:
         log.info("Capture Daemon: TẮT (CAPTURE_DAEMON_ENABLED=false).")
 
     # ── Scheduler (P6) ────────────────────────────────────────
     if config.BRIEF_ENABLED:
         scheduler_module.start_scheduler()
-        log.info(f"Scheduler: ✅ Morning Brief scheduled at {config.BRIEF_CRON_TIME} ICT daily.")
+        log.info(
+            f"Scheduler: ✅ Morning Brief scheduled at {config.BRIEF_CRON_TIME} ICT daily."
+        )
     else:
         log.info("Scheduler: Morning Brief TẮT (BRIEF_ENABLED=false).")
     # ── Telegram Bot (P7) ────────────────────────────────────
@@ -303,22 +335,29 @@ async def lifespan(app: FastAPI):
             _app = tg_bot_module.get_application()
             if _app is not None:
                 _claude_tg.register_commands(_app, _claude_service)
-                log.info("Claude SDK: Telegram commands /claude /analyze /claude_reset /claude_status registered.")
+                log.info(
+                    "Claude SDK: Telegram commands /claude /analyze /claude_reset /claude_status registered."
+                )
             else:
-                log.warning("Claude SDK: Telegram application not available — commands not registered.")
+                log.warning(
+                    "Claude SDK: Telegram application not available — commands not registered."
+                )
     else:
-        log.info("Claude SDK: TẮT (CLAUDE_CLI_ENABLED=false). Property 8 — no SDK, no handlers.")
+        log.info(
+            "Claude SDK: TẮT (CLAUDE_CLI_ENABLED=false). Property 8 — no SDK, no handlers."
+        )
 
     # ── VPS Buffer Consumer (VBS) ──────────────────────────────────
     if config.VPS_BUFFER_ENABLED:
         try:
             from workers.vps_consumer import VpsSignalConsumer
+
             vps_consumer = VpsSignalConsumer()
             app.state.vps_consumer = vps_consumer
-            
+
             # Startup recovery: drains queue
             await vps_consumer.on_startup()
-            
+
             # Start background polling loop
             app.state.vps_consumer_task = asyncio.create_task(vps_consumer.poll_loop())
             log.info("VPS Buffer Consumer: ✅ Running background poller.")
@@ -329,21 +368,22 @@ async def lifespan(app: FastAPI):
 
     # ── Shutdown ──────────────────────────────────────────────
     # Stop VBS Consumer background task
-    if hasattr(app.state, 'vps_consumer_task'):
+    if hasattr(app.state, "vps_consumer_task"):
         app.state.vps_consumer_task.cancel()
         try:
             await app.state.vps_consumer_task
         except asyncio.CancelledError:
             pass
-    if hasattr(app.state, 'vps_consumer'):
+    if hasattr(app.state, "vps_consumer"):
         await app.state.vps_consumer.close()
 
     # Stop Capture Daemon first (long-running child process)
-    if hasattr(app.state, 'daemon_manager'):
+    if hasattr(app.state, "daemon_manager"):
         await app.state.daemon_manager.stop()
     tg_bot_module.stop_bot()
     scheduler_module.stop_scheduler()
     from exchanges.health_monitor import stop_health_monitor
+
     stop_health_monitor()
     log.info("Server shutting down.")
 
@@ -362,7 +402,7 @@ from slowapi.middleware import SlowAPIMiddleware
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["100/minute"],
-    enabled=not getattr(config, "DISABLE_RATE_LIMIT", False)
+    enabled=not getattr(config, "DISABLE_RATE_LIMIT", False),
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -375,7 +415,10 @@ app.include_router(_webhook_router)
 app.include_router(_auth_router)
 
 # ── P10: AuthMiddleware (replaces legacy dashboard_auth_middleware) ───────────
-app.add_middleware(AuthMiddleware, auth_service=getattr(app.state, 'auth_service', None))
+app.add_middleware(
+    AuthMiddleware, auth_service=getattr(app.state, "auth_service", None)
+)
+
 
 # ── No-cache override for JS files — MUST be declared BEFORE app.mount ───────
 @app.get("/static/js/{filename:path}")
@@ -389,8 +432,8 @@ async def serve_js_nocache(filename: str):
         media_type="application/javascript",
         headers={
             "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma":        "no-cache",
-            "Expires":       "0",
+            "Pragma": "no-cache",
+            "Expires": "0",
         },
     )
 
@@ -407,6 +450,7 @@ if not REPORTS_DIR.exists():
 
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/reports", StaticFiles(directory=str(REPORTS_DIR)), name="reports")
+
 
 # ═══ MIDDLEWARE: IP WHITELISTING ══════════════════════════════
 # SEC-001 fix: Use the RIGHTMOST entry of X-Forwarded-For (appended by our
@@ -429,7 +473,7 @@ async def ip_whitelist_middleware(request: Request, call_next):
             log.warning(f"Blocked request from unauthorized IP: {client_ip}")
             return JSONResponse(
                 status_code=status.HTTP_403_FORBIDDEN,
-                content={"error": "IP not whitelisted"}
+                content={"error": "IP not whitelisted"},
             )
     return await call_next(request)
 
@@ -442,12 +486,12 @@ async def ip_whitelist_middleware(request: Request, call_next):
 # Initialize AuthMiddleware after app creation (below)
 
 
-
 # ═══ HEALTH CHECK (Sprint 7.3) ════════════════════════════════
 @app.get("/health")
 async def health_check():
     """Docker/K8s health probe — unauthenticated, lightweight."""
     import time as _t
+
     uptime_s = int(_t.time() - config.SERVER_START_TIME)
     hours, remainder = divmod(uptime_s, 3600)
     minutes, seconds = divmod(remainder, 60)
@@ -462,6 +506,7 @@ async def health_check():
     # DB check
     try:
         import aiosqlite
+
         async with aiosqlite.connect(config.DB_PATH) as db:
             await db.execute("SELECT 1")
         status_data["database"] = "ok"
@@ -544,6 +589,7 @@ async def server_announce(body: dict = Body(...)):
     Body: {"server": "SERVER_B"} or {"server": "Execution"}
     """
     from workers.liveness_monitor import announce_server_online
+
     server_name = body.get("server", "")
     if not server_name:
         raise HTTPException(status_code=400, detail="'server' field required")
@@ -552,6 +598,7 @@ async def server_announce(body: dict = Body(...)):
         # Send recovery notification
         try:
             from notifier import notify_all
+
             await notify_all(
                 f"🟢 <b>SERVER ONLINE</b>\n\n"
                 f"Server: <b>{result['server']}</b>\n"
@@ -566,6 +613,7 @@ async def server_announce(body: dict = Body(...)):
 async def server_status():
     """Get current health monitoring status of all servers."""
     from workers.liveness_monitor import get_server_status
+
     return {"servers": get_server_status()}
 
 
@@ -573,20 +621,28 @@ async def server_status():
 async def get_telegram_templates():
     """Retrieve the current custom Telegram message templates."""
     from utils.telegram_templates import load_templates
+
     return load_templates()
+
 
 @app.post("/api/telegram/templates")
 async def update_telegram_templates(body: dict = Body(...)):
     """Save custom Telegram message templates after validating syntax."""
     from utils.telegram_templates import save_templates
+
     try:
         save_templates(body)
-        return {"status": "success", "message": "Telegram templates updated successfully."}
+        return {
+            "status": "success",
+            "message": "Telegram templates updated successfully.",
+        }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         log.error(f"Failed to update telegram templates: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error saving templates.")
+        raise HTTPException(
+            status_code=500, detail="Internal server error saving templates."
+        )
 
 
 # ── VPS Buffer Queue Status ───────────────────────────────────
@@ -594,15 +650,22 @@ async def update_telegram_templates(body: dict = Body(...)):
 async def get_queue_status():
     """Proxy queue status request to VPS Buffer Service."""
     if not config.VPS_BUFFER_ENABLED or not config.VPS_BUFFER_URL:
-        return {"enabled": False, "summary": {"pending": 0, "dispatched": 0, "acked_today": 0, "stale_today": 0}}
-        
+        return {
+            "enabled": False,
+            "summary": {
+                "pending": 0,
+                "dispatched": 0,
+                "acked_today": 0,
+                "stale_today": 0,
+            },
+        }
+
     url = f"{config.VPS_BUFFER_URL}/queue-status"
-    headers = {
-        "X-Buffer-Secret": config.VPS_BUFFER_SECRET
-    }
-    
+    headers = {"X-Buffer-Secret": config.VPS_BUFFER_SECRET}
+
     import aiohttp
     import socket
+
     conn = aiohttp.TCPConnector(family=socket.AF_INET)
     try:
         async with aiohttp.ClientSession(connector=conn) as session:
@@ -611,9 +674,27 @@ async def get_queue_status():
                     data = await response.json()
                     return {"enabled": True, **data}
                 else:
-                    return {"enabled": True, "error": f"VPS HTTP {response.status}", "summary": {"pending": 0, "dispatched": 0, "acked_today": 0, "stale_today": 0}}
+                    return {
+                        "enabled": True,
+                        "error": f"VPS HTTP {response.status}",
+                        "summary": {
+                            "pending": 0,
+                            "dispatched": 0,
+                            "acked_today": 0,
+                            "stale_today": 0,
+                        },
+                    }
     except Exception as e:
-        return {"enabled": True, "error": str(e), "summary": {"pending": 0, "dispatched": 0, "acked_today": 0, "stale_today": 0}}
+        return {
+            "enabled": True,
+            "error": str(e),
+            "summary": {
+                "pending": 0,
+                "dispatched": 0,
+                "acked_today": 0,
+                "stale_today": 0,
+            },
+        }
 
 
 # ═══ P6: WATCHLIST CRUD ═══════════════════════════════════════
@@ -654,14 +735,21 @@ async def sync_watchlist_endpoint():
 # ═══ P6: WATCHLIST SCAN ═══════════════════════════════════════
 @app.get("/api/scan/watchlist")
 async def scan_watchlist_endpoint(
-    symbols: Optional[str] = Query(None, description="Comma-separated, e.g. BTCUSDT,ETHUSDT. Mặc định dùng watchlist."),
+    symbols: Optional[str] = Query(
+        None,
+        description="Comma-separated, e.g. BTCUSDT,ETHUSDT. Mặc định dùng watchlist.",
+    ),
     timeframe: str = Query("D", description="Timeframe: D, W, 60..."),
 ):
     """Scan symbols theo Trend Template + VCP. Trả về kết quả đã sort."""
     if not config.MCP_ENABLED:
         raise HTTPException(status_code=503, detail="MCP_ENABLED=false")
 
-    symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()] if symbols else wl_module.get_watchlist()
+    symbol_list = (
+        [s.strip().upper() for s in symbols.split(",") if s.strip()]
+        if symbols
+        else wl_module.get_watchlist()
+    )
     if not symbol_list:
         raise HTTPException(status_code=400, detail="Watchlist empty")
 
@@ -670,6 +758,7 @@ async def scan_watchlist_endpoint(
 
     # ── Save to shared cache ──────────────────────────────────────────────────
     import scan_cache
+
     serialised = [
         {
             "symbol": r.symbol,
@@ -677,7 +766,9 @@ async def scan_watchlist_endpoint(
             "change_pct": r.change_pct,
             "trend_template_score": r.trend_template.score if r.trend_template else 0,
             "trend_template_stage": r.trend_template.stage if r.trend_template else "-",
-            "trend_template_criteria": r.trend_template.criteria if r.trend_template else [],
+            "trend_template_criteria": r.trend_template.criteria
+            if r.trend_template
+            else [],
             "vcp_detected": r.vcp.detected if r.vcp else False,
             "vol_breakout": getattr(r.vcp, "vol_breakout", False) if r.vcp else False,
             "volume_ratio": round(r.vcp.volume_ratio, 2) if r.vcp else 0,
@@ -700,14 +791,20 @@ async def scan_watchlist_endpoint(
 @app.get("/api/scan/all")
 async def scan_all_endpoint(
     background_tasks: BackgroundTasks,
-    force: bool = Query(False, description="Nếu True, bắt buộc chạy scan mới trong background kể cả khi đang có kết quả cũ.")
+    force: bool = Query(
+        False,
+        description="Nếu True, bắt buộc chạy scan mới trong background kể cả khi đang có kết quả cũ.",
+    ),
 ):
     """Trigger hoặc lấy kết quả scan toàn bộ sàn được cấu hình."""
-    trigger_new = force or (analysis_module._scan_status == "idle" and not analysis_module._latest_scan_results)
-    
+    trigger_new = force or (
+        analysis_module._scan_status == "idle"
+        and not analysis_module._latest_scan_results
+    )
+
     if trigger_new and analysis_module._scan_status != "running":
         background_tasks.add_task(analysis_module.scan_all_configured_exchanges)
-        
+
     results = analysis_module._latest_scan_results
     return {
         "status": analysis_module._scan_status,
@@ -726,21 +823,28 @@ async def scan_all_endpoint(
                 "trend_template_criteria": r.trend_template.criteria,
                 "vcp_detected": r.vcp.detected,
                 "vol_breakout": getattr(r.vcp, "vol_breakout", False),
-                "volume_ratio": round(r.vcp.volume_ratio, 2) if r.vcp.volume_ratio is not None else 1.0,
-                "range_ratio": round(r.vcp.range_ratio, 2) if r.vcp.range_ratio is not None else 1.0,
+                "volume_ratio": round(r.vcp.volume_ratio, 2)
+                if r.vcp.volume_ratio is not None
+                else 1.0,
+                "range_ratio": round(r.vcp.range_ratio, 2)
+                if r.vcp.range_ratio is not None
+                else 1.0,
                 "pivot_level": r.vcp.pivot_level,
                 "vcp_note": r.vcp.note,
                 "error": r.error,
             }
             for r in results
-        ]
+        ],
     }
 
 
 @app.get("/api/scan/mtf")
 async def scan_mtf_endpoint(
     symbol: str = Query(..., description="Symbol to scan, e.g. BTCUSDT"),
-    exchange: Optional[str] = Query(None, description="Exchange name, e.g. binance, weex. Default is config.DEFAULT_EXCHANGE"),
+    exchange: Optional[str] = Query(
+        None,
+        description="Exchange name, e.g. binance, weex. Default is config.DEFAULT_EXCHANGE",
+    ),
 ):
     """
     Perform multi-timeframe scan (1D, 4H, 1H) for a symbol, capture screenshots,
@@ -764,10 +868,7 @@ async def scan_mtf_endpoint(
     async with aiohttp.ClientSession() as session:
         try:
             mtf_res = await analysis_module.scan_symbol_multi_timeframe(
-                session=session,
-                exchange_name=exch,
-                symbol=sym,
-                semaphore=semaphore
+                session=session, exchange_name=exch, symbol=sym, semaphore=semaphore
             )
         except Exception as e:
             log.exception(f"Algorithmic scan failed in endpoint for {sym}")
@@ -776,22 +877,28 @@ async def scan_mtf_endpoint(
     # 2. Capture screenshots
     screenshots_dir = Path(config.CHROMA_DB_PATH).parent.resolve() / "screenshots"
     screenshots_dir.mkdir(parents=True, exist_ok=True)
-    
-    safe_symbol = re.sub(r'[^A-Za-z0-9_\-]', '', sym)
+
+    safe_symbol = re.sub(r"[^A-Za-z0-9_\-]", "", sym)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
+
     path_1d = screenshots_dir / f"mtf_1d_{safe_symbol}_{timestamp}.png"
     path_4h = screenshots_dir / f"mtf_4h_{safe_symbol}_{timestamp}.png"
     path_1h = screenshots_dir / f"mtf_1h_{safe_symbol}_{timestamp}.png"
-    
+
     mcp = _mcp_module.get_mcp_client()
 
-    captured_1d = await mcp.capture_screenshot(symbol=sym, timeframe="D", save_path=path_1d)
+    captured_1d = await mcp.capture_screenshot(
+        symbol=sym, timeframe="D", save_path=path_1d
+    )
     await asyncio.sleep(0.5)
-    captured_4h = await mcp.capture_screenshot(symbol=sym, timeframe="240", save_path=path_4h)
+    captured_4h = await mcp.capture_screenshot(
+        symbol=sym, timeframe="240", save_path=path_4h
+    )
     await asyncio.sleep(0.5)
-    captured_1h = await mcp.capture_screenshot(symbol=sym, timeframe="60", save_path=path_1h)
-    
+    captured_1h = await mcp.capture_screenshot(
+        symbol=sym, timeframe="60", save_path=path_1h
+    )
+
     image_paths = []
     for p in [captured_1d, captured_4h, captured_1h]:
         if p and Path(p).exists():
@@ -804,9 +911,7 @@ async def scan_mtf_endpoint(
             vision_result = await vision_module.analyze_chart_vision_mtf(
                 image_paths=image_paths,
                 symbol=sym,
-                mtf_scan_result={
-                    "timeframes": mtf_res.timeframes
-                }
+                mtf_scan_result={"timeframes": mtf_res.timeframes},
             )
         except Exception as e:
             log.error(f"Vision analysis failed in endpoint for {sym}: {e}")
@@ -823,12 +928,20 @@ async def scan_mtf_endpoint(
             "price": r.price,
             "change_pct": r.change_pct,
             "trend_template_score": r.trend_template.score if r.trend_template else 0,
-            "trend_template_stage": r.trend_template.stage if r.trend_template else "Unknown",
-            "trend_template_criteria": r.trend_template.criteria if r.trend_template else {},
+            "trend_template_stage": r.trend_template.stage
+            if r.trend_template
+            else "Unknown",
+            "trend_template_criteria": r.trend_template.criteria
+            if r.trend_template
+            else {},
             "vcp_detected": r.vcp.detected if r.vcp else False,
             "vol_breakout": getattr(r.vcp, "vol_breakout", False) if r.vcp else False,
-            "volume_ratio": round(r.vcp.volume_ratio, 2) if r.vcp and r.vcp.volume_ratio is not None else 1.0,
-            "range_ratio": round(r.vcp.range_ratio, 2) if r.vcp and r.vcp.range_ratio is not None else 1.0,
+            "volume_ratio": round(r.vcp.volume_ratio, 2)
+            if r.vcp and r.vcp.volume_ratio is not None
+            else 1.0,
+            "range_ratio": round(r.vcp.range_ratio, 2)
+            if r.vcp and r.vcp.range_ratio is not None
+            else 1.0,
             "pivot_level": r.vcp.pivot_level if r.vcp else None,
             "vcp_note": r.vcp.note if r.vcp else "",
             "error": r.error,
@@ -842,8 +955,7 @@ async def scan_mtf_endpoint(
         "aligned_short": mtf_res.aligned_short,
         "verdict": mtf_res.verdict,
         "timeframes": {
-            tf: serialize_scan(scan)
-            for tf, scan in mtf_res.timeframes.items()
+            tf: serialize_scan(scan) for tf, scan in mtf_res.timeframes.items()
         },
         "vision": {
             "analysis": vision_result.get("analysis", ""),
@@ -851,13 +963,13 @@ async def scan_mtf_endpoint(
             "patterns": vision_result.get("patterns", []),
             "combined_score": vision_result.get("combined_score", "N/A"),
             "verdict": vision_result.get("verdict", ""),
-            "error": vision_result.get("error")
+            "error": vision_result.get("error"),
         },
         "screenshots": {
             "1d": str(path_1d) if path_1d.exists() else None,
             "4h": str(path_4h) if path_4h.exists() else None,
             "1h": str(path_1h) if path_1h.exists() else None,
-        }
+        },
     }
 
 
@@ -866,7 +978,10 @@ async def scan_mtf_endpoint(
 async def trigger_brief_endpoint(background_tasks: BackgroundTasks):
     """Chạy Morning Brief ngay lập tức (non-blocking)."""
     background_tasks.add_task(brief_module.generate_morning_brief)
-    return {"triggered": True, "message": "Morning Brief đang chạy... Kiểm tra Telegram trong 30-60 giây."}
+    return {
+        "triggered": True,
+        "message": "Morning Brief đang chạy... Kiểm tra Telegram trong 30-60 giây.",
+    }
 
 
 @app.get("/api/brief/latest")
@@ -874,18 +989,23 @@ async def get_latest_brief_endpoint():
     """Lấy Morning Brief mới nhất đã generate."""
     brief = brief_module.get_latest_brief()
     if brief is None:
-        return {"available": False, "message": "Chưa có brief nào. Dùng POST /api/brief/trigger để tạo."}
+        return {
+            "available": False,
+            "message": "Chưa có brief nào. Dùng POST /api/brief/trigger để tạo.",
+        }
     return {"available": True, **brief}
 
 
 # ═══ INDICATOR SIGNALS API ═══════════════════════════════════
 @app.get("/api/indicator-signals")
 async def get_indicator_signals(
-    symbol: Optional[str]         = Query(None, description="Filter by symbol, e.g. BTCUSDT"),
-    signal_type: Optional[str]    = Query(None, description="Filter by type: entry|exit|info"),
+    symbol: Optional[str] = Query(None, description="Filter by symbol, e.g. BTCUSDT"),
+    signal_type: Optional[str] = Query(
+        None, description="Filter by type: entry|exit|info"
+    ),
     indicator_name: Optional[str] = Query(None, description="Filter by indicator name"),
-    limit: int                    = Query(50, ge=1, le=200),
-    offset: int                   = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
 ):
     """Fetch indicator signals with optional filters for the Signals dashboard tab."""
     conditions: list[str] = []
@@ -904,7 +1024,9 @@ async def get_indicator_signals(
 
     where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
-    import aiosqlite, json as _json
+    import aiosqlite
+    import json as _json
+
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
 
@@ -927,7 +1049,9 @@ async def get_indicator_signals(
     signals = []
     for r in rows:
         try:
-            conditions_list = _json.loads(r["conditions_met"]) if r["conditions_met"] else []
+            conditions_list = (
+                _json.loads(r["conditions_met"]) if r["conditions_met"] else []
+            )
         except Exception:
             conditions_list = [r["conditions_met"]] if r["conditions_met"] else []
         try:
@@ -935,39 +1059,42 @@ async def get_indicator_signals(
         except Exception:
             meta = {}
 
-        signals.append({
-            "id":               r["id"],
-            "signal_id":        r["signal_id"],
-            "created_at":       r["created_at"],
-            "symbol":           r["symbol"],
-            "indicator_name":   r["indicator_name"],
-            "signal_type":      r["signal_type"],
-            "interval":         r["interval"] or "—",
-            "price":            r["price"],
-            "confidence_score": r["confidence_score"] or 0,
-            "conditions_met":   conditions_list,
-            "metadata":         meta,
-            "source_ip":        r["source_ip"] or "—",
-            "exchange":         r["exchange"] or "binance",
-        })
+        signals.append(
+            {
+                "id": r["id"],
+                "signal_id": r["signal_id"],
+                "created_at": r["created_at"],
+                "symbol": r["symbol"],
+                "indicator_name": r["indicator_name"],
+                "signal_type": r["signal_type"],
+                "interval": r["interval"] or "—",
+                "price": r["price"],
+                "confidence_score": r["confidence_score"] or 0,
+                "conditions_met": conditions_list,
+                "metadata": meta,
+                "source_ip": r["source_ip"] or "—",
+                "exchange": r["exchange"] or "binance",
+            }
+        )
 
     return {"total": total, "limit": limit, "offset": offset, "signals": signals}
 
 
 @app.get("/api/chart-markers")
 async def get_chart_markers(
-    symbol:   str           = Query(..., description="Symbol e.g. BTCUSDT"),
+    symbol: str = Query(..., description="Symbol e.g. BTCUSDT"),
     interval: Optional[str] = Query(None, description="Timeframe e.g. 1h, 4h, 1d"),
-    from_ts:  Optional[int] = Query(None, alias="from", description="Start time ms"),
-    to_ts:    Optional[int] = Query(None, alias="to",   description="End time ms"),
-    limit:    int           = Query(200, ge=1, le=500),
+    from_ts: Optional[int] = Query(None, alias="from", description="Start time ms"),
+    to_ts: Optional[int] = Query(None, alias="to", description="End time ms"),
+    limit: int = Query(200, ge=1, le=500),
 ):
     """
     Chart markers for LightweightCharts — MIS/MTT buy/sell arrows.
     Queries signals table (mode=MTT|MIS) and indicator_signals table.
     Returns markers sorted by time (unix seconds) for candleSeries.setMarkers().
     """
-    import aiosqlite, json as _json
+    import aiosqlite
+    import json as _json
 
     sym = symbol.upper().split(":")[1] if ":" in symbol else symbol.upper()
     markers: list[dict] = []
@@ -1002,6 +1129,7 @@ async def get_chart_markers(
                 ts_str = r["created_at"]  # "2024-05-29 08:00:00"
                 # Parse to unix timestamp
                 from datetime import datetime
+
                 dt = datetime.fromisoformat(ts_str)
                 unix_ts = int(dt.timestamp())
             except Exception:
@@ -1019,14 +1147,16 @@ async def get_chart_markers(
             except Exception:
                 pass
 
-            markers.append({
-                "time":       unix_ts,
-                "action":     action,
-                "mode":       r["mode"] or "MTT",
-                "price":      r["price"],
-                "confidence": conf,
-                "source":     "webhook",
-            })
+            markers.append(
+                {
+                    "time": unix_ts,
+                    "action": action,
+                    "mode": r["mode"] or "MTT",
+                    "price": r["price"],
+                    "confidence": conf,
+                    "source": "webhook",
+                }
+            )
 
         # ── Source 2: indicator_signals table (from Pine indicator alerts) ──
         ind_conds = ["symbol = ?"]
@@ -1061,6 +1191,7 @@ async def get_chart_markers(
         for r in ind_rows:
             try:
                 from datetime import datetime
+
                 dt = datetime.fromisoformat(r["created_at"])
                 unix_ts = int(dt.timestamp())
             except Exception:
@@ -1080,14 +1211,16 @@ async def get_chart_markers(
             else:
                 action = "sell" if direction == "long" else "buy"
 
-            markers.append({
-                "time":       unix_ts,
-                "action":     action,
-                "mode":       "MIS",  # indicator_signals are MIS (1H momentum)
-                "price":      r["price"],
-                "confidence": int(r["confidence_score"] or 0),
-                "source":     "indicator",
-            })
+            markers.append(
+                {
+                    "time": unix_ts,
+                    "action": action,
+                    "mode": "MIS",  # indicator_signals are MIS (1H momentum)
+                    "price": r["price"],
+                    "confidence": int(r["confidence_score"] or 0),
+                    "source": "indicator",
+                }
+            )
 
     # Sort by time ascending (LightweightCharts requirement)
     markers.sort(key=lambda m: m["time"])
@@ -1097,14 +1230,13 @@ async def get_chart_markers(
 
 @app.get("/api/indicator-signals/stats")
 async def get_indicator_signals_stats(
-    symbol: Optional[str] = Query(None),
-    indicator_name: Optional[str] = Query(None)
+    symbol: Optional[str] = Query(None), indicator_name: Optional[str] = Query(None)
 ):
     """KPI stats for the Signals dashboard: total, by type, avg confidence, top indicators, direction mix."""
     import aiosqlite
 
-    sym_key = (symbol or '').upper()
-    ind_key = (indicator_name or '').strip()
+    sym_key = (symbol or "").upper()
+    ind_key = (indicator_name or "").strip()
     cache_key = (sym_key, ind_key)
 
     # ── Fast path: return cached result if fresh ──────────────────────────────
@@ -1121,22 +1253,34 @@ async def get_indicator_signals_stats(
                 )
                 dir_p: list = []
                 if symbol:
-                    dir_q += "AND symbol = ? "; dir_p.append(symbol.upper())
+                    dir_q += "AND symbol = ? "
+                    dir_p.append(symbol.upper())
                 if indicator_name:
-                    dir_q += "AND indicator_name = ? "; dir_p.append(indicator_name)
+                    dir_q += "AND indicator_name = ? "
+                    dir_p.append(indicator_name)
                 dir_q += "GROUP BY direction, signal_type LIMIT 20"
                 dir_rows = await _db.execute_fetchall(dir_q, dir_p)
 
             direction_mix = {
-                "long":  {"entry": {"count": 0, "avg_price": 0.0}, "exit": {"count": 0, "avg_price": 0.0}},
-                "short": {"entry": {"count": 0, "avg_price": 0.0}, "exit": {"count": 0, "avg_price": 0.0}},
+                "long": {
+                    "entry": {"count": 0, "avg_price": 0.0},
+                    "exit": {"count": 0, "avg_price": 0.0},
+                },
+                "short": {
+                    "entry": {"count": 0, "avg_price": 0.0},
+                    "exit": {"count": 0, "avg_price": 0.0},
+                },
             }
             for r in dir_rows:
                 d = (r["direction"] or "long").lower()
-                if d not in ("long", "short"): d = "long"
+                if d not in ("long", "short"):
+                    d = "long"
                 st = r["signal_type"]
                 if st in ("entry", "exit"):
-                    direction_mix[d][st] = {"count": r["cnt"], "avg_price": round(r["avg_price"] or 0.0, 2)}
+                    direction_mix[d][st] = {
+                        "count": r["cnt"],
+                        "avg_price": round(r["avg_price"] or 0.0, 2),
+                    }
             return {**cached, "direction_mix": direction_mix}
         except Exception:
             return cached  # fallback to fully-cached response on error
@@ -1172,7 +1316,9 @@ async def get_indicator_signals_stats(
         )
 
         # Recent high-confidence (last 24h)
-        hp_where = (where_str + " AND" if where_str else " WHERE") + " confidence_score > 80 AND created_at >= datetime('now', '-24 hours')"
+        hp_where = (
+            where_str + " AND" if where_str else " WHERE"
+        ) + " confidence_score > 80 AND created_at >= datetime('now', '-24 hours')"
         recent_high = await db.execute_fetchall(
             f"SELECT COUNT(*) AS cnt FROM indicator_signals{hp_where}",
             params,
@@ -1209,16 +1355,24 @@ async def get_indicator_signals_stats(
         dir_rows = await db.execute_fetchall(dir_base, dir_params)
 
     # ── Assemble response ──
-    by_type = {r["signal_type"]: {"count": r["cnt"], "avg_conf": round(r["avg_conf"] or 0, 1)}
-               for r in totals}
+    by_type = {
+        r["signal_type"]: {"count": r["cnt"], "avg_conf": round(r["avg_conf"] or 0, 1)}
+        for r in totals
+    }
     total_all = sum(v["count"] for v in by_type.values())
     overall_conf = round(
         sum(v["avg_conf"] * v["count"] for v in by_type.values()) / max(total_all, 1), 1
     )
 
     direction_mix = {
-        "long":  {"entry": {"count": 0, "avg_price": 0.0}, "exit": {"count": 0, "avg_price": 0.0}},
-        "short": {"entry": {"count": 0, "avg_price": 0.0}, "exit": {"count": 0, "avg_price": 0.0}},
+        "long": {
+            "entry": {"count": 0, "avg_price": 0.0},
+            "exit": {"count": 0, "avg_price": 0.0},
+        },
+        "short": {
+            "entry": {"count": 0, "avg_price": 0.0},
+            "exit": {"count": 0, "avg_price": 0.0},
+        },
     }
     for r in dir_rows:
         direction = (r["direction"] or "long").lower()
@@ -1232,24 +1386,32 @@ async def get_indicator_signals_stats(
             }
 
     result = {
-        "total":             total_all,
-        "by_type":           by_type,
-        "avg_confidence":    overall_conf,
+        "total": total_all,
+        "by_type": by_type,
+        "avg_confidence": overall_conf,
         "high_priority_24h": recent_high[0]["cnt"] if recent_high else 0,
-        "top_indicators":    [{"name": r["indicator_name"], "count": r["cnt"]} for r in top_indicators],
-        "top_symbols":       [{"symbol": r["symbol"], "count": r["cnt"]} for r in top_symbols],
-        "direction_mix":     direction_mix,
-        "market_regime":     market_regime,
+        "top_indicators": [
+            {"name": r["indicator_name"], "count": r["cnt"]} for r in top_indicators
+        ],
+        "top_symbols": [
+            {"symbol": r["symbol"], "count": r["cnt"]} for r in top_symbols
+        ],
+        "direction_mix": direction_mix,
+        "market_regime": market_regime,
     }
     # Cache everything except direction_mix (direction_mix is live on cache hits)
-    _stats_cache_set(cache_key, {k: v for k, v in result.items() if k != "direction_mix"})
+    _stats_cache_set(
+        cache_key, {k: v for k, v in result.items() if k != "direction_mix"}
+    )
     return result
 
 
 # ═══ RAG TEST ENDPOINT ════════════════════════════════════════
 @app.get("/api/rag/query")
 async def rag_query_endpoint(
-    q: str = Query(..., description="Câu truy vấn ngữ nghĩa (vd: 'Quy tắc VCP breakout')"),
+    q: str = Query(
+        ..., description="Câu truy vấn ngữ nghĩa (vd: 'Quy tắc VCP breakout')"
+    ),
     n: int = Query(3, ge=1, le=5, description="Số chunks trả về"),
 ):
     """
@@ -1257,7 +1419,9 @@ async def rag_query_endpoint(
     Hữu ích để debug và verify RAG hoạt động đúng.
     """
     if not config.RAG_ENABLED:
-        raise HTTPException(status_code=503, detail="RAG chưa được bật (RAG_ENABLED=false)")
+        raise HTTPException(
+            status_code=503, detail="RAG chưa được bật (RAG_ENABLED=false)"
+        )
 
     chunks = rag.query_knowledge(q, n_results=n)
     return {
@@ -1266,9 +1430,13 @@ async def rag_query_endpoint(
         "chunks": [
             {
                 "topic": c["metadata"].get("topic", ""),
-                "chapter": c["metadata"].get("chunk_id", c["metadata"].get("filename", "")),
+                "chapter": c["metadata"].get(
+                    "chunk_id", c["metadata"].get("filename", "")
+                ),
                 "relevance": c["relevance_score"],
-                "preview": c["content"][:300] + "..." if len(c["content"]) > 300 else c["content"],
+                "preview": c["content"][:300] + "..."
+                if len(c["content"]) > 300
+                else c["content"],
             }
             for c in chunks
         ],
@@ -1311,8 +1479,11 @@ async def get_trades_endpoint(
 ):
     """Truy van lich su giao dich."""
     return await database.get_trades(
-        symbol=symbol, limit=limit, offset=offset,
-        from_date=from_date, to_date=to_date,
+        symbol=symbol,
+        limit=limit,
+        offset=offset,
+        from_date=from_date,
+        to_date=to_date,
         demo=demo,
     )
 
@@ -1341,7 +1512,11 @@ async def get_equity_endpoint(
 @app.get("/trades/analysis")
 async def get_trade_analysis_endpoint(
     symbol: Optional[str] = Query(None, description="Filter theo cap giao dich"),
-    trade_status: Optional[str] = Query(None, alias="status", description="Filter theo status: FILLED, REJECTED, PENDING"),
+    trade_status: Optional[str] = Query(
+        None,
+        alias="status",
+        description="Filter theo status: FILLED, REJECTED, PENDING",
+    ),
     from_date: Optional[str] = Query(None, description="ISO format: 2026-01-01"),
     to_date: Optional[str] = Query(None, description="ISO format: 2026-12-31"),
     limit: int = Query(100, ge=1, le=500),
@@ -1366,7 +1541,9 @@ async def get_trade_analysis_endpoint(
         conditions.append("t.created_at <= ?")
         params.append(to_date)
     if not demo:
-        conditions.append("(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))")
+        conditions.append(
+            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
+        )
 
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
@@ -1434,7 +1611,9 @@ async def get_trade_analysis_endpoint(
             "avg_loss": round(-total_loss / len(losses), 2) if losses else 0.0,
             "best_trade": round(max(pnl_list), 2) if pnl_list else 0.0,
             "worst_trade": round(min(pnl_list), 2) if pnl_list else 0.0,
-            "profit_factor": round(total_win / total_loss, 2) if total_loss > 0 else 999.99,
+            "profit_factor": round(total_win / total_loss, 2)
+            if total_loss > 0
+            else 999.99,
             "max_win_streak": max_win_streak,
             "max_loss_streak": max_loss_streak,
             "symbols_traded": symbol_set,
@@ -1450,6 +1629,7 @@ async def get_trade_analysis_endpoint(
 
 
 # ═══ BINANCE ACCOUNT ENDPOINT (Sprint 7.2) ═══════════════════
+
 
 @app.get("/api/binance/account")
 async def binance_account_endpoint(
@@ -1468,6 +1648,7 @@ async def binance_account_endpoint(
 
 # ═══ VISION ENDPOINTS (P7) ═══════════════════════════════════════════
 
+
 @app.post("/api/vision/analyze")
 async def api_vision_analyze(symbol: str = Query(...), image_path: str = Query(...)):
     """Analyze a chart screenshot using Claude Vision API.
@@ -1476,6 +1657,7 @@ async def api_vision_analyze(symbol: str = Query(...), image_path: str = Query(.
     to prevent path traversal attacks (e.g. image_path=../../server/.env).
     """
     from pathlib import Path
+
     # SEC-002: Resolve the screenshot base directory and validate path is within it
     screenshot_base = Path(config.CHROMA_DB_PATH).parent.resolve() / "screenshots"
     screenshot_base.mkdir(parents=True, exist_ok=True)
@@ -1485,7 +1667,9 @@ async def api_vision_analyze(symbol: str = Query(...), image_path: str = Query(.
     # Double-check the resolved path is still inside screenshot_base (symlink guard)
     if not str(path).startswith(str(screenshot_base)):
         log.warning(f"Path traversal attempt blocked: image_path={image_path!r}")
-        raise HTTPException(status_code=403, detail="Access denied: path traversal detected")
+        raise HTTPException(
+            status_code=403, detail="Access denied: path traversal detected"
+        )
     if not path.exists():
         raise HTTPException(status_code=404, detail=f"Image not found: {safe_filename}")
 
@@ -1501,7 +1685,9 @@ async def api_vision_capture(
     symbol: str = Query("BTCUSDT", description="Symbol to capture"),
     timeframe: str = Query("1h", description="Timeframe to capture"),
     show_parent: str = Query("yes", description="Show parent timeframe inset chart"),
-    inset_position: str = Query("bottom-right", description="Position of inset chart: bottom-right or top-left")
+    inset_position: str = Query(
+        "bottom-right", description="Position of inset chart: bottom-right or top-left"
+    ),
 ):
     """
     Dashboard-callable Stealth Capture endpoint.
@@ -1517,7 +1703,7 @@ async def api_vision_capture(
     # ── Step 1: Screenshot Capture ───────────────────────────────
     screenshot_path = None
     mcp_connected = False
-    
+
     if config.MCP_ENABLED:
         try:
             mcp = _mcp_module.get_mcp_client()
@@ -1529,16 +1715,19 @@ async def api_vision_capture(
             log.warning(f"MCP CDP capture failed, attempting fallback: {e}")
 
     if not screenshot_path or not screenshot_path.exists():
-        log.info("CDP/MCP capture not available or failed. Falling back to native local capture...")
+        log.info(
+            "CDP/MCP capture not available or failed. Falling back to native local capture..."
+        )
         try:
             from capture_client import get_capture_client
+
             client = get_capture_client()
             res = await client.capture_screenshot(
                 symbol=sym,
                 timeframe=tf,
                 method="lightweight-charts",  # Fallback to local rendering
                 show_parent_chart=(show_parent.lower() == "yes"),
-                inset_position=inset_position.lower()
+                inset_position=inset_position.lower(),
             )
             if res.success and res.file_path:
                 screenshot_path = Path(res.file_path)
@@ -1546,7 +1735,10 @@ async def api_vision_capture(
             log.error(f"Local capture failed: {e}")
 
     if not screenshot_path or not screenshot_path.exists():
-        raise HTTPException(status_code=500, detail="Chart capture failed — both CDP and local rendering are unavailable")
+        raise HTTPException(
+            status_code=500,
+            detail="Chart capture failed — both CDP and local rendering are unavailable",
+        )
 
     # ── Step 2: AI Vision Analysis ───────────────────────────────
     try:
@@ -1555,12 +1747,18 @@ async def api_vision_capture(
             symbol=sym,
         )
     except Exception as e:
-        vision_result = {"error": str(e), "verdict": "ERROR", "confidence": 0, "analysis": "", "patterns": []}
+        vision_result = {
+            "error": str(e),
+            "verdict": "ERROR",
+            "confidence": 0,
+            "analysis": "",
+            "patterns": [],
+        }
 
     # Normalize fields (vision module uses 'analysis' not 'ai_analysis')
     analysis_text = vision_result.get("analysis", "")
-    confidence    = vision_result.get("confidence", 0)
-    patterns      = vision_result.get("patterns", [])
+    confidence = vision_result.get("confidence", 0)
+    patterns = vision_result.get("patterns", [])
     # Derive verdict from confidence when scan_result=None (vision module returns '' in that case)
     verdict = vision_result.get("verdict") or ""
     if not verdict:
@@ -1575,19 +1773,23 @@ async def api_vision_capture(
 
     # ── Step 3: Persist to DB ────────────────────────────────────
     import time as _time  # noqa: F401
+
     brief_text = (
         f"[Stealth Capture] {sym} @ {datetime.now(timezone.utc).strftime('%H:%M UTC')}\n"
         f"Verdict: {verdict}\n"
         f"Confidence: {confidence}/10\n"
         f"Analysis: {analysis_text[:500]}"
     )
-    vision_data_json = _json.dumps({
-        "symbol":         sym,
-        "verdict":        verdict,
-        "confidence":     confidence,
-        "patterns":       patterns,
-        "combined_score": vision_result.get("combined_score", f"{confidence}/10"),
-    }, ensure_ascii=False)
+    vision_data_json = _json.dumps(
+        {
+            "symbol": sym,
+            "verdict": verdict,
+            "confidence": confidence,
+            "patterns": patterns,
+            "combined_score": vision_result.get("combined_score", f"{confidence}/10"),
+        },
+        ensure_ascii=False,
+    )
     brief_id = await database.insert_brief(
         symbols_scanned=1,
         brief_text=brief_text,
@@ -1598,20 +1800,23 @@ async def api_vision_capture(
 
     # ── Step 4: Telegram notification ───────────────────────────
     import asyncio as _asyncio
+
     try:
         tg_caption = f"\U0001f441 Stealth Capture \u2014 {sym}\nVerdict: {verdict}\nConfidence: {confidence}/10"
-        await _asyncio.to_thread(notifier.send_telegram_photo, screenshot_path, tg_caption)
+        await _asyncio.to_thread(
+            notifier.send_telegram_photo, screenshot_path, tg_caption
+        )
     except Exception as _tg_err:
         log.warning(f"Telegram photo send failed: {_tg_err}")
 
     return {
-        "status":         "ok",
-        "brief_id":       brief_id,
-        "symbol":         sym,
-        "verdict":        verdict,
-        "confidence":     confidence,
-        "patterns":       patterns,
-        "ai_analysis":    analysis_text,
+        "status": "ok",
+        "brief_id": brief_id,
+        "symbol": sym,
+        "verdict": verdict,
+        "confidence": confidence,
+        "patterns": patterns,
+        "ai_analysis": analysis_text,
         "screenshot_url": f"/api/vision/screenshot/{brief_id}" if brief_id else None,
         "has_screenshot": screenshot_path.exists() if screenshot_path else False,
     }
@@ -1621,6 +1826,7 @@ async def api_vision_capture(
 async def get_vision_stats():
     """Stats for Capture Studio header: total captures, last capture time, avg confidence."""
     import json as _json
+
     data = await database.get_briefs(limit=100, offset=0)
     items = data.get("briefs", [])
     total = data.get("total", 0)
@@ -1646,6 +1852,7 @@ async def get_vision_stats():
 
 
 # ═══ BRIEFS ENDPOINTS (P7.6) ═════════════════════════════════════════
+
 
 @app.get("/api/briefs")
 async def get_briefs_endpoint(
@@ -1675,6 +1882,7 @@ async def get_vision_history(
     Returns items with screenshot path, ai_analysis, vision_data JSON.
     """
     import json as _json
+
     data = await database.get_briefs(limit=limit, offset=offset)
     items = data.get("briefs", [])
 
@@ -1689,19 +1897,25 @@ async def get_vision_history(
 
         screenshot = b.get("screenshot", "")
         # Determine if screenshot is accessible (serve from /api/vision/screenshot/<id>)
-        result.append({
-            "id": b["id"],
-            "created_at": b["created_at"],
-            "symbol": vision_data.get("symbol", "—"),
-            "ai_analysis": b.get("ai_analysis", ""),
-            "confidence": vision_data.get("confidence", 0),
-            "patterns": vision_data.get("patterns", []),
-            "combined_score": vision_data.get("combined_score", "—"),
-            "verdict": vision_data.get("verdict", ""),
-            "has_screenshot": bool(screenshot),
-            "screenshot_url": f"/api/vision/screenshot/{b['id']}" if screenshot else None,
-            "source": "stealth" if "[Stealth Capture]" in (b.get("brief_text") or "") else "morning_brief",
-        })
+        result.append(
+            {
+                "id": b["id"],
+                "created_at": b["created_at"],
+                "symbol": vision_data.get("symbol", "—"),
+                "ai_analysis": b.get("ai_analysis", ""),
+                "confidence": vision_data.get("confidence", 0),
+                "patterns": vision_data.get("patterns", []),
+                "combined_score": vision_data.get("combined_score", "—"),
+                "verdict": vision_data.get("verdict", ""),
+                "has_screenshot": bool(screenshot),
+                "screenshot_url": f"/api/vision/screenshot/{b['id']}"
+                if screenshot
+                else None,
+                "source": "stealth"
+                if "[Stealth Capture]" in (b.get("brief_text") or "")
+                else "morning_brief",
+            }
+        )
     return {"items": result, "total": data.get("total", 0)}
 
 
@@ -1709,16 +1923,20 @@ async def get_vision_history(
 async def get_vision_screenshot(brief_id: int):
     """Serve screenshot image for a vision analysis entry."""
     from fastapi.responses import FileResponse
+
     brief = await database.get_brief_by_id(brief_id)
     if not brief or not brief.get("screenshot"):
         raise HTTPException(status_code=404, detail="No screenshot for this brief")
     img_path = Path(brief["screenshot"])
     if not img_path.exists():
-        raise HTTPException(status_code=404, detail=f"Screenshot file not found: {img_path}")
+        raise HTTPException(
+            status_code=404, detail=f"Screenshot file not found: {img_path}"
+        )
     return FileResponse(img_path, media_type="image/png")
 
 
 # ═══ SYSTEM STATUS (P7.6) ════════════════════════════════════════════
+
 
 @app.get("/api/system/status")
 async def system_status_endpoint():
@@ -1783,6 +2001,7 @@ async def system_status_endpoint():
         test_runner_status = "UNKNOWN"
 
     import json as _json
+
     last_test_run = None
     try:
         last_test_run_str = await database.get_setting("last_test_run")
@@ -1799,6 +2018,7 @@ async def system_status_endpoint():
             headers = {"X-Buffer-Secret": config.VPS_BUFFER_SECRET}
             import aiohttp
             import socket
+
             conn = aiohttp.TCPConnector(family=socket.AF_INET)
             async with aiohttp.ClientSession(connector=conn) as session:
                 async with session.get(url, headers=headers, timeout=2.0) as resp:
@@ -1809,10 +2029,14 @@ async def system_status_endpoint():
                             "connected": True,
                             "pending_count": h_data.get("pending_count", 0),
                             "db": h_data.get("db", "unknown"),
-                            "uptime": h_data.get("uptime_seconds", 0)
+                            "uptime": h_data.get("uptime_seconds", 0),
                         }
                     else:
-                        vbs_status = {"enabled": True, "connected": False, "error": f"HTTP {resp.status}"}
+                        vbs_status = {
+                            "enabled": True,
+                            "connected": False,
+                            "error": f"HTTP {resp.status}",
+                        }
         except Exception as e:
             vbs_status = {"enabled": True, "connected": False, "error": str(e)}
 
@@ -1823,7 +2047,7 @@ async def system_status_endpoint():
 
     try:
         safe_mode_str = await database.get_setting("safe_mode_active", "false")
-        safe_mode_active = (safe_mode_str.lower() == "true")
+        safe_mode_active = safe_mode_str.lower() == "true"
     except Exception:
         safe_mode_active = False
 
@@ -1870,6 +2094,7 @@ async def system_status_endpoint():
 
 # ═══ SCAN TRIGGER (P7.6) ═════════════════════════════════════════════
 
+
 @app.post("/api/scan/trigger")
 async def trigger_scan_endpoint(
     background_tasks: BackgroundTasks,
@@ -1894,7 +2119,9 @@ async def trigger_scan_endpoint(
             "change_pct": r.change_pct,
             "trend_template_score": r.trend_template.score if r.trend_template else 0,
             "trend_template_stage": r.trend_template.stage if r.trend_template else "-",
-            "trend_template_criteria": r.trend_template.criteria if r.trend_template else [],
+            "trend_template_criteria": r.trend_template.criteria
+            if r.trend_template
+            else [],
             "vcp_detected": r.vcp.detected if r.vcp else False,
             "vol_breakout": getattr(r.vcp, "vol_breakout", False) if r.vcp else False,
             "volume_ratio": round(r.vcp.volume_ratio, 2) if r.vcp else 0,
@@ -1908,12 +2135,14 @@ async def trigger_scan_endpoint(
 
     # ── Save to shared cache ──────────────────────────────────────────────────
     import scan_cache
+
     scan_cache.save_scan_results(serialised, source="web", symbol_list=symbol_list)
 
     # ── Notify Telegram ───────────────────────────────────────────────────────
     try:
         from notifier import send_scan_summary_to_telegram
         import asyncio
+
         asyncio.create_task(send_scan_summary_to_telegram(serialised))
     except Exception as _te:
         log.warning(f"Telegram scan notify failed (non-fatal): {_te}")
@@ -1921,7 +2150,9 @@ async def trigger_scan_endpoint(
     ts = datetime.now(timezone.utc).isoformat()
 
     # ── Push scan_complete SSE to all browser tabs ────────────────────────────
-    push_sse_event("scan_complete", {"scanned": len(results), "timestamp": ts, "source": "web"})
+    push_sse_event(
+        "scan_complete", {"scanned": len(results), "timestamp": ts, "source": "web"}
+    )
 
     return {"scanned": len(results), "timestamp": ts, "results": serialised}
 
@@ -1934,12 +2165,14 @@ async def get_last_scan_endpoint():
     Returns 204 if no scan has been run yet.
     """
     import scan_cache
+
     if not scan_cache.has_results():
         return JSONResponse(status_code=204, content=None)
     return scan_cache.get_last_scan()
 
 
 # \u2550\u2550\u2550 SSE EVENTS STREAM \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+
 
 @app.get("/api/events")
 async def sse_events(request: Request):
@@ -1972,7 +2205,7 @@ async def sse_events(request: Request):
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",   # disable nginx buffering
+            "X-Accel-Buffering": "no",  # disable nginx buffering
             "Connection": "keep-alive",
         },
     )
@@ -1980,9 +2213,11 @@ async def sse_events(request: Request):
 
 from pydantic import BaseModel
 
+
 class OverrideRequest(BaseModel):
     exchange: str
     action: str
+
 
 class RiskSettingsUpdateRequest(BaseModel):
     exchange: str
@@ -1992,6 +2227,7 @@ class RiskSettingsUpdateRequest(BaseModel):
     slippage_limit: float
     safe_mode: int
 
+
 @app.get("/api/risk/status")
 async def get_risk_status():
     """Get dynamic status and circuit breaker state of security gates."""
@@ -1999,6 +2235,7 @@ async def get_risk_status():
         return await database.get_all_risk_statuses()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/risk/logs")
 async def get_risk_logs(limit: int = Query(10, ge=1, le=50)):
@@ -2008,35 +2245,53 @@ async def get_risk_logs(limit: int = Query(10, ge=1, le=50)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/risk/override")
 async def post_risk_override(req: OverrideRequest):
     """Manually trip, reset or override the circuit breaker for an exchange."""
     try:
         ex = req.exchange.lower()
         act = req.action.lower()
-        
+
         if act == "reset":
             prev_status = await database.get_risk_settings(ex)
             prev_state = prev_status.get("state", "CLOSED")
             await database.update_circuit_breaker_state(ex, "CLOSED")
             await database.log_circuit_breaker(
-                ex, "*", prev_state, "CLOSED", "Manual override reset via dashboard",
-                {"action": "reset"}
+                ex,
+                "*",
+                prev_state,
+                "CLOSED",
+                "Manual override reset via dashboard",
+                {"action": "reset"},
             )
-            return {"status": "success", "message": f"Circuit breaker for {ex} reset to CLOSED"}
+            return {
+                "status": "success",
+                "message": f"Circuit breaker for {ex} reset to CLOSED",
+            }
         elif act == "trip":
             prev_status = await database.get_risk_settings(ex)
             prev_state = prev_status.get("state", "CLOSED")
             await database.update_circuit_breaker_state(ex, "OPEN")
             await database.log_circuit_breaker(
-                ex, "*", prev_state, "OPEN", "Manual override trip via dashboard",
-                {"action": "trip"}
+                ex,
+                "*",
+                prev_state,
+                "OPEN",
+                "Manual override trip via dashboard",
+                {"action": "trip"},
             )
-            return {"status": "success", "message": f"Circuit breaker for {ex} tripped to OPEN"}
+            return {
+                "status": "success",
+                "message": f"Circuit breaker for {ex} tripped to OPEN",
+            }
         else:
-            raise HTTPException(status_code=400, detail=f"Unsupported override action: {act}")
+            raise HTTPException(
+                status_code=400, detail=f"Unsupported override action: {act}"
+            )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/risk/settings")
 async def get_risk_settings_endpoint(exchange: str = Query(...)):
@@ -2045,6 +2300,7 @@ async def get_risk_settings_endpoint(exchange: str = Query(...)):
         return await database.get_risk_settings(exchange)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/risk/settings")
 async def update_risk_settings_endpoint(req: RiskSettingsUpdateRequest):
@@ -2056,14 +2312,18 @@ async def update_risk_settings_endpoint(req: RiskSettingsUpdateRequest):
             drawdown_cap=req.drawdown_cap,
             max_quote_qty=req.max_quote_qty,
             slippage_limit=req.slippage_limit,
-            safe_mode=req.safe_mode
+            safe_mode=req.safe_mode,
         )
-        return {"status": "success", "message": f"Risk settings updated for {req.exchange}"}
+        return {
+            "status": "success",
+            "message": f"Risk settings updated for {req.exchange}",
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
     import uvicorn
+
     log.info(f"Starting FastAPI Webhook Server v7.6 on {config.HOST}:{config.PORT}")
     uvicorn.run("main:app", host=config.HOST, port=config.PORT, reload=config.DEBUG)

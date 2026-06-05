@@ -103,4 +103,3 @@ To join the ranks of superperformers, you must embrace a new paradigm of market 
 * **Valuation is Secondary to Trend:**  A high P/E is the "premium" you pay for a high-performance vehicle. Focus on the 2-3x P/E expansion potential, not the initial multiple.  
 * **Stage 2 is Your Only Home:**  Never buy a stock in any other stage. Require a 25-30% rally off the bottom and a trending 200-day MA (ideally for 4-5 months) before entry.  
 * **Protect Your Capital from the Trap:**  Remember the math of Sun Microsystems. A 75% drop can be followed by another 75% drop. Avoid "cheap" stocks and broken leaders at all costs.By shifting your focus from "how much does it cost?" to "is it in Stage 2?", you align yourself with the principles that have created every stock market wizard in history.  **The trend is your friend—but only if you have the discipline to follow it.**
-

@@ -2,6 +2,7 @@
 P6 — Watchlist Management
 Dynamic watchlist với JSON persistence + TradingView sync.
 """
+
 import json
 import logging
 from pathlib import Path
@@ -32,8 +33,7 @@ def _load() -> list[str]:
 def _save(symbols: list[str]) -> None:
     """Persist watchlist to JSON file."""
     _WATCHLIST_FILE.write_text(
-        json.dumps({"symbols": symbols}, indent=2, ensure_ascii=False),
-        encoding="utf-8"
+        json.dumps({"symbols": symbols}, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 
 
@@ -51,7 +51,12 @@ def add_symbol(symbol: str) -> dict:
     symbols = _load()
 
     if symbol in symbols:
-        return {"added": False, "reason": "already_exists", "symbol": symbol, "watchlist": symbols}
+        return {
+            "added": False,
+            "reason": "already_exists",
+            "symbol": symbol,
+            "watchlist": symbols,
+        }
 
     symbols.append(symbol)
     _save(symbols)
@@ -68,7 +73,12 @@ def remove_symbol(symbol: str) -> dict:
     symbols = _load()
 
     if symbol not in symbols:
-        return {"removed": False, "reason": "not_found", "symbol": symbol, "watchlist": symbols}
+        return {
+            "removed": False,
+            "reason": "not_found",
+            "symbol": symbol,
+            "watchlist": symbols,
+        }
 
     symbols.remove(symbol)
     _save(symbols)
@@ -101,10 +111,19 @@ async def sync_from_tradingview(mcp_client) -> dict:
             return {"synced": False, "reason": "empty_watchlist_from_tv"}
 
         current = _load()
-        merged = list(dict.fromkeys(current + tv_symbols))  # deduplicate, preserve order
+        merged = list(
+            dict.fromkeys(current + tv_symbols)
+        )  # deduplicate, preserve order
         _save(merged)
-        logger.info(f"Watchlist synced from TradingView: {len(tv_symbols)} symbols, total {len(merged)}")
-        return {"synced": True, "added": len(merged) - len(current), "total": len(merged), "watchlist": merged}
+        logger.info(
+            f"Watchlist synced from TradingView: {len(tv_symbols)} symbols, total {len(merged)}"
+        )
+        return {
+            "synced": True,
+            "added": len(merged) - len(current),
+            "total": len(merged),
+            "watchlist": merged,
+        }
 
     except Exception as e:
         logger.warning(f"TradingView watchlist sync failed: {e}")

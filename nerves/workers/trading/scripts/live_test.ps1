@@ -32,13 +32,13 @@ function Test-Webhook {
         [string]$ExpectedStatus,
         [string]$ExpectedReason
     )
-    
+
     Write-Host "`n>>> Running: $TestName" -ForegroundColor Cyan
-    
+
     try {
         $jsonPayload = $Payload | ConvertTo-Json -Depth 10 -Compress
         $response = Invoke-RestMethod -Uri $serverUrl -Method Post -Body $jsonPayload -ContentType "application/json"
-        
+
         if ($ExpectedStatusCode -eq 200) {
             if ($response.received -ne $true) {
                 Write-Host "[-] FAILED: Response 'received' is not true" -ForegroundColor Red

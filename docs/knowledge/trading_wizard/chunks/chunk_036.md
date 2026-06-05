@@ -5,13 +5,13 @@
 
 EARN WHILE YOU LEARN
 Trade with Mark Minervini -LIVE!
-MINERVINI PRIVATE ACCESS™ 
+MINERVINI PRIVATE ACCESS™
 PREMIUM MEMBERSHIP
 Real-Time Platform allows you to trade side-by-side with Mark Minervini and receive
 his up to the minute buys & sells as they happen right on your PC, cell phone or tablet.
 Interactive Training Room is where Mark reviews trades, conducts educational
 study sessions and answers your questions while you view his trading desktop LIVE!
-TradingLogger 
+TradingLogger
 Gives you the tools to track, analyze and perfect your trading with
 proprietary analytics. Take control and know the truth about your trading.
 Access archive and

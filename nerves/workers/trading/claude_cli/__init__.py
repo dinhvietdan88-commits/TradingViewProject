@@ -16,6 +16,7 @@ Entry points (registered from main.py / telegram_bot.py):
     telegram_commands.register_commands(application, claude_service)
     event_handler.register_handler(claude_service)
 """
+
 from .sdk_client import SdkClient
 from .service import ClaudeService, ContextManager, AnalysisRequest, AnalysisResponse
 

@@ -30,14 +30,19 @@ Scenario E (Dedup — duplicate signal):
   Two identical signals arrive within 60s.
   Only the first passes; second is rejected with reason=duplicate_signal.
 """
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from pathlib import Path
 
 from core.event_bus import EventBus
 from core.events import (
-    SignalReceived, SignalValidated, SignalRejected,
-    AnalysisComplete, TradeApproved, TradeExecuted, TradeFailed,
+    SignalReceived,
+    SignalValidated,
+    SignalRejected,
+    AnalysisComplete,
+    TradeApproved,
+    TradeExecuted,
 )
 
 
@@ -45,13 +50,19 @@ from core.events import (
 # SHARED FIXTURES
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.fixture
 def pipeline_bus():
     """Create an isolated EventBus and wire up all 5 pipeline components."""
     bus = EventBus()
 
     # --- SignalProcessor ---
-    from processor.signal_processor import process_signal, set_bus as sp_set_bus, reset_dedup_cache
+    from processor.signal_processor import (
+        process_signal,
+        set_bus as sp_set_bus,
+        reset_dedup_cache,
+    )
+
     sp_set_bus(bus)
     reset_dedup_cache()
     bus.on(SignalReceived)(process_signal)
@@ -60,6 +71,7 @@ def pipeline_bus():
 
     # Teardown
     from core.event_bus import bus as default_bus
+
     sp_set_bus(default_bus)
     reset_dedup_cache()
 
@@ -68,12 +80,19 @@ def pipeline_bus():
 # SCENARIO A: HAPPY PATH (HIGH CONFIDENCE)
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_scenario_a_full_pipeline_high_confidence(pipeline_bus):
     """Full pipeline: buy signal → AI confidence 9 → auto-approve → TradeExecuted."""
-    from analyzer.ai_analyzer import process_validated_signal, set_bus as ai_set_bus, reset_capture_state
+    from analyzer.ai_analyzer import (
+        process_validated_signal,
+        set_bus as ai_set_bus,
+        reset_capture_state,
+    )
     from hub.notification_hub import (
-        process_analysis_complete, set_bus as hub_set_bus, PENDING_TRADES
+        process_analysis_complete,
+        set_bus as hub_set_bus,
+        PENDING_TRADES,
     )
     from engine.trade_engine import execute_trade, set_bus as te_set_bus
 
@@ -94,14 +113,15 @@ async def test_scenario_a_full_pipeline_high_confidence(pipeline_bus):
         final_events.append(event)
 
     try:
-        with patch("analyzer.ai_analyzer.config") as mock_ai_config, \
-             patch("analyzer.ai_analyzer.database") as mock_ai_db, \
-             patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory, \
-             patch("analyzer.ai_analyzer.vision_module") as mock_vision, \
-             patch("hub.notification_hub.notifier") as mock_notifier, \
-             patch("exchanges.router.get_router") as mock_router_factory, \
-             patch("engine.trade_engine.database") as mock_te_db:
-
+        with (
+            patch("analyzer.ai_analyzer.config") as mock_ai_config,
+            patch("analyzer.ai_analyzer.database") as mock_ai_db,
+            patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory,
+            patch("analyzer.ai_analyzer.vision_module") as mock_vision,
+            patch("hub.notification_hub.notifier") as mock_notifier,
+            patch("exchanges.router.get_router") as mock_router_factory,
+            patch("engine.trade_engine.database") as mock_te_db,
+        ):
             # AI Config
             mock_ai_config.MCP_ENABLED = True
             mock_ai_config.RAG_ENABLED = False
@@ -114,17 +134,20 @@ async def test_scenario_a_full_pipeline_high_confidence(pipeline_bus):
             mock_mcp.capture_screenshot = AsyncMock(return_value=str(screenshot_path))
             mock_mcp_factory.return_value = mock_mcp
 
-            mock_vision.analyze_chart_vision = AsyncMock(return_value={
-                "analysis": "Strong bullish momentum. Stop Loss: 66000. Take Profit: 72000.",
-                "confidence": 9,
-                "error": None,
-            })
+            mock_vision.analyze_chart_vision = AsyncMock(
+                return_value={
+                    "analysis": "Strong bullish momentum. Stop Loss: 66000. Take Profit: 72000.",
+                    "confidence": 9,
+                    "error": None,
+                }
+            )
 
             # Hub notifier
             mock_notifier.notify_all = AsyncMock()
 
             # Exchange adapter
             from tests.unit.test_trade_engine_extended import MockOrderResult
+
             mock_adapter = AsyncMock()
             mock_adapter.exchange_id = "binance"
             mock_adapter.execute_smart_order = AsyncMock(return_value=MockOrderResult())
@@ -140,11 +163,19 @@ async def test_scenario_a_full_pipeline_high_confidence(pipeline_bus):
             mock_te_db.update_signal_status = AsyncMock()
 
             # FIRE the pipeline
-            await pipeline_bus.emit(SignalReceived(
-                signal_id=1000, symbol="BTCUSDT", action="buy",
-                price=68000.0, quote_qty=50.0, interval="60",
-                sl="", tp="", exchange="binance",
-            ))
+            await pipeline_bus.emit(
+                SignalReceived(
+                    signal_id=1000,
+                    symbol="BTCUSDT",
+                    action="buy",
+                    price=68000.0,
+                    quote_qty=50.0,
+                    interval="60",
+                    sl="",
+                    tp="",
+                    exchange="binance",
+                )
+            )
 
             assert len(final_events) == 1, "TradeExecuted should be emitted once"
             assert final_events[0].symbol == "BTCUSDT"
@@ -156,6 +187,7 @@ async def test_scenario_a_full_pipeline_high_confidence(pipeline_bus):
         from analyzer.ai_analyzer import set_bus as ai_reset
         from hub.notification_hub import set_bus as hub_reset
         from engine.trade_engine import set_bus as te_reset
+
         ai_reset(default_bus)
         hub_reset(default_bus)
         te_reset(default_bus)
@@ -167,12 +199,20 @@ async def test_scenario_a_full_pipeline_high_confidence(pipeline_bus):
 # SCENARIO B: HUMAN GATE (MEDIUM CONFIDENCE)
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_scenario_b_medium_confidence_held_for_approval(pipeline_bus):
     """Medium confidence (6) → trade held in PENDING_TRADES, no TradeExecuted."""
-    from analyzer.ai_analyzer import process_validated_signal, set_bus as ai_set_bus, reset_capture_state
+    from analyzer.ai_analyzer import (
+        process_validated_signal,
+        set_bus as ai_set_bus,
+        reset_capture_state,
+    )
     from hub.notification_hub import (
-        process_analysis_complete, set_bus as hub_set_bus, PENDING_TRADES, get_pending_trade
+        process_analysis_complete,
+        set_bus as hub_set_bus,
+        PENDING_TRADES,
+        get_pending_trade,
     )
 
     PENDING_TRADES.clear()
@@ -190,13 +230,14 @@ async def test_scenario_b_medium_confidence_held_for_approval(pipeline_bus):
         approved_events.append(event)
 
     try:
-        with patch("analyzer.ai_analyzer.config") as mock_ai_config, \
-             patch("analyzer.ai_analyzer.database") as mock_ai_db, \
-             patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory, \
-             patch("analyzer.ai_analyzer.vision_module") as mock_vision, \
-             patch("hub.notification_hub.notifier") as mock_notifier, \
-             patch("hub.notification_hub.telegram_bot", create=True) as mock_bot:
-
+        with (
+            patch("analyzer.ai_analyzer.config") as mock_ai_config,
+            patch("analyzer.ai_analyzer.database") as mock_ai_db,
+            patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory,
+            patch("analyzer.ai_analyzer.vision_module") as mock_vision,
+            patch("hub.notification_hub.notifier") as mock_notifier,
+            patch("hub.notification_hub.telegram_bot", create=True) as mock_bot,
+        ):
             mock_ai_config.MCP_ENABLED = True
             mock_ai_config.RAG_ENABLED = False
 
@@ -207,28 +248,43 @@ async def test_scenario_b_medium_confidence_held_for_approval(pipeline_bus):
             mock_mcp.capture_screenshot = AsyncMock(return_value=str(screenshot_path))
             mock_mcp_factory.return_value = mock_mcp
 
-            mock_vision.analyze_chart_vision = AsyncMock(return_value={
-                "analysis": "Moderate setup. Stop Loss: 66000. Take Profit: 71000.",
-                "confidence": 6,
-                "error": None,
-            })
+            mock_vision.analyze_chart_vision = AsyncMock(
+                return_value={
+                    "analysis": "Moderate setup. Stop Loss: 66000. Take Profit: 71000.",
+                    "confidence": 6,
+                    "error": None,
+                }
+            )
 
             mock_notifier.notify_all = AsyncMock()
-            mock_bot.send_interactive_trade_approval = AsyncMock(return_value=[(12345, 67890)])
+            mock_bot.send_interactive_trade_approval = AsyncMock(
+                return_value=[(12345, 67890)]
+            )
             mock_bot.get_approval_timeout_mgr = MagicMock(return_value=None)
 
             import sys
+
             sys.modules.setdefault("telegram_bot", mock_bot)
 
             mock_ai_db.insert_brief = AsyncMock(return_value=1)
 
-            await pipeline_bus.emit(SignalReceived(
-                signal_id=2000, symbol="BTCUSDT", action="buy",
-                price=68000.0, quote_qty=50.0, interval="1h",
-                sl="", tp="", exchange="binance",
-            ))
+            await pipeline_bus.emit(
+                SignalReceived(
+                    signal_id=2000,
+                    symbol="BTCUSDT",
+                    action="buy",
+                    price=68000.0,
+                    quote_qty=50.0,
+                    interval="1h",
+                    sl="",
+                    tp="",
+                    exchange="binance",
+                )
+            )
 
-            assert len(approved_events) == 0, "Should NOT auto-approve medium confidence"
+            assert len(approved_events) == 0, (
+                "Should NOT auto-approve medium confidence"
+            )
             pending = get_pending_trade(2000)
             assert pending is not None, "Trade should be stored in PENDING_TRADES"
 
@@ -237,6 +293,7 @@ async def test_scenario_b_medium_confidence_held_for_approval(pipeline_bus):
         from core.event_bus import bus as default_bus
         from analyzer.ai_analyzer import set_bus as ai_reset
         from hub.notification_hub import set_bus as hub_reset
+
         ai_reset(default_bus)
         hub_reset(default_bus)
         PENDING_TRADES.clear()
@@ -247,12 +304,20 @@ async def test_scenario_b_medium_confidence_held_for_approval(pipeline_bus):
 # SCENARIO C: AUTO-REJECT (LOW CONFIDENCE)
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_scenario_c_low_confidence_no_trade(pipeline_bus):
     """Low confidence (3) → auto-reject, no TradeApproved or TradeExecuted."""
-    from analyzer.ai_analyzer import process_validated_signal, set_bus as ai_set_bus, reset_capture_state
+    from analyzer.ai_analyzer import (
+        process_validated_signal,
+        set_bus as ai_set_bus,
+        reset_capture_state,
+    )
     from hub.notification_hub import (
-        process_analysis_complete, set_bus as hub_set_bus, PENDING_TRADES, notify_signal_rejected
+        process_analysis_complete,
+        set_bus as hub_set_bus,
+        PENDING_TRADES,
+        notify_signal_rejected,
     )
 
     PENDING_TRADES.clear()
@@ -275,12 +340,13 @@ async def test_scenario_c_low_confidence_no_trade(pipeline_bus):
         trade_events.append(("executed", event))
 
     try:
-        with patch("analyzer.ai_analyzer.config") as mock_ai_config, \
-             patch("analyzer.ai_analyzer.database") as mock_ai_db, \
-             patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory, \
-             patch("analyzer.ai_analyzer.vision_module") as mock_vision, \
-             patch("hub.notification_hub.notifier") as mock_notifier:
-
+        with (
+            patch("analyzer.ai_analyzer.config") as mock_ai_config,
+            patch("analyzer.ai_analyzer.database") as mock_ai_db,
+            patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory,
+            patch("analyzer.ai_analyzer.vision_module") as mock_vision,
+            patch("hub.notification_hub.notifier") as mock_notifier,
+        ):
             mock_ai_config.MCP_ENABLED = True
             mock_ai_config.RAG_ENABLED = False
 
@@ -291,22 +357,34 @@ async def test_scenario_c_low_confidence_no_trade(pipeline_bus):
             mock_mcp.capture_screenshot = AsyncMock(return_value=str(screenshot_path))
             mock_mcp_factory.return_value = mock_mcp
 
-            mock_vision.analyze_chart_vision = AsyncMock(return_value={
-                "analysis": "Weak setup, avoid.",
-                "confidence": 3,
-                "error": None,
-            })
+            mock_vision.analyze_chart_vision = AsyncMock(
+                return_value={
+                    "analysis": "Weak setup, avoid.",
+                    "confidence": 3,
+                    "error": None,
+                }
+            )
 
             mock_notifier.notify_all = AsyncMock()
             mock_ai_db.insert_brief = AsyncMock(return_value=1)
 
-            await pipeline_bus.emit(SignalReceived(
-                signal_id=3000, symbol="BTCUSDT", action="buy",
-                price=68000.0, quote_qty=50.0, interval="60",
-                sl="", tp="", exchange="binance",
-            ))
+            await pipeline_bus.emit(
+                SignalReceived(
+                    signal_id=3000,
+                    symbol="BTCUSDT",
+                    action="buy",
+                    price=68000.0,
+                    quote_qty=50.0,
+                    interval="60",
+                    sl="",
+                    tp="",
+                    exchange="binance",
+                )
+            )
 
-            assert len(trade_events) == 0, "No TradeApproved or TradeExecuted should fire"
+            assert len(trade_events) == 0, (
+                "No TradeApproved or TradeExecuted should fire"
+            )
             # But notification should be sent
             mock_notifier.notify_all.assert_awaited()
 
@@ -315,6 +393,7 @@ async def test_scenario_c_low_confidence_no_trade(pipeline_bus):
         from core.event_bus import bus as default_bus
         from analyzer.ai_analyzer import set_bus as ai_reset
         from hub.notification_hub import set_bus as hub_reset
+
         ai_reset(default_bus)
         hub_reset(default_bus)
         PENDING_TRADES.clear()
@@ -324,6 +403,7 @@ async def test_scenario_c_low_confidence_no_trade(pipeline_bus):
 # ═══════════════════════════════════════════════════════════════
 # SCENARIO D: INVALID TIMEFRAME REJECTION
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_scenario_d_invalid_timeframe_stops_at_processor(pipeline_bus):
@@ -339,11 +419,19 @@ async def test_scenario_d_invalid_timeframe_stops_at_processor(pipeline_bus):
     async def on_analysis(event):
         analysis_events.append(event)
 
-    await pipeline_bus.emit(SignalReceived(
-        signal_id=4000, symbol="BTCUSDT", action="buy",
-        price=68000.0, quote_qty=50.0, interval="4h",
-        sl="", tp="", exchange="binance",
-    ))
+    await pipeline_bus.emit(
+        SignalReceived(
+            signal_id=4000,
+            symbol="BTCUSDT",
+            action="buy",
+            price=68000.0,
+            quote_qty=50.0,
+            interval="4h",
+            sl="",
+            tp="",
+            exchange="binance",
+        )
+    )
 
     assert len(rejected_events) == 1
     assert rejected_events[0].reason == "invalid_timeframe"
@@ -354,6 +442,7 @@ async def test_scenario_d_invalid_timeframe_stops_at_processor(pipeline_bus):
 # ═══════════════════════════════════════════════════════════════
 # SCENARIO E: DEDUP — DUPLICATE SIGNAL
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_scenario_e_duplicate_signal_blocked_by_dedup(pipeline_bus):
@@ -369,16 +458,32 @@ async def test_scenario_e_duplicate_signal_blocked_by_dedup(pipeline_bus):
     async def on_rejected(event):
         rejected.append(event)
 
-    await pipeline_bus.emit(SignalReceived(
-        signal_id=5000, symbol="SOLUSDT", action="buy",
-        price=150.0, quote_qty=30.0, interval="60",
-        sl="", tp="", exchange="bybit",
-    ))
-    await pipeline_bus.emit(SignalReceived(
-        signal_id=5001, symbol="SOLUSDT", action="buy",
-        price=150.5, quote_qty=30.0, interval="60",
-        sl="", tp="", exchange="bybit",
-    ))
+    await pipeline_bus.emit(
+        SignalReceived(
+            signal_id=5000,
+            symbol="SOLUSDT",
+            action="buy",
+            price=150.0,
+            quote_qty=30.0,
+            interval="60",
+            sl="",
+            tp="",
+            exchange="bybit",
+        )
+    )
+    await pipeline_bus.emit(
+        SignalReceived(
+            signal_id=5001,
+            symbol="SOLUSDT",
+            action="buy",
+            price=150.5,
+            quote_qty=30.0,
+            interval="60",
+            sl="",
+            tp="",
+            exchange="bybit",
+        )
+    )
 
     assert len(validated) == 1
     assert validated[0].signal_id == 5000

@@ -15,11 +15,11 @@ if not test_runs_logger.handlers:
     test_runs_logger.setLevel(logging.INFO)
     file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
     formatter = logging.Formatter(
-        "[%(asctime)s] | %(levelname)s | %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+        "[%(asctime)s] | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
     )
     file_handler.setFormatter(formatter)
     test_runs_logger.addHandler(file_handler)
+
 
 def log_test_run(success: bool, summary: str, error_log: str = ""):
     """Log test runs to nerves/workers/trading/test_runs.log."""
@@ -29,6 +29,7 @@ def log_test_run(success: bool, summary: str, error_log: str = ""):
     if error_log:
         msg += f"\nError Details:\n{error_log}"
     test_runs_logger.log(log_level, msg)
+
 
 def get_setting_sync(key: str, default: Optional[str] = None) -> Optional[str]:
     """Synchronously get setting from the DB."""
@@ -41,34 +42,39 @@ def get_setting_sync(key: str, default: Optional[str] = None) -> Optional[str]:
         logger.error(f"Error reading setting {key} sync: {e}")
         return default
 
+
 def set_setting_sync(key: str, value: str) -> None:
     """Synchronously set setting in the DB."""
     try:
         with sqlite3.connect(config.DB_PATH) as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-                (key, value)
+                (key, value),
             )
             conn.commit()
     except Exception as e:
         logger.error(f"Error setting setting {key} sync to {value}: {e}")
 
+
 async def set_setting_async(key: str, value: str) -> None:
     """Asynchronously set setting in the DB."""
     import aiosqlite
+
     try:
         async with aiosqlite.connect(config.DB_PATH) as db:
             await db.execute(
                 "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-                (key, value)
+                (key, value),
             )
             await db.commit()
     except Exception as e:
         logger.error(f"Error setting setting {key} async to {value}: {e}")
 
+
 async def get_setting_async(key: str, default: Optional[str] = None) -> Optional[str]:
     """Asynchronously get setting from the DB."""
     import aiosqlite
+
     try:
         async with aiosqlite.connect(config.DB_PATH) as db:
             query = "SELECT value FROM settings WHERE key = ?"
@@ -78,6 +84,7 @@ async def get_setting_async(key: str, default: Optional[str] = None) -> Optional
     except Exception as e:
         logger.error(f"Error getting setting {key} async: {e}")
         return default
+
 
 async def handle_test_failure_alert(filename: str, traceback_short: str):
     """
@@ -92,9 +99,11 @@ async def handle_test_failure_alert(filename: str, traceback_short: str):
     )
     try:
         from notifier import send_telegram_alert
+
         await send_telegram_alert(message)
     except Exception as e:
         logger.error(f"Failed to send Telegram alert for test failure: {e}")
+
 
 async def handle_health_check_transition(
     check_name: str, status: str, error_message: str = ""
@@ -120,6 +129,7 @@ async def handle_health_check_transition(
         try:
             # Send alert
             from notifier import send_telegram_alert
+
             await send_telegram_alert(message)
             # Log transition to log file
             test_runs_logger.error(

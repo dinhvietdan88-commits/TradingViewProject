@@ -33,7 +33,9 @@ from mcp.server.fastmcp import FastMCP
 
 import config
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 log = logging.getLogger("rag_mcp")
 
 mcp = FastMCP("minervini-rag")
@@ -130,14 +132,16 @@ def query_minervini_kb(query: str, top_k: int = 5) -> dict:
     metas = res.get("metadatas", [[]])[0]
     dists = res.get("distances", [[]])[0]
     out = []
-    for doc, meta, dist in zip(docs, metas, dists):
-        out.append({
-            "chapter": meta.get("chapter", ""),
-            "topic": meta.get("topic", ""),
-            "filename": meta.get("filename", ""),
-            "relevance_score": round(1 - dist, 4),
-            "content": doc,
-        })
+    for doc, meta, dist in zip(docs, metas, dists, strict=False):
+        out.append(
+            {
+                "chapter": meta.get("chapter", ""),
+                "topic": meta.get("topic", ""),
+                "filename": meta.get("filename", ""),
+                "relevance_score": round(1 - dist, 4),
+                "content": doc,
+            }
+        )
     return {"query": query, "count": len(out), "results": out}
 
 
@@ -150,13 +154,15 @@ def list_kb_chapters() -> dict:
     coll = _ensure_collection()
     got = coll.get(include=["metadatas"])
     items = []
-    for cid, meta in zip(got.get("ids", []), got.get("metadatas", [])):
-        items.append({
-            "id": cid,
-            "chapter": meta.get("chapter", ""),
-            "topic": meta.get("topic", ""),
-            "filename": meta.get("filename", ""),
-        })
+    for cid, meta in zip(got.get("ids", []), got.get("metadatas", []), strict=False):
+        items.append(
+            {
+                "id": cid,
+                "chapter": meta.get("chapter", ""),
+                "topic": meta.get("topic", ""),
+                "filename": meta.get("filename", ""),
+            }
+        )
     items.sort(key=lambda x: x["chapter"])
     return {"count": len(items), "chapters": items}
 

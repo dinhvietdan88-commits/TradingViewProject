@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 WEEX API Documentation Crawler and Knowledge Base Generator.
-This script attempts to crawl WEEX API docs, with a robust programmatic fallback 
+This script attempts to crawl WEEX API docs, with a robust programmatic fallback
 that generates 10 high-fidelity, complete markdown files covering all categories.
 """
 
@@ -10,7 +10,9 @@ import urllib.request
 import urllib.error
 
 # Define directories
-SOURCE_DIR = r"c:/Users/pesil/working/mj_trading/TradingViewProject/lobes/knowledge/weex"
+SOURCE_DIR = (
+    r"c:/Users/pesil/working/mj_trading/TradingViewProject/lobes/knowledge/weex"
+)
 TARGET_DIR = r"C:/Users/pesil/EAIS/.agents/lobes/knowledge/weex"
 
 MARKDOWN_CONTENTS = {
@@ -57,7 +59,6 @@ This document provides a comprehensive mapping of all WEEX REST API endpoints an
 
 For API rate limit weight tables, headers, and 429 response schemas, refer to [weex_rate_limits_weights.md](weex_rate_limits_weights.md).
 """,
-
     "weex_signatures_auth.md": """# WEEX API Authentication and Signatures Guide
 
 This document details the authentication and signing rules for both V2 and V3 endpoints on the WEEX exchange.
@@ -119,11 +120,11 @@ def generate_weex_signature_v3(api_secret, timestamp, method, request_path, quer
     if query_params:
         sorted_keys = sorted(query_params.keys())
         query_str = "&".join(f"{k}={query_params[k]}" for k in sorted_keys)
-        
+
     full_path = request_path
     if query_str:
         full_path = f"{request_path}?{query_str}"
-        
+
     message = f"{timestamp}{method.upper()}{full_path}{body}"
     signature = hmac.new(
         api_secret.encode('utf-8'),
@@ -139,11 +140,11 @@ if __name__ == "__main__":
     method = "GET"
     path = "/api/v3/spot/order"
     params = {"orderId": "992831", "symbol": "BTCUSDT"}
-    
+
     # Generate signature with sorted parameters for V3
     sig_v3 = generate_weex_signature_v3(secret, ts, method, path, params)
     print("V3 Signature:", sig_v3)
-    
+
     # Matching V2 equivalent with pre-formatted path
     v2_path = f"{path}?orderId=992831&symbol=BTCUSDT"
     sig_v2 = generate_weex_signature_v2(secret, ts, method, v2_path)
@@ -151,7 +152,6 @@ if __name__ == "__main__":
     assert sig_v3 == sig_v2, "V2 and V3 signatures should match when paths are equivalent"
 ```
 """,
-
     "weex_spot_api_v1_v3.md": """# WEEX Spot API (V1 & V3)
 
 WEEX provides Spot API access through both V1 and V3 protocols. V3 represents the modern standard with faster matching queues and lower rates.
@@ -207,7 +207,6 @@ WEEX provides Spot API access through both V1 and V3 protocols. V3 represents th
     *   `symbol` (string, required).
     *   `limit` (integer, optional): Default 100, max 500.
 """,
-
     "weex_futures_usdt_m_api.md": """# WEEX USDT-Margin Contract API (V2 & V3)
 
 USDT-Margin contracts on WEEX settle in USDT and use the suffix `_UMCBL` for symbol identification.
@@ -260,7 +259,6 @@ WEEX supports attaching target profit and stop loss parameters directly during o
     *   `symbol` (string, required): e.g., `BTCUSDT_UMCBL`.
     *   `marginCoin` (string, required): `USDT`.
 """,
-
     "weex_futures_coin_m_api.md": """# WEEX Coin-Margin Contract API
 
 Coin-Margin contracts on WEEX settle in the underlying crypto asset and use the suffix `_DMCBL` for symbol identification.
@@ -308,7 +306,6 @@ Order sizes for Coin-Margin contracts are specified in number of contracts. Each
     *   `symbol` (string, required): e.g. `BTCUSD_DMCBL`.
     *   `marginCoin` (string, required): `BTC`.
 """,
-
     "weex_copy_trading_api.md": """# WEEX Copy Trading API
 
 Copy trading allows professional traders to share their strategies and followers to mirror those trades automatically.
@@ -364,7 +361,6 @@ Followers can check configurations and positions using the following endpoints:
 *   **Parameters**:
     *   `status` (integer, optional): `1` active, `0` paused.
 """,
-
     "weex_websocket_channels.md": """# WEEX WebSocket API
 
 The WEEX WebSocket API provides real-time market data updates and private account notifications.
@@ -429,7 +425,6 @@ Once logged in, subscribe to account channels:
 *   `position`: Real-time updates on active positions and margin changes.
 *   `account`: Account balance and wallet changes.
 """,
-
     "weex_rate_limits_weights.md": """# WEEX API Rate Limits and Weights
 
 WEEX API uses a combination of rate limits and endpoint weight allocations to ensure system stability.
@@ -474,7 +469,6 @@ If a rate limit is exceeded, the server returns an HTTP 429 status code with thi
 }
 ```
 """,
-
     "weex_market_data_announcements.md": """# WEEX Market Data and Announcements
 
 WEEX publishes real-time specifications of supported asset lists and announcements via REST endpoints.
@@ -505,7 +499,6 @@ Updates to the API are communicated through the following channels:
 *   **System Status Header**: Responses contain the `X-System-Status: normal` header. If maintenance is scheduled, this changes to `X-System-Status: maintenance`.
 *   **Documentation Site**: Announced on the official WEEX developers portal.
 """,
-
     "weex_sandbox_guide.md": """# WEEX Sandbox Environment Guide
 
 The WEEX Sandbox environment allows risk-free API integration testing before deploying logic to live markets.
@@ -549,16 +542,16 @@ To populate your test account with mock assets (e.g., test USDT, test BTC), call
 1.  **Slower Match Execution**: Orders in sandbox are processed via a mock match engine. Matching may take up to 200ms longer than live servers.
 2.  **No Actual Execution**: Trades do not represent actual financial transactions.
 3.  **Wiped Daily**: Sandbox account balances are reset back to default mock limits every 24 hours.
-"""
+""",
 }
+
 
 def crawl_and_generate():
     print("Initiating documentation download from WEEX developers site...")
     # Attempting to fetch web page (should fail or trigger exception under CODE_ONLY)
     try:
         req = urllib.request.Request(
-            "https://www.weex.com/api-doc/",
-            headers={'User-Agent': 'Mozilla/5.0'}
+            "https://www.weex.com/api-doc/", headers={"User-Agent": "Mozilla/5.0"}
         )
         with urllib.request.urlopen(req, timeout=5) as response:
             content = response.read()
@@ -587,6 +580,7 @@ def crawl_and_generate():
         print(f"Wrote to target path: {tgt_path}")
 
     print("WEEX Knowledge Base generation completed successfully.")
+
 
 if __name__ == "__main__":
     crawl_and_generate()

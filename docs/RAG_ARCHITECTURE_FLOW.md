@@ -8,25 +8,25 @@ Tài liệu này mô tả luồng kiến trúc (Architecture Flow) kết nối t
 flowchart TD
     TV[TradingView Alert] -->|Webhook JSON| API["FastAPI Server A :5000"]
     API -->|HTTP Forward| ANALYZER["Analyzer Server C :8000"]
-    
+
     subgraph RAG_System ["Server C — RAG & AI Core"]
         ANALYZER -->|1. build_rag_query| RAG[rag.py]
         RAG -->|2. Semantic Search| VDB["ChromaDB (Vector DB)"]
         VDB -->|3. Top 3 Chunks| RAG
         RAG -->|4. Prompt + Context| PROVIDER{AI Provider Cascade}
-        
+
         PROVIDER -->|"P1: agy"| AGY["agy-bridge :9100"]
         PROVIDER -->|"P2: antigravity"| ANTIGRAV["google-antigravity SDK"]
         PROVIDER -->|"P3: claude_cli"| CLI["claude CLI (OAuth)"]
         PROVIDER -->|"P4: anthropic"| SDK["anthropic SDK"]
         PROVIDER -->|"P5: gemini"| GEMINI["google-genai SDK"]
     end
-    
+
     AGY -->|Gemini 2.5 Flash| GOOGLE["Google AI"]
     ANTIGRAV -->|localharness| GOOGLE
     SDK -->|API Key| CLAUDE["Claude Sonnet 4.5"]
     GEMINI -->|API Key| GOOGLE
-    
+
     RAG -->|5. Analysis Report| ANALYZER
     ANALYZER -->|6. Notify| TG[Telegram]
 ```

@@ -82,7 +82,11 @@ def _rag_patches_approved():
         patch(
             "rag.query_knowledge",
             return_value=[
-                {"content": "Minervini SEPA rules...", "metadata": {"topic": "VCP"}, "relevance_score": 0.92}
+                {
+                    "content": "Minervini SEPA rules...",
+                    "metadata": {"topic": "VCP"},
+                    "relevance_score": 0.92,
+                }
             ],
         ),
         patch(
@@ -100,7 +104,11 @@ def _rag_patches_rejected():
         patch(
             "rag.query_knowledge",
             return_value=[
-                {"content": "Minervini says wait...", "metadata": {"topic": "VCP"}, "relevance_score": 0.5}
+                {
+                    "content": "Minervini says wait...",
+                    "metadata": {"topic": "VCP"},
+                    "relevance_score": 0.5,
+                }
             ],
         ),
         patch(
@@ -150,6 +158,7 @@ def _setup_ack(mock_session, status=200):
 # TEST 1: Full pipeline signal flow
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_full_pipeline_signal_flow():
     """End-to-end: VBS poll → RAG analysis → Server B forward → success.
@@ -164,7 +173,9 @@ async def test_full_pipeline_signal_flow():
     from workers.vps_analyzer import VpsAnalyzerWorker
 
     worker = VpsAnalyzerWorker()
-    signal = _make_vbs_signal(queue_id=101, symbol="BTCUSDT", action="buy", price=50000.0)
+    signal = _make_vbs_signal(
+        queue_id=101, symbol="BTCUSDT", action="buy", price=50000.0
+    )
 
     # Phase 1: Poll and analyze with RAG approval
     patches = _rag_patches_approved()
@@ -207,6 +218,7 @@ async def test_full_pipeline_signal_flow():
 # TEST 2: Pipeline handles rejected signal
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_pipeline_handles_rejected_signal():
     """Pipeline correctly marks signal as rejected when RAG returns warning.
@@ -217,7 +229,9 @@ async def test_pipeline_handles_rejected_signal():
     from workers.vps_analyzer import VpsAnalyzerWorker
 
     worker = VpsAnalyzerWorker()
-    signal = _make_vbs_signal(queue_id=202, symbol="ETHUSDT", action="buy", price=3500.0)
+    signal = _make_vbs_signal(
+        queue_id=202, symbol="ETHUSDT", action="buy", price=3500.0
+    )
 
     patches = _rag_patches_rejected()
     with patches[0], patches[1], patches[2]:
@@ -237,6 +251,7 @@ async def test_pipeline_handles_rejected_signal():
 # ═══════════════════════════════════════════════════════════════
 # TEST 3: Pipeline handles execution failure
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_pipeline_handles_execution_failure():
@@ -281,6 +296,7 @@ async def test_pipeline_handles_execution_failure():
 # TEST 4: Pipeline handles VBS connection error
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_pipeline_handles_vbs_connection_error():
     """Pipeline gracefully handles VBS being unreachable.
@@ -294,7 +310,9 @@ async def test_pipeline_handles_vbs_connection_error():
 
     # Simulate VBS connection refused
     mock_session = MagicMock()
-    mock_session.get = MagicMock(side_effect=ConnectionError("Connection refused to VBS on Server A"))
+    mock_session.get = MagicMock(
+        side_effect=ConnectionError("Connection refused to VBS on Server A")
+    )
     worker.get_session = AsyncMock(return_value=mock_session)
 
     results = await worker.poll_and_analyze()
@@ -307,6 +325,7 @@ async def test_pipeline_handles_vbs_connection_error():
 # ═══════════════════════════════════════════════════════════════
 # TEST 5: Pipeline handles Server B auth failure
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_pipeline_handles_server_b_auth_failure():
@@ -359,6 +378,7 @@ async def test_pipeline_handles_server_b_auth_failure():
 # TEST 6: Remote ChromaDB config integration
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_remote_chromadb_config_integration():
     """Verify CHROMA_REMOTE config correctly branches to HttpClient.
@@ -393,14 +413,23 @@ async def test_remote_chromadb_config_integration():
         mock_http_client = MagicMock()
         mock_http_client.get_or_create_collection.return_value = mock_collection
 
-        with patch.object(rag, "CHROMADB_AVAILABLE", True), \
-             patch.dict("sys.modules", {"chromadb": MagicMock(HttpClient=MagicMock(return_value=mock_http_client))}) as mock_modules, \
-             patch.object(rag, "_get_embedding_function", return_value=MagicMock()):
-
+        with (
+            patch.object(rag, "CHROMADB_AVAILABLE", True),
+            patch.dict(
+                "sys.modules",
+                {
+                    "chromadb": MagicMock(
+                        HttpClient=MagicMock(return_value=mock_http_client)
+                    )
+                },
+            ) as mock_modules,
+            patch.object(rag, "_get_embedding_function", return_value=MagicMock()),
+        ):
             result = await rag.init_vector_db()
 
             # Get the mock chromadb module to verify HttpClient was called
             import sys
+
             mock_chromadb = sys.modules["chromadb"]
 
         assert result is True
@@ -421,6 +450,7 @@ async def test_remote_chromadb_config_integration():
 # ═══════════════════════════════════════════════════════════════
 # TEST 7: Full pipeline with position sizing verification
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_full_pipeline_with_position_sizing():
@@ -443,7 +473,9 @@ async def test_full_pipeline_with_position_sizing():
     from workers.vps_analyzer import VpsAnalyzerWorker
 
     worker = VpsAnalyzerWorker()
-    signal = _make_vbs_signal(queue_id=701, symbol="TESTUSDT", action="buy", price=100.0)
+    signal = _make_vbs_signal(
+        queue_id=701, symbol="TESTUSDT", action="buy", price=100.0
+    )
 
     patches = _rag_patches_approved()
     with patches[0], patches[1], patches[2]:
@@ -460,9 +492,9 @@ async def test_full_pipeline_with_position_sizing():
     assert tp["price"] == 100.0
 
     # Position sizing assertions
-    assert tp["qty"] == 2.5        # 20 / 8
-    assert tp["sl"] == 92.0        # 100 * (1 - 0.08)
-    assert tp["tp"] == 120.0       # 100 * (1 + 0.20)
+    assert tp["qty"] == 2.5  # 20 / 8
+    assert tp["sl"] == 92.0  # 100 * (1 - 0.08)
+    assert tp["tp"] == 120.0  # 100 * (1 + 0.20)
 
     # Risk parameters passed through
     assert tp["risk_per_trade"] == config.RISK_PER_TRADE
@@ -493,6 +525,7 @@ async def test_full_pipeline_with_position_sizing():
 # ═══════════════════════════════════════════════════════════════
 # TEST 8: Pipeline ACK flow — approved + executed → ACK 'executed'
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_pipeline_ack_flow_executed():
@@ -532,13 +565,16 @@ async def test_pipeline_ack_flow_executed():
 
     worker.poll_and_analyze = mock_poll
     worker.forward_to_server_b = AsyncMock(
-        return_value={"success": True, "status": 200, "data": {"order_id": "ORD-ACK-001"}}
+        return_value={
+            "success": True,
+            "status": 200,
+            "data": {"order_id": "ORD-ACK-001"},
+        }
     )
     worker._ack_signal = AsyncMock(return_value=True)
 
     # Mock uvicorn to prevent port 8000 binding conflicts in parallel CI
-    with patch("uvicorn.Config"), \
-         patch("uvicorn.Server") as mock_server:
+    with patch("uvicorn.Config"), patch("uvicorn.Server") as mock_server:
         mock_server.return_value.serve = AsyncMock()
         await worker.run()
 
@@ -552,6 +588,7 @@ async def test_pipeline_ack_flow_executed():
 # ═══════════════════════════════════════════════════════════════
 # TEST 9: Pipeline ACK flow — rejected signal → ACK 'rejected'
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_pipeline_ack_flow_rejected():
@@ -585,8 +622,7 @@ async def test_pipeline_ack_flow_rejected():
     worker._ack_signal = AsyncMock(return_value=True)
 
     # Mock uvicorn to prevent port 8000 binding conflicts in parallel CI
-    with patch("uvicorn.Config"), \
-         patch("uvicorn.Server") as mock_server:
+    with patch("uvicorn.Config"), patch("uvicorn.Server") as mock_server:
         mock_server.return_value.serve = AsyncMock()
         await worker.run()
 
@@ -604,6 +640,7 @@ async def test_pipeline_ack_flow_rejected():
 # ═══════════════════════════════════════════════════════════════
 # TEST 10: Pipeline ACK flow — execution failure → ACK 'failed'
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_pipeline_ack_flow_failed_execution():
@@ -648,8 +685,7 @@ async def test_pipeline_ack_flow_failed_execution():
     worker._ack_signal = AsyncMock(return_value=True)
 
     # Mock uvicorn to prevent port 8000 binding conflicts in parallel CI
-    with patch("uvicorn.Config"), \
-         patch("uvicorn.Server") as mock_server:
+    with patch("uvicorn.Config"), patch("uvicorn.Server") as mock_server:
         mock_server.return_value.serve = AsyncMock()
         await worker.run()
 
@@ -663,6 +699,7 @@ async def test_pipeline_ack_flow_failed_execution():
 # ═══════════════════════════════════════════════════════════════
 # TEST 11: Multiple signals in single poll cycle
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_pipeline_multiple_signals_mixed_results():
@@ -711,15 +748,18 @@ async def test_pipeline_multiple_signals_mixed_results():
         if payload.get("symbol") == "BTCUSDT":
             return {"success": True, "status": 200, "data": {"order_id": "ORD-M1"}}
         else:
-            return {"success": False, "status": 500, "error": "Insufficient margin for ETHUSDT"}
+            return {
+                "success": False,
+                "status": 500,
+                "error": "Insufficient margin for ETHUSDT",
+            }
 
     worker.poll_and_analyze = mock_poll
     worker.forward_to_server_b = mock_forward
     worker._ack_signal = AsyncMock(return_value=True)
 
     # Mock uvicorn to prevent port 8000 binding conflicts in parallel CI
-    with patch("uvicorn.Config"), \
-         patch("uvicorn.Server") as mock_server:
+    with patch("uvicorn.Config"), patch("uvicorn.Server") as mock_server:
         mock_server.return_value.serve = AsyncMock()
         await worker.run()
 
@@ -730,7 +770,7 @@ async def test_pipeline_multiple_signals_mixed_results():
 
     # Verify ACK calls: 3 signals -> 3 ACKs (order-independent)
     ack_map = {call.args[0]: call.args[1:] for call in ack_calls}
-    
+
     # Signal 1101: approved + executed -> ACK 'executed'
     assert ack_map[1101] == ("executed",)
 
@@ -745,6 +785,7 @@ async def test_pipeline_multiple_signals_mixed_results():
 # TEST 12: Sell signal position sizing (SL/TP reversed)
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_pipeline_sell_signal_position_sizing():
     """Verify position sizing for SELL signals has correct SL/TP direction.
@@ -756,7 +797,9 @@ async def test_pipeline_sell_signal_position_sizing():
     from workers.vps_analyzer import VpsAnalyzerWorker
 
     worker = VpsAnalyzerWorker()
-    signal = _make_vbs_signal(queue_id=1201, symbol="BTCUSDT", action="sell", price=100.0)
+    signal = _make_vbs_signal(
+        queue_id=1201, symbol="BTCUSDT", action="sell", price=100.0
+    )
 
     # Use sell-friendly AI response
     sell_patches = [
@@ -781,9 +824,9 @@ async def test_pipeline_sell_signal_position_sizing():
     tp = results[0]["trade_payload"]
 
     # For sell: SL above entry, TP below entry
-    assert tp["sl"] == 108.0   # 100 * (1 + 0.08)
-    assert tp["tp"] == 80.0    # 100 * (1 - 0.20)
-    assert tp["qty"] == 2.5    # Same sizing formula
+    assert tp["sl"] == 108.0  # 100 * (1 + 0.08)
+    assert tp["tp"] == 80.0  # 100 * (1 - 0.20)
+    assert tp["qty"] == 2.5  # Same sizing formula
 
     await worker.close()
 
@@ -791,6 +834,7 @@ async def test_pipeline_sell_signal_position_sizing():
 # ═══════════════════════════════════════════════════════════════
 # TEST 13: VBS HTTP error (non-connection)
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_pipeline_vbs_http_503_error():
@@ -817,6 +861,7 @@ async def test_pipeline_vbs_http_503_error():
 # ═══════════════════════════════════════════════════════════════
 # TEST 14: ACK endpoint communication
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_pipeline_ack_sends_correct_payload():
@@ -865,6 +910,7 @@ async def test_pipeline_ack_sends_correct_payload():
 # ═══════════════════════════════════════════════════════════════
 # TEST 15: Server B forward sends correct headers
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_pipeline_forward_sends_correct_headers():
@@ -916,6 +962,7 @@ async def test_pipeline_forward_sends_correct_headers():
 # TEST 16: Pipeline failover from Local to Server B
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_pipeline_failover_local_to_server_b():
     """Verify that when Local is configured but offline, the pipeline fails over to Server B."""
@@ -941,8 +988,9 @@ async def test_pipeline_failover_local_to_server_b():
             json_data={"success": True, "order_id": "ORD-B-FAILOVER"},
         )
         mock_session = MagicMock()
-        
+
         call_count = 0
+
         def post_side_effect(url, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -953,7 +1001,9 @@ async def test_pipeline_failover_local_to_server_b():
         mock_session.post = MagicMock(side_effect=post_side_effect)
         worker.get_session = AsyncMock(return_value=mock_session)
 
-        with patch("notifier.send_telegram_alert", new_callable=AsyncMock) as mock_alert:
+        with patch(
+            "notifier.send_telegram_alert", new_callable=AsyncMock
+        ) as mock_alert:
             result = await worker.forward_to_server_b(trade_payload)
 
             assert result["success"] is True
@@ -968,4 +1018,3 @@ async def test_pipeline_failover_local_to_server_b():
         config.LOCAL_EXECUTE_URL = original_local_url
         config.LOCAL_EXECUTE_SECRET = original_local_secret
         config.SERVER_B_EXECUTE_URL = original_b_url
-

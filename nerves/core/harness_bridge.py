@@ -32,6 +32,7 @@ log = logging.getLogger("harness_bridge")
 # Verdict + Gate Result Models (mirrors Go AQH: harness.Verdict)
 # ---------------------------------------------------------------------------
 
+
 class Verdict:
     PASSED = "PASSED"
     FAILED = "FAILED"
@@ -42,6 +43,7 @@ class Verdict:
 @dataclass
 class GateResult:
     """Result of a single harness gate."""
+
     name: str
     passed: bool
     verdict: str = Verdict.PASSED
@@ -53,9 +55,10 @@ class GateResult:
 @dataclass
 class HarnessVerdict:
     """Complete harness run result."""
-    mode: str                           # "MDASH_LIGHT" | "MDASH_FULL"
-    verdict: str = Verdict.PASSED       # Overall verdict
-    gates: list = field(default_factory=list)     # List[GateResult]
+
+    mode: str  # "MDASH_LIGHT" | "MDASH_FULL"
+    verdict: str = Verdict.PASSED  # Overall verdict
+    gates: list = field(default_factory=list)  # List[GateResult]
     findings: list = field(default_factory=list)  # Security findings
     scar_result: dict = field(default_factory=dict)
     debate_results: list = field(default_factory=list)
@@ -71,7 +74,11 @@ class HarnessVerdict:
         lines.append(f"- **Duration**: {self.duration_ms}ms\n")
 
         for gate in self.gates:
-            icon = "🟢" if gate.passed else ("🟡" if gate.verdict == Verdict.SOFT_GATED else "🔴")
+            icon = (
+                "🟢"
+                if gate.passed
+                else ("🟡" if gate.verdict == Verdict.SOFT_GATED else "🔴")
+            )
             lines.append(f"### {icon} {gate.name}: {gate.verdict}")
             if gate.details:
                 lines.append(f"> {gate.details}")
@@ -83,10 +90,16 @@ class HarnessVerdict:
             lines.append("|:-----|:---------|:-----|:------------|")
             for f in self.findings:
                 sev = f.get("severity", "?")
-                lines.append(f"| {f.get('rule_id', '?')} | {sev} | {f.get('file', '?')}:{f.get('line', '?')} | {f.get('title', '')} |")
+                lines.append(
+                    f"| {f.get('rule_id', '?')} | {sev} | {f.get('file', '?')}:{f.get('line', '?')} | {f.get('title', '')} |"
+                )
             lines.append("")
 
-        verdict_icon = "🏆" if self.verdict == Verdict.PASSED else ("🟡" if self.verdict == Verdict.SOFT_GATED else "🔴")
+        verdict_icon = (
+            "🏆"
+            if self.verdict == Verdict.PASSED
+            else ("🟡" if self.verdict == Verdict.SOFT_GATED else "🔴")
+        )
         lines.append(f"## {verdict_icon} FINAL VERDICT: {self.verdict}\n")
         return "\n".join(lines)
 
@@ -94,6 +107,7 @@ class HarnessVerdict:
 # ---------------------------------------------------------------------------
 # Gate 3: Security Scan Bridge (Mini-MDASH → QA Pipeline)
 # ---------------------------------------------------------------------------
+
 
 def _resolve_server_path() -> Optional[Path]:
     """Resolve the server/ module path (handles Junction symlink)."""
@@ -180,7 +194,9 @@ def scan_files_full(files: list) -> list:
             pass
         try:
             # secret_scanner uses _scan_file (private)
-            scan_fn = getattr(secret_scanner, "scan_file", None) or getattr(secret_scanner, "_scan_file", None)
+            scan_fn = getattr(secret_scanner, "scan_file", None) or getattr(
+                secret_scanner, "_scan_file", None
+            )
             if scan_fn:
                 findings.extend(scan_fn(p))
         except Exception:
@@ -202,18 +218,20 @@ def _findings_to_dicts(findings: list) -> list:
     """Convert Finding dataclass instances to plain dicts."""
     results = []
     for f in findings:
-        results.append({
-            "rule_id": getattr(f, "rule_id", "?"),
-            "title": getattr(f, "title", ""),
-            "severity": getattr(f, "severity", None),
-            "file": str(getattr(f, "file", "")),
-            "line": getattr(f, "line", 0),
-            "description": getattr(f, "description", ""),
-            "evidence": getattr(f, "evidence", ""),
-            "confidence": getattr(f, "confidence", 0.0),
-            "remediation": getattr(f, "remediation", ""),
-            "cwe": getattr(f, "cwe", None),
-        })
+        results.append(
+            {
+                "rule_id": getattr(f, "rule_id", "?"),
+                "title": getattr(f, "title", ""),
+                "severity": getattr(f, "severity", None),
+                "file": str(getattr(f, "file", "")),
+                "line": getattr(f, "line", 0),
+                "description": getattr(f, "description", ""),
+                "evidence": getattr(f, "evidence", ""),
+                "confidence": getattr(f, "confidence", 0.0),
+                "remediation": getattr(f, "remediation", ""),
+                "cwe": getattr(f, "cwe", None),
+            }
+        )
     # Normalize severity to string
     for r in results:
         sev = r["severity"]
@@ -230,6 +248,7 @@ def _findings_to_dicts(findings: list) -> list:
 # Gate 5: Scar Regression Check (ADK Eval Metrics bridge)
 # ---------------------------------------------------------------------------
 
+
 def run_scar_gate(test_output: str, config_path: str = None) -> dict:
     """
     Gate 5: Run scar regression check using ADK Eval Metrics.
@@ -245,12 +264,22 @@ def run_scar_gate(test_output: str, config_path: str = None) -> dict:
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
-            scar_patterns = config.get("known_scar_patterns", config.get("scar_patterns", []))
+            scar_patterns = config.get(
+                "known_scar_patterns", config.get("scar_patterns", [])
+            )
     except (FileNotFoundError, json.JSONDecodeError):
         log.info("[SCAR] No test_config.json found. Using default scar patterns.")
         scar_patterns = [
-            {"id": "SCAR-001", "pattern": "CommandNotFoundException", "description": "MCP vs Terminal confusion"},
-            {"id": "SCAR-002", "pattern": "ModuleNotFoundError.*security", "description": "Security module import failure"},
+            {
+                "id": "SCAR-001",
+                "pattern": "CommandNotFoundException",
+                "description": "MCP vs Terminal confusion",
+            },
+            {
+                "id": "SCAR-002",
+                "pattern": "ModuleNotFoundError.*security",
+                "description": "Security module import failure",
+            },
         ]
 
     # Import and run scar regression check
@@ -258,6 +287,7 @@ def run_scar_gate(test_output: str, config_path: str = None) -> dict:
         # Try importing from nerves.core (when in project root)
         sys.path.insert(0, str(Path.cwd()))
         from nerves.core.eval_metrics import scar_regression_check
+
         return scar_regression_check(scar_patterns, test_output)
     except ImportError:
         # Fallback: inline regex check
@@ -273,7 +303,7 @@ def run_scar_gate(test_output: str, config_path: str = None) -> dict:
             "passed": len(regressions) == 0,
             "score": round(passed_count / total, 4) if total > 0 else 1.0,
             "regressions": regressions,
-            "details": []
+            "details": [],
         }
 
 
@@ -281,16 +311,18 @@ def run_scar_gate(test_output: str, config_path: str = None) -> dict:
 # Gate 6: Multi-Model Debate (MDASH Stage 3 Validate — Level C)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DebateRound:
     """Result of a single multi-model debate round."""
+
     finding_id: str
-    advocate_argument: str = ""     # Gemini: "This IS a vulnerability because..."
-    defender_argument: str = ""     # OpenAI: "This is NOT exploitable because..."
+    advocate_argument: str = ""  # Gemini: "This IS a vulnerability because..."
+    defender_argument: str = ""  # OpenAI: "This is NOT exploitable because..."
     judge_verdict: str = "NEEDS_REVIEW"
     judge_confidence: float = 0.0
     judge_reasoning: str = ""
-    consensus: bool = False         # True if advocate + judge agree
+    consensus: bool = False  # True if advocate + judge agree
 
 
 def run_ai_debate(findings: list, file_contents: dict = None) -> list:
@@ -316,7 +348,9 @@ def run_ai_debate(findings: list, file_contents: dict = None) -> list:
         List of debate result dicts
     """
     severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
-    debatable = [f for f in findings if severity_order.get(f.get("severity", "info"), 4) <= 2]
+    debatable = [
+        f for f in findings if severity_order.get(f.get("severity", "info"), 4) <= 2
+    ]
 
     if not debatable:
         return []
@@ -327,21 +361,34 @@ def run_ai_debate(findings: list, file_contents: dict = None) -> list:
 
     if not gemini_key and not openai_key:
         log.info("[DEBATE] No LLM API configured. Gate 6 SKIPPED.")
-        return [{"finding": f["rule_id"], "verdict": "SKIPPED", "reason": "No LLM API configured"} for f in debatable]
+        return [
+            {
+                "finding": f["rule_id"],
+                "verdict": "SKIPPED",
+                "reason": "No LLM API configured",
+            }
+            for f in debatable
+        ]
 
     debate_results = []
     for finding in debatable:
         context = _extract_code_context(finding, file_contents)
         round_result = _run_debate_round(finding, context, gemini_key, openai_key)
-        debate_results.append({
-            "finding": finding["rule_id"],
-            "verdict": round_result.judge_verdict,
-            "confidence": round_result.judge_confidence,
-            "consensus": round_result.consensus,
-            "reason": round_result.judge_reasoning,
-            "advocate": round_result.advocate_argument[:200] if round_result.advocate_argument else "",
-            "defender": round_result.defender_argument[:200] if round_result.defender_argument else "",
-        })
+        debate_results.append(
+            {
+                "finding": finding["rule_id"],
+                "verdict": round_result.judge_verdict,
+                "confidence": round_result.judge_confidence,
+                "consensus": round_result.consensus,
+                "reason": round_result.judge_reasoning,
+                "advocate": round_result.advocate_argument[:200]
+                if round_result.advocate_argument
+                else "",
+                "defender": round_result.defender_argument[:200]
+                if round_result.defender_argument
+                else "",
+            }
+        )
 
     return debate_results
 
@@ -349,6 +396,7 @@ def run_ai_debate(findings: list, file_contents: dict = None) -> list:
 def _get_api_key(key_name: str) -> str:
     """Get API key from environment or server config."""
     import os
+
     val = os.environ.get(key_name, "")
     if val and len(val) > 10:
         return val
@@ -356,6 +404,7 @@ def _get_api_key(key_name: str) -> str:
     try:
         _ensure_server_in_path()
         import config
+
         return getattr(config, key_name, "") or ""
     except ImportError:
         return ""
@@ -370,7 +419,9 @@ def _extract_code_context(finding: dict, file_contents: dict = None) -> str:
     line_num = finding.get("line", 0)
     start = max(0, line_num - 10)
     end = min(len(lines), line_num + 10)
-    return "\n".join(f"{i+1}: {l}" for i, l in enumerate(lines[start:end], start=start))
+    return "\n".join(
+        f"{i + 1}: {l}" for i, l in enumerate(lines[start:end], start=start)
+    )
 
 
 def _run_debate_round(
@@ -390,7 +441,9 @@ def _run_debate_round(
 
     # Step 2: Defender (OpenAI o3-mini) argues AGAINST
     if openai_key:
-        defender_prompt = _build_defender_prompt(finding, context, round_result.advocate_argument)
+        defender_prompt = _build_defender_prompt(
+            finding, context, round_result.advocate_argument
+        )
         round_result.defender_argument = _call_openai_raw(
             defender_prompt, openai_key, model="o3-mini"
         )
@@ -431,17 +484,18 @@ def _run_debate_round(
 
 # --- Prompt Builders ---
 
+
 def _build_advocate_prompt(finding: dict, context: str) -> str:
     """Advocate: Argue WHY this is a real vulnerability."""
     return f"""You are a RED TEAM security advocate. Your job is to argue WHY this finding IS a real, exploitable vulnerability.
 
 ## Finding
-- **Rule**: {finding.get('rule_id', '?')} — {finding.get('title', '')}
-- **Severity**: {finding.get('severity', '?')}
-- **File**: {finding.get('file', '?')}:{finding.get('line', '?')}
-- **Description**: {finding.get('description', '')}
-- **Evidence**: {finding.get('evidence', '')}
-- **CWE**: {finding.get('cwe', 'N/A')}
+- **Rule**: {finding.get("rule_id", "?")} — {finding.get("title", "")}
+- **Severity**: {finding.get("severity", "?")}
+- **File**: {finding.get("file", "?")}:{finding.get("line", "?")}
+- **Description**: {finding.get("description", "")}
+- **Evidence**: {finding.get("evidence", "")}
+- **CWE**: {finding.get("cwe", "N/A")}
 
 ## Code Context
 ```python
@@ -462,10 +516,10 @@ def _build_defender_prompt(finding: dict, context: str, advocate_arg: str) -> st
     return f"""You are a BLUE TEAM security defender. Your job is to argue WHY this finding is NOT exploitable in practice.
 
 ## Finding
-- **Rule**: {finding.get('rule_id', '?')} — {finding.get('title', '')}
-- **Severity**: {finding.get('severity', '?')}
-- **File**: {finding.get('file', '?')}:{finding.get('line', '?')}
-- **Description**: {finding.get('description', '')}
+- **Rule**: {finding.get("rule_id", "?")} — {finding.get("title", "")}
+- **Severity**: {finding.get("severity", "?")}
+- **File**: {finding.get("file", "?")}:{finding.get("line", "?")}
+- **Description**: {finding.get("description", "")}
 
 ## Code Context
 ```python
@@ -489,8 +543,8 @@ def _build_judge_prompt(finding: dict, advocate_arg: str, defender_arg: str) -> 
     return f"""You are an IMPARTIAL security judge. Two experts have debated whether a security finding is real or a false positive. Render your verdict.
 
 ## Finding
-- **Rule**: {finding.get('rule_id', '?')} — {finding.get('title', '')}
-- **Severity**: {finding.get('severity', '?')}
+- **Rule**: {finding.get("rule_id", "?")} — {finding.get("title", "")}
+- **Severity**: {finding.get("severity", "?")}
 
 ## RED TEAM (Advocate — argues it's real)
 {advocate_arg}
@@ -512,10 +566,12 @@ REASONING: The defender correctly notes that input validation upstream prevents 
 
 # --- LLM API Clients ---
 
+
 def _call_gemini_raw(prompt: str, api_key: str, model: str = "gemini-2.0-flash") -> str:
     """Call Gemini API. Returns raw response text."""
     try:
         import google.generativeai as genai
+
         genai.configure(api_key=api_key)
         m = genai.GenerativeModel(model)
         response = m.generate_content(prompt)
@@ -529,6 +585,7 @@ def _call_openai_raw(prompt: str, api_key: str, model: str = "o3-mini") -> str:
     """Call OpenAI API. Returns raw response text."""
     try:
         import openai
+
         client = openai.OpenAI(api_key=api_key)
         response = client.chat.completions.create(
             model=model,
@@ -542,6 +599,7 @@ def _call_openai_raw(prompt: str, api_key: str, model: str = "o3-mini") -> str:
 
 
 # --- Response Parsers ---
+
 
 def _parse_debate_response(response: str) -> str:
     """Extract verdict from LLM response (legacy single-model compat)."""
@@ -597,6 +655,7 @@ def _parse_judge_response(response: str) -> tuple:
 # ---------------------------------------------------------------------------
 # Pipeline Orchestrators
 # ---------------------------------------------------------------------------
+
 
 def run_harness_light(
     files: list,
@@ -849,7 +908,9 @@ def run_harness_full(
         file_contents = {}
         for fpath in files:
             try:
-                file_contents[fpath] = Path(fpath).read_text(encoding="utf-8", errors="ignore")
+                file_contents[fpath] = Path(fpath).read_text(
+                    encoding="utf-8", errors="ignore"
+                )
             except Exception:
                 pass
 
@@ -858,7 +919,11 @@ def run_harness_full(
 
         # Check if any finding was CONFIRMED by debate
         confirmed = [d for d in debate_results if d.get("verdict") == "CONFIRMED"]
-        skipped = all(d.get("verdict") == "SKIPPED" for d in debate_results) if debate_results else True
+        skipped = (
+            all(d.get("verdict") == "SKIPPED" for d in debate_results)
+            if debate_results
+            else True
+        )
 
         g6_verdict = Verdict.PASSED
         if confirmed:
@@ -883,15 +948,30 @@ def run_harness_full(
         # If debate ran, prove CONFIRMED findings only
         # If no debate, prove all MEDIUM+ findings
         if enable_debate and result.debate_results:
-            provable_ids = {d["finding"] for d in result.debate_results if d.get("verdict") == "CONFIRMED"}
+            provable_ids = {
+                d["finding"]
+                for d in result.debate_results
+                if d.get("verdict") == "CONFIRMED"
+            }
             provable = [f for f in findings if f.get("rule_id") in provable_ids]
         else:
-            severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
-            provable = [f for f in findings if severity_order.get(f.get("severity", "info"), 4) <= 2]
+            severity_order = {
+                "critical": 0,
+                "high": 1,
+                "medium": 2,
+                "low": 3,
+                "info": 4,
+            }
+            provable = [
+                f
+                for f in findings
+                if severity_order.get(f.get("severity", "info"), 4) <= 2
+            ]
 
         if provable:
             try:
                 from nerves.core.harness_prover import HarnessProver
+
                 prover = HarnessProver(project_root=Path.cwd())
                 proof_results = prover.prove_findings(provable)
                 result.proof_results = proof_results
@@ -902,7 +982,9 @@ def run_harness_full(
 
                 g7_verdict = Verdict.PASSED
                 if proven_count > 0:
-                    g7_verdict = Verdict.SOFT_GATED  # Proven = serious but already flagged
+                    g7_verdict = (
+                        Verdict.SOFT_GATED
+                    )  # Proven = serious but already flagged
 
                 g7 = GateResult(
                     name="Prove Gate",
@@ -946,6 +1028,7 @@ def run_harness_full(
 # ---------------------------------------------------------------------------
 # Default Syntax Checker (used when qa_core functions not injected)
 # ---------------------------------------------------------------------------
+
 
 def _default_syntax_check(files: list) -> list:
     """Fallback syntax checker using compile()."""

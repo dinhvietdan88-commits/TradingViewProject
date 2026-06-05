@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-import sqlite3
 import asyncio
 import logging
 import pytest
@@ -17,9 +16,12 @@ import database
 import alert_manager
 from scripts import autotest_watcher
 
+
 class StopLoop(BaseException):
     """Exception used to gracefully exit infinite loops in tests."""
+
     pass
+
 
 @pytest.fixture
 async def temp_db(tmp_path):
@@ -28,46 +30,52 @@ async def temp_db(tmp_path):
     temp_db_file = str(tmp_path / "adversarial_test.db")
     config.DB_PATH = temp_db_file
     os.environ["DB_PATH"] = temp_db_file
-    
+
     # Initialize schema
     await database.init_db()
-    
+
     yield temp_db_file
-    
+
     # Restore config
     config.DB_PATH = old_db_path
     os.environ["DB_PATH"] = old_db_path
+
 
 @pytest.fixture
 def temp_log(tmp_path):
     """Overrides test_runs.log file path to prevent pollution."""
     old_log_path = alert_manager.log_file_path
     temp_log_file = str(tmp_path / "test_runs_temp.log")
-    
+
     # Update the handler filename
     logger = logging.getLogger("test_runs")
     for handler in logger.handlers:
         if isinstance(handler, logging.FileHandler):
             handler.close()
             logger.removeHandler(handler)
-            
+
     new_handler = logging.FileHandler(temp_log_file, encoding="utf-8")
-    new_handler.setFormatter(logging.Formatter("[%(asctime)s] | %(levelname)s | %(message)s"))
+    new_handler.setFormatter(
+        logging.Formatter("[%(asctime)s] | %(levelname)s | %(message)s")
+    )
     logger.addHandler(new_handler)
-    
+
     alert_manager.log_file_path = temp_log_file
-    
+
     yield temp_log_file
-    
+
     # Restore original handler
     new_handler.close()
     logger.removeHandler(new_handler)
-    
+
     if os.path.exists(old_log_path):
         original_handler = logging.FileHandler(old_log_path, encoding="utf-8")
-        original_handler.setFormatter(logging.Formatter("[%(asctime)s] | %(levelname)s | %(message)s"))
+        original_handler.setFormatter(
+            logging.Formatter("[%(asctime)s] | %(levelname)s | %(message)s")
+        )
         logger.addHandler(original_handler)
     alert_manager.log_file_path = old_log_path
+
 
 @pytest.mark.asyncio
 async def test_health_check_failures_and_transitions(temp_db, temp_log):
@@ -79,13 +87,16 @@ async def test_health_check_failures_and_transitions(temp_db, temp_log):
     """
     # Keep track of alerts sent
     alerts_sent = []
+
     async def mock_send_telegram_alert(message):
         alerts_sent.append(message)
 
     # Database setting helper
     async def get_db_setting(key):
         async with aiosqlite.connect(temp_db) as conn:
-            async with conn.execute("SELECT value FROM settings WHERE key = ?", (key,)) as cursor:
+            async with conn.execute(
+                "SELECT value FROM settings WHERE key = ?", (key,)
+            ) as cursor:
                 row = await cursor.fetchone()
                 return row[0] if row else None
 
@@ -96,10 +107,11 @@ async def test_health_check_failures_and_transitions(temp_db, temp_log):
         mock_writer.wait_closed = AsyncMock()
         return AsyncMock(), mock_writer
 
-    with patch("asyncio.open_connection", side_effect=mock_open_connection_ok), \
-         patch("notifier.send_telegram_alert", side_effect=mock_send_telegram_alert), \
-         patch("asyncio.sleep", side_effect=StopLoop):
-        
+    with (
+        patch("asyncio.open_connection", side_effect=mock_open_connection_ok),
+        patch("notifier.send_telegram_alert", side_effect=mock_send_telegram_alert),
+        patch("asyncio.sleep", side_effect=StopLoop),
+    ):
         try:
             await autotest_watcher.health_check_loop()
         except StopLoop:
@@ -119,10 +131,11 @@ async def test_health_check_failures_and_transitions(temp_db, temp_log):
         mock_writer.wait_closed = AsyncMock()
         return AsyncMock(), mock_writer
 
-    with patch("asyncio.open_connection", side_effect=mock_open_connection_error), \
-         patch("notifier.send_telegram_alert", side_effect=mock_send_telegram_alert), \
-         patch("asyncio.sleep", side_effect=StopLoop):
-        
+    with (
+        patch("asyncio.open_connection", side_effect=mock_open_connection_error),
+        patch("notifier.send_telegram_alert", side_effect=mock_send_telegram_alert),
+        patch("asyncio.sleep", side_effect=StopLoop),
+    ):
         try:
             await autotest_watcher.health_check_loop()
         except StopLoop:
@@ -131,7 +144,7 @@ async def test_health_check_failures_and_transitions(temp_db, temp_log):
         # Check DB states transitioned to ERROR
         assert await get_db_setting("health_api_server") == "ERROR"
         assert await get_db_setting("health_cdp") == "ERROR"
-        
+
         # Verify Telegram alert triggered on transition
         assert len(alerts_sent) == 2
         assert "System Health Check Failed" in alerts_sent[0]
@@ -141,15 +154,22 @@ async def test_health_check_failures_and_transitions(temp_db, temp_log):
         # Verify failures are logged to temp_log
         with open(temp_log, "r", encoding="utf-8") as f:
             log_content = f.read()
-            assert "Health check 'api_server' failed: Connection refused on port 5000" in log_content
-            assert "Health check 'cdp' failed: Connection refused on port 9222" in log_content
+            assert (
+                "Health check 'api_server' failed: Connection refused on port 5000"
+                in log_content
+            )
+            assert (
+                "Health check 'cdp' failed: Connection refused on port 9222"
+                in log_content
+            )
 
     # Step 3: Run again in ERROR state (No further alerts should be sent since no state transition)
     alerts_sent.clear()
-    with patch("asyncio.open_connection", side_effect=mock_open_connection_error), \
-         patch("notifier.send_telegram_alert", side_effect=mock_send_telegram_alert), \
-         patch("asyncio.sleep", side_effect=StopLoop):
-        
+    with (
+        patch("asyncio.open_connection", side_effect=mock_open_connection_error),
+        patch("notifier.send_telegram_alert", side_effect=mock_send_telegram_alert),
+        patch("asyncio.sleep", side_effect=StopLoop),
+    ):
         try:
             await autotest_watcher.health_check_loop()
         except StopLoop:
@@ -159,6 +179,7 @@ async def test_health_check_failures_and_transitions(temp_db, temp_log):
         assert await get_db_setting("health_cdp") == "ERROR"
         # No alert because they were already in ERROR state
         assert len(alerts_sent) == 0
+
 
 @pytest.mark.asyncio
 async def test_pytest_failure_capturing(temp_db, temp_log):
@@ -190,26 +211,32 @@ FAILED tests/unit/test_database.py::test_database_connection_loss - AssertionErr
 """
 
     alerts_sent = []
+
     async def mock_send_telegram_alert(message):
         alerts_sent.append(message)
 
     # Mock asyncio.create_subprocess_exec to simulate pytest failure
     mock_process = AsyncMock()
     mock_process.returncode = 1
-    mock_process.communicate.return_value = (mock_stdout.encode('utf-8'), b"")
+    mock_process.communicate.return_value = (mock_stdout.encode("utf-8"), b"")
 
-    with patch("asyncio.create_subprocess_exec", return_value=mock_process), \
-         patch("notifier.send_telegram_alert", side_effect=mock_send_telegram_alert):
-        
+    with (
+        patch("asyncio.create_subprocess_exec", return_value=mock_process),
+        patch("notifier.send_telegram_alert", side_effect=mock_send_telegram_alert),
+    ):
         await autotest_watcher.run_test_suite({"tests/unit/test_database.py"})
 
         # Verify DB status transitions to FAILING
         async with aiosqlite.connect(temp_db) as conn:
-            async with conn.execute("SELECT value FROM settings WHERE key = 'test_runner_status'") as cursor:
+            async with conn.execute(
+                "SELECT value FROM settings WHERE key = 'test_runner_status'"
+            ) as cursor:
                 row = await cursor.fetchone()
                 assert row[0] == "FAILING"
 
-            async with conn.execute("SELECT value FROM settings WHERE key = 'last_test_run'") as cursor:
+            async with conn.execute(
+                "SELECT value FROM settings WHERE key = 'last_test_run'"
+            ) as cursor:
                 row = await cursor.fetchone()
                 last_run = json.loads(row[0])
                 assert last_run["status"] == "FAILING"
@@ -232,6 +259,7 @@ FAILED tests/unit/test_database.py::test_database_connection_loss - AssertionErr
         tb_lines = alert.split("<pre>")[1].split("</pre>")[0].strip().splitlines()
         assert len(tb_lines) <= 8
 
+
 @pytest.mark.asyncio
 async def test_debounce_verification():
     """
@@ -240,13 +268,16 @@ async def test_debounce_verification():
     and verify that pytest is executed only once.
     """
     suite_runs = []
+
     async def mock_run_test_suite(changed_files):
         suite_runs.append(changed_files)
 
     queue = asyncio.Queue()
 
     # Start the debounce consumer in the background
-    with patch("scripts.autotest_watcher.run_test_suite", side_effect=mock_run_test_suite):
+    with patch(
+        "scripts.autotest_watcher.run_test_suite", side_effect=mock_run_test_suite
+    ):
         consumer_task = asyncio.create_task(autotest_watcher.debounce_consumer(queue))
 
         # Push 3 events within 0.2s (less than the 1.0s debounce window)
@@ -271,6 +302,7 @@ async def test_debounce_verification():
         except asyncio.CancelledError:
             pass
 
+
 @pytest.mark.asyncio
 async def test_liveness_protection(temp_db):
     """
@@ -281,14 +313,18 @@ async def test_liveness_protection(temp_db):
     run_counts = 0
     mock_process = AsyncMock()
     mock_process.returncode = 1
-    mock_process.communicate.return_value = (b"FAILED test_dummy.py::test_fail - AssertionError", b"")
+    mock_process.communicate.return_value = (
+        b"FAILED test_dummy.py::test_fail - AssertionError",
+        b"",
+    )
 
     queue = asyncio.Queue()
 
     # Mock subprocess execution to simulate pytest failure
-    with patch("asyncio.create_subprocess_exec", return_value=mock_process) as mock_exec, \
-         patch("notifier.send_telegram_alert") as mock_tg:
-        
+    with (
+        patch("asyncio.create_subprocess_exec", return_value=mock_process) as mock_exec,
+        patch("notifier.send_telegram_alert") as mock_tg,
+    ):
         consumer_task = asyncio.create_task(autotest_watcher.debounce_consumer(queue))
 
         # First trigger: test fails
@@ -301,7 +337,9 @@ async def test_liveness_protection(temp_db):
         await queue.put("file_b.py")
         await asyncio.sleep(1.2)  # Wait for debounce
         assert mock_exec.call_count == 2
-        assert not consumer_task.done(), "Debouncer crashed on second run after failure!"
+        assert not consumer_task.done(), (
+            "Debouncer crashed on second run after failure!"
+        )
 
         consumer_task.cancel()
         try:
@@ -311,6 +349,7 @@ async def test_liveness_protection(temp_db):
 
     # 2. Health check loop should not crash if database module throws an unhandled exception
     sleeps = 0
+
     async def mock_sleep(seconds):
         nonlocal sleeps
         sleeps += 1
@@ -320,11 +359,12 @@ async def test_liveness_protection(temp_db):
     async def mock_set_setting_crash(*args, **kwargs):
         raise ValueError("Critical DB connection failure")
 
-    with patch("database.set_setting", side_effect=mock_set_setting_crash), \
-         patch("asyncio.sleep", side_effect=mock_sleep), \
-         patch("asyncio.open_connection", return_value=(MagicMock(), MagicMock())), \
-         patch("notifier.send_telegram_alert") as mock_tg:
-        
+    with (
+        patch("database.set_setting", side_effect=mock_set_setting_crash),
+        patch("asyncio.sleep", side_effect=mock_sleep),
+        patch("asyncio.open_connection", return_value=(MagicMock(), MagicMock())),
+        patch("notifier.send_telegram_alert") as mock_tg,
+    ):
         try:
             await autotest_watcher.health_check_loop()
         except StopLoop:

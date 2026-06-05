@@ -9,7 +9,7 @@ Tài liệu này hướng dẫn cách deploy VPS Buffer Service (VBS) lên serve
 VBS là một ứng dụng FastAPI độc lập chạy trong môi trường Docker trên VPS của bạn.
 
 ### Bước 1.1: Chuẩn bị trên VPS
-Copy thư mục `vbs/` và file `docker-compose.vbs.yml` lên VPS của bạn. 
+Copy thư mục `vbs/` và file `docker-compose.vbs.yml` lên VPS của bạn.
 Cấu trúc thư mục tối thiểu trên VPS:
 ```text
 /opt/trading-bot-vbs/

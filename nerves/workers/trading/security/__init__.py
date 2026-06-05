@@ -26,27 +26,28 @@ class Severity(Enum):
 
 
 class FindingStatus(Enum):
-    RAW = "raw"              # Stage 1 output
+    RAW = "raw"  # Stage 1 output
     CONFIRMED = "confirmed"  # Stage 2 validated
     FALSE_POS = "false_pos"  # Stage 2 rejected
-    PROVEN = "proven"        # Stage 3 exploited
-    MANUAL = "manual"        # Needs human review
+    PROVEN = "proven"  # Stage 3 exploited
+    MANUAL = "manual"  # Needs human review
 
 
 @dataclass
 class Finding:
     """A single security finding from any scanner."""
-    rule_id: str               # e.g., "TVP-001"
+
+    rule_id: str  # e.g., "TVP-001"
     title: str
     severity: Severity
     file: str
     line: int
     description: str
-    evidence: str = ""         # Code snippet or payload
+    evidence: str = ""  # Code snippet or payload
     status: FindingStatus = FindingStatus.RAW
-    scanner: str = ""          # Which scanner found it
-    confidence: float = 0.0    # 0.0-1.0
-    remediation: str = ""      # Fix suggestion
+    scanner: str = ""  # Which scanner found it
+    confidence: float = 0.0  # 0.0-1.0
+    remediation: str = ""  # Fix suggestion
     cwe: Optional[str] = None  # CWE reference
 
     @property
@@ -58,13 +59,14 @@ class Finding:
 @dataclass
 class ProbeResult:
     """Result of a Stage 3 exploit simulation probe."""
+
     probe_name: str
     target: str
     method: str
     payload: str
     expected: str
     actual: str
-    passed: bool               # True = security held, False = vulnerability confirmed
+    passed: bool  # True = security held, False = vulnerability confirmed
     response_code: Optional[int] = None
     response_time_ms: Optional[float] = None
     details: str = ""
@@ -73,7 +75,10 @@ class ProbeResult:
 @dataclass
 class SecurityReport:
     """Complete report from a full harness run."""
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+    timestamp: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
     target: str = ""
     total_files_scanned: int = 0
     findings: list = field(default_factory=list)

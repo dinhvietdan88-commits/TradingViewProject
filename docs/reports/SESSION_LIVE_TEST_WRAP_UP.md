@@ -11,7 +11,7 @@ Ngày 12/05/2026, chúng tôi đã hoàn tất quy trình **Kiểm thử trên M
 
 ## 3. Kiến trúc An Toàn Nội Tại (Intrinsic Safety)
 - **Tình huống:** Tắt toàn bộ chế độ an toàn (`BINANCE_DRY_RUN=false`, `BINANCE_TESTNET=false`) nhưng CỐ TÌNH không khai báo khóa `BINANCE_API_KEY`.
-- **Kết quả:** Webhook vẫn nhận 200 OK (ghi nhận tín hiệu vào Database SQLite), nhưng Server tự động **khước từ (abort)** việc đưa lệnh vào hàng đợi Background Task. 
+- **Kết quả:** Webhook vẫn nhận 200 OK (ghi nhận tín hiệu vào Database SQLite), nhưng Server tự động **khước từ (abort)** việc đưa lệnh vào hàng đợi Background Task.
 - **Kết luận:** Hệ thống có khả năng tự phòng vệ hoàn hảo trước nguy cơ gửi lệnh lỗi (Unauthorized Error Spam) lên sàn Mainnet nếu API Keys chưa sẵn sàng.
 
 ## 4. Tình trạng Hệ thống (System Status)

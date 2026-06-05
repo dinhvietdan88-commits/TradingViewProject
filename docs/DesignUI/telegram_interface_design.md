@@ -23,15 +23,15 @@ Dùng để thông báo khi TradingView gửi alert và AI hoàn thành phân t�
 > 🪙 **Mã giao dịch:** #BTCUSDT
 > 🚀 **Hành động:** `MUA (BUY)` | **Giá hiện tại:** `67,250.50`
 > 📊 **Khung thời gian:** `1D`
-> 
+>
 > ⚙️ **ĐÁNH GIÁ TIÊU CHÍ MINERVINI SEPA:**
 > • Trend Template: **8/8 (Stage 2 Uptrend)** ⭐
 > • Volatility Contraction (VCP): **Đã xác nhận**
 > • Khối lượng (Volume): `Gấp 1.8 lần trung bình 20 phiên`
-> 
+>
 > 🧠 **KHUYẾN NGHỊ AI (Claude 4.5 Sonnet RAG):**
 > 🟢 *Chất lượng tín hiệu: Rất Mạnh.* Điểm mua Pivot breakout khỏi mẫu hình VCP hẹp (3 đợt thu hẹp) trùng khớp hoàn toàn với xu hướng Stage 2. Rủi ro thị trường chung thấp.
-> 
+>
 > 🛑 **Quản lý rủi ro (Risk Limits):**
 > • Stop-Loss (Cắt lỗ): `62,540.00 (-7.0%)`
 > • Take-Profit (Chốt lời gợi ý): `80,700.00 (+20.0%)`
@@ -74,7 +74,7 @@ Dùng khi user yêu cầu bot quét nhanh trạng thái xu hướng của danh s
 > ──────────────────────────────
 > ⏱️ **Thời gian quét:** `16:32:00 (UTC+7)`
 > 🎯 **Trạng thái xu hướng các mã đang theo dõi:**
-> 
+>
 > 1. ⭐ **BTCUSDT** — **Stage 2** (Score 8/8)
 >    • VCP: Co thắt 2.1% ATR. Điểm Pivot: `68,100`.
 > 2. 🟢 **ETHUSDT** — **Stage 1/2** (Score 6/8)
@@ -111,16 +111,16 @@ Dùng khi user yêu cầu bot quét nhanh trạng thái xu hướng của danh s
 > 💻 **Máy chủ:** `Local Windows B (Execution Vault)`
 > 🏷️ **Mã sự cố:** #ERR-CDP-2620
 > 📌 **Dịch vụ gặp lỗi:** `TradingView CDP Connector`
-> 
+>
 > 🔍 **Triệu chứng lỗi (Traceback Preview):**
 > ```text
 > RuntimeError: Failed to connect to TradingView CDP on port 9222.
 > Connection refused by host 127.0.0.1:9222 (Process TV not running?)
 > ```
-> 
+>
 > 🩺 **Tự động chẩn đoán & Khắc phục:**
-> ⚠️ Phát hiện TradingView Desktop MSIX đã bị đóng hoặc port 9222 bị chiếm dụng bởi tiến trình Chrome khác. 
-> 
+> ⚠️ Phát hiện TradingView Desktop MSIX đã bị đóng hoặc port 9222 bị chiếm dụng bởi tiến trình Chrome khác.
+>
 > 🛠️ **Hành động nhanh (Quick Actions):**
 > ──────────────────────────────
 > *[ ⚡ Khởi Chạy Lại TV Desktop ]*
@@ -157,7 +157,7 @@ Dùng khi user yêu cầu bot quét nhanh trạng thái xu hướng của danh s
 > 🪙 **Mã giao dịch:** #SOLUSDT
 > 📢 **Sàn giao dịch:** `Binance (Testnet)`
 > 🚨 **Vấn đề:** `API Rate Limit / Connection Timeout`
-> 
+>
 > 📋 **Thông tin chi tiết:**
 > ```text
 > http_status = 429 Too Many Requests

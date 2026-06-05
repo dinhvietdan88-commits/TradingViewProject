@@ -1,7 +1,7 @@
 # Requirement R1: Live ChromaDB Integration and Seeding Verification Audit
 
 ## 1. Executive Summary
-This report provides a read-only investigation and audit of the **R1 Live ChromaDB Integration and Seeding** mechanism in the `TradingViewProject` workspace. 
+This report provides a read-only investigation and audit of the **R1 Live ChromaDB Integration and Seeding** mechanism in the `TradingViewProject` workspace.
 
 Our investigation confirms that:
 * **Configuration is dynamically resolved** between local path hierarchies and Docker volume mounts, ensuring backward-compatible execution.
@@ -82,7 +82,7 @@ if match:
   # Resolve ChromaDB connection (favoring remote configuration for this script)
   host = os.getenv("CHROMA_SERVER_HOST", config.CHROMA_SERVER_HOST)
   port = int(os.getenv("CHROMA_SERVER_PORT", config.CHROMA_SERVER_PORT))
-  
+
   logger.info(f"Connecting to ChromaDB at http://{host}:{port}...")
   client = chromadb.HttpClient(host=host, port=port)
   ```

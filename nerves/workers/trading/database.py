@@ -8,6 +8,7 @@ V8.0 REFACTOR: This module now acts as a backward-compatible facade.
 - Read operations are delegated to data.query_service.
 - All public symbols are re-exported so existing `import database` still works.
 """
+
 import aiosqlite
 import sqlite3
 import logging
@@ -183,6 +184,7 @@ CREATE TABLE IF NOT EXISTS circuit_breaker_logs (
 # INIT (stays here — schema owner)
 # ═══════════════════════════════════════════════════════════════
 
+
 async def init_db():
     """Tao bang khi khoi dong server."""
     async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
@@ -234,7 +236,9 @@ async def init_db():
             pass
 
         try:
-            await db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_signals_vbs_queue_id ON signals(vbs_queue_id)")
+            await db.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_signals_vbs_queue_id ON signals(vbs_queue_id)"
+            )
             await db.commit()
         except Exception:
             pass
@@ -273,8 +277,6 @@ from data.query_service import (  # noqa: E402, F401
 )
 
 
-
-
 # ═══════════════════════════════════════════════════════════════
 # AUTH HELPERS (synchronous — used by auth routes)
 # ═══════════════════════════════════════════════════════════════
@@ -301,8 +303,11 @@ def get_auth_code(code: str) -> Optional[Dict[str, Any]]:
 
 
 def store_auth_code(
-    code: str, telegram_id: int, username: Optional[str],
-    created_at: str, expires_at: str,
+    code: str,
+    telegram_id: int,
+    username: Optional[str],
+    created_at: str,
+    expires_at: str,
 ) -> None:
     """Store a new one-time auth code."""
     conn = _sync_conn()
@@ -328,8 +333,11 @@ def mark_auth_code_used(code: str) -> None:
 
 
 def store_auth_session(
-    session_id: str, telegram_id: int, username: Optional[str],
-    created_at: str, expires_at: Optional[str],
+    session_id: str,
+    telegram_id: int,
+    username: Optional[str],
+    created_at: str,
+    expires_at: Optional[str],
 ) -> None:
     """Store a new auth session."""
     conn = _sync_conn()
@@ -388,7 +396,9 @@ async def get_setting(key: str, default: Optional[str] = None) -> Optional[str]:
     """Get a setting value asynchronously."""
     try:
         async with aiosqlite.connect(config.DB_PATH) as db:
-            async with db.execute("SELECT value FROM settings WHERE key = ?", (key,)) as cursor:
+            async with db.execute(
+                "SELECT value FROM settings WHERE key = ?", (key,)
+            ) as cursor:
                 row = await cursor.fetchone()
                 return row[0] if row else default
     except Exception as e:
@@ -402,7 +412,7 @@ async def set_setting(key: str, value: str) -> None:
         async with aiosqlite.connect(config.DB_PATH) as db:
             await db.execute(
                 "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-                (key, value)
+                (key, value),
             )
             await db.commit()
     except Exception as e:
@@ -419,22 +429,22 @@ async def get_rolling_drawdown(limit: int = 20) -> float:
             # Lấy 20 giao dịch có PnL (chỉ tính các giao dịch đã đóng/có pnl)
             async with db.execute(
                 "SELECT pnl FROM trades WHERE pnl IS NOT NULL ORDER BY id DESC LIMIT ?",
-                (limit,)
+                (limit,),
             ) as cursor:
                 rows = await cursor.fetchall()
                 pnls = [float(r["pnl"]) for r in rows]
-                
+
         if not pnls:
             return 0.0
-            
+
         # Đảo ngược để tính theo trình tự thời gian
         pnls.reverse()
-        
+
         # Giả lập đường cong vốn bắt đầu từ 1000
         equity = 1000.0
         peak = equity
         max_dd_pct = 0.0
-        
+
         for pnl in pnls:
             equity += pnl
             if equity > peak:
@@ -443,7 +453,7 @@ async def get_rolling_drawdown(limit: int = 20) -> float:
                 dd = (peak - equity) / peak
                 if dd > max_dd_pct:
                     max_dd_pct = dd
-                    
+
         return max_dd_pct * 100.0
     except Exception as e:
         log.warning(f"Failed to calculate rolling drawdown: {e}")
@@ -459,20 +469,20 @@ async def get_recent_profit_factor(limit: int = 5) -> float:
             db.row_factory = aiosqlite.Row
             async with db.execute(
                 "SELECT pnl FROM trades WHERE pnl IS NOT NULL ORDER BY id DESC LIMIT ?",
-                (limit,)
+                (limit,),
             ) as cursor:
                 rows = await cursor.fetchall()
                 pnls = [float(r["pnl"]) for r in rows]
-                
+
         if not pnls:
             return 1.0
-            
+
         gross_profit = sum(p for p in pnls if p > 0)
         gross_loss = sum(abs(p) for p in pnls if p < 0)
-        
+
         if gross_loss == 0:
             return 99.0 if gross_profit > 0 else 1.0
-            
+
         return gross_profit / gross_loss
     except Exception as e:
         log.warning(f"Failed to calculate recent profit factor: {e}")
@@ -491,7 +501,9 @@ async def get_daily_loss(exchange: str, window_hours: int = 24) -> float:
                 "WHERE LOWER(exchange) = ? AND pnl < 0 "
                 "AND created_at >= datetime('now', ?)"
             )
-            async with db.execute(query, (exchange.lower(), f"-{window_hours} hours")) as cursor:
+            async with db.execute(
+                query, (exchange.lower(), f"-{window_hours} hours")
+            ) as cursor:
                 rows = await cursor.fetchall()
                 return sum(abs(float(r["pnl"])) for r in rows)
     except Exception as e:
@@ -506,14 +518,14 @@ async def get_risk_settings(exchange: str, symbol: str = "*") -> Dict[str, Any]:
             db.row_factory = aiosqlite.Row
             async with db.execute(
                 "SELECT * FROM risk_settings WHERE exchange = ? AND symbol = ?",
-                (exchange.lower(), symbol)
+                (exchange.lower(), symbol),
             ) as cursor:
                 row = await cursor.fetchone()
                 if row:
                     return dict(row)
     except Exception as e:
         log.warning(f"Failed to fetch risk settings for {exchange}: {e}")
-    
+
     # Return defaults if not configured
     return {
         "exchange": exchange,
@@ -523,14 +535,19 @@ async def get_risk_settings(exchange: str, symbol: str = "*") -> Dict[str, Any]:
         "max_quote_qty": 100.0,
         "slippage_limit": 0.005,
         "safe_mode": 1,
-        "state": "CLOSED"
+        "state": "CLOSED",
     }
 
 
 async def save_risk_settings(
-    exchange: str, daily_loss_cap: float, drawdown_cap: float,
-    max_quote_qty: float, slippage_limit: float, safe_mode: int,
-    state: str = "CLOSED", symbol: str = "*"
+    exchange: str,
+    daily_loss_cap: float,
+    drawdown_cap: float,
+    max_quote_qty: float,
+    slippage_limit: float,
+    safe_mode: int,
+    state: str = "CLOSED",
+    symbol: str = "*",
 ) -> None:
     """Save or update risk settings for an exchange."""
     try:
@@ -539,21 +556,32 @@ async def save_risk_settings(
                 "INSERT OR REPLACE INTO risk_settings "
                 "(exchange, symbol, daily_loss_cap, drawdown_cap, max_quote_qty, slippage_limit, safe_mode, state, updated_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
-                (exchange.lower(), symbol, daily_loss_cap, drawdown_cap, max_quote_qty, slippage_limit, safe_mode, state)
+                (
+                    exchange.lower(),
+                    symbol,
+                    daily_loss_cap,
+                    drawdown_cap,
+                    max_quote_qty,
+                    slippage_limit,
+                    safe_mode,
+                    state,
+                ),
             )
             await db.commit()
     except Exception as e:
         log.warning(f"Failed to save risk settings for {exchange}: {e}")
 
 
-async def update_circuit_breaker_state(exchange: str, new_state: str, symbol: str = "*") -> None:
+async def update_circuit_breaker_state(
+    exchange: str, new_state: str, symbol: str = "*"
+) -> None:
     """Update only the state of the circuit breaker for an exchange."""
     try:
         async with aiosqlite.connect(config.DB_PATH) as db:
             await db.execute(
                 "UPDATE risk_settings SET state = ?, updated_at = datetime('now') "
                 "WHERE exchange = ? AND symbol = ?",
-                (new_state.upper(), exchange.lower(), symbol)
+                (new_state.upper(), exchange.lower(), symbol),
             )
             # If no rows were updated, we insert a default row with this state
             async with db.execute("SELECT changes()") as cursor:
@@ -563,7 +591,7 @@ async def update_circuit_breaker_state(exchange: str, new_state: str, symbol: st
                         "INSERT INTO risk_settings "
                         "(exchange, symbol, daily_loss_cap, drawdown_cap, max_quote_qty, slippage_limit, safe_mode, state, updated_at) "
                         "VALUES (?, ?, 10.0, 5.0, 100.0, 0.005, 1, ?, datetime('now'))",
-                        (exchange.lower(), symbol, new_state.upper())
+                        (exchange.lower(), symbol, new_state.upper()),
                     )
             await db.commit()
     except Exception as e:
@@ -571,19 +599,31 @@ async def update_circuit_breaker_state(exchange: str, new_state: str, symbol: st
 
 
 async def log_circuit_breaker(
-    exchange: str, symbol: str, prev_state: str, new_state: str,
-    trigger_reason: str, current_metrics: dict
+    exchange: str,
+    symbol: str,
+    prev_state: str,
+    new_state: str,
+    trigger_reason: str,
+    current_metrics: dict,
 ) -> None:
     """Record a state transition event in the circuit breaker telemetry log."""
     try:
         import json
+
         metrics_json = json.dumps(current_metrics)
         async with aiosqlite.connect(config.DB_PATH) as db:
             await db.execute(
                 "INSERT INTO circuit_breaker_logs "
                 "(exchange, symbol, prev_state, new_state, trigger_reason, current_metrics) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
-                (exchange.lower(), symbol, prev_state.upper(), new_state.upper(), trigger_reason, metrics_json)
+                (
+                    exchange.lower(),
+                    symbol,
+                    prev_state.upper(),
+                    new_state.upper(),
+                    trigger_reason,
+                    metrics_json,
+                ),
             )
             await db.commit()
     except Exception as e:
@@ -598,7 +638,7 @@ async def get_all_risk_statuses() -> list:
         settings = await get_risk_settings(ex)
         daily_loss = await get_daily_loss(ex)
         drawdown = await get_rolling_drawdown()
-        
+
         # Query actual latency from exchange_health table
         latency_ms = None
         try:
@@ -606,27 +646,29 @@ async def get_all_risk_statuses() -> list:
                 db.row_factory = aiosqlite.Row
                 async with db.execute(
                     "SELECT latency_ms FROM exchange_health WHERE exchange_id = ? ORDER BY id DESC LIMIT 1",
-                    (ex.lower(),)
+                    (ex.lower(),),
                 ) as cursor:
                     row = await cursor.fetchone()
                     if row:
                         latency_ms = float(row["latency_ms"])
         except Exception as e:
             log.warning(f"Failed to fetch actual latency for {ex}: {e}")
-            
+
         if latency_ms is None:
             # Fallback to hardcoded defaults
             latency_ms = 120.0 if ex == "weex" else (85.0 if ex == "bybit" else 45.0)
 
-        statuses.append({
-            "exchange": ex,
-            "state": settings["state"],
-            "dailyLoss": daily_loss,
-            "dailyLossCap": settings["daily_loss_cap"],
-            "drawdown": drawdown,
-            "drawdownCap": settings["drawdown_cap"],
-            "latencyMs": int(latency_ms),
-        })
+        statuses.append(
+            {
+                "exchange": ex,
+                "state": settings["state"],
+                "dailyLoss": daily_loss,
+                "dailyLossCap": settings["daily_loss_cap"],
+                "drawdown": drawdown,
+                "drawdownCap": settings["drawdown_cap"],
+                "latencyMs": int(latency_ms),
+            }
+        )
     return statuses
 
 
@@ -638,7 +680,7 @@ async def get_recent_circuit_breaker_logs(limit: int = 10) -> list:
             async with db.execute(
                 "SELECT id, timestamp, exchange, symbol, prev_state, new_state, trigger_reason, current_metrics "
                 "FROM circuit_breaker_logs ORDER BY id DESC LIMIT ?",
-                (limit,)
+                (limit,),
             ) as cursor:
                 rows = await cursor.fetchall()
                 logs = []
@@ -647,7 +689,10 @@ async def get_recent_circuit_breaker_logs(limit: int = 10) -> list:
                     if row_dict.get("current_metrics"):
                         try:
                             import json
-                            row_dict["current_metrics"] = json.loads(row_dict["current_metrics"])
+
+                            row_dict["current_metrics"] = json.loads(
+                                row_dict["current_metrics"]
+                            )
                         except Exception:
                             pass  # JSON parse of metrics is best-effort; keep raw string on failure
                     logs.append(row_dict)
@@ -655,5 +700,3 @@ async def get_recent_circuit_breaker_logs(limit: int = 10) -> list:
     except Exception as e:
         log.warning(f"Failed to fetch circuit breaker logs: {e}")
         return []
-
-

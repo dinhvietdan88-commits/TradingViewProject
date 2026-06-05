@@ -1,9 +1,9 @@
 /**
  * setup_tv_webhook_alert.mjs
- * 
+ *
  * Tự động tạo TradingView Alert với Webhook URL vào Server A VBS
  * thông qua Chrome DevTools Protocol (CDP) kết nối với TradingView Desktop.
- * 
+ *
  * Usage:
  *   node scripts/setup_tv_webhook_alert.mjs
  *   node scripts/setup_tv_webhook_alert.mjs --symbol BTCUSDT --list-only
@@ -81,11 +81,11 @@ async function listAlerts(client) {
 
 async function openAlertDialog(client) {
   console.log('\n🔔 Opening Create Alert dialog (Alt+A)...');
-  
+
   // Focus the page first
   await evalInPage(client, `window.focus(); document.body.click();`);
   await sleep(500);
-  
+
   // Try clicking "Create alert" button first
   const clicked = await evalInPage(client, `
     (function() {
@@ -97,7 +97,7 @@ async function openAlertDialog(client) {
       return null;
     })()
   `);
-  
+
   if (clicked) {
     console.log(`  ✅ Clicked: ${clicked}`);
   } else {
@@ -108,23 +108,23 @@ async function openAlertDialog(client) {
     });
     await client.Input.dispatchKeyEvent({ type: 'keyUp', key: 'a', code: 'KeyA' });
   }
-  
+
   await sleep(1500);
-  
+
   // Verify dialog opened
   const dialogOpen = await evalInPage(client, `
-    !!(document.querySelector('[role="dialog"]') 
+    !!(document.querySelector('[role="dialog"]')
       || document.querySelector('[class*="alert-dialog"]')
       || document.querySelector('[class*="AlertDialog"]')
       || document.querySelector('[data-name="alert-dialog"]'))
   `);
-  
+
   return dialogOpen;
 }
 
 async function fillWebhookSection(client) {
   console.log('\n🔗 Configuring Webhook URL...');
-  
+
   // Step 1: Click "Notifications" tab
   const notifTab = await evalInPage(client, `
     (function() {
@@ -137,7 +137,7 @@ async function fillWebhookSection(client) {
       return null;
     })()
   `);
-  
+
   if (notifTab) {
     console.log(`  ✅ Clicked Notifications tab: "${notifTab}"`);
     await sleep(800);
@@ -168,7 +168,7 @@ async function fillWebhookSection(client) {
       return null;
     })()
   `);
-  
+
   console.log(`  Webhook checkbox: ${webhookEnabled || 'not_found'}`);
   await sleep(500);
 
@@ -179,7 +179,7 @@ async function fillWebhookSection(client) {
       for (var inp of inputs) {
         var placeholder = (inp.placeholder || '').toLowerCase();
         var nearLabel = inp.closest('[class*="row"], [class*="field"], label')?.textContent?.toLowerCase() || '';
-        if (placeholder.includes('webhook') || placeholder.includes('url') 
+        if (placeholder.includes('webhook') || placeholder.includes('url')
             || nearLabel.includes('webhook') || nearLabel.includes('url')) {
           // Set value using React's internal setter
           var nativeSet = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
@@ -193,14 +193,14 @@ async function fillWebhookSection(client) {
       return null;
     })()
   `);
-  
+
   console.log(`  Webhook URL input: ${webhookFilled || 'not_found - may need to enable checkbox first'}`);
   return !!webhookFilled;
 }
 
 async function fillAlertMessage(client, message) {
   console.log('\n📝 Setting Alert Message...');
-  
+
   const msgSet = await evalInPage(client, `
     (function() {
       var textarea = document.querySelector('textarea[placeholder*="message" i]')
@@ -216,7 +216,7 @@ async function fillAlertMessage(client, message) {
       return null;
     })()
   `);
-  
+
   console.log(`  Message: ${msgSet || 'not_found'}`);
   return !!msgSet;
 }
@@ -239,7 +239,7 @@ async function main() {
   console.log('🚀 TradingView Webhook Alert Setup via CDP');
   console.log('==========================================');
   console.log(`Webhook URL: ${WEBHOOK_URL.substring(0, 60)}...`);
-  
+
   // Connect to TradingView
   console.log('\n🔌 Connecting to TradingView Desktop (CDP port 9222)...');
   const target = await findChartPage();
@@ -249,12 +249,12 @@ async function main() {
   }
   console.log(`  ✅ Found chart page: ${target.title.substring(0, 60)}`);
   console.log(`  URL: ${target.url}`);
-  
+
   const client = await CDP({ host: CDP_HOST, port: CDP_PORT, target: target.id });
   await client.Runtime.enable();
   await client.Page.enable();
   await client.DOM.enable();
-  
+
   try {
     // List existing alerts
     const alertData = await listAlerts(client);
@@ -266,47 +266,47 @@ async function main() {
         console.log(`    - [${a.id}] ${a.symbol} | active=${a.active} | msg="${a.message}"`);
       }
     }
-    
+
     if (listOnly) {
       console.log('\n✅ List-only mode. Done.');
       return;
     }
-    
+
     // Check if webhook alert already exists
-    const hasWebhook = alertData.alerts.some(a => 
+    const hasWebhook = alertData.alerts.some(a =>
       (a.message || '').includes('trading.utopiavn.co')
     );
     if (hasWebhook) {
       console.log('\n✅ Webhook alert already configured! No action needed.');
       return;
     }
-    
+
     // Screenshot before
     await takeScreenshot(client, 'before');
-    
+
     // Open alert dialog
     const dialogOpen = await openAlertDialog(client);
     if (!dialogOpen) {
       console.log('  ⚠️  Dialog may not have opened. Taking screenshot...');
     }
     await takeScreenshot(client, 'dialog_opened');
-    
+
     // Fill webhook
     const webhookOk = await fillWebhookSection(client);
-    
+
     // Fill message
     await fillAlertMessage(client, ALERT_MESSAGE);
-    
+
     await sleep(500);
     await takeScreenshot(client, 'filled');
-    
+
     console.log('\n📊 Setup Summary:');
     console.log(`  Webhook URL configured: ${webhookOk ? '✅' : '⚠️ partial'}`);
     console.log(`  Message template set: ${ALERT_MESSAGE.substring(0, 60)}...`);
     console.log('\n⚠️  NOTE: The alert dialog is open in TradingView.');
     console.log('   Please review the settings and click "Create" to save.');
     console.log('   (Auto-submit is disabled to allow manual review)');
-    
+
   } finally {
     await client.close();
   }

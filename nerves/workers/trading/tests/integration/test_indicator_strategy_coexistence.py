@@ -6,6 +6,7 @@ Scenario: A strategy buy signal and an indicator entry signal for the same symbo
 arrive within 60s. Both MUST be processed independently.
 Neither should deduplicate the other (separate caches).
 """
+
 import pytest
 from unittest.mock import AsyncMock, patch
 
@@ -46,6 +47,7 @@ def coexistence_bus():
     yield bus
 
     from core.event_bus import bus as default_bus
+
     sp_set_bus(default_bus)
     se_set_bus(default_bus)
     _dedup_cache.clear()
@@ -81,41 +83,53 @@ async def test_strategy_and_indicator_processed_independently(coexistence_bus):
 
     with patch("notifier.notify_all", new_callable=AsyncMock):
         # Emit strategy buy signal
-        await coexistence_bus.emit(SignalReceived(
-            signal_id=6001,
-            symbol="BTCUSDT",
-            action="buy",
-            price=68000.0,
-            quote_qty=10.0,
-            exchange="binance",
-        ))
+        await coexistence_bus.emit(
+            SignalReceived(
+                signal_id=6001,
+                symbol="BTCUSDT",
+                action="buy",
+                price=68000.0,
+                quote_qty=10.0,
+                exchange="binance",
+            )
+        )
 
         # Emit indicator entry for same symbol within 60s
-        await coexistence_bus.emit(IndicatorSignalReceived(
-            signal_id=6002,
-            symbol="BTCUSDT",
-            indicator_name="SuperTrend",
-            signal_type="entry",
-            confidence_score=85,
-            conditions_met=("price > ST",),
-            metadata={"atr_value": "500"},
-            interval="1h",
-            price=68000.0,
-            source_ip="127.0.0.1",
-            exchange="binance",
-        ))
+        await coexistence_bus.emit(
+            IndicatorSignalReceived(
+                signal_id=6002,
+                symbol="BTCUSDT",
+                indicator_name="SuperTrend",
+                signal_type="entry",
+                confidence_score=85,
+                conditions_met=("price > ST",),
+                metadata={"atr_value": "500"},
+                interval="1h",
+                price=68000.0,
+                source_ip="127.0.0.1",
+                exchange="binance",
+            )
+        )
 
     # Both pipelines must produce their own validated event
-    assert len(indicator_validated_events) >= 1, "Indicator pipeline must produce IndicatorSignalValidated"
+    assert len(indicator_validated_events) >= 1, (
+        "Indicator pipeline must produce IndicatorSignalValidated"
+    )
 
     # Ensure no rejection due to dedup collision
     indicator_rejections = [r for r in rejected_events if r[0] == "indicator"]
-    dedup_rejections = [r for r in indicator_rejections if r[1].reason == "duplicate_signal"]
-    assert len(dedup_rejections) == 0, "Indicator signal must NOT be rejected as strategy duplicate"
+    dedup_rejections = [
+        r for r in indicator_rejections if r[1].reason == "duplicate_signal"
+    ]
+    assert len(dedup_rejections) == 0, (
+        "Indicator signal must NOT be rejected as strategy duplicate"
+    )
 
 
 @pytest.mark.asyncio
-async def test_indicator_dedup_does_not_affect_second_indicator_different_name(coexistence_bus):
+async def test_indicator_dedup_does_not_affect_second_indicator_different_name(
+    coexistence_bus,
+):
     """
     Two different indicators for the same symbol within 60s should BOTH be processed.
     Dedup key = (symbol, indicator_name, signal_type), so different indicators are distinct.
@@ -127,33 +141,37 @@ async def test_indicator_dedup_does_not_affect_second_indicator_different_name(c
         validated_events.append(event)
 
     with patch("notifier.notify_all", new_callable=AsyncMock):
-        await coexistence_bus.emit(IndicatorSignalReceived(
-            signal_id=6003,
-            symbol="ETHUSDT",
-            indicator_name="SuperTrend",
-            signal_type="entry",
-            confidence_score=80,
-            conditions_met=(),
-            metadata={},
-            interval="1h",
-            price=3500.0,
-            source_ip="127.0.0.1",
-            exchange="binance",
-        ))
+        await coexistence_bus.emit(
+            IndicatorSignalReceived(
+                signal_id=6003,
+                symbol="ETHUSDT",
+                indicator_name="SuperTrend",
+                signal_type="entry",
+                confidence_score=80,
+                conditions_met=(),
+                metadata={},
+                interval="1h",
+                price=3500.0,
+                source_ip="127.0.0.1",
+                exchange="binance",
+            )
+        )
 
-        await coexistence_bus.emit(IndicatorSignalReceived(
-            signal_id=6004,
-            symbol="ETHUSDT",
-            indicator_name="RSI Oversold",  # Different indicator name
-            signal_type="entry",
-            confidence_score=75,
-            conditions_met=(),
-            metadata={},
-            interval="1h",
-            price=3500.0,
-            source_ip="127.0.0.1",
-            exchange="binance",
-        ))
+        await coexistence_bus.emit(
+            IndicatorSignalReceived(
+                signal_id=6004,
+                symbol="ETHUSDT",
+                indicator_name="RSI Oversold",  # Different indicator name
+                signal_type="entry",
+                confidence_score=75,
+                conditions_met=(),
+                metadata={},
+                interval="1h",
+                price=3500.0,
+                source_ip="127.0.0.1",
+                exchange="binance",
+            )
+        )
 
     assert len(validated_events) == 2, (
         f"Both different-indicator signals must be validated independently, got {len(validated_events)}"

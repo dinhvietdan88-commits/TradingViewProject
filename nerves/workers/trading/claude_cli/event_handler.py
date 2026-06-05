@@ -15,6 +15,7 @@ Usage (from main.py lifespan startup):
     from claude_cli import event_handler
     event_handler.register_handler(claude_service)
 """
+
 from __future__ import annotations
 
 import logging
@@ -42,6 +43,7 @@ def set_bus(bus_instance: "EventBus") -> None:
 
 
 # ─── Event handler ──────────────────────────────────────────────────────────────
+
 
 async def handle_signal_validated(event: SignalValidated) -> None:
     """
@@ -90,7 +92,10 @@ async def handle_signal_validated(event: SignalValidated) -> None:
     try:
         response: AnalysisResponse = await _service.analyze(request)
     except Exception as exc:
-        log.error(f"EventHandler: ClaudeService.analyze raised unexpectedly: {exc}", exc_info=True)
+        log.error(
+            f"EventHandler: ClaudeService.analyze raised unexpectedly: {exc}",
+            exc_info=True,
+        )
         response = AnalysisResponse(
             text=f"⚠️ AI analysis error: {exc}",
             confidence=0,
@@ -107,7 +112,9 @@ async def handle_signal_validated(event: SignalValidated) -> None:
             f"(confidence={analysis_event.confidence}, should_trade={analysis_event.should_trade})"
         )
     except Exception as exc:
-        log.error(f"EventHandler: Failed to emit AnalysisComplete: {exc}", exc_info=True)
+        log.error(
+            f"EventHandler: Failed to emit AnalysisComplete: {exc}", exc_info=True
+        )
 
 
 def register_handler(claude_service: ClaudeService) -> None:
@@ -128,6 +135,7 @@ def register_handler(claude_service: ClaudeService) -> None:
 
 
 # ─── Mapping helper ─────────────────────────────────────────────────────────────
+
 
 def _map_to_analysis_complete(
     event: SignalValidated,

@@ -6,6 +6,7 @@ import this module so that scan results are visible to both.
 
 Thread/asyncio-safe: plain dict + lock-free (GIL protects simple assignments).
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -13,11 +14,11 @@ from typing import Any, Dict, List, Optional
 
 # ── Singleton store ───────────────────────────────────────────────────────────
 _store: Dict[str, Any] = {
-    "results":      [],         # List[dict] — last scan rows
-    "scanned":      0,          # int — number of symbols
-    "timestamp":    None,       # ISO string (UTC)
-    "source":       None,       # "web" | "telegram" | "scheduler"
-    "symbol_list":  [],         # list of symbols that were scanned
+    "results": [],  # List[dict] — last scan rows
+    "scanned": 0,  # int — number of symbols
+    "timestamp": None,  # ISO string (UTC)
+    "source": None,  # "web" | "telegram" | "scheduler"
+    "symbol_list": [],  # list of symbols that were scanned
 }
 
 
@@ -33,21 +34,21 @@ def save_scan_results(
         source:      Who triggered: "web" | "telegram" | "scheduler"
         symbol_list: The symbols that were scanned.
     """
-    _store["results"]     = results
-    _store["scanned"]     = len(results)
-    _store["timestamp"]   = datetime.now(timezone.utc).isoformat()
-    _store["source"]      = source
+    _store["results"] = results
+    _store["scanned"] = len(results)
+    _store["timestamp"] = datetime.now(timezone.utc).isoformat()
+    _store["source"] = source
     _store["symbol_list"] = symbol_list or [r.get("symbol") for r in results]
 
 
 def get_last_scan() -> Dict[str, Any]:
     """Return the cached scan payload (same shape as /api/scan/trigger response)."""
     return {
-        "scanned":     _store["scanned"],
-        "timestamp":   _store["timestamp"],
-        "source":      _store["source"],
+        "scanned": _store["scanned"],
+        "timestamp": _store["timestamp"],
+        "source": _store["source"],
         "symbol_list": _store["symbol_list"],
-        "results":     _store["results"],
+        "results": _store["results"],
     }
 
 

@@ -26,7 +26,9 @@ VERTEXAI_AVAILABLE = importlib.util.find_spec("vertexai") is not None
 ANTIGRAVITY_AVAILABLE = importlib.util.find_spec("google.antigravity") is not None
 
 if not CHROMADB_AVAILABLE:
-    log.warning("chromadb not installed. Run: pip install chromadb sentence-transformers")
+    log.warning(
+        "chromadb not installed. Run: pip install chromadb sentence-transformers"
+    )
 if not ANTHROPIC_AVAILABLE:
     log.warning("anthropic not installed. Run: pip install anthropic")
 if not GENAI_AVAILABLE:
@@ -46,6 +48,7 @@ def _get_embedding_function():
     if not CHROMADB_AVAILABLE:
         return None
     from chromadb.utils import embedding_functions
+
     return embedding_functions.SentenceTransformerEmbeddingFunction(
         model_name="paraphrase-multilingual-MiniLM-L12-v2"  # hỗ trợ tiếng Việt
     )
@@ -108,8 +111,10 @@ async def _call_claude_cli(prompt: str, image_path: Optional[str] = None) -> str
     if image_path:
         img = _Path(image_path).resolve()
         args += [
-            "--add-dir", str(img.parent),
-            "--allowedTools", "Read",
+            "--add-dir",
+            str(img.parent),
+            "--allowedTools",
+            "Read",
             "--dangerously-skip-permissions",
         ]
 
@@ -157,6 +162,7 @@ async def init_vector_db() -> bool:
     # ── Remote / Local DB client setup ───────────────────────────────────
     if getattr(config, "CHROMA_REMOTE", False):
         import chromadb
+
         _chroma_client = chromadb.HttpClient(
             host=config.CHROMA_SERVER_HOST,
             port=config.CHROMA_SERVER_PORT,
@@ -177,6 +183,7 @@ async def init_vector_db() -> bool:
         chroma_db_path.mkdir(parents=True, exist_ok=True)
 
         import chromadb
+
         _chroma_client = chromadb.PersistentClient(path=str(chroma_db_path))
         ef = _get_embedding_function()
         _collection = _chroma_client.get_or_create_collection(
@@ -201,10 +208,14 @@ async def init_vector_db() -> bool:
 
     if not knowledge_dir.exists():
         if getattr(config, "CHROMA_REMOTE", False) and _collection.count() > 0:
-            log.info(f"RAG: Knowledge dir not found, but remote ChromaDB has {_collection.count()} vectors. Using existing data.")
+            log.info(
+                f"RAG: Knowledge dir not found, but remote ChromaDB has {_collection.count()} vectors. Using existing data."
+            )
             return True
         elif getattr(config, "CHROMA_REMOTE", False):
-            log.warning(f"RAG: Knowledge dir not found ({knowledge_dir}) AND remote ChromaDB is EMPTY. RAG will be non-functional!")
+            log.warning(
+                f"RAG: Knowledge dir not found ({knowledge_dir}) AND remote ChromaDB is EMPTY. RAG will be non-functional!"
+            )
             return True  # Don't crash, but RAG won't work
         log.error(f"RAG: Knowledge dir not found: {knowledge_dir}")
         return False
@@ -217,9 +228,7 @@ async def init_vector_db() -> bool:
     # Kiểm tra xem đã embed chưa (tránh re-embed mỗi lần restart)
     existing_count = _collection.count()
     if existing_count >= len(chunk_files):
-        log.info(
-            f"RAG: Vector DB đã có {existing_count} vectors. Bỏ qua re-embedding."
-        )
+        log.info(f"RAG: Vector DB đã có {existing_count} vectors. Bỏ qua re-embedding.")
         return True
 
     log.info(f"RAG: Bắt đầu embed {len(chunk_files)} Minervini chunks → ChromaDB...")
@@ -284,12 +293,14 @@ def query_knowledge(query: str, n_results: int = 3) -> list[dict]:
         metas = results.get("metadatas", [[]])[0]
         distances = results.get("distances", [[]])[0]
 
-        for doc, meta, dist in zip(docs, metas, distances):
-            output.append({
-                "content": doc,
-                "metadata": meta,
-                "relevance_score": round(1 - dist, 4),  # cosine similarity
-            })
+        for doc, meta, dist in zip(docs, metas, distances, strict=False):
+            output.append(
+                {
+                    "content": doc,
+                    "metadata": meta,
+                    "relevance_score": round(1 - dist, 4),  # cosine similarity
+                }
+            )
 
         log.info(f"RAG: Query '{query[:50]}...' → {len(output)} chunks retrieved.")
         return output
@@ -311,6 +322,7 @@ def _call_gemini(prompt: str, has_vertex: bool, has_genai: bool) -> str | None:
     if has_vertex:
         try:
             import google.auth
+
             google.auth.default()
             _use_vertex = True
         except Exception:
@@ -319,6 +331,7 @@ def _call_gemini(prompt: str, has_vertex: bool, has_genai: bool) -> str | None:
     if _use_vertex:
         import vertexai
         from vertexai.generative_models import GenerativeModel as VertexGenerativeModel
+
         vertexai.init(
             project=config.GCP_PROJECT_ID,
             location=getattr(config, "GCP_LOCATION", "us-central1"),
@@ -328,6 +341,7 @@ def _call_gemini(prompt: str, has_vertex: bool, has_genai: bool) -> str | None:
         return response.text
     elif has_genai:
         from google import genai
+
         client = genai.Client(api_key=config.GEMINI_API_KEY)
         response = client.models.generate_content(
             model=model_name,
@@ -391,7 +405,9 @@ async def generate_trading_advice(
             provider = "antigravity"
         elif not has_anthropic_sdk:
             if has_gemini:
-                log.info("RAG: Anthropic not configured/mock. Switching to Gemini fallback.")
+                log.info(
+                    "RAG: Anthropic not configured/mock. Switching to Gemini fallback."
+                )
                 provider = "gemini"
             else:
                 return "⚠️ RAG Analysis không khả dụng (thiếu ANTHROPIC_API_KEY)."
@@ -422,13 +438,17 @@ async def generate_trading_advice(
     # ── VCP & Trend Template stats ─────────────────────────────────────────
     vcp_stats = payload.get("vcp_stats", {})
     trend_stats = payload.get("trend_stats", {})
-    
+
     stats_context = ""
     if trend_stats:
         if "error" in trend_stats:
-            stats_context += f"- Trend Template Checklist: ERROR ({trend_stats['error']})\n"
+            stats_context += (
+                f"- Trend Template Checklist: ERROR ({trend_stats['error']})\n"
+            )
         else:
-            stats_context += f"- Macro Regime: {trend_stats.get('macro_regime', 'Unknown')}\n"
+            stats_context += (
+                f"- Macro Regime: {trend_stats.get('macro_regime', 'Unknown')}\n"
+            )
             stats_context += f"- Trend Template Score: {trend_stats.get('score', 0)}/8 ({trend_stats.get('stage', 'Unknown')})\n"
             stats_context += f"  Detail: {trend_stats.get('summary', '')}\n"
             criteria_list = []
@@ -436,17 +456,23 @@ async def generate_trading_advice(
                 status = "✅" if v is True else ("❌" if v is False else "❓")
                 criteria_list.append(f"{k}: {status}")
             stats_context += f"  Checklist: {', '.join(criteria_list)}\n"
-            
+
     if vcp_stats:
         if vcp_stats.get("detected"):
             stats_context += f"- VCP Pattern: DETECTED (Quality: {vcp_stats.get('quality_score', 0)}%)\n"
-            stats_context += f"  Pivot Breakout Level: {vcp_stats.get('pivot_line', 0.0)}\n"
-            stats_context += f"  Contractions ({vcp_stats.get('contractions_count', 0)} waves):\n"
+            stats_context += (
+                f"  Pivot Breakout Level: {vcp_stats.get('pivot_line', 0.0)}\n"
+            )
+            stats_context += (
+                f"  Contractions ({vcp_stats.get('contractions_count', 0)} waves):\n"
+            )
             for idx, c in enumerate(vcp_stats.get("contractions", []), 1):
                 stats_context += f"    * Wave {idx}: High={c['high']}, Low={c['low']}, Depth={c['depth_pct']}%, Duration={c['duration_bars']} bars\n"
         else:
-            stats_context += "- VCP Pattern: NOT DETECTED or invalid contraction sequence\n"
-            
+            stats_context += (
+                "- VCP Pattern: NOT DETECTED or invalid contraction sequence\n"
+            )
+
     pattern_detection = payload.get("pattern_detection", "")
     if pattern_detection:
         stats_context += f"- Pattern Result (AI Analyzer): {pattern_detection}\n"
@@ -479,8 +505,11 @@ async def generate_trading_advice(
             agy_model = getattr(config, "AGY_MODEL", "gemini-2.5-flash")
 
             from agy_harness import AgyHarness
+
             harness = AgyHarness(
-                bridge_url=getattr(config, "AGY_BRIDGE_URL", "http://host.docker.internal:9100"),
+                bridge_url=getattr(
+                    config, "AGY_BRIDGE_URL", "http://host.docker.internal:9100"
+                ),
                 timeout_sec=getattr(config, "AGY_TIMEOUT_SEC", 25),
                 model=agy_model,
             )
@@ -499,15 +528,14 @@ async def generate_trading_advice(
                     )
                     provider = "gemini"
             except Exception as e:
-                log.warning(
-                    f"RAG: agy bridge error ({e}). Falling back to gemini..."
-                )
+                log.warning(f"RAG: agy bridge error ({e}). Falling back to gemini...")
                 provider = "gemini"
             finally:
                 await harness.close()
 
         if provider == "antigravity":
             from google.antigravity import Agent, LocalAgentConfig
+
             model_name = getattr(config, "CLAUDE_CLI_MODEL", "") or "gemini-2.5-flash"
             agent_cfg = LocalAgentConfig(
                 system_instructions="Bạn là chuyên gia giao dịch theo phương pháp SEPA của Mark Minervini. Phân tích tín hiệu giao dịch và đưa ra khuyến nghị hành động chi tiết.",
@@ -516,7 +544,9 @@ async def generate_trading_advice(
             async with Agent(agent_cfg) as agent:
                 response = await agent.chat(prompt)
                 advice = await response.text()
-            log.info(f"RAG: Antigravity SDK Agent 2.0 generated advice for {symbol} ({action})")
+            log.info(
+                f"RAG: Antigravity SDK Agent 2.0 generated advice for {symbol} ({action})"
+            )
             return f"{advice}\n\n[Provider: antigravity-sdk]"
 
         if provider == "claude_cli":
@@ -548,7 +578,9 @@ async def generate_trading_advice(
             # Step 1: Try Claude CLI (uses user's Claude login — no API key needed)
             try:
                 advice = await _call_claude_cli(prompt)
-                log.info(f"RAG: Claude CLI (auth session) generated advice for {symbol} ({action})")
+                log.info(
+                    f"RAG: Claude CLI (auth session) generated advice for {symbol} ({action})"
+                )
                 return f"{advice}\n\n[Provider: claude-cli]"
             except ClaudeCLIError as cli_err:
                 log.warning(f"RAG: Claude CLI fail ({cli_err}). Trying SDK fallback...")
@@ -557,6 +589,7 @@ async def generate_trading_advice(
             if has_anthropic_sdk:
                 try:
                     import anthropic
+
                     client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
                     message = client.messages.create(
                         model="claude-sonnet-4-5",
@@ -564,10 +597,14 @@ async def generate_trading_advice(
                         messages=[{"role": "user", "content": prompt}],
                     )
                     advice = message.content[0].text
-                    log.info(f"RAG: Claude SDK generated advice for {symbol} ({action})")
+                    log.info(
+                        f"RAG: Claude SDK generated advice for {symbol} ({action})"
+                    )
                     return f"{advice}\n\n[Provider: claude-sdk]"
                 except Exception as sdk_err:
-                    log.warning(f"RAG: Anthropic SDK fail ({sdk_err}). Trying Gemini fallback...")
+                    log.warning(
+                        f"RAG: Anthropic SDK fail ({sdk_err}). Trying Gemini fallback..."
+                    )
 
             # Step 3: Gemini fallback
             if has_gemini:
@@ -580,6 +617,7 @@ async def generate_trading_advice(
             # Unknown provider — try anthropic SDK directly
             try:
                 import anthropic
+
                 client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
                 message = client.messages.create(
                     model="claude-sonnet-4-5",
@@ -591,7 +629,9 @@ async def generate_trading_advice(
                 return f"{advice}\n\n[Provider: claude-sdk]"
             except Exception as sdk_err:
                 if has_gemini:
-                    log.warning(f"RAG: Anthropic call failed ({sdk_err}). Falling back to Gemini...")
+                    log.warning(
+                        f"RAG: Anthropic call failed ({sdk_err}). Falling back to Gemini..."
+                    )
                     provider = "gemini"
                 else:
                     raise sdk_err

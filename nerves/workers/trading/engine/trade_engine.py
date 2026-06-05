@@ -12,6 +12,7 @@ Design Invariants (v6.0):
 - Uses ExchangeRouter for multi-exchange adapter resolution.
 - Uses set_bus() pattern for test isolation.
 """
+
 import logging
 import asyncio
 from typing import Optional
@@ -44,13 +45,18 @@ def get_bus():
 # EVENT HANDLER: TradeApproved → Execute Order
 # ═══════════════════════════════════════════════════════════════
 
-async def monitor_limit_order(adapter, symbol: str, order_id: str, oco_id: Optional[str], entry_price: float):
+
+async def monitor_limit_order(
+    adapter, symbol: str, order_id: str, oco_id: Optional[str], entry_price: float
+):
     """Monitor a limit order placed due to slippage, cancel after 30s if unfilled."""
     await asyncio.sleep(30)
     try:
         status_info = await adapter.get_order(symbol, order_id)
         if status_info.get("status") != "FILLED":
-            log.warning(f"Slippage limit order {order_id} unfilled after 30s. Cancelling.")
+            log.warning(
+                f"Slippage limit order {order_id} unfilled after 30s. Cancelling."
+            )
             try:
                 await adapter.cancel_order(symbol, order_id)
             except Exception as e:
@@ -60,11 +66,12 @@ async def monitor_limit_order(adapter, symbol: str, order_id: str, oco_id: Optio
                     await adapter.cancel_oco_order(symbol, oco_id)
                 except Exception as e:
                     log.warning(f"Failed to cancel associated OCO order {oco_id}: {e}")
-            
+
             # Send Telegram alert
             msg = f"⚠️ **Slippage Warning**\nLimit order `{order_id}` for `{symbol}` at price `{entry_price}` remained unfilled after 30 seconds and has been cancelled."
             try:
                 from notifier import notify_all
+
                 await notify_all(msg)
             except Exception as n_err:
                 log.error(f"Failed to send Telegram alert: {n_err}")
@@ -87,7 +94,9 @@ async def execute_trade(event: TradeApproved) -> None:
     """
     action = event.action.lower()
     if action not in ("buy", "sell"):
-        log.info(f"TradeEngine: Skipping non-trade action '{action}' for #{event.signal_id}")
+        log.info(
+            f"TradeEngine: Skipping non-trade action '{action}' for #{event.signal_id}"
+        )
         return
 
     # Resolve per-symbol risk parameters (OPTIMIZED_PARAMETERS_MATRIX)
@@ -95,12 +104,12 @@ async def execute_trade(event: TradeApproved) -> None:
 
     # ── Parse prices ─────────────────────────────────────────
     try:
-        entry_price = float(str(event.price).replace(',', '')) if event.price else 0.0
+        entry_price = float(str(event.price).replace(",", "")) if event.price else 0.0
     except (ValueError, TypeError):
         entry_price = 0.0
 
     try:
-        sl_price = float(str(event.sl).replace(',', '')) if event.sl else None
+        sl_price = float(str(event.sl).replace(",", "")) if event.sl else None
         if sl_price is not None and sl_price <= 0.0:
             sl_price = None
     except (ValueError, TypeError):
@@ -120,13 +129,13 @@ async def execute_trade(event: TradeApproved) -> None:
                 clamped_sl = entry_price * (1.0 + symbol_cfg["stop_loss_pct"])
             log.warning(
                 f"TradeEngine: SL clamped for {event.symbol} "
-                f"({sl_dist_pct*100:.1f}% > cap {symbol_cfg['stop_loss_pct']*100:.0f}%): "
+                f"({sl_dist_pct * 100:.1f}% > cap {symbol_cfg['stop_loss_pct'] * 100:.0f}%): "
                 f"{sl_price:.4f} → {clamped_sl:.4f}"
             )
             sl_price = clamped_sl
 
     try:
-        tp_price = float(str(event.tp).replace(',', '')) if event.tp else None
+        tp_price = float(str(event.tp).replace(",", "")) if event.tp else None
         if tp_price is not None and tp_price <= 0.0:
             tp_price = None
     except (ValueError, TypeError):
@@ -134,25 +143,30 @@ async def execute_trade(event: TradeApproved) -> None:
 
     # ── Resolve exchange adapter ─────────────────────────────
     from exchanges.router import get_router
+
     router = get_router()
-    requested_exchange = getattr(event, 'exchange', 'binance')
+    requested_exchange = getattr(event, "exchange", "binance")
 
     try:
         adapter = router.resolve_exchange({"exchange": requested_exchange})
-        actual_exchange = getattr(adapter, "exchange_id", None) or getattr(adapter, "exchange_name", requested_exchange)
+        actual_exchange = getattr(adapter, "exchange_id", None) or getattr(
+            adapter, "exchange_name", requested_exchange
+        )
     except Exception as e:
         error_msg = f"Exchange routing failed: {e}"
         log.error(f"TradeEngine: {error_msg}")
         await _handle_failure(event, action, error_msg, requested_exchange, None)
         return
 
-    combined_score: Optional[str] = getattr(event, 'combined_score', None)
+    combined_score: Optional[str] = getattr(event, "combined_score", None)
 
     # TVP-001 & TVP-002: Hardened validation
     if entry_price <= 0.0:
         error_msg = f"Invalid entry price: {entry_price} (from '{event.price}')"
         log.error(f"TradeEngine: {error_msg}")
-        await _handle_failure(event, action, error_msg, requested_exchange, combined_score)
+        await _handle_failure(
+            event, action, error_msg, requested_exchange, combined_score
+        )
         return
 
     # Fetch original signal details and check if it is a breakout/BO
@@ -162,20 +176,29 @@ async def execute_trade(event: TradeApproved) -> None:
         import aiosqlite
         import json
         import config
+
         async with aiosqlite.connect(config.DB_PATH) as db:
             db.row_factory = aiosqlite.Row
-            async with db.execute("SELECT action, payload FROM signals WHERE id = ?", (event.signal_id,)) as cursor:
+            async with db.execute(
+                "SELECT action, payload FROM signals WHERE id = ?", (event.signal_id,)
+            ) as cursor:
                 row = await cursor.fetchone()
                 if row:
                     original_action = str(row["action"]).lower()
                     try:
-                        original_payload = json.loads(row["payload"]) if row["payload"] else {}
+                        original_payload = (
+                            json.loads(row["payload"]) if row["payload"] else {}
+                        )
                     except Exception:
                         original_payload = {}
     except Exception as exc:
         log.warning(f"TradeEngine: Failed to fetch original signal details: {exc}")
 
-    is_breakout = (original_action in {"bo", "breakout_long"}) or (original_payload.get("action") in {"bo", "breakout_long"}) or (original_payload.get("signal_type") == "breakout_long")
+    is_breakout = (
+        (original_action in {"bo", "breakout_long"})
+        or (original_payload.get("action") in {"bo", "breakout_long"})
+        or (original_payload.get("signal_type") == "breakout_long")
+    )
 
     # Sizing calculation
     try:
@@ -229,9 +252,13 @@ async def execute_trade(event: TradeApproved) -> None:
                     if price_dist > 0:
                         quote_qty_val = (risk_amount / price_dist) * entry_price
                         atr_sizing_applied = True
-                        log.info(f"TradeEngine: ATR risk-based sizing applied: quote_qty={quote_qty_val:.2f} USDT (risking {symbol_cfg['risk_pct']*100:.1f}% of {balance:.2f} balance)")
+                        log.info(
+                            f"TradeEngine: ATR risk-based sizing applied: quote_qty={quote_qty_val:.2f} USDT (risking {symbol_cfg['risk_pct'] * 100:.1f}% of {balance:.2f} balance)"
+                        )
                 except Exception as e:
-                    log.warning(f"TradeEngine: Failed to compute ATR-based position size: {e}")
+                    log.warning(
+                        f"TradeEngine: Failed to compute ATR-based position size: {e}"
+                    )
         except (ValueError, TypeError) as e:
             log.warning(f"TradeEngine: Invalid ATR value {atr_val}: {e}")
 
@@ -243,37 +270,55 @@ async def execute_trade(event: TradeApproved) -> None:
                 if balance > 0:
                     tactical_qty = balance * symbol_cfg["breakout_size_pct"]
                     quote_qty_val = max(10.0, min(tactical_qty, config.MAX_QUOTE_QTY))
-                    log.info(f"TradeEngine: Tactical Entry Sizing applied: {quote_qty_val:.2f} USDT ({symbol_cfg['breakout_size_pct']*100:.1f}% of {balance:.2f} balance)")
+                    log.info(
+                        f"TradeEngine: Tactical Entry Sizing applied: {quote_qty_val:.2f} USDT ({symbol_cfg['breakout_size_pct'] * 100:.1f}% of {balance:.2f} balance)"
+                    )
                 else:
                     if quote_qty_val is None:
                         quote_qty_val = 10.0
             except Exception as e:
-                log.warning(f"TradeEngine: Failed to compute tactical sizing: {e}. Using default.")
+                log.warning(
+                    f"TradeEngine: Failed to compute tactical sizing: {e}. Using default."
+                )
                 if quote_qty_val is None:
                     quote_qty_val = 10.0
-                
+
             # Tactical Stop-loss at Swing Low of last 5 hours
             try:
                 import aiohttp
                 from analysis import fetch_candles_with_retry
+
                 async with aiohttp.ClientSession() as session:
-                    candles = await fetch_candles_with_retry(session, requested_exchange, event.symbol, interval="1h", limit=5)
+                    candles = await fetch_candles_with_retry(
+                        session,
+                        requested_exchange,
+                        event.symbol,
+                        interval="1h",
+                        limit=5,
+                    )
                 if candles:
                     swing_low = min(float(c[3]) for c in candles)
                     sl_price = swing_low * 0.998
                     if sl_price >= entry_price:
                         sl_price = entry_price * 0.98
-                    log.info(f"TradeEngine: Tactical Entry Stop Loss at {sl_price:.4f} (Swing Low: {swing_low:.4f})")
+                    log.info(
+                        f"TradeEngine: Tactical Entry Stop Loss at {sl_price:.4f} (Swing Low: {swing_low:.4f})"
+                    )
             except Exception as exc:
-                log.warning(f"TradeEngine: Failed to compute Swing Low Stop Loss: {exc}. Keeping default: {sl_price}")
+                log.warning(
+                    f"TradeEngine: Failed to compute Swing Low Stop Loss: {exc}. Keeping default: {sl_price}"
+                )
 
     # Regime Filter (R4)
     try:
         from engine.regime_switcher import get_market_regime
+
         regime = await get_market_regime(event.symbol, requested_exchange)
         await database.set_setting("market_regime", regime)
     except Exception as exc:
-        log.warning(f"TradeEngine: Failed to get market regime: {exc}. Trying fallback setting.")
+        log.warning(
+            f"TradeEngine: Failed to get market regime: {exc}. Trying fallback setting."
+        )
         try:
             regime = await database.get_setting("market_regime", "TRENDING")
         except Exception:
@@ -283,47 +328,59 @@ async def execute_trade(event: TradeApproved) -> None:
         if is_breakout:
             error_msg = f"Skipped: breakout signal {event.signal_id} because market is in CHOP regime"
             log.info(f"TradeEngine: {error_msg}")
-            await _handle_failure(event, action, error_msg, requested_exchange, combined_score)
+            await _handle_failure(
+                event, action, error_msg, requested_exchange, combined_score
+            )
             return
         else:
             if quote_qty_val is not None:
                 quote_qty_val = quote_qty_val * 0.5
-                log.info(f"TradeEngine: CHOP regime detected. Reducing position size by 50% to {quote_qty_val:.2f} USDT")
+                log.info(
+                    f"TradeEngine: CHOP regime detected. Reducing position size by 50% to {quote_qty_val:.2f} USDT"
+                )
 
     # Safe Mode sizing modification
     try:
         import inspect
-        
+
         dd_val = database.get_rolling_drawdown(20)
         rolling_dd = await dd_val if inspect.isawaitable(dd_val) else 0.0
-        
+
         pf_val = database.get_recent_profit_factor(5)
         recent_pf = await pf_val if inspect.isawaitable(pf_val) else 1.0
-        
+
         sm_val = database.get_setting("safe_mode_active", "false")
         current_safe_mode = await sm_val if inspect.isawaitable(sm_val) else "false"
-        
+
         if rolling_dd > 10.0:
             safe_mode_active = True
-            log.warning(f"TradeEngine: Drawdown ({rolling_dd:.2f}%) > 10% -> Safe Mode Activated")
+            log.warning(
+                f"TradeEngine: Drawdown ({rolling_dd:.2f}%) > 10% -> Safe Mode Activated"
+            )
         elif current_safe_mode == "true" and recent_pf > 1.5:
             safe_mode_active = False
-            log.info(f"TradeEngine: Profit Factor ({recent_pf:.2f}) > 1.5 -> Safe Mode Deactivated")
+            log.info(
+                f"TradeEngine: Profit Factor ({recent_pf:.2f}) > 1.5 -> Safe Mode Deactivated"
+            )
         else:
-            safe_mode_active = (current_safe_mode == "true")
-            
-        set_active_val = database.set_setting("safe_mode_active", "true" if safe_mode_active else "false")
+            safe_mode_active = current_safe_mode == "true"
+
+        set_active_val = database.set_setting(
+            "safe_mode_active", "true" if safe_mode_active else "false"
+        )
         if inspect.isawaitable(set_active_val):
             await set_active_val
-            
+
         set_dd_val = database.set_setting("safe_mode_drawdown", f"{rolling_dd:.2f}")
         if inspect.isawaitable(set_dd_val):
             await set_dd_val
-        
+
         if safe_mode_active:
             if quote_qty_val is not None:
                 quote_qty_val = quote_qty_val * 0.5
-                log.info(f"TradeEngine: Safe Mode active (drawdown: {rolling_dd:.2f}%). Position sized halved to {quote_qty_val:.2f} USDT")
+                log.info(
+                    f"TradeEngine: Safe Mode active (drawdown: {rolling_dd:.2f}%). Position sized halved to {quote_qty_val:.2f} USDT"
+                )
     except Exception as exc:
         log.warning(f"TradeEngine: Safe Mode logic check failed: {exc}")
         safe_mode_active = False
@@ -333,12 +390,16 @@ async def execute_trade(event: TradeApproved) -> None:
     try:
         from unittest.mock import Mock, AsyncMock
         import inspect
-        
-        is_legacy_mock = isinstance(database.get_risk_settings, Mock) and not isinstance(database.get_risk_settings, AsyncMock)
-        
+
+        is_legacy_mock = isinstance(
+            database.get_risk_settings, Mock
+        ) and not isinstance(database.get_risk_settings, AsyncMock)
+
         if is_legacy_mock:
             daily_loss_val = database.get_daily_loss(actual_exchange)
-            daily_loss = await daily_loss_val if inspect.isawaitable(daily_loss_val) else 0.0
+            daily_loss = (
+                await daily_loss_val if inspect.isawaitable(daily_loss_val) else 0.0
+            )
             daily_loss_cap = 10.0
             drawdown_cap = 5.0
             cb_state = "CLOSED"
@@ -346,17 +407,21 @@ async def execute_trade(event: TradeApproved) -> None:
             risk_set = await database.get_risk_settings(actual_exchange)
             cb_state = risk_set.get("state", "CLOSED")
             daily_loss_val = database.get_daily_loss(actual_exchange)
-            daily_loss = await daily_loss_val if inspect.isawaitable(daily_loss_val) else 0.0
+            daily_loss = (
+                await daily_loss_val if inspect.isawaitable(daily_loss_val) else 0.0
+            )
             daily_loss_cap = risk_set.get("daily_loss_cap", 10.0)
             drawdown_cap = risk_set.get("drawdown_cap", 5.0)
-        
+
         # 1. Check if the Circuit Breaker is OPEN (Blocked)
         if cb_state == "OPEN":
             error_msg = f"Skipped {actual_exchange} trade: Circuit Breaker is OPEN (Blocked mode)"
             log.warning(error_msg)
-            await _handle_failure(event, action, error_msg, requested_exchange, combined_score)
+            await _handle_failure(
+                event, action, error_msg, requested_exchange, combined_score
+            )
             return
-            
+
         # 2. Check current metrics to see if we should trip to OPEN
         trip = False
         reason = ""
@@ -366,58 +431,87 @@ async def execute_trade(event: TradeApproved) -> None:
         elif rolling_dd >= drawdown_cap:
             trip = True
             reason = f"Drawdown {rolling_dd:.2f}% exceeds limit {drawdown_cap:.2f}%"
-            
+
         # Check if there is an active bypass
         if trip and not is_legacy_mock:
             from unittest.mock import Mock, AsyncMock
+
             is_get_setting_mock = isinstance(database.get_setting, Mock)
             is_get_setting_async = isinstance(database.get_setting, AsyncMock)
             if is_get_setting_mock and not is_get_setting_async:
                 bypass_until_str = None
             else:
-                bypass_until_str = await database.get_setting(f"bypass_until_{actual_exchange}")
+                bypass_until_str = await database.get_setting(
+                    f"bypass_until_{actual_exchange}"
+                )
 
             if bypass_until_str:
                 try:
                     from datetime import datetime, timezone
+
                     bypass_until = datetime.fromisoformat(bypass_until_str)
                     if datetime.now(timezone.utc) < bypass_until:
-                        log.info(f"TradeEngine: Tripping bypassed for {actual_exchange} until {bypass_until_str}")
+                        log.info(
+                            f"TradeEngine: Tripping bypassed for {actual_exchange} until {bypass_until_str}"
+                        )
                         trip = False
                 except Exception as e:
                     log.warning(f"TradeEngine: Failed to parse bypass timestamp: {e}")
 
         if trip:
-            log.warning(f"TradeEngine: Tripping circuit breaker for {actual_exchange} to OPEN. Reason: {reason}")
+            log.warning(
+                f"TradeEngine: Tripping circuit breaker for {actual_exchange} to OPEN. Reason: {reason}"
+            )
             if not is_legacy_mock:
                 await database.update_circuit_breaker_state(actual_exchange, "OPEN")
                 await database.log_circuit_breaker(
-                    actual_exchange, event.symbol, cb_state, "OPEN", reason,
-                    {"dailyLoss": daily_loss, "dailyLossCap": daily_loss_cap, "drawdown": rolling_dd, "drawdownCap": drawdown_cap}
+                    actual_exchange,
+                    event.symbol,
+                    cb_state,
+                    "OPEN",
+                    reason,
+                    {
+                        "dailyLoss": daily_loss,
+                        "dailyLossCap": daily_loss_cap,
+                        "drawdown": rolling_dd,
+                        "drawdownCap": drawdown_cap,
+                    },
                 )
                 # Emit CircuitBreakerTripped event
-                await _bus.emit(CircuitBreakerTripped(
-                    exchange=actual_exchange,
-                    symbol=event.symbol,
-                    prev_state=cb_state,
-                    new_state="OPEN",
-                    reason=reason,
-                    metrics={"dailyLoss": daily_loss, "dailyLossCap": daily_loss_cap, "drawdown": rolling_dd, "drawdownCap": drawdown_cap}
-                ))
+                await _bus.emit(
+                    CircuitBreakerTripped(
+                        exchange=actual_exchange,
+                        symbol=event.symbol,
+                        prev_state=cb_state,
+                        new_state="OPEN",
+                        reason=reason,
+                        metrics={
+                            "dailyLoss": daily_loss,
+                            "dailyLossCap": daily_loss_cap,
+                            "drawdown": rolling_dd,
+                            "drawdownCap": drawdown_cap,
+                        },
+                    )
+                )
             error_msg = f"Skipped {actual_exchange} trade: Circuit Breaker tripped to OPEN due to: {reason}"
-            await _handle_failure(event, action, error_msg, requested_exchange, combined_score)
+            await _handle_failure(
+                event, action, error_msg, requested_exchange, combined_score
+            )
             return
-            
+
         # 3. If in HALF-OPEN (recovery), reduce position size by 50%
         if cb_state == "HALF-OPEN":
             if quote_qty_val is not None:
                 quote_qty_val = quote_qty_val * 0.5
-                log.info(f"TradeEngine: Circuit Breaker is HALF-OPEN for {actual_exchange}. Position size halved to {quote_qty_val:.2f} USDT")
+                log.info(
+                    f"TradeEngine: Circuit Breaker is HALF-OPEN for {actual_exchange}. Position size halved to {quote_qty_val:.2f} USDT"
+                )
     except Exception as safety_exc:
         log.warning(f"TradeEngine: Weex safety checks failed: {safety_exc}")
 
     # Ensure quote_qty_val is bounded
     import config
+
     if quote_qty_val is not None:
         quote_qty_val = min(quote_qty_val, config.MAX_QUOTE_QTY)
 
@@ -425,11 +519,17 @@ async def execute_trade(event: TradeApproved) -> None:
     target_order_type = "MARKET"
     try:
         market_price = await adapter.get_ticker_price(event.symbol)
-        slippage = abs(market_price - entry_price) / entry_price if entry_price > 0.0 else 0.0
-        log.info(f"TradeEngine: Market Price={market_price}, Webhook Price={entry_price}, Slippage={slippage:.4f}")
+        slippage = (
+            abs(market_price - entry_price) / entry_price if entry_price > 0.0 else 0.0
+        )
+        log.info(
+            f"TradeEngine: Market Price={market_price}, Webhook Price={entry_price}, Slippage={slippage:.4f}"
+        )
         if slippage > 0.005:
             target_order_type = "LIMIT"
-            log.info(f"TradeEngine: Slippage {slippage:.4f} > 0.5% (0.005). Changing order type to LIMIT at {entry_price}")
+            log.info(
+                f"TradeEngine: Slippage {slippage:.4f} > 0.5% (0.005). Changing order type to LIMIT at {entry_price}"
+            )
     except Exception as exc:
         log.warning(f"TradeEngine: Failed to verify slippage: {exc}")
 
@@ -459,7 +559,9 @@ async def execute_trade(event: TradeApproved) -> None:
     # Check if we should fallback from Weex on failure
     fallback_exchange = None
     if actual_exchange == "weex":
-        fallback_exchange = router._get_fallback("weex", {"strategy": getattr(event, "strategy", "")})
+        fallback_exchange = router._get_fallback(
+            "weex", {"strategy": getattr(event, "strategy", "")}
+        )
         if not fallback_exchange:
             for fb in ["bybit", "binance"]:
                 if fb != actual_exchange and router._registry.is_available(fb):
@@ -482,7 +584,9 @@ async def execute_trade(event: TradeApproved) -> None:
                 raise Exception(result.error or "Smart order failed")
         except Exception as e:
             if actual_exchange == "weex" and fallback_exchange:
-                log.warning(f"Weex execution failed ({e}). Attempting fallback to {fallback_exchange}...")
+                log.warning(
+                    f"Weex execution failed ({e}). Attempting fallback to {fallback_exchange}..."
+                )
                 try:
                     fallback_adapter = router._registry.get_adapter(fallback_exchange)
                     result = await fallback_adapter.execute_smart_order(
@@ -500,11 +604,15 @@ async def execute_trade(event: TradeApproved) -> None:
                         result.fallback_used = True
                         result.original_exchange = "weex"
                     else:
-                        raise Exception(result.error or f"Fallback to {fallback_exchange} failed")
+                        raise Exception(
+                            result.error or f"Fallback to {fallback_exchange} failed"
+                        )
                 except Exception as fallback_err:
                     error_msg = f"Weex execution failed ({e}) AND fallback to {fallback_exchange} failed: {fallback_err}"
                     log.error(f"TradeEngine: {error_msg}")
-                    await _handle_failure(event, action, error_msg, requested_exchange, combined_score)
+                    await _handle_failure(
+                        event, action, error_msg, requested_exchange, combined_score
+                    )
                     return
             else:
                 raise
@@ -524,7 +632,11 @@ async def execute_trade(event: TradeApproved) -> None:
                 oco_id = str(result.oco_order.get("orderListId", ""))
 
             if target_order_type == "LIMIT" and order_status != "FILLED":
-                asyncio.create_task(monitor_limit_order(adapter, event.symbol, order_id, oco_id, entry_price))
+                asyncio.create_task(
+                    monitor_limit_order(
+                        adapter, event.symbol, order_id, oco_id, entry_price
+                    )
+                )
 
             # ── Persist to DB (Hybrid — direct write) ────────
             trade_id = await database.insert_trade(
@@ -543,11 +655,12 @@ async def execute_trade(event: TradeApproved) -> None:
             # ── Angati Event-Driven Semantic Ingestion ────────────────────────
             try:
                 from nerves.core.ingest_helper import ingest_semantic_event_bg
+
                 ingest_semantic_event_bg(
                     text=f"Trade Executed: ID={trade_id}, SignalID={event.signal_id}, Symbol={event.symbol}, "
-                         f"Side={action.upper()}, Price={exec_price}, Qty={exec_qty}, Status={order_status}, "
-                         f"Exchange={actual_exchange}, CombinedScore={combined_score}",
-                    category="trade"
+                    f"Side={action.upper()}, Price={exec_price}, Qty={exec_qty}, Status={order_status}, "
+                    f"Exchange={actual_exchange}, CombinedScore={combined_score}",
+                    category="trade",
                 )
             except Exception as sra_err:
                 log.warning(f"SRA Ingestion warning: {sra_err}")
@@ -564,7 +677,11 @@ async def execute_trade(event: TradeApproved) -> None:
             await database.update_signal_status(event.signal_id, 1)
 
             # ── Build telegram message for event context ─────
-            fallback_text = f" (Fallback from {requested_exchange.title()})" if actual_exchange != requested_exchange else ""
+            fallback_text = (
+                f" (Fallback from {requested_exchange.title()})"
+                if actual_exchange != requested_exchange
+                else ""
+            )
             msg = (
                 f"✅ **Đã Đặt Lệnh {actual_exchange.title()}{fallback_text}**\n"
                 f"- Mã: `{event.symbol}`\n"
@@ -581,38 +698,48 @@ async def execute_trade(event: TradeApproved) -> None:
             if result.dry_run:
                 msg += "\n⚠️ `CHẾ ĐỘ DRY_RUN — KHÔNG KHỚP LỆNH THỰC TẾ`"
 
-            if getattr(event, 'analysis_text', ""):
+            if getattr(event, "analysis_text", ""):
                 msg += f"\n\n🧠 **Phân tích Minervini AI (Được duyệt bởi {event.approved_by}):**\n{event.analysis_text[:500]}"
 
-            log.info(f"TradeEngine: Smart Order Success #{order_id} on {actual_exchange} (type={order_type})")
+            log.info(
+                f"TradeEngine: Smart Order Success #{order_id} on {actual_exchange} (type={order_type})"
+            )
 
             # ── v6.0: Emit downstream event (NotificationHub handles notification) ──
-            await _bus.emit(TradeExecuted(
-                signal_id=event.signal_id,
-                trade_id=trade_id,
-                symbol=event.symbol,
-                side=action.upper(),
-                order_id=order_id,
-                status=order_status,
-                exchange=actual_exchange,
-                executed_qty=exec_qty,
-                executed_price=exec_price,
-                quote_qty=quote_qty_val if quote_qty_val is not None else 10.0,
-                stop_loss_price=result.risk.stop_loss_price if result.risk else None,
-                take_profit_price=result.risk.take_profit_price if result.risk else None,
-                oco_order_id=oco_id,
-                order_type=order_type,
-                combined_score=combined_score,
-                rag_advice=getattr(event, 'analysis_text', ""),
-                telegram_message=msg,
-            ))
+            await _bus.emit(
+                TradeExecuted(
+                    signal_id=event.signal_id,
+                    trade_id=trade_id,
+                    symbol=event.symbol,
+                    side=action.upper(),
+                    order_id=order_id,
+                    status=order_status,
+                    exchange=actual_exchange,
+                    executed_qty=exec_qty,
+                    executed_price=exec_price,
+                    quote_qty=quote_qty_val if quote_qty_val is not None else 10.0,
+                    stop_loss_price=result.risk.stop_loss_price
+                    if result.risk
+                    else None,
+                    take_profit_price=result.risk.take_profit_price
+                    if result.risk
+                    else None,
+                    oco_order_id=oco_id,
+                    order_type=order_type,
+                    combined_score=combined_score,
+                    rag_advice=getattr(event, "analysis_text", ""),
+                    telegram_message=msg,
+                )
+            )
         else:
             raise Exception(result.error or "Smart order failed")
 
     except Exception as e:
         error_msg = str(e)
         log.error(f"TradeEngine: Execution Failed — {error_msg}")
-        await _handle_failure(event, action, error_msg, requested_exchange, combined_score)
+        await _handle_failure(
+            event, action, error_msg, requested_exchange, combined_score
+        )
 
 
 async def _handle_failure(event, action, error_msg, exchange, combined_score):
@@ -640,11 +767,12 @@ async def _handle_failure(event, action, error_msg, exchange, combined_score):
     # ── Angati Event-Driven Semantic Ingestion ────────────────────────
     try:
         from nerves.core.ingest_helper import ingest_semantic_event_bg
+
         ingest_semantic_event_bg(
             text=f"Trade Failed: SignalID={event.signal_id}, Symbol={event.symbol}, "
-                 f"Side={action.upper()}, Qty={req_qty}, Exchange={exchange}, "
-                 f"CombinedScore={combined_score}, Error={error_msg}",
-            category="trade_failure"
+            f"Side={action.upper()}, Qty={req_qty}, Exchange={exchange}, "
+            f"CombinedScore={combined_score}, Error={error_msg}",
+            category="trade_failure",
         )
     except Exception as sra_err:
         log.warning(f"SRA Ingestion warning: {sra_err}")
@@ -652,15 +780,14 @@ async def _handle_failure(event, action, error_msg, exchange, combined_score):
     log.info(f"TradeEngine: Emitting TradeFailed for #{event.signal_id}")
 
     # ── v6.0: Emit failure event (NotificationHub handles notification) ──
-    await _bus.emit(TradeFailed(
-        signal_id=event.signal_id,
-        symbol=event.symbol,
-        side=action.upper(),
-        error=error_msg,
-        quote_qty=req_qty,
-        exchange=exchange,
-        combined_score=combined_score,
-    ))
-
-
-
+    await _bus.emit(
+        TradeFailed(
+            signal_id=event.signal_id,
+            symbol=event.symbol,
+            side=action.upper(),
+            error=error_msg,
+            quote_qty=req_qty,
+            exchange=exchange,
+            combined_score=combined_score,
+        )
+    )

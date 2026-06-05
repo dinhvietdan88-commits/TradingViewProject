@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 # Agent Card Schema (A2A v1.0 compliant)
 # ---------------------------------------------------------------------------
 
+
 def build_agent_card(*, host: str = "localhost", port: int = 9108) -> dict:
     """
     Build the A2A Agent Card for this satellite node.
@@ -50,13 +51,13 @@ def build_agent_card(*, host: str = "localhost", port: int = 9108) -> dict:
         "url": f"http://{host}:{port}",
         "provider": {
             "organization": "Angati Sovereign Brain",
-            "url": "https://github.com/UTP-TRINNETWORK"
+            "url": "https://github.com/UTP-TRINNETWORK",
         },
         "protocols": ["a2a/1.0", "jsonrpc/2.0", "mcp/1.0"],
         "capabilities": {
             "streaming": False,
             "pushNotifications": False,
-            "stateTransitionHistory": True
+            "stateTransitionHistory": True,
         },
         "skills": [
             {
@@ -70,8 +71,8 @@ def build_agent_card(*, host: str = "localhost", port: int = 9108) -> dict:
                 "tags": ["tradingview", "webhook", "signals", "indicator"],
                 "examples": [
                     "Process incoming BTCUSDT signal from TradingView",
-                    "Validate and store RSI alert for ETHUSDT"
-                ]
+                    "Validate and store RSI alert for ETHUSDT",
+                ],
             },
             {
                 "id": "trade-executor",
@@ -84,8 +85,8 @@ def build_agent_card(*, host: str = "localhost", port: int = 9108) -> dict:
                 "tags": ["trading", "execution", "exchange", "binance"],
                 "examples": [
                     "Execute a BUY order for BTCUSDT based on SMA crossover",
-                    "Process stealth alert with exchange routing"
-                ]
+                    "Process stealth alert with exchange routing",
+                ],
             },
             {
                 "id": "scar-memory-query",
@@ -98,8 +99,8 @@ def build_agent_card(*, host: str = "localhost", port: int = 9108) -> dict:
                 "tags": ["memory", "scar", "chromadb", "lessons"],
                 "examples": [
                     "Check if this error pattern has occurred before",
-                    "Retrieve trading lessons for MACD divergence signals"
-                ]
+                    "Retrieve trading lessons for MACD divergence signals",
+                ],
             },
             {
                 "id": "indicator-dashboard",
@@ -112,13 +113,13 @@ def build_agent_card(*, host: str = "localhost", port: int = 9108) -> dict:
                 "tags": ["dashboard", "signals", "monitoring"],
                 "examples": [
                     "Get latest 50 indicator signals",
-                    "Filter signals by symbol BTCUSDT"
-                ]
-            }
+                    "Filter signals by symbol BTCUSDT",
+                ],
+            },
         ],
         "authentication": {
             "schemes": ["bearer"],
-            "credentials": "Use WEBHOOK_SECRET as Bearer token"
+            "credentials": "Use WEBHOOK_SECRET as Bearer token",
         },
         "defaultInputModes": ["application/json"],
         "defaultOutputModes": ["application/json"],
@@ -126,8 +127,8 @@ def build_agent_card(*, host: str = "localhost", port: int = 9108) -> dict:
             "angati_epoch": "V10.0",
             "brain_architecture": "7-Zone Modular (V9)",
             "sovereignty": "ISOLATED (TradingViewProject satellite)",
-            "generated_at": datetime.now(timezone.utc).isoformat()
-        }
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        },
     }
 
 
@@ -140,6 +141,7 @@ def get_agent_card_json(*, host: str = "localhost", port: int = 9108) -> str:
 # ---------------------------------------------------------------------------
 # HTTP Handler mixin (for embedding in a BaseHTTPRequestHandler)
 # ---------------------------------------------------------------------------
+
 
 class AgentCardMixin:
     """

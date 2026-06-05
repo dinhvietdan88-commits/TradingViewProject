@@ -20,23 +20,23 @@ log = logging.getLogger(__name__)
 
 # Paths that NEVER require authentication
 PUBLIC_PATHS = (
-    "/webhook",       # TradingView webhook
-    "/health",        # Health check
-    "/auth/",         # Auth flow itself
-    "/static/",       # Static assets (CSS/JS/images)
+    "/webhook",  # TradingView webhook
+    "/health",  # Health check
+    "/auth/",  # Auth flow itself
+    "/static/",  # Static assets (CSS/JS/images)
     "/favicon.ico",
-    "/docs",          # FastAPI Swagger
+    "/docs",  # FastAPI Swagger
     "/openapi.json",
     "/redoc",
 )
 
 # Paths that require authentication
 PROTECTED_PREFIXES = (
-    "/api/",          # All API endpoints
-    "/dashboard",     # Dashboard page
-    "/studio",        # Studio page
-    "/trades",        # Trade endpoints
-    "/signals",       # Signal endpoints
+    "/api/",  # All API endpoints
+    "/dashboard",  # Dashboard page
+    "/studio",  # Studio page
+    "/trades",  # Trade endpoints
+    "/signals",  # Signal endpoints
     "/screenshots/",  # Screenshot endpoints
 )
 
@@ -93,7 +93,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # ── Lazy-resolve AuthService (supports test injection after startup) ──
         # add_middleware() runs at import time before lifespan, so app.state
         # may not be populated yet. Always prefer the live app.state value.
-        auth_service = getattr(request.app.state, "auth_service", None) or self.auth_service
+        auth_service = (
+            getattr(request.app.state, "auth_service", None) or self.auth_service
+        )
 
         # ── No auth service configured: open access mode ──────────
         if auth_service is None:
@@ -101,6 +103,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         # ── Check if DASHBOARD_TOKEN is empty → open access ───────
         import config as app_config
+
         dashboard_token = getattr(app_config, "DASHBOARD_TOKEN", "")
         if not dashboard_token:
             # No token configured = open access (backward compatible)
@@ -182,9 +185,12 @@ class AuthMiddleware(BaseHTTPMiddleware):
             log.debug(f"Session cookie invalid: {e}")
             return None
 
-    def _refresh_cookie(self, response: Response, session, auth_service=None) -> Response:
+    def _refresh_cookie(
+        self, response: Response, session, auth_service=None
+    ) -> Response:
         """Attach refreshed session cookie to response."""
         from auth.models import SessionMaxLifetimeError
+
         svc = auth_service or self.auth_service
         if svc is None:
             return response

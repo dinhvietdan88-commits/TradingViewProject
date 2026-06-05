@@ -178,4 +178,3 @@ echo ""
 echo "  🔵 Logrotate:  sudo logrotate -v /etc/logrotate.d/tradingbot"
 echo "  📡 UptimeRobot: https://uptimerobot.com/dashboard"
 echo ""
-

@@ -8,10 +8,10 @@ graph TD
     A --> V1["V1: A007+MIS Auto<br/>215 LOC | Strategy<br/>pine_id: USER;58b0b63b"]
     A --> FWD["FWD: ADX25+Trail<br/>165 LOC | Strategy<br/>pine_id: USER;54dfd778"]
     V1 --> V2["V2: A007+MIS V2<br/>278 LOC | Strategy<br/>pine_id: USER;262687db"]
-    
+
     MIS["MIS Indicator Engine<br/>Adaptive EMA Cross"]
     MIS --> V3["V3: MIS(A7-01B.V3)<br/>492 LOC | Indicator<br/>pine_id: USER;672f3da5"]
-    
+
     V1 -.->|"MIS logic embedded"| MIS
     V2 -.->|"MIS logic embedded"| MIS
 
@@ -85,7 +85,7 @@ longCondition = ta.crossover(adaptiveFastEMA, adaptiveSlowEMA) AND barstate.isco
 > **V2 tiến hoá quan trọng nhất so với V1:** Chiến lược **2-Phase Trail**.
 > - Trước TP1: Trail `ATR × 2.5` (lỏng, cho price chạy)
 > - Sau TP1 (đã chốt 50%): Trail siết xuống `ATR × 1.0` (bảo vệ lợi nhuận phần còn lại)
-> 
+>
 > V1 và FWD đều dùng trail cố định `2.5×` suốt vòng đời trade → dễ bị quét stop trước khi TP.
 
 ---
@@ -164,12 +164,12 @@ graph LR
         V1["V1: A007+MIS Auto<br/>❌ Lỗi thời<br/>Không Partial TP<br/>Không Short"]
         FWD["FWD: ADX25+Trail<br/>❌ Backtest only<br/>200% leverage<br/>Không MIS"]
     end
-    
+
     subgraph "🚀 Production (Active Alerts)"
         V2["V2: A007+MIS V2<br/>✅ Main Trade Engine<br/>Partial TP + 2-Phase Trail<br/>Short S1+S2"]
         V3["MIS V3: Webhook<br/>✅ Signal Intelligence<br/>Adaptive EMA + MTF<br/>Forecast Visual"]
     end
-    
+
     V1 -.->|"evolved into"| V2
     FWD -.->|"config tested in"| V2
 

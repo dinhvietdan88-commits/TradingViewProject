@@ -10,6 +10,7 @@ Tests cover:
   - handle_signal_validated: calls ClaudeService.analyze() and emits AnalysisComplete
   - register_handler: wires up the bus subscription
 """
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import dataclass
@@ -19,6 +20,7 @@ import claude_cli.event_handler as eh
 
 
 # ── minimal stubs for events ────────────────────────────────────────────────────
+
 
 @dataclass
 class _SignalValidated:
@@ -55,8 +57,8 @@ class _AnalysisComplete:
     interactive_required: bool = False
 
 
-
 # ── _map_to_analysis_complete ───────────────────────────────────────────────────
+
 
 def _make_response(confidence: int = 7, text: str = "good signal") -> AnalysisResponse:
     return AnalysisResponse(text=text, confidence=confidence, source="claude_cli")
@@ -65,17 +67,20 @@ def _make_response(confidence: int = 7, text: str = "good signal") -> AnalysisRe
 # Actual thresholds from event_handler.py:
 #   should_trade = confidence >= 8
 #   interactive_required = 5 <= confidence < 8
-@pytest.mark.parametrize("confidence,should_trade,interactive", [
-    (8,  True,  False),  # exactly at threshold
-    (9,  True,  False),
-    (10, True,  False),
-    (7,  False, True),   # human-review zone
-    (6,  False, True),
-    (5,  False, True),   # lower bound of review zone
-    (4,  False, False),  # below review zone
-    (1,  False, False),
-    (0,  False, False),
-])
+@pytest.mark.parametrize(
+    "confidence,should_trade,interactive",
+    [
+        (8, True, False),  # exactly at threshold
+        (9, True, False),
+        (10, True, False),
+        (7, False, True),  # human-review zone
+        (6, False, True),
+        (5, False, True),  # lower bound of review zone
+        (4, False, False),  # below review zone
+        (1, False, False),
+        (0, False, False),
+    ],
+)
 def test_map_fields_should_trade_and_interactive(confidence, should_trade, interactive):
     event = _SignalValidated()
     resp = _make_response(confidence=confidence)
@@ -101,8 +106,9 @@ def test_map_combined_score_contains_confidence(confidence):
 
 
 def test_map_copies_event_fields():
-    event = _SignalValidated(signal_id="X42", symbol="ETHUSDT", action="SELL",
-                             price=3100.0, exchange="bybit")
+    event = _SignalValidated(
+        signal_id="X42", symbol="ETHUSDT", action="SELL", price=3100.0, exchange="bybit"
+    )
     resp = _make_response(confidence=8, text="sell signal")
     with patch("claude_cli.event_handler.AnalysisComplete", _AnalysisComplete):
         result = eh._map_to_analysis_complete(event, resp)
@@ -117,19 +123,24 @@ def test_map_copies_event_fields():
 
 # ── handle_signal_validated ─────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_handle_signal_validated_calls_analyze_and_emits():
     svc = AsyncMock(spec=ClaudeService)
-    svc.analyze = AsyncMock(return_value=AnalysisResponse(
-        text="bullish signal [Confidence: 8/10]", confidence=8, source="claude_cli"
-    ))
+    svc.analyze = AsyncMock(
+        return_value=AnalysisResponse(
+            text="bullish signal [Confidence: 8/10]", confidence=8, source="claude_cli"
+        )
+    )
 
     mock_bus = MagicMock()
     mock_bus.emit = AsyncMock()
     # Patch the module-level _service and _bus
-    with patch.object(eh, "_service", svc), \
-         patch.object(eh, "_bus", mock_bus), \
-         patch("config.AI_PROVIDER", "claude_cli"):
+    with (
+        patch.object(eh, "_service", svc),
+        patch.object(eh, "_bus", mock_bus),
+        patch("config.AI_PROVIDER", "claude_cli"),
+    ):
         event = _SignalValidated()
         await eh.handle_signal_validated(event)
 
@@ -150,9 +161,11 @@ async def test_handle_signal_validated_does_not_crash_on_service_error():
     mock_bus = MagicMock()
     mock_bus.emit = AsyncMock()
 
-    with patch.object(eh, "_service", svc), \
-         patch.object(eh, "_bus", mock_bus), \
-         patch("config.AI_PROVIDER", "claude_cli"):
+    with (
+        patch.object(eh, "_service", svc),
+        patch.object(eh, "_bus", mock_bus),
+        patch("config.AI_PROVIDER", "claude_cli"),
+    ):
         try:
             await eh.handle_signal_validated(_SignalValidated())
         except Exception:
@@ -166,9 +179,11 @@ async def test_handle_signal_validated_skips_when_wrong_provider():
     mock_bus = MagicMock()
     mock_bus.emit = AsyncMock()
 
-    with patch.object(eh, "_service", svc), \
-         patch.object(eh, "_bus", mock_bus), \
-         patch("config.AI_PROVIDER", "anthropic"):
+    with (
+        patch.object(eh, "_service", svc),
+        patch.object(eh, "_bus", mock_bus),
+        patch("config.AI_PROVIDER", "anthropic"),
+    ):
         await eh.handle_signal_validated(_SignalValidated())
 
     svc.analyze.assert_not_called()
@@ -177,12 +192,12 @@ async def test_handle_signal_validated_skips_when_wrong_provider():
 
 # ── register_handler ────────────────────────────────────────────────────────────
 
+
 def test_register_handler_sets_service():
     svc = MagicMock(spec=ClaudeService)
     mock_bus = MagicMock()
 
-    with patch.object(eh, "_service", None), \
-         patch.object(eh, "_bus", mock_bus):
+    with patch.object(eh, "_service", None), patch.object(eh, "_bus", mock_bus):
         eh.register_handler(svc)
         # After registration, module-level _service is set
         assert eh._service is svc

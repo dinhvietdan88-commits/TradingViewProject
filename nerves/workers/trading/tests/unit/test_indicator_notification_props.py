@@ -5,14 +5,19 @@ Feature: tradingview-alert-indicator-signal
 Property 16: Info signal notification must contain indicator_name, symbol, conditions, confidence%
 Property 17: confidence_score > 80 → high-priority notification; <= 80 → normal
 """
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
+import sys
+import os
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 
-def _format_info_notification(symbol, indicator_name, conditions_met, confidence_score, exchange="binance"):
+def _format_info_notification(
+    symbol, indicator_name, conditions_met, confidence_score, exchange="binance"
+):
     """Mirror the notification formatting from signal_enricher.py"""
     conditions_str = ", ".join(conditions_met) if conditions_met else "Không có"
     priority_prefix = "🔴 **KHẨN CẤP** — " if confidence_score > 80 else ""
@@ -29,6 +34,7 @@ def _format_info_notification(symbol, indicator_name, conditions_met, confidence
 
 # ── Property 16: Info notification content ───────────────────────────────────
 
+
 @given(
     symbol=st.text(min_size=1, max_size=20),
     indicator_name=st.text(min_size=1, max_size=50),
@@ -36,7 +42,9 @@ def _format_info_notification(symbol, indicator_name, conditions_met, confidence
     confidence=st.integers(min_value=0, max_value=100),
 )
 @settings(max_examples=100)
-def test_prop16_info_notification_content(symbol, indicator_name, conditions, confidence):
+def test_prop16_info_notification_content(
+    symbol, indicator_name, conditions, confidence
+):
     """
     # Feature: tradingview-alert-indicator-signal, Property 16: Info signal notification content
     Notification must contain indicator_name, symbol, all conditions, and confidence as %.
@@ -52,6 +60,7 @@ def test_prop16_info_notification_content(symbol, indicator_name, conditions, co
 
 # ── Property 17: High-priority gate at confidence > 80 ───────────────────────
 
+
 @given(confidence=st.integers(min_value=0, max_value=100))
 @settings(max_examples=101)
 def test_prop17_priority_gate_based_on_confidence(confidence):
@@ -63,6 +72,10 @@ def test_prop17_priority_gate_based_on_confidence(confidence):
     msg = _format_info_notification("BTC", "RSI", ["RSI < 30"], confidence)
 
     if confidence > 80:
-        assert "KHẨN CẤP" in msg, f"Expected high-priority prefix for confidence={confidence}"
+        assert "KHẨN CẤP" in msg, (
+            f"Expected high-priority prefix for confidence={confidence}"
+        )
     else:
-        assert "KHẨN CẤP" not in msg, f"Unexpected high-priority prefix for confidence={confidence}"
+        assert "KHẨN CẤP" not in msg, (
+            f"Unexpected high-priority prefix for confidence={confidence}"
+        )

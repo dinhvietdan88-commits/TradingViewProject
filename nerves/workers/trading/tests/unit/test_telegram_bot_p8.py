@@ -9,6 +9,7 @@ Tests cover:
 - DataQueryFacade.get_daily_stats: aggregates correctly
 - ExchangeQueryFacade.get_balance: fallback to binance_client
 """
+
 import time
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -18,9 +19,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 # G2 REGRESSION GUARD — send_interactive_trade_approval signature
 # ═══════════════════════════════════════════════════════════════
 
+
 def test_send_interactive_trade_approval_returns_list():
     """G2 guard: function must return a list (not bool)."""
     import telegram_bot
+
     hints = {}
     try:
         hints = telegram_bot.send_interactive_trade_approval.__annotations__
@@ -38,6 +41,7 @@ def test_send_interactive_trade_approval_returns_list():
 async def test_send_interactive_trade_approval_no_bot_returns_empty():
     """When _bot_app is None, should return empty list (falsy), not False."""
     import telegram_bot
+
     original = telegram_bot._bot_app
     try:
         telegram_bot._bot_app = None
@@ -84,6 +88,7 @@ async def test_send_interactive_trade_approval_returns_chat_message_pairs():
 # ═══════════════════════════════════════════════════════════════
 # TelegramSender
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_telegram_sender_send_message_broadcasts():
@@ -142,16 +147,16 @@ async def test_telegram_sender_edit_message_returns_false_on_error():
     from telegram_bot import TelegramSender
 
     mock_bot = AsyncMock()
-    mock_bot.edit_message_text = AsyncMock(side_effect=Exception("message not modified"))
+    mock_bot.edit_message_text = AsyncMock(
+        side_effect=Exception("message not modified")
+    )
     mock_app = MagicMock()
     mock_app.bot = mock_bot
 
     sender = TelegramSender(mock_app)
 
     with patch("notifier.sanitize_for_telegram_html", side_effect=lambda x: x):
-        result = await sender.edit_message(
-            chat_id=123, message_id=456, text="updated"
-        )
+        result = await sender.edit_message(chat_id=123, message_id=456, text="updated")
 
     assert result is False
 
@@ -159,6 +164,7 @@ async def test_telegram_sender_edit_message_returns_false_on_error():
 # ═══════════════════════════════════════════════════════════════
 # ApprovalTimeoutManager
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_approval_timeout_manager_track_message():
@@ -172,7 +178,7 @@ async def test_approval_timeout_manager_track_message():
     assert 1 in mgr._tracked
     assert len(mgr._tracked[1]) == 2
     assert mgr._tracked[1][0][0] == 100  # chat_id
-    assert mgr._tracked[1][0][1] == 42   # message_id
+    assert mgr._tracked[1][0][1] == 42  # message_id
 
 
 @pytest.mark.asyncio
@@ -205,8 +211,8 @@ async def test_approval_timeout_manager_check_cycle_expires():
     # Original message should be edited to show expired state
     mock_sender.edit_message.assert_awaited_once()
     edit_call_args = mock_sender.edit_message.call_args[0]
-    assert edit_call_args[0] == 555   # chat_id
-    assert edit_call_args[1] == 88    # message_id
+    assert edit_call_args[0] == 555  # chat_id
+    assert edit_call_args[1] == 88  # message_id
     assert "HẾT HẠN" in edit_call_args[2] or "hết hạn" in edit_call_args[2]
 
 
@@ -235,6 +241,7 @@ async def test_approval_timeout_manager_no_expire_for_fresh():
 # ═══════════════════════════════════════════════════════════════
 # DataQueryFacade
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_data_facade_get_daily_stats_empty():
@@ -299,6 +306,7 @@ async def test_data_facade_get_recent_trades_limit():
 # ExchangeQueryFacade
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_exchange_facade_list_available_no_registry():
     """list_available_exchanges should return ['binance'] when registry unavailable."""
@@ -331,6 +339,7 @@ async def test_exchange_facade_get_open_positions_empty_registry():
 # Circuit Breaker Alert & Callback Handling
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_send_circuit_breaker_alert_broadcasts():
     """send_circuit_breaker_alert should send to all TELEGRAM_CHAT_IDS and return tuples."""
@@ -351,7 +360,7 @@ async def test_send_circuit_breaker_alert_broadcasts():
                 results = await send_circuit_breaker_alert(
                     exchange="weex",
                     symbol="BTCUSDT",
-                    message="circuit breaker triggered"
+                    message="circuit breaker triggered",
                 )
 
         assert isinstance(results, list)
@@ -375,14 +384,14 @@ async def test_button_callback_cbreset():
     mock_query = AsyncMock()
     mock_query.data = "cbreset_weex"
     mock_query.from_user.username = "test_admin"
-    
+
     mock_message = AsyncMock()
     mock_message.text = "Original CB alert text"
     mock_query.message = mock_message
-    
+
     mock_update = MagicMock()
     mock_update.callback_query = mock_query
-    
+
     mock_context = MagicMock()
 
     # Mocks for database functions
@@ -391,11 +400,12 @@ async def test_button_callback_cbreset():
     mock_log_cb = AsyncMock()
     mock_set_setting = AsyncMock()
 
-    with patch("database.get_risk_settings", mock_get_risk_settings), \
-         patch("database.update_circuit_breaker_state", mock_update_state), \
-         patch("database.log_circuit_breaker", mock_log_cb), \
-         patch("database.set_setting", mock_set_setting):
-        
+    with (
+        patch("database.get_risk_settings", mock_get_risk_settings),
+        patch("database.update_circuit_breaker_state", mock_update_state),
+        patch("database.log_circuit_breaker", mock_log_cb),
+        patch("database.set_setting", mock_set_setting),
+    ):
         await button_callback(mock_update, mock_context)
 
     # Asserts
@@ -404,7 +414,7 @@ async def test_button_callback_cbreset():
     mock_update_state.assert_awaited_once_with("weex", "CLOSED")
     mock_set_setting.assert_awaited_once_with("bypass_until_weex", "")
     mock_log_cb.assert_awaited_once()
-    
+
     # Check updated text contains admin info and check mark
     mock_message.edit_text.assert_awaited_once()
     edit_text_call = mock_message.edit_text.call_args[0][0]
@@ -420,14 +430,14 @@ async def test_button_callback_cbbypass():
     mock_query = AsyncMock()
     mock_query.data = "cbbypass_weex"
     mock_query.from_user.username = "test_admin"
-    
+
     mock_message = AsyncMock()
     mock_message.text = "Original CB alert text"
     mock_query.message = mock_message
-    
+
     mock_update = MagicMock()
     mock_update.callback_query = mock_query
-    
+
     mock_context = MagicMock()
 
     # Mocks for database functions
@@ -436,11 +446,12 @@ async def test_button_callback_cbbypass():
     mock_log_cb = AsyncMock()
     mock_set_setting = AsyncMock()
 
-    with patch("database.get_risk_settings", mock_get_risk_settings), \
-         patch("database.update_circuit_breaker_state", mock_update_state), \
-         patch("database.log_circuit_breaker", mock_log_cb), \
-         patch("database.set_setting", mock_set_setting):
-        
+    with (
+        patch("database.get_risk_settings", mock_get_risk_settings),
+        patch("database.update_circuit_breaker_state", mock_update_state),
+        patch("database.log_circuit_breaker", mock_log_cb),
+        patch("database.set_setting", mock_set_setting),
+    ):
         await button_callback(mock_update, mock_context)
 
     # Asserts
@@ -448,22 +459,22 @@ async def test_button_callback_cbbypass():
     mock_get_risk_settings.assert_awaited_once_with("weex")
     mock_update_state.assert_awaited_once_with("weex", "CLOSED")
     mock_set_setting.assert_awaited_once()
-    
+
     # Check that bypass key was set to a valid ISO format string
     set_setting_args = mock_set_setting.call_args[0]
     assert set_setting_args[0] == "bypass_until_weex"
     # It should be an ISO timestamp (e.g. 2026-06-05T08:25:51.123456+00:00)
     assert len(set_setting_args[1]) > 0
     from datetime import datetime
+
     # Try parsing it back to make sure it's valid
     parsed_dt = datetime.fromisoformat(set_setting_args[1])
     assert parsed_dt is not None
-    
+
     mock_log_cb.assert_awaited_once()
-    
+
     # Check updated text contains admin info and bypass emoji
     mock_message.edit_text.assert_awaited_once()
     edit_text_call = mock_message.edit_text.call_args[0][0]
     assert "ĐÃ BYPASS 1H BỞI @test_admin" in edit_text_call
     assert "Original CB alert text" in edit_text_call
-

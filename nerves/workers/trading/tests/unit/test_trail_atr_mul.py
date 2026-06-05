@@ -6,7 +6,6 @@ Verifies that the Chandelier trailing stop multiplier is:
   - Always strictly greater than the initial ATR SL multiplier (trail is wider)
   - Correctly scaled between BTC, ETH, and SOL
 """
-import pytest
 
 from symbol_config import get_symbol_config, SYMBOL_PARAMS
 

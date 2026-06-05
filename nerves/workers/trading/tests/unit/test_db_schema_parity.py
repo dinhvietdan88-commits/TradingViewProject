@@ -8,7 +8,6 @@ không gây lỗi (idempotent).
 import pytest
 import pytest_asyncio
 import aiosqlite
-from unittest.mock import patch
 
 
 @pytest.fixture
@@ -68,8 +67,7 @@ async def test_create_tables_creates_signals_table(initialized_db):
     required_columns = {"id", "symbol", "action", "price", "created_at"}
     missing = required_columns - set(columns)
     assert not missing, (
-        f"signals table missing columns: {missing}. "
-        f"Actual columns: {columns}"
+        f"signals table missing columns: {missing}. Actual columns: {columns}"
     )
 
 
@@ -94,8 +92,7 @@ async def test_create_tables_creates_orders_table(initialized_db):
     required_columns = {"id", "signal_id", "symbol", "side", "status"}
     missing = required_columns - set(columns)
     assert not missing, (
-        f"trades table missing columns: {missing}. "
-        f"Actual columns: {columns}"
+        f"trades table missing columns: {missing}. Actual columns: {columns}"
     )
 
 
@@ -145,6 +142,5 @@ async def test_create_tables_creates_settings_table(initialized_db):
     required_columns = {"key", "value"}
     missing = required_columns - set(columns)
     assert not missing, (
-        f"settings table missing columns: {missing}. "
-        f"Actual columns: {columns}"
+        f"settings table missing columns: {missing}. Actual columns: {columns}"
     )

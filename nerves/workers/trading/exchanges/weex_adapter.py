@@ -9,10 +9,11 @@ import uuid
 import urllib.parse
 from typing import Dict, Any, List, Optional
 
-from .base import ExchangeAdapter, OrderResult, RiskParams, ExchangeError, ExchangeErrorCategory
+from .base import OrderResult, RiskParams, ExchangeError, ExchangeErrorCategory
 import config
 
 log = logging.getLogger(__name__)
+
 
 class WeexAdapter:
     """Weex Contract V2 API adapter implementing ExchangeAdapter protocol."""
@@ -20,14 +21,21 @@ class WeexAdapter:
     TESTNET_URL = "https://api-demo.weex.com"
     MAINNET_URL = "https://api.weex.com"
 
-    def __init__(self, api_key: str, api_secret: str, passphrase: str, testnet: bool, dry_run: bool):
+    def __init__(
+        self,
+        api_key: str,
+        api_secret: str,
+        passphrase: str,
+        testnet: bool,
+        dry_run: bool,
+    ):
         self.api_key = api_key
         self.api_secret = api_secret
         self.passphrase = passphrase
         self.testnet = testnet
         self.dry_run = dry_run
         self.base_url = self.TESTNET_URL if testnet else self.MAINNET_URL
-        
+
         mode = []
         if dry_run:
             mode.append("DRY-RUN")
@@ -54,28 +62,30 @@ class WeexAdapter:
     def supported_order_types(self) -> List[str]:
         return ["MARKET", "LIMIT"]
 
-    def _sign_request(self, method: str, request_path: str, body: str = "") -> Dict[str, str]:
+    def _sign_request(
+        self, method: str, request_path: str, body: str = ""
+    ) -> Dict[str, str]:
         """WEEX HMAC-SHA256 signing payload: timestamp + METHOD + requestPath + body."""
         timestamp = str(int(time.time() * 1000))
         payload = f"{timestamp}{method.upper()}{request_path}{body}"
         mac = hmac.new(
-            self.api_secret.encode('utf-8'),
-            payload.encode('utf-8'),
-            hashlib.sha256
+            self.api_secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256
         )
-        signature = base64.b64encode(mac.digest()).decode('utf-8')
+        signature = base64.b64encode(mac.digest()).decode("utf-8")
         return {
             "ACCESS-KEY": self.api_key,
             "ACCESS-SIGN": signature,
             "ACCESS-TIMESTAMP": timestamp,
             "ACCESS-PASSPHRASE": self.passphrase,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
-    async def _request(self, method: str, endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
+    async def _request(
+        self, method: str, endpoint: str, params: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
         params = params or {}
         method = method.upper()
-        
+
         if method == "GET":
             if params:
                 sorted_params = sorted(params.items())
@@ -87,28 +97,40 @@ class WeexAdapter:
         else:
             request_path = endpoint
             if params:
-                body_str = json.dumps(params, separators=(',', ':'))
+                body_str = json.dumps(params, separators=(",", ":"))
             else:
                 body_str = ""
-                
+
         headers = self._sign_request(method, request_path, body_str)
         url = f"{self.base_url}{request_path}"
-        
+
         async with aiohttp.ClientSession() as session:
             try:
                 if method == "GET":
                     async with session.get(url, headers=headers) as resp:
                         if resp.status >= 400:
-                            raise ExchangeError(ExchangeErrorCategory.CONNECTION_ERROR, f"HTTP Error {resp.status}", str(resp.status), self.exchange_name)
+                            raise ExchangeError(
+                                ExchangeErrorCategory.CONNECTION_ERROR,
+                                f"HTTP Error {resp.status}",
+                                str(resp.status),
+                                self.exchange_name,
+                            )
                         data = await resp.json()
                 elif method == "POST":
-                    async with session.post(url, data=body_str, headers=headers) as resp:
+                    async with session.post(
+                        url, data=body_str, headers=headers
+                    ) as resp:
                         if resp.status >= 400:
-                            raise ExchangeError(ExchangeErrorCategory.CONNECTION_ERROR, f"HTTP Error {resp.status}", str(resp.status), self.exchange_name)
+                            raise ExchangeError(
+                                ExchangeErrorCategory.CONNECTION_ERROR,
+                                f"HTTP Error {resp.status}",
+                                str(resp.status),
+                                self.exchange_name,
+                            )
                         data = await resp.json()
                 else:
                     raise ValueError(f"Unsupported method {method}")
-                
+
                 code = data.get("code")
                 if code != "00000":
                     msg = data.get("msg", "")
@@ -120,24 +142,38 @@ class WeexAdapter:
                         category = ExchangeErrorCategory.INVALID_SYMBOL
                     elif "rate limit" in lower_msg or "too many requests" in lower_msg:
                         category = ExchangeErrorCategory.RATE_LIMITED
-                    elif "auth" in lower_msg or "sign" in lower_msg or "key" in lower_msg:
+                    elif (
+                        "auth" in lower_msg or "sign" in lower_msg or "key" in lower_msg
+                    ):
                         category = ExchangeErrorCategory.AUTHENTICATION_ERROR
-                    raise ExchangeError(category, f"Weex Error [{code}]: {msg}", code, self.exchange_name)
-                    
+                    raise ExchangeError(
+                        category,
+                        f"Weex Error [{code}]: {msg}",
+                        code,
+                        self.exchange_name,
+                    )
+
                 return data
             except aiohttp.ClientError as e:
-                raise ExchangeError(ExchangeErrorCategory.CONNECTION_ERROR, str(e), None, self.exchange_name)
+                raise ExchangeError(
+                    ExchangeErrorCategory.CONNECTION_ERROR,
+                    str(e),
+                    None,
+                    self.exchange_name,
+                )
 
     async def get_account_balance(self, asset: str = "USDT") -> float:
         if self.dry_run:
             return 10000.0
-        
+
         try:
-            data = await self._request("GET", "/api/v2/contract/account/accounts", {"marginCoin": asset})
+            data = await self._request(
+                "GET", "/api/v2/contract/account/accounts", {"marginCoin": asset}
+            )
             account_data = data.get("data")
             if not account_data:
                 return 0.0
-            
+
             if isinstance(account_data, list):
                 for acc in account_data:
                     if acc.get("marginCoin") == asset:
@@ -145,7 +181,7 @@ class WeexAdapter:
             elif isinstance(account_data, dict):
                 if account_data.get("marginCoin") == asset:
                     return float(account_data.get("available", 0.0))
-            
+
             return 0.0
         except Exception as e:
             log.error(f"Error fetching Weex account balance: {e}")
@@ -154,14 +190,22 @@ class WeexAdapter:
     async def get_symbol_info(self, symbol: str) -> Dict[str, Any]:
         if self.dry_run:
             return {"symbol": symbol, "status": "Trading"}
-            
+
         # Weex Contract V2 symbol info
-        data = await self._request("GET", "/api/v2/contract/public/symbols", {"symbol": symbol})
+        data = await self._request(
+            "GET", "/api/v2/contract/public/symbols", {"symbol": symbol}
+        )
         return data.get("data", {})
 
     async def get_active_symbols(self) -> List[str]:
         if self.dry_run:
-            return ["BTCUSDT_UMCBL", "ETHUSDT_UMCBL", "SOLUSDT_UMCBL", "ADAUSDT_UMCBL", "XRPUSDT_UMCBL"]
+            return [
+                "BTCUSDT_UMCBL",
+                "ETHUSDT_UMCBL",
+                "SOLUSDT_UMCBL",
+                "ADAUSDT_UMCBL",
+                "XRPUSDT_UMCBL",
+            ]
         try:
             data = await self._request("GET", "/api/v2/contract/public/symbols")
             symbols_list = data.get("data", [])
@@ -179,7 +223,9 @@ class WeexAdapter:
     async def get_ticker_price(self, symbol: str) -> float:
         try:
             clean_symbol = symbol.replace("_UMCBL", "")
-            data = await self._request("GET", "/api/v1/spot/market/ticker", {"symbol": clean_symbol})
+            data = await self._request(
+                "GET", "/api/v1/spot/market/ticker", {"symbol": clean_symbol}
+            )
             ticker_data = data.get("data", {})
             if isinstance(ticker_data, dict):
                 return float(ticker_data.get("last", 0.0))
@@ -190,7 +236,9 @@ class WeexAdapter:
         return 67500.0
 
     async def place_market_order(
-        self, symbol: str, side: str,
+        self,
+        symbol: str,
+        side: str,
         quote_qty: Optional[float] = None,
         base_qty: Optional[float] = None,
     ) -> Dict[str, Any]:
@@ -209,16 +257,16 @@ class WeexAdapter:
 
         if not size_val:
             size_val = 0.001
-            
+
         params = {
             "symbol": symbol,
             "marginCoin": "USDT",
             "side": weex_side,
             "orderType": "market",
             "size": str(round(size_val, 4)),
-            "clientOid": f"WEX-{uuid.uuid4().hex[:8]}"
+            "clientOid": f"WEX-{uuid.uuid4().hex[:8]}",
         }
-        
+
         if self.dry_run:
             fill_price = 67500.0
             return {
@@ -226,20 +274,24 @@ class WeexAdapter:
                 "executedQty": str(round(size_val, 4)),
                 "cummulativeQuoteQty": str(round(size_val * fill_price, 2)),
                 "status": "FILLED",
-                "_dry_run": True
+                "_dry_run": True,
             }
-            
+
         data = await self._request("POST", "/api/v2/contract/trade/order", params)
         res = data.get("data", {})
         return {
             "orderId": res.get("orderId"),
             "executedQty": params.get("size"),
-            "cummulativeQuoteQty": str(round(float(params.get("size")) * 67500.0, 2))
+            "cummulativeQuoteQty": str(round(float(params.get("size")) * 67500.0, 2)),
         }
 
     async def place_oco_order(
-        self, symbol: str, side: str, quantity: float,
-        take_profit_price: float, stop_price: float,
+        self,
+        symbol: str,
+        side: str,
+        quantity: float,
+        take_profit_price: float,
+        stop_price: float,
         stop_limit_price: float,
     ) -> Dict[str, Any]:
         if self.dry_run:
@@ -247,7 +299,7 @@ class WeexAdapter:
                 "orderListId": f"DRY-WEX-OCO-{uuid.uuid4().hex[:8]}",
                 "orders": [],
                 "type": "SIMULATED_OCO",
-                "_dry_run": True
+                "_dry_run": True,
             }
 
         # Map side
@@ -265,7 +317,7 @@ class WeexAdapter:
             "orderType": "limit",
             "price": str(round(take_profit_price, 2)),
             "size": str(round(quantity, 4)),
-            "clientOid": f"WEX-TP-{uuid.uuid4().hex[:8]}"
+            "clientOid": f"WEX-TP-{uuid.uuid4().hex[:8]}",
         }
         tp_res = await self._request("POST", "/api/v2/contract/trade/order", tp_params)
         tp_order_id = tp_res.get("data", {}).get("orderId")
@@ -273,7 +325,7 @@ class WeexAdapter:
         return {
             "orderListId": tp_order_id or f"WEX-SIM-OCO-{uuid.uuid4().hex[:8]}",
             "tp_order_id": tp_order_id,
-            "type": "SIMULATED_OCO"
+            "type": "SIMULATED_OCO",
         }
 
     async def place_limit_order(
@@ -292,7 +344,7 @@ class WeexAdapter:
             "orderType": "limit",
             "price": str(round(price, 4)),
             "size": str(round(quantity, 4)),
-            "clientOid": f"WEX-{uuid.uuid4().hex[:8]}"
+            "clientOid": f"WEX-{uuid.uuid4().hex[:8]}",
         }
         if self.dry_run:
             return {
@@ -300,20 +352,21 @@ class WeexAdapter:
                 "status": "NEW",
                 "price": str(price),
                 "size": str(quantity),
-                "_dry_run": True
+                "_dry_run": True,
             }
         data = await self._request("POST", "/api/v2/contract/trade/order", params)
         res = data.get("data", {})
-        return {
-            "orderId": res.get("orderId"),
-            "status": "NEW"
-        }
+        return {"orderId": res.get("orderId"), "status": "NEW"}
 
     async def get_order(self, symbol: str, order_id: str) -> Dict[str, Any]:
         if self.dry_run:
             return {"status": "NEW"}
         try:
-            data = await self._request("GET", "/api/v2/contract/trade/orderInfo", {"symbol": symbol, "orderId": order_id})
+            data = await self._request(
+                "GET",
+                "/api/v2/contract/trade/orderInfo",
+                {"symbol": symbol, "orderId": order_id},
+            )
             res = data.get("data", {})
             state = res.get("state", "new")
             return {"status": "FILLED" if state == "filled" else "NEW"}
@@ -323,14 +376,20 @@ class WeexAdapter:
     async def cancel_order(self, symbol: str, order_id: str) -> Dict[str, Any]:
         if self.dry_run:
             return {"status": "CANCELED"}
-        await self._request("POST", "/api/v2/contract/trade/cancel-order", {"symbol": symbol, "orderId": order_id})
+        await self._request(
+            "POST",
+            "/api/v2/contract/trade/cancel-order",
+            {"symbol": symbol, "orderId": order_id},
+        )
         return {"status": "CANCELED"}
 
     async def cancel_oco_order(self, symbol: str, order_list_id: str) -> Dict[str, Any]:
         return await self.cancel_order(symbol, order_list_id)
 
     async def execute_smart_order(
-        self, symbol: str, side: str,
+        self,
+        symbol: str,
+        side: str,
         entry_price: Optional[float] = None,
         quote_qty: Optional[float] = None,
         sl_pct: Optional[float] = None,
@@ -344,7 +403,7 @@ class WeexAdapter:
         symbol_clean = symbol.upper()
         if not symbol_clean.endswith("_UMCBL"):
             symbol_clean += "_UMCBL"
-            
+
         side_upper = side.upper()
         sl_pct = sl_pct or config.STOP_LOSS_PCT
         tp_pct = tp_pct or config.TAKE_PROFIT_PCT
@@ -352,25 +411,29 @@ class WeexAdapter:
 
         try:
             balance = await self.get_account_balance(asset)
-            
+
             if side_upper == "BUY":
                 sl = entry_price * (1 - sl_pct)
                 tp = entry_price * (1 + tp_pct)
             else:
                 sl = entry_price * (1 + sl_pct)
                 tp = entry_price * (1 - tp_pct)
-                
+
             sl_price = sl_price or sl
             tp_price = tp_price or tp
-            rr_ratio = abs(tp_price - entry_price) / abs(sl_price - entry_price) if abs(sl_price - entry_price) > 0 else 0
-            
+            rr_ratio = (
+                abs(tp_price - entry_price) / abs(sl_price - entry_price)
+                if abs(sl_price - entry_price) > 0
+                else 0
+            )
+
             risk_amount = balance * risk_pct
             distance = abs(entry_price - sl_price)
             qty = risk_amount / distance if distance > 0 else 0.001
             if quote_qty:
                 qty = quote_qty / entry_price if entry_price > 0 else qty
             cost = qty * entry_price
-            
+
             # Enforce micro-volume minimum and value range checks
             symbol_upper = symbol_clean.upper()
             if "BTC" in symbol_upper:
@@ -405,11 +468,17 @@ class WeexAdapter:
 
             # 4. entry
             if order_type.upper() == "LIMIT":
-                entry_result = await self.place_limit_order(symbol_clean, side_upper, price=entry_price, quantity=qty)
+                entry_result = await self.place_limit_order(
+                    symbol_clean, side_upper, price=entry_price, quantity=qty
+                )
             elif quote_qty:
-                entry_result = await self.place_market_order(symbol_clean, side_upper, quote_qty=quote_qty)
+                entry_result = await self.place_market_order(
+                    symbol_clean, side_upper, quote_qty=quote_qty
+                )
             else:
-                entry_result = await self.place_market_order(symbol_clean, side_upper, base_qty=qty)
+                entry_result = await self.place_market_order(
+                    symbol_clean, side_upper, base_qty=qty
+                )
 
             # Get actual fill price from entry
             exec_qty = float(entry_result.get("executedQty", qty))
@@ -430,7 +499,7 @@ class WeexAdapter:
 
             exit_side = "SELL" if side_upper == "BUY" else "BUY"
             stop_limit = sl_price * 0.995 if exit_side == "SELL" else sl_price * 1.005
-            
+
             try:
                 oco_result = await self.place_oco_order(
                     symbol=symbol_clean,
@@ -441,16 +510,20 @@ class WeexAdapter:
                     stop_limit_price=stop_limit,
                 )
             except Exception as oco_err:
-                log.error(f"Weex OCO order placement failed: {oco_err}. Cancelling entry order {entry_result.get('orderId')} to prevent orphan position.")
+                log.error(
+                    f"Weex OCO order placement failed: {oco_err}. Cancelling entry order {entry_result.get('orderId')} to prevent orphan position."
+                )
                 try:
                     await self.cancel_order(symbol_clean, entry_result.get("orderId"))
                 except Exception as cancel_err:
-                    log.error(f"Failed to cancel entry order after OCO failure: {cancel_err}")
+                    log.error(
+                        f"Failed to cancel entry order after OCO failure: {cancel_err}"
+                    )
                 raise ExchangeError(
                     ExchangeErrorCategory.ORDER_REJECTED,
                     f"OCO placement failed: {oco_err}. Entry order cancelled.",
                     None,
-                    self.exchange_name
+                    self.exchange_name,
                 )
 
             return OrderResult(
@@ -463,7 +536,7 @@ class WeexAdapter:
                 oco_order=oco_result,
                 risk=risk_params,
             )
-            
+
         except ExchangeError as e:
             return OrderResult(
                 success=False,
@@ -472,7 +545,7 @@ class WeexAdapter:
                 symbol=symbol_clean,
                 exchange=self.exchange_name,
                 error=str(e),
-                error_category=e.category
+                error_category=e.category,
             )
         except Exception as e:
             return OrderResult(
@@ -482,7 +555,7 @@ class WeexAdapter:
                 symbol=symbol_clean,
                 exchange=self.exchange_name,
                 error=str(e),
-                error_category=ExchangeErrorCategory.UNKNOWN
+                error_category=ExchangeErrorCategory.UNKNOWN,
             )
 
     async def health_check(self) -> Dict[str, Any]:
@@ -494,4 +567,3 @@ class WeexAdapter:
             return {"healthy": True, "latency_ms": round(latency, 1), "error": None}
         except Exception as e:
             return {"healthy": False, "latency_ms": 0, "error": str(e)}
-

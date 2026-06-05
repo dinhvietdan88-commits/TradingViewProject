@@ -5,7 +5,6 @@ test_env_parity.py — Kiểm tra sự đồng bộ giữa .env.example và conf
 trong config.py, và không có os.getenv() nào thiếu fallback nguy hiểm.
 """
 
-import os
 import re
 import pytest
 from pathlib import Path
@@ -26,21 +25,21 @@ ENV_EXAMPLE_CANDIDATES = [
 # Known exceptions: vars intentionally used by subsystems, not config.py
 # These vars are read directly in their respective modules/agents
 ALLOWED_NOT_IN_CONFIG = {
-    "OPENAI_API_KEY",          # Optional, no default needed
-    "FORCE_LIVE_TRADING",      # Safety override, intentionally no default
-    "ANGATI_AGENTS_ROOT",      # Used by angati satellite, not server config
-    "ANGATI_BUS_BIND",         # Used by angati satellite, not server config
-    "LOG_LEVEL",               # Used by logging_config.py directly
-    "LOG_MAX_SIZE_MB",         # Used by logging_config.py directly
-    "LOG_BACKUP_COUNT",        # Used by logging_config.py directly
-    "LOG_JSON_FORMAT",         # Used by logging_config.py directly
-    "SERVER_A_HEALTH_URL",     # Used by monitor.py directly
-    "SERVER_B_HEALTH_URL",     # Used by monitor.py directly
+    "OPENAI_API_KEY",  # Optional, no default needed
+    "FORCE_LIVE_TRADING",  # Safety override, intentionally no default
+    "ANGATI_AGENTS_ROOT",  # Used by angati satellite, not server config
+    "ANGATI_BUS_BIND",  # Used by angati satellite, not server config
+    "LOG_LEVEL",  # Used by logging_config.py directly
+    "LOG_MAX_SIZE_MB",  # Used by logging_config.py directly
+    "LOG_BACKUP_COUNT",  # Used by logging_config.py directly
+    "LOG_JSON_FORMAT",  # Used by logging_config.py directly
+    "SERVER_A_HEALTH_URL",  # Used by monitor.py directly
+    "SERVER_B_HEALTH_URL",  # Used by monitor.py directly
     "NTP_DRIFT_THRESHOLD_MS",  # Used by monitor.py directly
-    "DISK_WARNING_THRESHOLD_PCT",   # Used by monitor.py directly
+    "DISK_WARNING_THRESHOLD_PCT",  # Used by monitor.py directly
     "DISK_CRITICAL_THRESHOLD_PCT",  # Used by monitor.py directly
-    "LIVENESS_ALERT_AFTER_FAILURES", # Used by monitor.py directly
-    "LONG_POLL_TIMEOUT_SEC",   # Used by vbs worker directly
+    "LIVENESS_ALERT_AFTER_FAILURES",  # Used by monitor.py directly
+    "LONG_POLL_TIMEOUT_SEC",  # Used by vbs worker directly
 }
 
 # ALLOWED_NO_DEFAULT: secrets that must NOT have defaults in source code
@@ -98,7 +97,9 @@ def test_env_example_exists():
             f"{[str(p) for p in ENV_EXAMPLE_CANDIDATES]}. "
             f"This is acceptable if the project uses a different env management approach."
         )
-    assert env_path.is_file(), f".env.example exists but is not a regular file: {env_path}"
+    assert env_path.is_file(), (
+        f".env.example exists but is not a regular file: {env_path}"
+    )
 
 
 # ── Test 2: Tất cả env keys đều có default trong config.py ────────────
@@ -123,7 +124,15 @@ def test_all_env_keys_have_config_defaults():
 
     # Scan specific source dirs only (skip tests/, __pycache__, venv, node_modules)
     server_dir = Path(__file__).resolve().parent.parent.parent
-    EXCLUDE_DIRS = {"tests", "__pycache__", ".venv", "venv", "node_modules", ".git", "site-packages"}
+    EXCLUDE_DIRS = {
+        "tests",
+        "__pycache__",
+        ".venv",
+        "venv",
+        "node_modules",
+        ".git",
+        "site-packages",
+    }
 
     all_python_src = ""
     for py_file in server_dir.rglob("*.py"):
@@ -131,7 +140,9 @@ def test_all_env_keys_have_config_defaults():
         if any(part in EXCLUDE_DIRS for part in py_file.parts):
             continue
         try:
-            all_python_src += py_file.read_text(encoding="utf-8", errors="replace") + "\n"
+            all_python_src += (
+                py_file.read_text(encoding="utf-8", errors="replace") + "\n"
+            )
         except Exception:
             pass
 
@@ -141,7 +152,9 @@ def test_all_env_keys_have_config_defaults():
     keys_in_codebase = set(getenv_any.findall(all_python_src))
 
     # Also detect indirect pattern: _xxx_var = "KEY" (used by BINANCE_DRY_RUN)
-    indirect_pattern = re.compile(r'=\s*["\']([A-Z_][A-Z_0-9]+)["\']\s*\n[^\n]*os\.getenv\(')
+    indirect_pattern = re.compile(
+        r'=\s*["\']([A-Z_][A-Z_0-9]+)["\']\s*\n[^\n]*os\.getenv\('
+    )
     for match in indirect_pattern.finditer(all_python_src):
         keys_in_codebase.add(match.group(1))
 
@@ -174,9 +187,7 @@ def test_no_bare_getenv_without_default():
     # Match os.getenv("KEY") — specifically where the closing paren comes
     # right after the string, with no comma for a second argument.
     # Pattern: os.getenv("KEY") but NOT os.getenv("KEY", ...)
-    bare_getenv = re.compile(
-        r'os\.getenv\(\s*["\']([^"\']+)["\']\s*\)'
-    )
+    bare_getenv = re.compile(r'os\.getenv\(\s*["\']([^"\']+)["\']\s*\)')
 
     all_bare = bare_getenv.findall(config_src)
 

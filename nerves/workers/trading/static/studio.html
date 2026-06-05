@@ -190,7 +190,7 @@
       margin-left: 12px;
       font-family: var(--mono);
     }
-    
+
     /* Telegram HTML style mapping in preview */
     .tg-bubble b, .tg-bubble strong {
       color: #ffffff;
@@ -254,7 +254,7 @@
       cursor: not-allowed;
       transform: none;
     }
-    
+
     .btn-reset-template {
       padding: 10px 16px;
       border-radius: 8px;
@@ -375,7 +375,7 @@
 
 <main class="container">
   <div class="studio-grid">
-    
+
     <!-- LEFT: AI VISION CAPTURE STUDIO -->
     <div class="studio-vision-card">
       <section class="glass-section" style="margin-bottom: 0;">
@@ -383,7 +383,7 @@
           <div class="section-title">👁 AI Vision Capture Studio</div>
           <span class="live-dot-wrap"><span class="live-dot"></span> LIVE</span>
         </div>
-        
+
         <div class="daemon-health-bar mb-16">
           <div class="daemon-health-info">
             <span class="health-dot" id="daemonHealthDot"></span>
@@ -420,7 +420,7 @@
           </div>
           <img id="screenshotImg" class="d-none" src="" alt="Captured Chart">
         </div>
-        
+
         <div class="cs-verdict-card d-none" id="studioVerdictCard" style="margin-top: 14px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); padding: 12px; border-radius: 8px;">
           <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
             <span style="font-weight: 700;" id="studioVerdictSym">—</span>
@@ -547,7 +547,7 @@
       options.headers = options.headers || {};
       options.headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     try {
       const res = await fetch(url, options);
       if (res.status === 401) {
@@ -602,16 +602,16 @@
   function loadCurrentTabContent() {
     const ta = document.getElementById('templateTextarea');
     if (!ta) return;
-    
+
     ta.value = currentTemplates[currentTab];
-    
+
     // Update badge variables guide
     const badgeList = document.getElementById('variablesBadgeList');
     const vars = VARIABLES_MAP[currentTab] || [];
-    badgeList.innerHTML = vars.map(v => 
+    badgeList.innerHTML = vars.map(v =>
       `<span class="variable-badge" onclick="insertVariable('${v}')">{${v}}</span>`
     ).join('');
-    
+
     updateLivePreview();
   }
 
@@ -623,12 +623,12 @@
     }
 
     currentTab = tabId;
-    
+
     // Update active UI classes
     document.querySelectorAll('.template-tab-btn').forEach(btn => {
       btn.classList.remove('active');
     });
-    
+
     // Find the clicked button by its onclick function parameter
     const buttons = Array.from(document.querySelectorAll('.template-tab-btn'));
     const targetBtn = buttons.find(b => b.getAttribute('onclick').includes(`'${tabId}'`));
@@ -654,19 +654,19 @@
   function updateLivePreview() {
     const ta = document.getElementById('templateTextarea');
     if (!ta) return;
-    
+
     const text = ta.value;
     currentTemplates[currentTab] = text;
-    
+
     // Custom Telegram HTML formatter
     let output = text;
-    
+
     // Escape HTML first
     output = output
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
-      
+
     // Restore Telegram safe formatting tags
     output = output
       .replace(/&lt;b&gt;/g, "<b>").replace(/&lt;\/b&gt;/g, "</b>")
@@ -690,7 +690,7 @@
     output = output.replace(/\n/g, "<br>");
 
     document.getElementById('tgBubbleContent').innerHTML = output || '<span style="color: var(--text-muted); font-style: italic;">(Mẫu trống)</span>';
-    
+
     // Set time
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, '0');
@@ -714,7 +714,7 @@
     const btn = document.getElementById('saveTemplatesBtn');
     const icon = document.getElementById('saveBtnIcon');
     const txt = document.getElementById('saveBtnText');
-    
+
     btn.disabled = true;
     icon.textContent = '⏳';
     txt.textContent = 'Đang lưu...';
@@ -742,7 +742,7 @@
     const dot = document.getElementById('daemonHealthDot');
     const text = document.getElementById('daemonHealthText');
     if (!dot || !text) return;
-    
+
     const data = await apiFetch('/api/mcp/status');
     if (data && data.enabled) {
       if (data.connected) {
@@ -764,7 +764,7 @@
 
     const sym = document.getElementById('capSymbol')?.value.trim() || 'BTCUSDT';
     const tf = document.getElementById('capTimeframe')?.value || '240';
-    
+
     const btn = document.getElementById('triggerCapBtn');
     const icon = document.getElementById('triggerCapIcon');
     const txt = document.getElementById('triggerCapText');
@@ -792,7 +792,7 @@
 
     if (data && data.status === 'ok') {
       showToast(`✅ Capture thành công ${sym}!`, 'success');
-      
+
       placeholder.classList.add('d-none');
       if (data.screenshot_url) {
         img.src = data.screenshot_url;
@@ -805,12 +805,12 @@
       // Display verdict summary
       verdictCard.classList.remove('d-none');
       document.getElementById('studioVerdictSym').textContent = `${data.symbol} (${data.timeframe || tf})`;
-      
+
       const vVal = document.getElementById('studioVerdictVal');
       vVal.textContent = data.verdict || 'HOLD';
       const verdictColor = (data.verdict || '').includes('STRONG') ? 'var(--buy)' : (data.verdict || '').includes('AVOID') ? 'var(--sell)' : 'var(--warn)';
       vVal.style.color = verdictColor;
-      
+
       document.getElementById('studioAnalysisText').textContent = data.ai_analysis || 'No summary available.';
     } else {
       placeholder.classList.remove('d-none');
@@ -830,11 +830,11 @@
   document.addEventListener('DOMContentLoaded', () => {
     updateClock();
     setInterval(updateClock, 1000);
-    
+
     // Check if token exists or if redirect is handled by middleware
     const token = localStorage.getItem('dashboard_token');
     // If not config token, let AuthMiddleware session handle it.
-    
+
     loadTemplates();
     checkDaemonHealth();
   });

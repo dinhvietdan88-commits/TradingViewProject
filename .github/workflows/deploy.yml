@@ -97,7 +97,7 @@ jobs:
           # ── Safety Net 1: [force deploy] in commit message ──
           MSG=$(git log -1 --format=%s)
           PARENTS=$(git rev-list --parents -1 HEAD | wc -w)
-          
+
           if [[ "$MSG" == *"[force deploy]"* ]] || [ "$PARENTS" -gt 2 ]; then
             echo "🔴 Safety net triggered: force deploy or merge commit"
             echo "server_a_tier=2" >> $GITHUB_OUTPUT
@@ -105,7 +105,7 @@ jobs:
             echo "server_c_tier=2" >> $GITHUB_OUTPUT
             exit 0
           fi
-          
+
           # ── Per-file tier mapping ──
           CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || echo "")
           if [ -z "$CHANGED" ]; then
@@ -115,9 +115,9 @@ jobs:
             echo "server_c_tier=2" >> $GITHUB_OUTPUT
             exit 0
           fi
-          
+
           A=0; B=0; C=0
-          
+
           while IFS= read -r f; do
             case "$f" in
               vbs/*)                              [[ $A -lt 2 ]] && A=2 ;;
@@ -144,7 +144,7 @@ jobs:
                 [[ $C -lt 1 ]] && C=1 ;;
             esac
           done <<< "$CHANGED"
-          
+
           echo "server_a_tier=$A" >> $GITHUB_OUTPUT
           echo "server_b_tier=$B" >> $GITHUB_OUTPUT
           echo "server_c_tier=$C" >> $GITHUB_OUTPUT
@@ -394,7 +394,7 @@ jobs:
             PULL_OUTPUT=$(git pull origin main 2>&1)
             echo "$PULL_OUTPUT"
             NEW_SHA=$(git rev-parse HEAD)
-            
+
             # Backup database if container is running
             if docker ps --format '{{.Names}}' | grep -q "^tradingbot-vbs$"; then
               echo "📦 Backing up SQLite database..."
@@ -409,7 +409,7 @@ jobs:
                 fi
               done
             fi
-            
+
             # Nếu code không đổi → skip pull & restart, health check only
             if [ "$OLD_SHA" = "$NEW_SHA" ]; then
               echo "📎 No new commits — skipping pull"
@@ -420,7 +420,7 @@ jobs:
               fi
               echo "⚠️ No changes but service unhealthy — restarting..."
             fi
-            
+
             # ── Tier-based deploy logic ──
             if [ "$DEPLOY_TIER" = "2" ]; then
               # Tier 2: Full deploy — docker pull + up
@@ -435,14 +435,14 @@ jobs:
               echo "🔄 Tier 1: Light restart (config refresh)"
               docker compose -f deploy/docker-compose.server-a.yml restart
             fi
-            
+
             # Restore/Import database from backup if it exists
             if [ -f /tmp/signal_queue.db.bak ]; then
               echo "📦 Restoring database into container..."
               docker cp /tmp/signal_queue.db.bak tradingbot-vbs:/app/data/signal_queue.db || true
               docker compose -f deploy/docker-compose.server-a.yml restart
             fi
-            
+
             echo "🔍 Testing Gateway Health..."
             for i in {1..10}; do
               if curl -sf http://localhost:5000/health > /dev/null; then
@@ -490,7 +490,7 @@ jobs:
             echo "🔄 Reverting Server A to $ROLLBACK_SHA..."
             git checkout $ROLLBACK_SHA
             docker compose -f deploy/docker-compose.server-a.yml up -d
-            
+
             # Restore database backup if it exists
             if [ -f /tmp/signal_queue.db.bak ]; then
               echo "📦 Restoring database backup..."
@@ -567,7 +567,7 @@ jobs:
             PULL_OUTPUT=$(git pull origin main 2>&1)
             echo "$PULL_OUTPUT"
             NEW_SHA=$(git rev-parse HEAD)
-            
+
             # Nếu code không đổi → skip pull & restart, health check only
             if [ "$OLD_SHA" = "$NEW_SHA" ]; then
               echo "📎 No new commits — skipping pull"
@@ -577,7 +577,7 @@ jobs:
               fi
               echo "⚠️ No changes but service unhealthy — restarting..."
             fi
-            
+
             # ── Tier-based deploy logic ──
             if [ -f deploy/docker-compose.server-c.yml ]; then
               if [ "$DEPLOY_TIER" = "2" ]; then
@@ -601,10 +601,10 @@ jobs:
                 docker compose -f deploy/docker-compose.server-c.yml restart
               fi
             fi
-            
+
             # ── agy-bridge sidecar (host-level Gemini proxy) ──────────
             echo "🔧 Setting up agy-bridge sidecar..."
-            
+
             # Ensure Python 3.11 is available for google-antigravity
             if command -v python3.11 &>/dev/null; then
               PY=python3.11
@@ -614,21 +614,21 @@ jobs:
               echo "⚠️ No Python3 found — skipping agy-bridge"
               PY=""
             fi
-            
+
             if [ -n "$PY" ] && [ -f deploy/agy-bridge.py ]; then
               # Install dependencies (idempotent)
               $PY -m pip install --user --quiet fastapi uvicorn google-genai 2>&1 | tail -2
-              
+
               # Try google-antigravity (needs Python 3.10+)
               $PY -m pip install --user --quiet google-antigravity 2>&1 | tail -1 || true
-              
+
               # Create .env.agy if missing
               if [ ! -f deploy/.env.agy ]; then
                 GEMINI_KEY=$(grep "^GEMINI_API_KEY=" deploy/.env 2>/dev/null | cut -d= -f2- || echo "")
                 printf "ANTIGRAVITY_API_KEY=%s\nGEMINI_API_KEY=%s\n" "${GEMINI_KEY:-REPLACE_ME}" "${GEMINI_KEY:-REPLACE_ME}" > deploy/.env.agy
                 chmod 600 deploy/.env.agy
               fi
-              
+
               # Inject AGY_BRIDGE_SECRET from GitHub Secrets (idempotent)
               if [ -n "$AGY_BRIDGE_SECRET" ]; then
                 sed -i '/^AGY_BRIDGE_SECRET=/d' deploy/.env.agy deploy/.env 2>/dev/null || true
@@ -636,7 +636,7 @@ jobs:
                 echo "AGY_BRIDGE_SECRET=$AGY_BRIDGE_SECRET" >> deploy/.env
                 echo "✅ AGY_BRIDGE_SECRET injected into .env.agy + .env"
               fi
-              
+
               # Deploy agy CLI security settings (deny list for --sandbox mode)
               if [ -f deploy/agy-settings.json ]; then
                 AGY_SETTINGS_DIR="$HOME/.gemini/antigravity-cli"
@@ -644,12 +644,12 @@ jobs:
                 cp deploy/agy-settings.json "$AGY_SETTINGS_DIR/settings.json"
                 echo "✅ agy settings.json deployed (sandbox deny list)"
               fi
-              
+
               # Update systemd service (ExecStart uses detected Python)
               PY_PATH=$(command -v $PY)
               sed "s|ExecStart=.*python.*agy-bridge.py|ExecStart=${PY_PATH} $(pwd)/deploy/agy-bridge.py|" \
                 deploy/agy-bridge.service > /tmp/agy-bridge.service.tmp
-              
+
               # Install service if changed (needs passwordless sudo for botuser)
               if ! diff -q /tmp/agy-bridge.service.tmp /etc/systemd/system/agy-bridge.service &>/dev/null 2>&1; then
                 if sudo -n cp /tmp/agy-bridge.service.tmp /etc/systemd/system/agy-bridge.service 2>/dev/null; then
@@ -666,7 +666,7 @@ jobs:
                 sudo -n systemctl restart agy-bridge 2>/dev/null || echo "⚠️ agy-bridge restart needs sudo"
                 echo "✅ agy-bridge restarted (code refresh)"
               fi
-              
+
               # Verify bridge health
               sleep 2
               if curl -sf http://localhost:9100/health > /dev/null 2>&1; then
@@ -676,48 +676,48 @@ jobs:
               fi
               rm -f /tmp/agy-bridge.service.tmp
             fi
-            
+
             # Fix #68: No hot-patch needed — source is bind-mounted from host git directory.
             # git pull above already updated /opt/trading-bot/nerves/workers/trading/
             # TRADING_SRC bind mount in docker-compose.server-c.yml serves latest code.
             # Container restart (Tier 1) is sufficient for Python-only changes.
             echo "Source code served via bind mount — no docker cp needed"
-            
+
             echo "🔍 Testing Server C Health..."
             for i in {1..30}; do
               CHROMA_OK=false
               ANALYZER_OK=false
-              
+
               if curl -sf http://localhost:8001/api/v2/heartbeat > /dev/null 2>&1; then
                 CHROMA_OK=true
               fi
-              
+
               STATUS=$(docker inspect --format='{{.State.Health.Status}}' tradingbot-analyzer 2>/dev/null || echo "not_found")
               if [ "$STATUS" = "healthy" ]; then
                 ANALYZER_OK=true
               fi
-              
+
               if [ "$CHROMA_OK" = true ] && [ "$ANALYZER_OK" = true ]; then
                 echo "✅ Server C is fully healthy! (ChromaDB + Analyzer OK)"
                 exit 0
               fi
-              
+
               echo "⏳ Waiting for services (ChromaDB: $CHROMA_OK, Analyzer: $STATUS)..."
               sleep 3
             done
-            
+
             echo "❌ Server C Health Check Failed! (ChromaDB: $CHROMA_OK, Analyzer: $STATUS)"
             exit 1
-            
+
             # ── Tier 2 only: RAG vector count verification via agy-bridge ──────
             # Calls /admin/verify (host-side, no sandbox) which delegates to
             # analyzer /admin/rag-verify → checks ChromaDB vector count.
             # This is the runtime proof for issue #56 fix.
             if [ "$DEPLOY_TIER" = "2" ]; then
               echo "🧠 Verifying RAG/ChromaDB vector count (issue #56)..."
-              
+
               BRIDGE_SECRET=$(grep "^AGY_BRIDGE_SECRET=" deploy/.env.agy 2>/dev/null | cut -d= -f2- || echo "")
-              
+
               # Primary: delegate via agy-bridge /admin/verify
               if [ -n "$BRIDGE_SECRET" ]; then
                 RAG_RESULT=$(curl -s -X POST "http://localhost:9100/admin/verify" \
@@ -730,10 +730,10 @@ jobs:
                   -H "Content-Type: application/json" \
                   --max-time 35 || echo '{"status":"error","error":"bridge unreachable"}')
               fi
-              
+
               RAG_STATUS=$(echo "$RAG_RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','unknown'))" 2>/dev/null || echo "parse_error")
               RAG_COUNT=$(echo "$RAG_RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('vector_count',-1))" 2>/dev/null || echo "-1")
-              
+
               if [ "$RAG_STATUS" = "ok" ] || [ "$RAG_STATUS" = "re-ingested" ]; then
                 echo "✅ RAG verified: ${RAG_COUNT} vectors in ChromaDB (status=${RAG_STATUS})"
               else
@@ -824,17 +824,17 @@ jobs:
           ssh Administrator@${{ secrets.SERVER_B_IP }} << 'EOF'
             $ErrorActionPreference = "Stop"
             cd C:\opt\trading-bot
-            
+
             $OldSha = (git rev-parse HEAD).Trim()
             $OldSha | Out-File -FilePath .rollback_sha -Encoding utf8
-            
+
             git fetch origin
             git reset --hard origin/main
             git checkout main
             git pull origin main
-            
+
             $NewSha = (git rev-parse HEAD).Trim()
-            
+
             # Backup database
             if (docker ps --format '{{.Names}}' | Select-String -Pattern "^tradingbot-execution$") {
               Write-Output "📦 Backing up trades database from running container..."
@@ -863,7 +863,7 @@ jobs:
                 Write-Output "⚠️ No database found in container or local folders, skipping backup"
               }
             }
-            
+
             # Nếu code không đổi → skip pull & restart
             if ($OldSha -eq $NewSha) {
               Write-Output "📎 No new commits — skipping pull"
@@ -880,7 +880,7 @@ jobs:
                 Write-Output "⚠️ No changes but service unavailable — restarting..."
               }
             }
-            
+
             # ── Tier-based deploy logic ──
             $DeployTier = "${{ needs.changes.outputs.server_b_tier }}"
             if ($DeployTier -eq "2") {
@@ -895,7 +895,7 @@ jobs:
               Write-Output "🔄 Tier 1: Light restart (config refresh)"
               docker compose -f deploy/docker-compose.server-b.yml restart
             }
-            
+
             # Restore/Import database from backup if it exists
             if (Test-Path C:\Windows\Temp\trades.db.bak) {
               Write-Output "📦 Restoring trades database into container..."
@@ -906,7 +906,7 @@ jobs:
                 Write-Output "⚠️ Failed to restore trades database: $_"
               }
             }
-            
+
             echo "🔍 Testing Execution Server Health..."
             for ($i=1; $i -le 10; $i++) {
               try {
@@ -961,7 +961,7 @@ jobs:
             Write-Output "🔄 Reverting Server B to $RollbackSha..."
             git checkout $RollbackSha
             docker compose -f deploy/docker-compose.server-b.yml up -d
-            
+
             # Restore database backup if it exists
             if (Test-Path C:\Windows\Temp\trades.db.bak) {
               Write-Output "📦 Restoring trades database backup..."

@@ -5,11 +5,13 @@ Feature: tradingview-alert-indicator-signal
 Property 18: Each IndicatorSignalReceived event has a unique event_id; frozen (immutable)
 Property 19: JSON serialization round-trip for conditions_met and metadata
 """
-import json
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-import pytest
+import json
+import sys
+import os
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -17,6 +19,7 @@ from core.events import IndicatorSignalReceived
 
 
 # ── Property 18: Event immutability and unique event_id ──────────────────────
+
 
 @given(
     symbol=st.text(min_size=1, max_size=20),
@@ -38,13 +41,14 @@ def test_prop18_event_immutability_and_unique_id(symbol, indicator_name):
 
 # ── Property 19: JSON round-trip for conditions_met and metadata ──────────────
 
+
 @given(
     conditions=st.lists(st.text(min_size=1, max_size=30), max_size=5),
     metadata=st.dictionaries(
         st.text(min_size=1, max_size=10),
         st.one_of(st.text(), st.integers(), st.floats(allow_nan=False)),
         max_size=5,
-    )
+    ),
 )
 @settings(max_examples=100)
 def test_prop19_json_serialization_round_trip(conditions, metadata):
@@ -55,12 +59,12 @@ def test_prop19_json_serialization_round_trip(conditions, metadata):
     # Round-trip conditions_met
     serialized_conds = json.dumps(conditions)
     deserialized_conds = json.loads(serialized_conds)
-    assert deserialized_conds == conditions, f"conditions_met round-trip failed"
+    assert deserialized_conds == conditions, "conditions_met round-trip failed"
 
     # Round-trip metadata (only JSON-serializable primitives)
     try:
         serialized_meta = json.dumps(metadata)
         deserialized_meta = json.loads(serialized_meta)
-        assert deserialized_meta == metadata, f"metadata round-trip failed"
+        assert deserialized_meta == metadata, "metadata round-trip failed"
     except (ValueError, TypeError):
         pass  # Non-serializable floats (inf etc.) — skip

@@ -2,13 +2,13 @@ import json
 import logging
 import os
 import string
-from typing import Dict, Any, Optional
+from typing import Dict
 
 log = logging.getLogger(__name__)
 
 TEMPLATE_FILE = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "telegram_templates.json"
+    "telegram_templates.json",
 )
 
 DEFAULT_TEMPLATES = {
@@ -61,7 +61,7 @@ DEFAULT_TEMPLATES = {
         "🩺 <b>Hướng giải quyết:</b>\n"
         "{fallback_action_desc}\n"
         "──────────────────────────────"
-    )
+    ),
 }
 
 MOCK_KEYS = {
@@ -90,13 +90,15 @@ MOCK_KEYS = {
     "exchange": "Binance",
     "warning_detail": "API rate limit",
     "details_block": "Rate limit info",
-    "fallback_action_desc": "Retry in 60s"
+    "fallback_action_desc": "Retry in 60s",
 }
 
 _templates_cache: Dict[str, str] = {}
 
+
 def get_templates_file_path() -> str:
     return TEMPLATE_FILE
+
 
 def load_templates() -> Dict[str, str]:
     """Load templates from json file, falling back to defaults if not exists or corrupted."""
@@ -114,7 +116,9 @@ def load_templates() -> Dict[str, str]:
                         templates[k] = data[k]
             log.info("Loaded custom Telegram templates from file.")
         except Exception as e:
-            log.error(f"Error loading Telegram templates json: {e}, falling back to defaults")
+            log.error(
+                f"Error loading Telegram templates json: {e}, falling back to defaults"
+            )
     else:
         # Write default templates to file initially
         try:
@@ -127,13 +131,18 @@ def load_templates() -> Dict[str, str]:
     _templates_cache = templates
     return _templates_cache
 
+
 def validate_template_syntax(template_id: str, content: str) -> None:
     """Validate that the template compiles with python format() using mock keys.
     Raises ValueError on mismatch/invalid format.
     """
     # 1. Parse fields using standard string Formatter to check for unbalanced braces
     try:
-        fields = [field_name for _, field_name, _, _ in string.Formatter().parse(content) if field_name is not None]
+        fields = [
+            field_name
+            for _, field_name, _, _ in string.Formatter().parse(content)
+            if field_name is not None
+        ]
     except ValueError as e:
         raise ValueError(f"Template {template_id} contains syntax error: {str(e)}")
 
@@ -144,20 +153,27 @@ def validate_template_syntax(template_id: str, content: str) -> None:
     for f in fields:
         # Handle index-based or nested formatting if present (we only support standard keys)
         if not f:
-            raise ValueError(f"Template {template_id} contains empty placeholders '{{}}' which is not supported.")
+            raise ValueError(
+                f"Template {template_id} contains empty placeholders '{{}}' which is not supported."
+            )
         if f not in MOCK_KEYS:
-            raise ValueError(f"Template {template_id} contains unsupported placeholder key: '{{{f}}}'")
+            raise ValueError(
+                f"Template {template_id} contains unsupported placeholder key: '{{{f}}}'"
+            )
         mock_payload[f] = MOCK_KEYS[f]
 
     try:
         content.format(**mock_payload)
     except Exception as e:
-        raise ValueError(f"Template {template_id} failed dry-run format validation: {str(e)}")
+        raise ValueError(
+            f"Template {template_id} failed dry-run format validation: {str(e)}"
+        )
+
 
 def save_templates(templates: Dict[str, str]) -> None:
     """Validate and write templates to config file, updating the runtime cache."""
     global _templates_cache
-    
+
     # 1. Validation check
     for k in ["A", "B", "C", "D"]:
         if k not in templates:
@@ -176,28 +192,37 @@ def save_templates(templates: Dict[str, str]) -> None:
     # 3. Update cache
     _templates_cache = templates.copy()
 
+
 def render_template(template_id: str, **kwargs) -> str:
     """Retrieve template_id and render with kwargs.
     Safely handles missing keys by leaving them empty or returning N/A to prevent crashes.
     """
     templates = load_templates()
     template_str = templates.get(template_id, DEFAULT_TEMPLATES.get(template_id, ""))
-    
+
     # Pre-populate missing keys with 'N/A' to avoid KeyError
-    fields = [field_name for _, field_name, _, _ in string.Formatter().parse(template_str) if field_name is not None]
-    
+    fields = [
+        field_name
+        for _, field_name, _, _ in string.Formatter().parse(template_str)
+        if field_name is not None
+    ]
+
     render_args = {}
     for f in fields:
         if f in kwargs:
             render_args[f] = kwargs[f]
         else:
             render_args[f] = "N/A"
-            
+
     try:
         return template_str.format(**render_args)
     except Exception as e:
         log.error(f"Error rendering template {template_id}: {e}")
         # Return fallback default template render on absolute crash
         default_str = DEFAULT_TEMPLATES.get(template_id, "")
-        default_args = {f: kwargs.get(f, "N/A") for _, f, _, _ in string.Formatter().parse(default_str) if f is not None}
+        default_args = {
+            f: kwargs.get(f, "N/A")
+            for _, f, _, _ in string.Formatter().parse(default_str)
+            if f is not None
+        }
         return default_str.format(**default_args)

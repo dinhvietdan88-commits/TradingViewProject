@@ -12,13 +12,14 @@ from analysis import (
 )
 import analysis as analysis_module
 
+
 @pytest.mark.asyncio
 async def test_fetch_candles_weex_success():
     mock_resp = AsyncMock()
     mock_resp.status = 200
-    mock_resp.json = AsyncMock(return_value=[
-        ["1684812345000", "100.0", "105.0", "95.0", "101.0", "1000.0"]
-    ])
+    mock_resp.json = AsyncMock(
+        return_value=[["1684812345000", "100.0", "105.0", "95.0", "101.0", "1000.0"]]
+    )
     mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
     mock_resp.__aexit__ = AsyncMock(return_value=None)
 
@@ -30,18 +31,19 @@ async def test_fetch_candles_weex_success():
     assert res[0] == [1684812345000, 100.0, 105.0, 95.0, 101.0, 1000.0]
     session.get.assert_called_once()
 
+
 @pytest.mark.asyncio
 async def test_fetch_candles_bybit_success():
     mock_resp = AsyncMock()
     mock_resp.status = 200
-    mock_resp.json = AsyncMock(return_value={
-        "retCode": 0,
-        "result": {
-            "list": [
-                ["1684812345000", "100.0", "105.0", "95.0", "101.0", "1000.0"]
-            ]
+    mock_resp.json = AsyncMock(
+        return_value={
+            "retCode": 0,
+            "result": {
+                "list": [["1684812345000", "100.0", "105.0", "95.0", "101.0", "1000.0"]]
+            },
         }
-    })
+    )
     mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
     mock_resp.__aexit__ = AsyncMock(return_value=None)
 
@@ -52,13 +54,14 @@ async def test_fetch_candles_bybit_success():
     assert len(res) == 1
     assert res[0] == [1684812345000, 100.0, 105.0, 95.0, 101.0, 1000.0]
 
+
 @pytest.mark.asyncio
 async def test_fetch_candles_binance_success():
     mock_resp = AsyncMock()
     mock_resp.status = 200
-    mock_resp.json = AsyncMock(return_value=[
-        [1684812345000, "100.0", "105.0", "95.0", "101.0", "1000.0"]
-    ])
+    mock_resp.json = AsyncMock(
+        return_value=[[1684812345000, "100.0", "105.0", "95.0", "101.0", "1000.0"]]
+    )
     mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
     mock_resp.__aexit__ = AsyncMock(return_value=None)
 
@@ -68,6 +71,7 @@ async def test_fetch_candles_binance_success():
     res = await fetch_candles_with_retry(session, "binance", "BTCUSDT")
     assert len(res) == 1
     assert res[0] == [1684812345000, 100.0, 105.0, 95.0, 101.0, 1000.0]
+
 
 @pytest.mark.asyncio
 async def test_fetch_candles_rate_limited():
@@ -79,9 +83,9 @@ async def test_fetch_candles_rate_limited():
 
     mock_resp_200 = AsyncMock()
     mock_resp_200.status = 200
-    mock_resp_200.json = AsyncMock(return_value=[
-        [1684812345000, "100.0", "105.0", "95.0", "101.0", "1000.0"]
-    ])
+    mock_resp_200.json = AsyncMock(
+        return_value=[[1684812345000, "100.0", "105.0", "95.0", "101.0", "1000.0"]]
+    )
     mock_resp_200.__aenter__ = AsyncMock(return_value=mock_resp_200)
     mock_resp_200.__aexit__ = AsyncMock(return_value=None)
 
@@ -94,6 +98,7 @@ async def test_fetch_candles_rate_limited():
         assert res[0][4] == 101.0
         mock_sleep.assert_called_once()
         assert session.get.call_count == 2
+
 
 @pytest.mark.asyncio
 async def test_fetch_candles_failure_fallback():
@@ -108,39 +113,47 @@ async def test_fetch_candles_failure_fallback():
     with patch("asyncio.sleep", AsyncMock()):
         with pytest.raises(RuntimeError) as exc_info:
             await fetch_candles_with_retry(session, "binance", "BTCUSDT", max_retries=2)
-        assert "Failed to fetch candles for BTCUSDT on binance after 2 attempts." in str(exc_info.value)
+        assert (
+            "Failed to fetch candles for BTCUSDT on binance after 2 attempts."
+            in str(exc_info.value)
+        )
 
 
 @pytest.mark.asyncio
 async def test_scan_single_symbol_rest():
     mock_candles = []
     import time
+
     now_ms = int(time.time() * 1000)
     day_ms = 24 * 60 * 60 * 1000
 
     for i in range(250):
         ts = now_ms - (250 - i) * day_ms
         price = 100.0 + i * 0.5
-        mock_candles.append([
-            ts,
-            price,       # open
-            price + 2.0, # high
-            price - 2.0, # low
-            price + 0.1, # close
-            1000.0       # volume
-        ])
+        mock_candles.append(
+            [
+                ts,
+                price,  # open
+                price + 2.0,  # high
+                price - 2.0,  # low
+                price + 0.1,  # close
+                1000.0,  # volume
+            ]
+        )
 
     session = MagicMock()
     semaphore = asyncio.Semaphore(1)
 
-    with patch("analysis.fetch_candles_with_retry", AsyncMock(return_value=mock_candles)):
+    with patch(
+        "analysis.fetch_candles_with_retry", AsyncMock(return_value=mock_candles)
+    ):
         res = await scan_single_symbol_rest(
             session=session,
             exchange_name="weex",
             symbol="BTCUSDT_UMCBL",
             btc_closes={},
             btc_candles=[],
-            semaphore=semaphore
+            semaphore=semaphore,
         )
 
         assert isinstance(res, ScanResult)
@@ -150,11 +163,14 @@ async def test_scan_single_symbol_rest():
         assert res.vcp is not None
         assert res.error is None
 
+
 @pytest.mark.asyncio
 async def test_scan_all_configured_exchanges():
     mock_adapter = MagicMock()
     mock_adapter.exchange_name = "weex"
-    mock_adapter.get_active_symbols = AsyncMock(return_value=["BTCUSDT_UMCBL", "ETHUSDT_UMCBL"])
+    mock_adapter.get_active_symbols = AsyncMock(
+        return_value=["BTCUSDT_UMCBL", "ETHUSDT_UMCBL"]
+    )
 
     mock_registry = MagicMock()
     mock_registry.list_exchange_ids = MagicMock(return_value=["weex"])
@@ -162,18 +178,22 @@ async def test_scan_all_configured_exchanges():
 
     mock_candles = [[1684812345000, 100.0, 105.0, 95.0, 101.0, 1000.0]] * 60
 
-    with patch("exchanges.registry.get_registry", return_value=mock_registry), \
-         patch("analysis.fetch_candles_with_retry", AsyncMock(return_value=mock_candles)):
+    with (
+        patch("exchanges.registry.get_registry", return_value=mock_registry),
+        patch(
+            "analysis.fetch_candles_with_retry", AsyncMock(return_value=mock_candles)
+        ),
+    ):
+        analysis_module._scan_status = "idle"
+        analysis_module._latest_scan_results = []
 
-         analysis_module._scan_status = "idle"
-         analysis_module._latest_scan_results = []
+        results = await scan_all_configured_exchanges()
 
-         results = await scan_all_configured_exchanges()
+        assert len(results) == 2
+        assert results[0].exchange == "weex"
+        assert analysis_module._scan_status == "completed"
+        assert len(analysis_module._latest_scan_results) == 2
 
-         assert len(results) == 2
-         assert results[0].exchange == "weex"
-         assert analysis_module._scan_status == "completed"
-         assert len(analysis_module._latest_scan_results) == 2
 
 @pytest.mark.asyncio
 async def test_api_scan_all_endpoint(client):
@@ -189,6 +209,7 @@ async def test_api_scan_all_endpoint(client):
         data = response.json()
         assert data["status"] == "idle"
         assert "results" in data
+
 
 @pytest.mark.asyncio
 async def test_telegram_cmd_scan_all():
@@ -206,14 +227,21 @@ async def test_telegram_cmd_scan_all():
 
     mock_results = [
         ScanResult(
-            symbol="BTCUSDT_UMCBL", price=65000.0, change_pct=1.5,
+            symbol="BTCUSDT_UMCBL",
+            price=65000.0,
+            change_pct=1.5,
             trend_template=TrendTemplateResult(8, {}, "Stage 2", "Criteria passed"),
             vcp=VCPResult(True, 1.2, 0.8, 64500.0, False, "VCP setup"),
-            volume=5000.0, volume_avg=4000.0, exchange="weex", error=None
+            volume=5000.0,
+            volume_avg=4000.0,
+            exchange="weex",
+            error=None,
         )
     ]
 
-    with patch("analysis.scan_all_configured_exchanges", AsyncMock(return_value=mock_results)):
+    with patch(
+        "analysis.scan_all_configured_exchanges", AsyncMock(return_value=mock_results)
+    ):
         await cmd_scan_all(mock_update, mock_context)
 
         mock_update.message.reply_text.assert_called_once_with(

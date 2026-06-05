@@ -75,7 +75,7 @@ try {
     # Run creation and capture output
     $Output = & $CloudflaredPath tunnel create $DefaultTunnelName
     Write-Host $Output -ForegroundColor Gray
-    
+
     # Extract Tunnel ID (UUID format: e.g., 1234abcd-1234-abcd-1234-abcd1234abcd)
     if ($Output -match "Created tunnel \S+ with id ([a-f0-9\-]+)") {
         $TunnelId = $Matches[1]

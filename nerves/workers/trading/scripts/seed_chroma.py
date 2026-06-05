@@ -14,7 +14,9 @@ import config
 from chromadb.utils import embedding_functions
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("seed_chroma")
 
 # Resolve server directory for env load
@@ -43,7 +45,9 @@ def main():
         client = chromadb.HttpClient(host=host, port=port)
     else:
         path = getattr(config, "CHROMA_DB_PATH", "chroma_db")
-        logger.info(f"Connecting to local ChromaDB persistent client at path: {path}...")
+        logger.info(
+            f"Connecting to local ChromaDB persistent client at path: {path}..."
+        )
         client = chromadb.PersistentClient(path=str(path))
 
     # Embedding function
@@ -56,7 +60,7 @@ def main():
         embedding_function=ef,
         metadata={"hnsw:space": "cosine"},
     )
-    
+
     # Resolve knowledge directory
     knowledge_dir = Path(config.KNOWLEDGE_DIR)
     if not knowledge_dir.exists():
@@ -69,14 +73,14 @@ def main():
         sys.exit(0)
 
     logger.info(f"Found {len(chunk_files)} knowledge chunks in {knowledge_dir}")
-    
+
     documents, metadatas, ids = [], [], []
     for chunk_file in chunk_files:
         try:
             content = chunk_file.read_text(encoding="utf-8")
             if not content.strip():
                 continue
-            
+
             # Simple parse metadata
             meta = {"filename": chunk_file.name, "topic": "general", "chapter": ""}
             lines = content.strip().splitlines()
@@ -97,7 +101,9 @@ def main():
             logger.warning(f"Error reading {chunk_file.name}: {e}")
 
     if documents:
-        logger.info(f"Upserting {len(documents)} chunks to remote collection 'minervini_knowledge'...")
+        logger.info(
+            f"Upserting {len(documents)} chunks to remote collection 'minervini_knowledge'..."
+        )
         batch_size = 10
         for i in range(0, len(documents), batch_size):
             collection.upsert(
@@ -105,12 +111,15 @@ def main():
                 metadatas=metadatas[i : i + batch_size],
                 ids=ids[i : i + batch_size],
             )
-            logger.info(f"Progress: {min(i + batch_size, len(documents))}/{len(documents)} chunks uploaded.")
-        
+            logger.info(
+                f"Progress: {min(i + batch_size, len(documents))}/{len(documents)} chunks uploaded."
+            )
+
         logger.info("✅ ChromaDB knowledge seeding completed successfully!")
         logger.info(f"Remote collection count: {collection.count()} vectors.")
     else:
         logger.warning("No valid documents to upsert.")
+
 
 if __name__ == "__main__":
     main()

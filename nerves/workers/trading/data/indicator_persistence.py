@@ -8,6 +8,7 @@ Design Invariant DI-1:
 Listens To: IndicatorSignalReceived
 Emits: nothing (side-effect: DB row inserted)
 """
+
 import json
 import logging
 
@@ -33,7 +34,9 @@ async def persist_indicator_signal(event: IndicatorSignalReceived) -> None:
             interval=event.interval,
             price=event.price,
             confidence_score=event.confidence_score,
-            conditions_met=json.dumps(list(event.conditions_met)) if event.conditions_met else "[]",
+            conditions_met=json.dumps(list(event.conditions_met))
+            if event.conditions_met
+            else "[]",
             metadata=json.dumps(event.metadata) if event.metadata else "{}",
             source_ip=event.source_ip,
             exchange=event.exchange,

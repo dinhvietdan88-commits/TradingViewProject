@@ -27,14 +27,15 @@ import os
 from datetime import datetime, timezone
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
-_LOG_LEVEL        = os.getenv("LOG_LEVEL",        "INFO").upper()
-_LOG_FILE         = os.getenv("LOG_FILE",         "logs/trading.log")
-_LOG_MAX_SIZE_MB  = int(os.getenv("LOG_MAX_SIZE_MB",  "10"))
+_LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+_LOG_FILE = os.getenv("LOG_FILE", "logs/trading.log")
+_LOG_MAX_SIZE_MB = int(os.getenv("LOG_MAX_SIZE_MB", "10"))
 _LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "5"))
-_LOG_JSON_FORMAT  = os.getenv("LOG_JSON_FORMAT",  "false").lower() == "true"
+_LOG_JSON_FORMAT = os.getenv("LOG_JSON_FORMAT", "false").lower() == "true"
 
 
 # ── JSON structured formatter ─────────────────────────────────────────────────
+
 
 class StructuredFormatter(logging.Formatter):
     """JSON Lines formatter — one JSON object per log line.
@@ -44,12 +45,12 @@ class StructuredFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         entry: dict = {
-            "ts":     datetime.now(timezone.utc).isoformat(),
-            "level":  record.levelname,
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "level": record.levelname,
             "logger": record.name,
-            "msg":    record.getMessage(),
+            "msg": record.getMessage(),
             "module": record.module,
-            "line":   record.lineno,
+            "line": record.lineno,
         }
         if record.exc_info:
             entry["exception"] = self.formatException(record.exc_info)
@@ -58,12 +59,13 @@ class StructuredFormatter(logging.Formatter):
 
 # ── Setup function ────────────────────────────────────────────────────────────
 
+
 def setup_logging(
-    log_level:        str  = _LOG_LEVEL,
-    log_file:         str  = _LOG_FILE,
-    max_size_mb:      int  = _LOG_MAX_SIZE_MB,
-    backup_count:     int  = _LOG_BACKUP_COUNT,
-    json_format:      bool = _LOG_JSON_FORMAT,
+    log_level: str = _LOG_LEVEL,
+    log_file: str = _LOG_FILE,
+    max_size_mb: int = _LOG_MAX_SIZE_MB,
+    backup_count: int = _LOG_BACKUP_COUNT,
+    json_format: bool = _LOG_JSON_FORMAT,
 ) -> None:
     """Configure root logger with rotating file handler and console handler.
 
@@ -94,10 +96,12 @@ def setup_logging(
     if json_format:
         console.setFormatter(StructuredFormatter())
     else:
-        console.setFormatter(logging.Formatter(
-            "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-            datefmt="%H:%M:%S",
-        ))
+        console.setFormatter(
+            logging.Formatter(
+                "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+                datefmt="%H:%M:%S",
+            )
+        )
     root.addHandler(console)
 
     # ── Rotating file handler ─────────────────────────────────────────────────
@@ -112,9 +116,11 @@ def setup_logging(
     if json_format:
         file_handler.setFormatter(StructuredFormatter())
     else:
-        file_handler.setFormatter(logging.Formatter(
-            "%(asctime)s [%(levelname)s] %(name)s:%(lineno)d — %(message)s"
-        ))
+        file_handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s [%(levelname)s] %(name)s:%(lineno)d — %(message)s"
+            )
+        )
     root.addHandler(file_handler)
 
     # ── Suppress noisy third-party loggers ────────────────────────────────────

@@ -27,7 +27,9 @@ class AuthConfig:
         self.allowed_users: list[int] = self._load_allowed_users()
         self.session_expiry_hours: int | None = self._load_session_expiry()
         self.dashboard_url: str = os.getenv("DASHBOARD_URL", "http://localhost:5000")
-        self.widget_enabled: bool = os.getenv("TELEGRAM_LOGIN_WIDGET", "false").lower() == "true"
+        self.widget_enabled: bool = (
+            os.getenv("TELEGRAM_LOGIN_WIDGET", "false").lower() == "true"
+        )
         self.code_ttl_minutes: int = 5  # One-time code TTL
         self.max_session_lifetime_days: int = 7  # Absolute max session lifetime
 
@@ -127,14 +129,15 @@ class AuthConfig:
             value = int(raw)
         except (ValueError, TypeError):
             log.error(
-                f"Invalid SESSION_EXPIRY_HOURS value: {raw!r}. "
-                "Using default 24 hours."
+                f"Invalid SESSION_EXPIRY_HOURS value: {raw!r}. Using default 24 hours."
             )
             return 24
 
         if value == 0:
-            log.info("SESSION_EXPIRY_HOURS=0: sessions will never expire "
-                     "(still subject to 7-day absolute lifetime).")
+            log.info(
+                "SESSION_EXPIRY_HOURS=0: sessions will never expire "
+                "(still subject to 7-day absolute lifetime)."
+            )
             return None  # None signals "never expire"
 
         if 1 <= value <= 720:

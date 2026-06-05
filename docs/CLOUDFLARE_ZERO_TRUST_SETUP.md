@@ -69,7 +69,7 @@ Tạo một Worker mới trên Cloudflare với mã nguồn sau:
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    
+
     // Chỉ chấp nhận POST tới đường dẫn /webhook
     if (request.method !== "POST" || url.pathname !== "/webhook") {
       return new Response("Method not allowed", { status: 405 });
@@ -77,7 +77,7 @@ export default {
 
     try {
       const body = await request.clone().json();
-      
+
       // Kiểm tra sơ bộ trường Secret trong JSON Payload gửi từ TV
       if (!body.secret || body.secret !== env.WEBHOOK_SECRET) {
         return new Response("Unauthorized Payload", { status: 401 });

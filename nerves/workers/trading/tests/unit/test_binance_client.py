@@ -26,8 +26,8 @@ from unittest.mock import AsyncMock
 # POSITION SIZING TESTS
 # ═══════════════════════════════════════════════════════════════
 
-class TestPositionSizing:
 
+class TestPositionSizing:
     def test_calculate_position_size_basic(self):
         """Risk 2% on $10,000 with 8% SL → correct qty."""
         balance = 10000
@@ -69,20 +69,20 @@ class TestPositionSizing:
 # SL/TP CALCULATION TESTS
 # ═══════════════════════════════════════════════════════════════
 
-class TestSLTP:
 
+class TestSLTP:
     def test_sl_tp_buy(self):
         """BUY: SL below entry, TP above entry."""
         levels = BinanceClient.calculate_sl_tp(100.0, "BUY", sl_pct=0.08, tp_pct=0.20)
-        assert levels["stop_loss"] == 92.0     # 100 * 0.92
+        assert levels["stop_loss"] == 92.0  # 100 * 0.92
         assert levels["take_profit"] == 120.0  # 100 * 1.20
         assert levels["risk_reward"] == 2.5
 
     def test_sl_tp_sell(self):
         """SELL: SL above entry, TP below entry."""
         levels = BinanceClient.calculate_sl_tp(100.0, "SELL", sl_pct=0.08, tp_pct=0.20)
-        assert levels["stop_loss"] == 108.0    # 100 * 1.08
-        assert levels["take_profit"] == 80.0   # 100 * 0.80
+        assert levels["stop_loss"] == 108.0  # 100 * 1.08
+        assert levels["take_profit"] == 80.0  # 100 * 0.80
         assert levels["risk_reward"] == 2.5
 
     def test_sl_tp_crypto_price(self):
@@ -106,8 +106,8 @@ class TestSLTP:
 # DRY-RUN ORDER TESTS
 # ═══════════════════════════════════════════════════════════════
 
-class TestDryRunOrders:
 
+class TestDryRunOrders:
     @pytest.fixture
     def client(self):
         return BinanceClient(
@@ -168,8 +168,8 @@ class TestDryRunOrders:
 # SMART ORDER FLOW TEST
 # ═══════════════════════════════════════════════════════════════
 
-class TestSmartOrder:
 
+class TestSmartOrder:
     @pytest.fixture
     def client(self):
         return BinanceClient(
@@ -221,8 +221,8 @@ class TestSmartOrder:
         result = await client.execute_smart_order(
             symbol="BTCUSDT",
             side="BUY",
-            entry_price=100,      # Very low price → large position
-            sl_pct=0.001,          # Very tight SL → huge size
+            entry_price=100,  # Very low price → large position
+            sl_pct=0.001,  # Very tight SL → huge size
         )
 
         assert result.success is True
@@ -253,13 +253,18 @@ class TestSmartOrder:
         # Mock place_market_order to return a different fill price
         # If entry_price was 100.0, but fill price was 102.0 (slippage = +2.0)
         # SL and TP must shift up by +2.0 to keep the risk distance constant.
-        mocker.patch.object(client, "place_market_order", new_callable=AsyncMock, return_value={
-            "orderId": "DRY-MOCK-ENTRY",
-            "executedQty": "2.0",
-            "cummulativeQuoteQty": "204.0",  # fill price = 204 / 2 = 102.0
-            "status": "FILLED",
-            "_dry_run": True
-        })
+        mocker.patch.object(
+            client,
+            "place_market_order",
+            new_callable=AsyncMock,
+            return_value={
+                "orderId": "DRY-MOCK-ENTRY",
+                "executedQty": "2.0",
+                "cummulativeQuoteQty": "204.0",  # fill price = 204 / 2 = 102.0
+                "status": "FILLED",
+                "_dry_run": True,
+            },
+        )
 
         result = await client.execute_smart_order(
             symbol="BTCUSDT",
@@ -267,7 +272,7 @@ class TestSmartOrder:
             entry_price=100.0,
             sl_price=90.0,
             tp_price=125.0,
-            order_type="MARKET"
+            order_type="MARKET",
         )
 
         assert result.success is True
@@ -283,8 +288,8 @@ class TestSmartOrder:
 # SIGNING TEST
 # ═══════════════════════════════════════════════════════════════
 
-class TestSigning:
 
+class TestSigning:
     def test_sign_params(self):
         """HMAC signature is added correctly."""
         client = BinanceClient(
@@ -299,5 +304,3 @@ class TestSigning:
         assert "signature" in signed
         assert "timestamp" in signed
         assert len(signed["signature"]) == 64  # SHA256 hex digest
-
-

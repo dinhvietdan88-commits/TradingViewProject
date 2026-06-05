@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 # QUERY — TRADE HISTORY
 # ═══════════════════════════════════════════════════════════════
 
+
 async def get_trades(
     symbol: Optional[str] = None,
     limit: int = 50,
@@ -34,7 +35,9 @@ async def get_trades(
         conditions.append("t.created_at <= ?")
         params.append(to_date)
     if not demo:
-        conditions.append("(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))")
+        conditions.append(
+            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
+        )
 
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
@@ -68,6 +71,7 @@ async def get_trades(
 # QUERY — PERFORMANCE STATS
 # ═══════════════════════════════════════════════════════════════
 
+
 async def get_stats(symbol: Optional[str] = None, demo: bool = False) -> Dict[str, Any]:
     """Tinh metrics hieu suat: Win Rate, Profit Factor, Drawdown."""
     conditions = ["t.status = 'FILLED'"]
@@ -77,7 +81,9 @@ async def get_stats(symbol: Optional[str] = None, demo: bool = False) -> Dict[st
         conditions.append("t.symbol = ?")
         params.append(symbol.upper())
     if not demo:
-        conditions.append("(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))")
+        conditions.append(
+            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
+        )
 
     where = f"WHERE {' AND '.join(conditions)}"
 
@@ -129,7 +135,9 @@ async def get_stats(symbol: Optional[str] = None, demo: bool = False) -> Dict[st
             "losing_trades": len(losses),
             "win_rate": round(len(wins) / len(pnl_list) * 100, 1) if pnl_list else 0.0,
             "total_pnl": round(sum(pnl_list), 2),
-            "profit_factor": round(total_win / total_loss, 2) if total_loss > 0 else (99.0 if total_win > 0 else 0.0),
+            "profit_factor": round(total_win / total_loss, 2)
+            if total_loss > 0
+            else (99.0 if total_win > 0 else 0.0),
             "avg_win": round(total_win / len(wins), 2) if wins else 0.0,
             "avg_loss": round(-total_loss / len(losses), 2) if losses else 0.0,
             "max_drawdown": round(-max_dd, 2),
@@ -154,22 +162,24 @@ def _build_mode_stats(pnl_list: list) -> Dict[str, Any]:
             "worst_trade": 0.0,
         }
 
-    wins   = [p for p in pnl_list if p > 0]
+    wins = [p for p in pnl_list if p > 0]
     losses = [p for p in pnl_list if p <= 0]
-    total_win  = sum(wins)   if wins   else 0.0
+    total_win = sum(wins) if wins else 0.0
     total_loss = abs(sum(losses)) if losses else 0.0
 
     return {
-        "total_trades":   len(pnl_list),
+        "total_trades": len(pnl_list),
         "winning_trades": len(wins),
-        "losing_trades":  len(losses),
-        "win_rate":       round(len(wins) / len(pnl_list) * 100, 1),
-        "total_pnl":      round(sum(pnl_list), 2),
-        "profit_factor":  round(total_win / total_loss, 2) if total_loss > 0 else (99.0 if total_win > 0 else 0.0),
-        "avg_win":        round(total_win / len(wins), 2) if wins else 0.0,
-        "avg_loss":       round(-total_loss / len(losses), 2) if losses else 0.0,
-        "best_trade":     round(max(pnl_list), 2),
-        "worst_trade":    round(min(pnl_list), 2),
+        "losing_trades": len(losses),
+        "win_rate": round(len(wins) / len(pnl_list) * 100, 1),
+        "total_pnl": round(sum(pnl_list), 2),
+        "profit_factor": round(total_win / total_loss, 2)
+        if total_loss > 0
+        else (99.0 if total_win > 0 else 0.0),
+        "avg_win": round(total_win / len(wins), 2) if wins else 0.0,
+        "avg_loss": round(-total_loss / len(losses), 2) if losses else 0.0,
+        "best_trade": round(max(pnl_list), 2),
+        "worst_trade": round(min(pnl_list), 2),
     }
 
 
@@ -189,7 +199,9 @@ async def get_stats_by_mode(demo: bool = False) -> Dict[str, Any]:
     """
     where_conds = ["t.status = 'FILLED'", "t.pnl IS NOT NULL"]
     if not demo:
-        where_conds.append("(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))")
+        where_conds.append(
+            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
+        )
     where_clause = " AND ".join(where_conds)
 
     async with aiosqlite.connect(config.DB_PATH) as db:
@@ -230,10 +242,10 @@ async def get_stats_by_mode(demo: bool = False) -> Dict[str, Any]:
     return {"overall": overall, "by_mode": by_mode}
 
 
-
 # ═══════════════════════════════════════════════════════════════
 # QUERY — RECENT TRADE HISTORY (for /backtest history panel)
 # ═══════════════════════════════════════════════════════════════
+
 
 async def get_recent_trades(
     limit: int = 10,
@@ -252,7 +264,9 @@ async def get_recent_trades(
         conditions.append("t.symbol = ?")
         params.append(symbol.upper())
     if not demo:
-        conditions.append("(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))")
+        conditions.append(
+            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
+        )
 
     where = f"WHERE {' AND '.join(conditions)}"
     params.append(limit)
@@ -287,7 +301,10 @@ async def get_recent_trades(
 # QUERY — EQUITY CURVE
 # ═══════════════════════════════════════════════════════════════
 
-async def get_equity_curve(symbol: Optional[str] = None, demo: bool = False) -> Dict[str, Any]:
+
+async def get_equity_curve(
+    symbol: Optional[str] = None, demo: bool = False
+) -> Dict[str, Any]:
     """Tra ve equity curve data cho Chart.js."""
     conditions = ["t.status = 'FILLED'", "t.pnl IS NOT NULL"]
     params: list = []
@@ -296,7 +313,9 @@ async def get_equity_curve(symbol: Optional[str] = None, demo: bool = False) -> 
         conditions.append("t.symbol = ?")
         params.append(symbol.upper())
     if not demo:
-        conditions.append("(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))")
+        conditions.append(
+            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
+        )
 
     where = f"WHERE {' AND '.join(conditions)}"
 
@@ -325,14 +344,16 @@ async def get_equity_curve(symbol: Optional[str] = None, demo: bool = False) -> 
             labels.append(r[0])  # created_at
             cumulative_pnl.append(round(running, 2))
             drawdown_pct.append(dd_pct)
-            trades_detail.append({
-                "date": r[0],
-                "pnl": r[1],
-                "symbol": r[2],
-                "side": r[3],
-                "cumulative": round(running, 2),
-                "drawdown_pct": dd_pct,
-            })
+            trades_detail.append(
+                {
+                    "date": r[0],
+                    "pnl": r[1],
+                    "symbol": r[2],
+                    "side": r[3],
+                    "cumulative": round(running, 2),
+                    "drawdown_pct": dd_pct,
+                }
+            )
 
         return {
             "labels": labels,
@@ -346,6 +367,7 @@ async def get_equity_curve(symbol: Optional[str] = None, demo: bool = False) -> 
 # QUERY — BRIEFS
 # ═══════════════════════════════════════════════════════════════
 
+
 async def get_briefs(
     limit: int = 20,
     offset: int = 0,
@@ -354,9 +376,7 @@ async def get_briefs(
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
 
-        row = await db.execute_fetchall(
-            "SELECT COUNT(*) as cnt FROM briefs"
-        )
+        row = await db.execute_fetchall("SELECT COUNT(*) as cnt FROM briefs")
         total = row[0][0] if row else 0
 
         limit = min(limit, 100)

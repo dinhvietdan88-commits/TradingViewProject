@@ -26,12 +26,15 @@ def mock_uvicorn_serve():
 
 @pytest.fixture(autouse=True)
 def mock_scheduler_start_stop():
-    with patch("scheduler.start_scheduler") as mock_start, \
-         patch("scheduler.stop_scheduler") as mock_stop:
+    with (
+        patch("scheduler.start_scheduler") as mock_start,
+        patch("scheduler.stop_scheduler") as mock_stop,
+    ):
         yield mock_start, mock_stop
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────
+
 
 def _make_vbs_signal(queue_id=1, symbol="BTCUSDT", action="buy", price=68000.0):
     """Create a sample VBS signal dict."""
@@ -77,6 +80,7 @@ class FakeResponse:
 
 
 # ── poll_and_analyze() ───────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_poll_and_analyze_success():
@@ -188,7 +192,10 @@ async def test_poll_and_analyze_rejected_signal():
     assert len(results) == 1
     assert results[0]["queue_id"] == 99
     assert results[0]["approved"] is False
-    assert "rejected" in results[0]["reason"].lower() or "criteria" in results[0]["reason"].lower()
+    assert (
+        "rejected" in results[0]["reason"].lower()
+        or "criteria" in results[0]["reason"].lower()
+    )
     await worker.close()
 
 
@@ -220,6 +227,7 @@ async def test_poll_and_analyze_analysis_exception():
 
 # ── _analyze_signal() ────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_analyze_signal_approved():
     """_analyze_signal returns trade payload when AI approves the signal."""
@@ -228,10 +236,18 @@ async def test_analyze_signal_approved():
     worker = VpsAnalyzerWorker()
     signal = _make_vbs_signal(queue_id=10, price=50000.0)
 
-    with patch("rag.build_rag_query", return_value="VCP breakout query"), \
-         patch("rag.query_knowledge", return_value=[{"content": "chunk", "metadata": {}, "relevance_score": 0.9}]), \
-         patch("rag.generate_trading_advice", new_callable=AsyncMock, return_value="🟢 Tín hiệu Mạnh. Nên BUY tại pivot. SL -8%."):
-
+    with (
+        patch("rag.build_rag_query", return_value="VCP breakout query"),
+        patch(
+            "rag.query_knowledge",
+            return_value=[{"content": "chunk", "metadata": {}, "relevance_score": 0.9}],
+        ),
+        patch(
+            "rag.generate_trading_advice",
+            new_callable=AsyncMock,
+            return_value="🟢 Tín hiệu Mạnh. Nên BUY tại pivot. SL -8%.",
+        ),
+    ):
         result = await worker._analyze_signal(signal)
 
     assert result is not None
@@ -253,10 +269,18 @@ async def test_analyze_signal_rejected_by_ai():
     worker = VpsAnalyzerWorker()
     signal = _make_vbs_signal(queue_id=11, price=50000.0)
 
-    with patch("rag.build_rag_query", return_value="test query"), \
-         patch("rag.query_knowledge", return_value=[{"content": "chunk", "metadata": {}, "relevance_score": 0.5}]), \
-         patch("rag.generate_trading_advice", new_callable=AsyncMock, return_value="⚠️ RAG Analysis không khả dụng (thiếu API key)."):
-
+    with (
+        patch("rag.build_rag_query", return_value="test query"),
+        patch(
+            "rag.query_knowledge",
+            return_value=[{"content": "chunk", "metadata": {}, "relevance_score": 0.5}],
+        ),
+        patch(
+            "rag.generate_trading_advice",
+            new_callable=AsyncMock,
+            return_value="⚠️ RAG Analysis không khả dụng (thiếu API key).",
+        ),
+    ):
         result = await worker._analyze_signal(signal)
 
     assert result is None
@@ -271,10 +295,15 @@ async def test_analyze_signal_invalid_price():
     worker = VpsAnalyzerWorker()
     signal = _make_vbs_signal(queue_id=12, price=0)
 
-    with patch("rag.build_rag_query", return_value="test query"), \
-         patch("rag.query_knowledge", return_value=[]), \
-         patch("rag.generate_trading_advice", new_callable=AsyncMock, return_value="Buy signal looks good"):
-
+    with (
+        patch("rag.build_rag_query", return_value="test query"),
+        patch("rag.query_knowledge", return_value=[]),
+        patch(
+            "rag.generate_trading_advice",
+            new_callable=AsyncMock,
+            return_value="Buy signal looks good",
+        ),
+    ):
         result = await worker._analyze_signal(signal)
 
     assert result is None
@@ -297,10 +326,18 @@ async def test_analyze_signal_position_sizing():
     # sl = 100 * (1 - 0.08) = 92
     # tp = 100 * (1 + 0.20) = 120
 
-    with patch("rag.build_rag_query", return_value="test query"), \
-         patch("rag.query_knowledge", return_value=[{"content": "chunk", "metadata": {}, "relevance_score": 0.9}]), \
-         patch("rag.generate_trading_advice", new_callable=AsyncMock, return_value="Strong BUY signal."):
-
+    with (
+        patch("rag.build_rag_query", return_value="test query"),
+        patch(
+            "rag.query_knowledge",
+            return_value=[{"content": "chunk", "metadata": {}, "relevance_score": 0.9}],
+        ),
+        patch(
+            "rag.generate_trading_advice",
+            new_callable=AsyncMock,
+            return_value="Strong BUY signal.",
+        ),
+    ):
         result = await worker._analyze_signal(signal)
 
     assert result is not None
@@ -320,10 +357,18 @@ async def test_analyze_signal_sell_position_sizing():
 
     # For sell: sl = 100 * (1 + 0.08) = 108, tp = 100 * (1 - 0.20) = 80
 
-    with patch("rag.build_rag_query", return_value="test query"), \
-         patch("rag.query_knowledge", return_value=[{"content": "chunk", "metadata": {}, "relevance_score": 0.9}]), \
-         patch("rag.generate_trading_advice", new_callable=AsyncMock, return_value="Strong SELL signal. Bán ngay."):
-
+    with (
+        patch("rag.build_rag_query", return_value="test query"),
+        patch(
+            "rag.query_knowledge",
+            return_value=[{"content": "chunk", "metadata": {}, "relevance_score": 0.9}],
+        ),
+        patch(
+            "rag.generate_trading_advice",
+            new_callable=AsyncMock,
+            return_value="Strong SELL signal. Bán ngay.",
+        ),
+    ):
         result = await worker._analyze_signal(signal)
 
     assert result is not None
@@ -333,6 +378,7 @@ async def test_analyze_signal_sell_position_sizing():
 
 
 # ── forward_to_server_b() ───────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_forward_to_server_b_success():
@@ -414,6 +460,7 @@ async def test_forward_to_server_b_connection_error():
 
 # ── _ack_signal() ────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_ack_signal_success():
     """_ack_signal returns True when VBS accepts the ACK."""
@@ -479,6 +526,7 @@ async def test_ack_signal_connection_error():
 
 # ── run() loop ───────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_run_loop_approved_signal():
     """run() forwards approved signals to Server B and ACKs them."""
@@ -487,11 +535,13 @@ async def test_run_loop_approved_signal():
     worker = VpsAnalyzerWorker()
     worker.poll_interval = 0  # no sleep for tests
 
-    analyzed_signals = [{
-        "queue_id": 100,
-        "approved": True,
-        "trade_payload": {"symbol": "BTCUSDT", "action": "buy", "price": 68000.0},
-    }]
+    analyzed_signals = [
+        {
+            "queue_id": 100,
+            "approved": True,
+            "trade_payload": {"symbol": "BTCUSDT", "action": "buy", "price": 68000.0},
+        }
+    ]
 
     call_count = 0
 
@@ -509,7 +559,9 @@ async def test_run_loop_approved_signal():
 
     await worker.run()
 
-    worker.forward_to_server_b.assert_called_once_with(analyzed_signals[0]["trade_payload"])
+    worker.forward_to_server_b.assert_called_once_with(
+        analyzed_signals[0]["trade_payload"]
+    )
     worker._ack_signal.assert_called_once_with(100, "executed")
 
 
@@ -521,11 +573,13 @@ async def test_run_loop_rejected_signal():
     worker = VpsAnalyzerWorker()
     worker.poll_interval = 0
 
-    analyzed_signals = [{
-        "queue_id": 200,
-        "approved": False,
-        "reason": "Does not meet criteria",
-    }]
+    analyzed_signals = [
+        {
+            "queue_id": 200,
+            "approved": False,
+            "reason": "Does not meet criteria",
+        }
+    ]
 
     call_count = 0
 
@@ -543,7 +597,9 @@ async def test_run_loop_rejected_signal():
     await worker.run()
 
     worker.forward_to_server_b.assert_not_called()
-    worker._ack_signal.assert_called_once_with(200, "rejected", "Does not meet criteria")
+    worker._ack_signal.assert_called_once_with(
+        200, "rejected", "Does not meet criteria"
+    )
 
 
 @pytest.mark.asyncio
@@ -554,11 +610,13 @@ async def test_run_loop_server_b_failure():
     worker = VpsAnalyzerWorker()
     worker.poll_interval = 0
 
-    analyzed_signals = [{
-        "queue_id": 300,
-        "approved": True,
-        "trade_payload": {"symbol": "ETHUSDT", "action": "buy", "price": 3500.0},
-    }]
+    analyzed_signals = [
+        {
+            "queue_id": 300,
+            "approved": True,
+            "trade_payload": {"symbol": "ETHUSDT", "action": "buy", "price": 3500.0},
+        }
+    ]
 
     call_count = 0
 
@@ -609,6 +667,7 @@ async def test_run_loop_error_recovery():
 
 # ── Session management ───────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_get_session_creates_new():
     """get_session creates a new aiohttp.ClientSession."""
@@ -652,6 +711,7 @@ async def test_close_idempotent():
 
 # ── Multiple signals in one poll ─────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_poll_and_analyze_multiple_signals():
     """poll_and_analyze processes multiple signals with mixed results."""
@@ -693,6 +753,7 @@ async def test_poll_and_analyze_multiple_signals():
 
 # ── Local & Server B Failover Tests ──────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_forward_to_local_success():
     """If LOCAL_EXECUTE_URL is configured and succeeds, we use Local and don't call Server B."""
@@ -711,8 +772,10 @@ async def test_forward_to_local_success():
         worker = VpsAnalyzerWorker()
         trade_payload = {"symbol": "BTCUSDT", "action": "buy", "price": 68000.0}
 
-        local_response = FakeResponse(status=200, json_data={"success": True, "order_id": "LOCAL-123"})
-        
+        local_response = FakeResponse(
+            status=200, json_data={"success": True, "order_id": "LOCAL-123"}
+        )
+
         mock_session = MagicMock()
         mock_session.post = MagicMock(return_value=local_response)
         worker.get_session = AsyncMock(return_value=mock_session)
@@ -757,12 +820,15 @@ async def test_forward_to_local_fails_fallback_to_server_b_success():
         trade_payload = {"symbol": "BTCUSDT", "action": "buy", "price": 68000.0}
 
         # Mock post side_effects: 1st call (Local) raises connection error, 2nd call (Server B) succeeds
-        b_response = FakeResponse(status=200, json_data={"success": True, "order_id": "B-456"})
-        
+        b_response = FakeResponse(
+            status=200, json_data={"success": True, "order_id": "B-456"}
+        )
+
         mock_session = MagicMock()
-        
+
         # Side effect to raise error on first call and return b_response on second
         call_count = 0
+
         def post_side_effect(url, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -774,7 +840,9 @@ async def test_forward_to_local_fails_fallback_to_server_b_success():
         worker.get_session = AsyncMock(return_value=mock_session)
 
         # Mock Telegram alert to avoid real requests
-        with patch("notifier.send_telegram_alert", new_callable=AsyncMock) as mock_alert:
+        with patch(
+            "notifier.send_telegram_alert", new_callable=AsyncMock
+        ) as mock_alert:
             result = await worker.forward_to_server_b(trade_payload)
 
             assert result["success"] is True
@@ -793,6 +861,7 @@ async def test_forward_to_local_fails_fallback_to_server_b_success():
 
 
 # ── Dynamic ATR-based Sizing & SL/TP Tests ────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_calculate_sl_tp_with_atr():
@@ -814,11 +883,7 @@ async def test_calculate_sl_tp_with_atr():
         config.TAKE_PROFIT_PCT = 0.20
 
         # Test case 1: Buy signal with ATR in payload
-        signal_buy_payload = {
-            "payload": {
-                "atr": 5.0
-            }
-        }
+        signal_buy_payload = {"payload": {"atr": 5.0}}
         sl, tp = worker._calculate_sl_tp(price, "buy", signal=signal_buy_payload)
         # Long: SL = Price - 2*ATR = 100 - 10 = 90
         # Long: TP = Price + 5*ATR = 100 + 25 = 125
@@ -826,9 +891,7 @@ async def test_calculate_sl_tp_with_atr():
         assert tp == 125.0
 
         # Test case 2: Sell signal with atr_value at root
-        signal_sell_root = {
-            "atr_value": 4.0
-        }
+        signal_sell_root = {"atr_value": 4.0}
         sl, tp = worker._calculate_sl_tp(price, "sell", signal=signal_sell_root)
         # Short: SL = Price + 2*ATR = 100 + 8 = 108
         # Short: TP = Price - 5*ATR = 100 - 20 = 80
@@ -836,11 +899,7 @@ async def test_calculate_sl_tp_with_atr():
         assert tp == 80.0
 
         # Test case 3: Fallback when ATR is zero
-        signal_zero_atr = {
-            "payload": {
-                "atr": 0.0
-            }
-        }
+        signal_zero_atr = {"payload": {"atr": 0.0}}
         sl, tp = worker._calculate_sl_tp(price, "buy", signal=signal_zero_atr)
         original_sl = round(price * (1 - config.STOP_LOSS_PCT), 8)
         original_tp = round(price * (1 + config.TAKE_PROFIT_PCT), 8)
@@ -877,11 +936,7 @@ async def test_calculate_position_size_with_atr():
         # So risk_amount = 1000 * 0.02 = 20
         # Test case 1: ATR = 5.0. Dynamic sl_pct = 2 * 5.0 / 100 = 0.10 (10%)
         # qty = risk_amount / (price * sl_pct) = 20 / (100 * 0.10) = 2.0
-        signal_payload = {
-            "payload": {
-                "atr_value": 5.0
-            }
-        }
+        signal_payload = {"payload": {"atr_value": 5.0}}
         qty = worker._calculate_position_size(price, "buy", signal=signal_payload)
         assert qty == 2.0
 
@@ -889,10 +944,10 @@ async def test_calculate_position_size_with_atr():
         # If ATR = 0.1. Dynamic sl_pct = 0.2 / 100 = 0.002
         # qty = 20 / (100 * 0.002) = 100.0
         # Total quote value = 100 * 100 = 10000 > 1000. Cap to portfolio / price = 1000 / 100 = 10.0
-        signal_tiny_atr = {
-            "atr": 0.1
-        }
-        qty_capped = worker._calculate_position_size(price, "buy", signal=signal_tiny_atr)
+        signal_tiny_atr = {"atr": 0.1}
+        qty_capped = worker._calculate_position_size(
+            price, "buy", signal=signal_tiny_atr
+        )
         assert qty_capped == 10.0
 
         # Test case 3: Fallback when signal is None
@@ -910,27 +965,33 @@ async def test_calculate_position_size_with_atr():
 
 # ── V2 Integration Features Tests ──────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_health_endpoint_healthy():
     """/health endpoint returns correct JSON structure and values."""
     from workers.vps_analyzer import app
     from httpx import AsyncClient
     from workers.liveness_monitor import ServerHealth
-    
+
     servers_mock = [
         ServerHealth(name="SERVER_A", url="", is_healthy=True),
-        ServerHealth(name="SERVER_B", url="", is_healthy=True)
+        ServerHealth(name="SERVER_B", url="", is_healthy=True),
     ]
-    
-    with patch("workers.vps_analyzer._get_servers", return_value=servers_mock), \
-         patch("workers.ntp_monitor.last_drift_results", {"server_a": {"drift_ms": 1.5}, "server_b": {"drift_ms": 2.1}}), \
-         patch("shutil.disk_usage", return_value=(1000, 400, 600)):
-         
+
+    with (
+        patch("workers.vps_analyzer._get_servers", return_value=servers_mock),
+        patch(
+            "workers.ntp_monitor.last_drift_results",
+            {"server_a": {"drift_ms": 1.5}, "server_b": {"drift_ms": 2.1}},
+        ),
+        patch("shutil.disk_usage", return_value=(1000, 400, 600)),
+    ):
         import httpx
+
         transport = httpx.ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             response = await ac.get("/health")
-            
+
         assert response.status_code == 200
         data = response.json()
         assert data["liveness_status_server_a"] == "healthy"
@@ -946,21 +1007,23 @@ async def test_health_endpoint_unhealthy_servers():
     from workers.vps_analyzer import app
     from httpx import AsyncClient
     from workers.liveness_monitor import ServerHealth
-    
+
     servers_mock = [
         ServerHealth(name="SERVER_A", url="", is_healthy=False),
-        ServerHealth(name="SERVER_B", url="", is_healthy=False)
+        ServerHealth(name="SERVER_B", url="", is_healthy=False),
     ]
-    
-    with patch("workers.vps_analyzer._get_servers", return_value=servers_mock), \
-         patch("workers.ntp_monitor.last_drift_results", {}), \
-         patch("shutil.disk_usage", return_value=(1000, 400, 600)):
-         
+
+    with (
+        patch("workers.vps_analyzer._get_servers", return_value=servers_mock),
+        patch("workers.ntp_monitor.last_drift_results", {}),
+        patch("shutil.disk_usage", return_value=(1000, 400, 600)),
+    ):
         import httpx
+
         transport = httpx.ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             response = await ac.get("/health")
-            
+
         assert response.status_code == 200
         data = response.json()
         assert data["liveness_status_server_a"] == "unhealthy"
@@ -975,21 +1038,25 @@ async def test_metrics_endpoint_json():
     from workers.vps_analyzer import app
     from httpx import AsyncClient
     from workers.liveness_monitor import ServerHealth
-    
+
     servers_mock = [
         ServerHealth(name="SERVER_A", url="", is_healthy=True),
-        ServerHealth(name="SERVER_B", url="", is_healthy=False)
+        ServerHealth(name="SERVER_B", url="", is_healthy=False),
     ]
-    
-    with patch("workers.vps_analyzer._get_servers", return_value=servers_mock), \
-         patch("workers.ntp_monitor.last_drift_results", {"server_a": {"drift_ms": 3.4}}), \
-         patch("shutil.disk_usage", return_value=(100, 35, 65)):
-         
+
+    with (
+        patch("workers.vps_analyzer._get_servers", return_value=servers_mock),
+        patch(
+            "workers.ntp_monitor.last_drift_results", {"server_a": {"drift_ms": 3.4}}
+        ),
+        patch("shutil.disk_usage", return_value=(100, 35, 65)),
+    ):
         import httpx
+
         transport = httpx.ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             response = await ac.get("/metrics", headers={"accept": "application/json"})
-            
+
         assert response.status_code == 200
         data = response.json()
         assert data["liveness_status_server_a"] == 1.0
@@ -1005,21 +1072,25 @@ async def test_metrics_endpoint_prometheus_text():
     from workers.vps_analyzer import app
     from httpx import AsyncClient
     from workers.liveness_monitor import ServerHealth
-    
+
     servers_mock = [
         ServerHealth(name="SERVER_A", url="", is_healthy=True),
-        ServerHealth(name="SERVER_B", url="", is_healthy=False)
+        ServerHealth(name="SERVER_B", url="", is_healthy=False),
     ]
-    
-    with patch("workers.vps_analyzer._get_servers", return_value=servers_mock), \
-         patch("workers.ntp_monitor.last_drift_results", {"server_a": {"drift_ms": 3.4}}), \
-         patch("shutil.disk_usage", return_value=(100, 35, 65)):
-         
+
+    with (
+        patch("workers.vps_analyzer._get_servers", return_value=servers_mock),
+        patch(
+            "workers.ntp_monitor.last_drift_results", {"server_a": {"drift_ms": 3.4}}
+        ),
+        patch("shutil.disk_usage", return_value=(100, 35, 65)),
+    ):
         import httpx
+
         transport = httpx.ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             response = await ac.get("/metrics")
-            
+
         assert response.status_code == 200
         text = response.text
         assert "# HELP liveness_status_server_a" in text
@@ -1034,28 +1105,30 @@ async def test_metrics_endpoint_prometheus_text():
 async def test_run_startup_sequences():
     """run() initializes database, starts scheduler, starts health server, and configures logging."""
     from workers.vps_analyzer import VpsAnalyzerWorker
-    
+
     worker = VpsAnalyzerWorker()
     worker.poll_interval = 0
-    
+
     # We will trigger the shutdown event immediately to exit the run loop
     async def mock_poll():
         worker._shutdown_event.set()
         return []
-        
+
     worker.poll_and_analyze = mock_poll
-    
-    with patch("rag.init_vector_db", new_callable=AsyncMock, return_value=True) as mock_db, \
-         patch("scheduler.start_scheduler") as mock_start_sched, \
-         patch("scheduler.stop_scheduler") as mock_stop_sched, \
-         patch("workers.vps_analyzer.setup_logging") as mock_setup_log, \
-         patch("uvicorn.Server.serve", new_callable=AsyncMock) as mock_uv_serve:
-         
+
+    with (
+        patch(
+            "rag.init_vector_db", new_callable=AsyncMock, return_value=True
+        ) as mock_db,
+        patch("scheduler.start_scheduler") as mock_start_sched,
+        patch("scheduler.stop_scheduler") as mock_stop_sched,
+        patch("workers.vps_analyzer.setup_logging") as mock_setup_log,
+        patch("uvicorn.Server.serve", new_callable=AsyncMock) as mock_uv_serve,
+    ):
         await worker.run()
-        
+
         mock_db.assert_called_once()
         mock_start_sched.assert_called_once()
         mock_stop_sched.assert_called_once()
         mock_setup_log.assert_called()
         mock_uv_serve.assert_called_once()
-

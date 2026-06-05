@@ -1445,4 +1445,3 @@ function setEquityRange(range, btn) {
   // For now just show toast
   showToast(`Equity range: ${range}`, 'info');
 }
-

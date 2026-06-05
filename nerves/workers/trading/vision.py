@@ -102,7 +102,6 @@ Trả lời bằng Tiếng Việt ngắn gọn, format Telegram-friendly (sử d
 Bắt đầu bằng: 👁️ MULTI-TIMEFRAME ANALYSIS — {symbol}"""
 
 
-
 def _validate_and_read_image(image_path: Path) -> Optional[bytes]:
     """Validate that image_path is within allowed dirs, then read bytes.
 
@@ -125,11 +124,7 @@ def _validate_and_read_image(image_path: Path) -> Optional[bytes]:
     allowed_roots = [
         os.path.realpath(tempfile.gettempdir()),
         os.path.realpath(os.path.expanduser("~")),
-        os.path.realpath(
-            os.path.join(
-                os.path.dirname(__file__), os.pardir, os.pardir
-            )
-        ),
+        os.path.realpath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)),
     ]
 
     # Step 2 — Validate: resolved path MUST be under an allowed root
@@ -143,8 +138,7 @@ def _validate_and_read_image(image_path: Path) -> Optional[bytes]:
     if matched_root is None:
         sanitized = resolved.replace("\r", "").replace("\n", "")
         log.error(
-            "Security Rejection: Path is outside allowed "
-            f"directories: {sanitized}"
+            f"Security Rejection: Path is outside allowed directories: {sanitized}"
         )
         return None
 
@@ -153,10 +147,7 @@ def _validate_and_read_image(image_path: Path) -> Optional[bytes]:
     parts = relative.replace("\\", "/").split("/")
     if ".." in parts:
         sanitized = resolved.replace("\r", "").replace("\n", "")
-        log.error(
-            "Security Rejection: Path traversal "
-            f"detected: {sanitized}"
-        )
+        log.error(f"Security Rejection: Path traversal detected: {sanitized}")
         return None
 
     # Step 4 — Construct a FRESH path from trusted root + clean parts.
@@ -176,9 +167,7 @@ def _validate_and_read_image(image_path: Path) -> Optional[bytes]:
         return None
 
 
-def _encode_image(
-    image_path: Path, max_width: int = 1024
-) -> Tuple[Optional[str], str]:
+def _encode_image(image_path: Path, max_width: int = 1024) -> Tuple[Optional[str], str]:
     """Encode image to base64, compressing/resizing to WebP if PIL is available."""
     mime_type = _get_media_type(image_path)
 
@@ -195,16 +184,12 @@ def _encode_image(
             # Resize if too large
             if img.width > max_width:
                 height = int((max_width / img.width) * img.height)
-                img = img.resize(
-                    (max_width, height), Image.Resampling.LANCZOS
-                )
+                img = img.resize((max_width, height), Image.Resampling.LANCZOS)
 
             # Save to bytes in WebP format
             output = io.BytesIO()
             img.save(output, format="WEBP", quality=80)
-            base64_str = base64.b64encode(
-                output.getvalue()
-            ).decode("utf-8")
+            base64_str = base64.b64encode(output.getvalue()).decode("utf-8")
             return base64_str, "image/webp"
     except Exception as e:
         log.warning(f"PIL compression failed, falling back to raw: {e}")
@@ -240,7 +225,7 @@ def _build_algo_context(scan_result: dict = None) -> str:
         vcp = "✅ Detected" if scan_result["vcp_detected"] else "❌ Not detected"
         lines.append(f"- VCP (algorithmic): {vcp}")
     if "volume_ratio" in scan_result and scan_result["volume_ratio"]:
-        lines.append(f"- Volume ratio: {scan_result['volume_ratio']*100:.0f}% of avg")
+        lines.append(f"- Volume ratio: {scan_result['volume_ratio'] * 100:.0f}% of avg")
     if "pivot_level" in scan_result and scan_result["pivot_level"]:
         lines.append(f"- Pivot estimate: {scan_result['pivot_level']:,.2f}")
 
@@ -252,21 +237,28 @@ async def _analyze_chart_sdk_fallback(symbol: str, scan_result: dict = None) -> 
     Tầng 3 Fallback: Gửi prompt chứa trạng thái kỹ thuật và RAG rules tới LiteLLM server local (port 9101).
     """
     import httpx
+
     # Build algo context
     algo_context = _build_algo_context(scan_result)
-    
+
     # Retrieve RAG rules
     rag_rules = ""
     try:
         import rag
+
         if rag._collection is not None:
             query = f"Minervini trading rules guidelines SEPA setup for {symbol}"
             chunks = rag.query_knowledge(query, n_results=3)
             if chunks:
-                rag_rules = "\n\n".join([f"- Chunk {c['metadata'].get('chapter', 'N/A')}: {c['content']}" for c in chunks])
+                rag_rules = "\n\n".join(
+                    [
+                        f"- Chunk {c['metadata'].get('chapter', 'N/A')}: {c['content']}"
+                        for c in chunks
+                    ]
+                )
     except Exception as re_err:
         log.warning(f"SDK Fallback: Failed to query RAG knowledge: {re_err}")
-    
+
     # Construct enriched prompt
     fallback_prompt = f"""Bạn là expert AI Assistant tích hợp trong hệ thống giao dịch TradingViewProject.
 Do các kết nối API Vision chính bị quá tải hoặc gặp lỗi (Rate Limit/Quota), bạn được kích hoạt làm Tầng 3 Fallback (Text-Based Specialist).
@@ -291,19 +283,19 @@ Trả lời ngắn gọn (dưới 250 từ), phù hợp gửi qua Telegram.
 Bắt đầu bằng: 👁️ VISUAL ANALYSIS (SDK FALLBACK) — {symbol}
 Có chứa dòng điểm số dạng: Confidence: X/10 hoặc Score: X/10 ở cuối bài.
 """
-    
+
     # Request parameters
     url = "http://127.0.0.1:9101/v1/chat/completions"
     payload = {
-        "model": "gpt-4o-mini", # LiteLLM will route this automatically
+        "model": "gpt-4o-mini",  # LiteLLM will route this automatically
         "messages": [
             {"role": "system", "content": VISION_SYSTEM_PROMPT},
-            {"role": "user", "content": fallback_prompt}
+            {"role": "user", "content": fallback_prompt},
         ],
         "temperature": 0.2,
-        "max_tokens": 800
+        "max_tokens": 800,
     }
-    
+
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.post(url, json=payload)
@@ -316,7 +308,7 @@ Có chứa dòng điểm số dạng: Confidence: X/10 hoặc Score: X/10 ở cu
                     "confidence": _parse_confidence(analysis_text),
                     "patterns": _parse_patterns(analysis_text),
                     "combined_score": "N/A",
-                    "error": None
+                    "error": None,
                 }
             else:
                 return {
@@ -325,7 +317,7 @@ Có chứa dòng điểm số dạng: Confidence: X/10 hoặc Score: X/10 ở cu
                     "confidence": 0,
                     "patterns": [],
                     "combined_score": "N/A",
-                    "error": f"LiteLLM error: HTTP {response.status_code} - {response.text}"
+                    "error": f"LiteLLM error: HTTP {response.status_code} - {response.text}",
                 }
     except Exception as exc:
         return {
@@ -334,20 +326,23 @@ Có chứa dòng điểm số dạng: Confidence: X/10 hoặc Score: X/10 ở cu
             "confidence": 0,
             "patterns": [],
             "combined_score": "N/A",
-            "error": f"LiteLLM connection failed: {exc}"
+            "error": f"LiteLLM connection failed: {exc}",
         }
 
 
-async def _analyze_chart_mtf_sdk_fallback(symbol: str, mtf_scan_result: dict = None) -> dict:
+async def _analyze_chart_mtf_sdk_fallback(
+    symbol: str, mtf_scan_result: dict = None
+) -> dict:
     """
     Tầng 3 Fallback cho MTF: Gửi prompt chứa trạng thái kỹ thuật đa khung và RAG rules tới LiteLLM server local (port 9101).
     """
     import httpx
+
     # Build mtf context
     mtf_context_lines = []
     if mtf_scan_result and "timeframes" in mtf_scan_result:
         for tf, scan in mtf_scan_result["timeframes"].items():
-            if scan and not getattr(scan, 'error', None):
+            if scan and not getattr(scan, "error", None):
                 mtf_context_lines.append(
                     f"Khung {tf.upper()}:\n"
                     f"  - Price: {scan.price:,.2f}\n"
@@ -356,21 +351,31 @@ async def _analyze_chart_mtf_sdk_fallback(symbol: str, mtf_scan_result: dict = N
                 )
             elif scan:
                 mtf_context_lines.append(f"Khung {tf.upper()}: Lỗi scan ({scan.error})")
-    
-    mtf_context = "\n".join(mtf_context_lines) if mtf_context_lines else "Không có dữ liệu scanner."
-    
+
+    mtf_context = (
+        "\n".join(mtf_context_lines)
+        if mtf_context_lines
+        else "Không có dữ liệu scanner."
+    )
+
     # Retrieve RAG rules
     rag_rules = ""
     try:
         import rag
+
         if rag._collection is not None:
             query = f"Minervini trading rules guidelines SEPA setup multi timeframe for {symbol}"
             chunks = rag.query_knowledge(query, n_results=3)
             if chunks:
-                rag_rules = "\n\n".join([f"- Chunk {c['metadata'].get('chapter', 'N/A')}: {c['content']}" for c in chunks])
+                rag_rules = "\n\n".join(
+                    [
+                        f"- Chunk {c['metadata'].get('chapter', 'N/A')}: {c['content']}"
+                        for c in chunks
+                    ]
+                )
     except Exception as re_err:
         log.warning(f"SDK MTF Fallback: Failed to query RAG knowledge: {re_err}")
-        
+
     fallback_prompt = f"""Bạn là expert AI Assistant tích hợp trong hệ thống giao dịch TradingViewProject.
 Do các kết nối API Vision chính bị quá tải hoặc gặp lỗi (Rate Limit/Quota), bạn được kích hoạt làm Tầng 3 Fallback (Text-Based Specialist) cho phân tích Đa Khung Thời Gian (MTF).
 
@@ -393,18 +398,18 @@ Trả lời ngắn gọn (dưới 250 từ) bằng Tiếng Việt, phù hợp g�
 Bắt đầu bằng: 👁️ MULTI-TIMEFRAME ANALYSIS (SDK FALLBACK) — {symbol}
 Có chứa dòng điểm số dạng: Confidence: X/10 hoặc Score: X/10 ở cuối bài.
 """
-    
+
     url = "http://127.0.0.1:9101/v1/chat/completions"
     payload = {
         "model": "gpt-4o-mini",
         "messages": [
             {"role": "system", "content": VISION_MTF_SYSTEM_PROMPT},
-            {"role": "user", "content": fallback_prompt}
+            {"role": "user", "content": fallback_prompt},
         ],
         "temperature": 0.2,
-        "max_tokens": 1000
+        "max_tokens": 1000,
     }
-    
+
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.post(url, json=payload)
@@ -417,7 +422,7 @@ Có chứa dòng điểm số dạng: Confidence: X/10 hoặc Score: X/10 ở cu
                     "confidence": _parse_confidence(analysis_text),
                     "patterns": _parse_patterns(analysis_text),
                     "combined_score": "N/A",
-                    "error": None
+                    "error": None,
                 }
             else:
                 return {
@@ -426,7 +431,7 @@ Có chứa dòng điểm số dạng: Confidence: X/10 hoặc Score: X/10 ở cu
                     "confidence": 0,
                     "patterns": [],
                     "combined_score": "N/A",
-                    "error": f"LiteLLM error: HTTP {response.status_code} - {response.text}"
+                    "error": f"LiteLLM error: HTTP {response.status_code} - {response.text}",
                 }
     except Exception as exc:
         return {
@@ -435,7 +440,7 @@ Có chứa dòng điểm số dạng: Confidence: X/10 hoặc Score: X/10 ở cu
             "confidence": 0,
             "patterns": [],
             "combined_score": "N/A",
-            "error": f"LiteLLM connection failed: {exc}"
+            "error": f"LiteLLM connection failed: {exc}",
         }
 
 
@@ -482,14 +487,22 @@ async def analyze_chart_vision(
 
     if provider == "gemini":
         if not has_gemini:
-            result["error"] = "Gemini API not available or configured (need GCP_PROJECT_ID or GEMINI_API_KEY)"
+            result["error"] = (
+                "Gemini API not available or configured (need GCP_PROJECT_ID or GEMINI_API_KEY)"
+            )
             return result
     elif provider == "claude_cli":
         pass  # CLI verify khi gọi, không cần API key
     else:
-        if not ANTHROPIC_AVAILABLE or not getattr(config, "ANTHROPIC_API_KEY", None) or getattr(config, "ANTHROPIC_API_KEY", "").startswith("sk-ant-xxx"):
+        if (
+            not ANTHROPIC_AVAILABLE
+            or not getattr(config, "ANTHROPIC_API_KEY", None)
+            or getattr(config, "ANTHROPIC_API_KEY", "").startswith("sk-ant-xxx")
+        ):
             if has_gemini:
-                log.info("Anthropic API key is not configured. Falling back to Gemini...")
+                log.info(
+                    "Anthropic API key is not configured. Falling back to Gemini..."
+                )
                 provider = "gemini"
             else:
                 result["error"] = "Anthropic API not available or configured"
@@ -497,7 +510,9 @@ async def analyze_chart_vision(
 
     image_path = Path(image_path)
     if not image_path.exists():
-        log.warning(f"Image not found at {image_path}. Triggering Tier 3 SDK Fallback directly...")
+        log.warning(
+            f"Image not found at {image_path}. Triggering Tier 3 SDK Fallback directly..."
+        )
         fallback_res = await _analyze_chart_sdk_fallback(symbol, scan_result)
         if not fallback_res.get("error"):
             result.update(fallback_res)
@@ -511,9 +526,15 @@ async def analyze_chart_vision(
                 else:
                     combined = algo_score * 0.5 + visual_conf * 0.5
                 result["combined_score"] = f"{combined:.1f}/10"
-                
-                visual_vcp = any("vcp" in p.lower() or "volatility contraction" in p.lower() for p in result["patterns"])
-                is_downtrend = any("stage 4" in p.lower() or "stage 3" in p.lower() for p in result["patterns"])
+
+                visual_vcp = any(
+                    "vcp" in p.lower() or "volatility contraction" in p.lower()
+                    for p in result["patterns"]
+                )
+                is_downtrend = any(
+                    "stage 4" in p.lower() or "stage 3" in p.lower()
+                    for p in result["patterns"]
+                )
                 if is_downtrend:
                     result["verdict"] = "🔴 AVOID — Stage 3/4 Downtrend Detected"
                 elif combined >= 8 and (vcp_algo or visual_vcp):
@@ -527,7 +548,9 @@ async def analyze_chart_vision(
             else:
                 result["combined_score"] = f"{result['confidence']}/10 (visual only)"
         else:
-            result["error"] = f"Image not found: {image_path}. Fallback error: {fallback_res['error']}"
+            result["error"] = (
+                f"Image not found: {image_path}. Fallback error: {fallback_res['error']}"
+            )
         return result
 
     # Build prompt
@@ -539,7 +562,7 @@ async def analyze_chart_vision(
 
     try:
         analysis_text = ""
-        
+
         # 1. Try Anthropic first if it's the provider
         if provider == "anthropic":
             try:
@@ -549,6 +572,7 @@ async def analyze_chart_vision(
                     raise ValueError("Failed to encode image")
 
                 import anthropic
+
                 client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
                 message = client.messages.create(
                     model=model,
@@ -577,7 +601,9 @@ async def analyze_chart_vision(
                 analysis_text = message.content[0].text
             except Exception as e:
                 if has_gemini:
-                    log.warning(f"Anthropic SDK vision call failed: {e}. Falling back to Gemini...")
+                    log.warning(
+                        f"Anthropic SDK vision call failed: {e}. Falling back to Gemini..."
+                    )
                     provider = "gemini"
                 else:
                     raise e
@@ -586,6 +612,7 @@ async def analyze_chart_vision(
         if provider == "claude_cli":
             try:
                 import rag as _rag
+
                 cli_prompt = (
                     f"{VISION_SYSTEM_PROMPT}\n\n"
                     f"Đọc và phân tích biểu đồ tại đường dẫn sau:\n"
@@ -600,7 +627,9 @@ async def analyze_chart_vision(
                     getattr(config, "CLAUDE_CLI_FALLBACK_SDK", True)
                     and ANTHROPIC_AVAILABLE
                     and getattr(config, "ANTHROPIC_API_KEY", None)
-                    and not getattr(config, "ANTHROPIC_API_KEY", "").startswith("sk-ant-xxx")
+                    and not getattr(config, "ANTHROPIC_API_KEY", "").startswith(
+                        "sk-ant-xxx"
+                    )
                 ):
                     log.warning(f"Vision: Claude CLI fail ({cli_err}). Fallback SDK.")
                     provider = "anthropic"  # try Anthropic SDK
@@ -609,6 +638,7 @@ async def analyze_chart_vision(
                     if not image_data:
                         raise ValueError("Failed to encode image")
                     import anthropic
+
                     client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
                     message = client.messages.create(
                         model=model,
@@ -636,7 +666,9 @@ async def analyze_chart_vision(
                     )
                     analysis_text = message.content[0].text
                 elif has_gemini:
-                    log.warning(f"Vision: Claude CLI fail ({cli_err}). Falling back to Gemini...")
+                    log.warning(
+                        f"Vision: Claude CLI fail ({cli_err}). Falling back to Gemini..."
+                    )
                     provider = "gemini"
                 else:
                     result["error"] = f"Claude CLI error: {cli_err}"
@@ -645,39 +677,60 @@ async def analyze_chart_vision(
         # 3. Try Gemini (either by design or as a fallback)
         if provider == "gemini":
             # Hybrid Strategy: Pro for high precision, Flash for fast scan
-            model_name = "gemini-2.5-pro" if model == "claude-sonnet-4-5" else "gemini-2.5-flash"
+            model_name = (
+                "gemini-2.5-pro" if model == "claude-sonnet-4-5" else "gemini-2.5-flash"
+            )
             max_retries = 3
-            
+
             for attempt in range(max_retries):
                 try:
                     # Determine best available auth method
-                    has_vertex = getattr(config, "GCP_PROJECT_ID", None) and VERTEXAI_AVAILABLE
-                    has_genai  = getattr(config, "GEMINI_API_KEY", None) and GENAI_AVAILABLE
+                    has_vertex = (
+                        getattr(config, "GCP_PROJECT_ID", None) and VERTEXAI_AVAILABLE
+                    )
+                    has_genai = (
+                        getattr(config, "GEMINI_API_KEY", None) and GENAI_AVAILABLE
+                    )
 
                     # Check if ADC (Application Default Credentials) is available before using Vertex AI
                     _use_vertex = False
                     if has_vertex:
                         try:
                             import google.auth
+
                             google.auth.default()  # raises if no ADC
                             _use_vertex = True
                         except Exception:
-                            log.warning("Vertex AI ADC not found — falling back to GEMINI_API_KEY")
+                            log.warning(
+                                "Vertex AI ADC not found — falling back to GEMINI_API_KEY"
+                            )
 
                     if _use_vertex:
                         import vertexai
-                        from vertexai.generative_models import GenerativeModel as VertexGenerativeModel, Part as VertexPart
-                        vertexai.init(project=config.GCP_PROJECT_ID, location=getattr(config, "GCP_LOCATION", "us-central1"))
-                        g_model = VertexGenerativeModel(model_name, system_instruction=VISION_SYSTEM_PROMPT)
+                        from vertexai.generative_models import (
+                            GenerativeModel as VertexGenerativeModel,
+                            Part as VertexPart,
+                        )
+
+                        vertexai.init(
+                            project=config.GCP_PROJECT_ID,
+                            location=getattr(config, "GCP_LOCATION", "us-central1"),
+                        )
+                        g_model = VertexGenerativeModel(
+                            model_name, system_instruction=VISION_SYSTEM_PROMPT
+                        )
                         image_data = image_path.read_bytes()
                         mime_type = _get_media_type(image_path)
-                        image_part = VertexPart.from_data(data=image_data, mime_type=mime_type)
+                        image_part = VertexPart.from_data(
+                            data=image_data, mime_type=mime_type
+                        )
                         response = g_model.generate_content([user_prompt, image_part])
                         analysis_text = response.text
                         break
                     elif has_genai:
                         from google import genai
                         from google.genai import types as genai_types
+
                         client = genai.Client(api_key=config.GEMINI_API_KEY)
                         image_bytes = image_path.read_bytes()
                         mime_type = _get_media_type(image_path)
@@ -700,10 +753,17 @@ async def analyze_chart_vision(
                         raise RuntimeError("No Gemini credentials available")
                 except Exception as e:
                     error_str = str(e).lower()
-                    if "429" in error_str or "quota" in error_str or "exhausted" in error_str or "rate limit" in error_str:
+                    if (
+                        "429" in error_str
+                        or "quota" in error_str
+                        or "exhausted" in error_str
+                        or "rate limit" in error_str
+                    ):
                         if attempt < max_retries - 1:
-                            wait_time = 2 ** attempt
-                            log.warning(f"Rate limit hit for {model_name} on {symbol}. Retrying in {wait_time}s...")
+                            wait_time = 2**attempt
+                            log.warning(
+                                f"Rate limit hit for {model_name} on {symbol}. Retrying in {wait_time}s..."
+                            )
                             await asyncio.sleep(wait_time)
                             continue
                     raise  # Reraise nếu không phải lỗi rate limit hoặc đã thử tối đa
@@ -724,7 +784,7 @@ async def analyze_chart_vision(
 
             # Combined: algorithmic weight 50% + visual 50%
             algo_score = (tt_score / 8) * 10  # normalize to 0-10
-            
+
             # Dynamic weighting: If AI is extremely confident (>= 9), trust visual more.
             if visual_conf >= 9:
                 combined = algo_score * 0.4 + visual_conf * 0.6
@@ -734,8 +794,14 @@ async def analyze_chart_vision(
             result["combined_score"] = f"{combined:.1f}/10"
 
             # Check for Visual Veto and Stage Penalty
-            visual_vcp = any("vcp" in p.lower() or "volatility contraction" in p.lower() for p in result["patterns"])
-            is_downtrend = any("stage 4" in p.lower() or "stage 3" in p.lower() for p in result["patterns"])
+            visual_vcp = any(
+                "vcp" in p.lower() or "volatility contraction" in p.lower()
+                for p in result["patterns"]
+            )
+            is_downtrend = any(
+                "stage 4" in p.lower() or "stage 3" in p.lower()
+                for p in result["patterns"]
+            )
 
             # Enhanced verdict
             if is_downtrend:
@@ -752,11 +818,15 @@ async def analyze_chart_vision(
             result["combined_score"] = f"{result['confidence']}/10 (visual only)"
             result["verdict"] = ""
 
-        log.info(f"Vision: {symbol} analyzed — confidence {result['confidence']}/10, "
-                 f"patterns: {result['patterns']}")
+        log.info(
+            f"Vision: {symbol} analyzed — confidence {result['confidence']}/10, "
+            f"patterns: {result['patterns']}"
+        )
 
     except Exception as e:
-        log.warning(f"Vision API error for {symbol}: {e}. Triggering Tier 3 SDK Fallback...")
+        log.warning(
+            f"Vision API error for {symbol}: {e}. Triggering Tier 3 SDK Fallback..."
+        )
         fallback_res = await _analyze_chart_sdk_fallback(symbol, scan_result)
         if not fallback_res.get("error"):
             result.update(fallback_res)
@@ -770,9 +840,15 @@ async def analyze_chart_vision(
                 else:
                     combined = algo_score * 0.5 + visual_conf * 0.5
                 result["combined_score"] = f"{combined:.1f}/10"
-                
-                visual_vcp = any("vcp" in p.lower() or "volatility contraction" in p.lower() for p in result["patterns"])
-                is_downtrend = any("stage 4" in p.lower() or "stage 3" in p.lower() for p in result["patterns"])
+
+                visual_vcp = any(
+                    "vcp" in p.lower() or "volatility contraction" in p.lower()
+                    for p in result["patterns"]
+                )
+                is_downtrend = any(
+                    "stage 4" in p.lower() or "stage 3" in p.lower()
+                    for p in result["patterns"]
+                )
                 if is_downtrend:
                     result["verdict"] = "🔴 AVOID — Stage 3/4 Downtrend Detected"
                 elif combined >= 8 and (vcp_algo or visual_vcp):
@@ -786,7 +862,9 @@ async def analyze_chart_vision(
             else:
                 result["combined_score"] = f"{result['confidence']}/10 (visual only)"
         else:
-            result["error"] = f"Original error: {e}. Fallback error: {fallback_res['error']}"
+            result["error"] = (
+                f"Original error: {e}. Fallback error: {fallback_res['error']}"
+            )
 
     return result
 
@@ -832,7 +910,9 @@ async def analyze_chart_vision_mtf(
     else:
         if not has_anthropic:
             if has_gemini:
-                log.info("Vision MTF: Anthropic mock or missing. Switching to Gemini fallback.")
+                log.info(
+                    "Vision MTF: Anthropic mock or missing. Switching to Gemini fallback."
+                )
                 provider = "gemini"
             else:
                 result["error"] = "Anthropic API not available or configured"
@@ -841,23 +921,43 @@ async def analyze_chart_vision_mtf(
     # Check images exist
     valid_paths = [Path(p) for p in image_paths if Path(p).exists()]
     if not valid_paths:
-        log.warning(f"No valid images found from paths: {image_paths}. Triggering Tier 3 SDK Fallback directly...")
+        log.warning(
+            f"No valid images found from paths: {image_paths}. Triggering Tier 3 SDK Fallback directly..."
+        )
         fallback_res = await _analyze_chart_mtf_sdk_fallback(symbol, mtf_scan_result)
         if not fallback_res.get("error"):
             result.update(fallback_res)
             if mtf_scan_result and "timeframes" in mtf_scan_result:
                 scan_1d = mtf_scan_result["timeframes"].get("1d")
-                tt_score = scan_1d.trend_template.score if scan_1d and not getattr(scan_1d, 'error', None) else 0
+                tt_score = (
+                    scan_1d.trend_template.score
+                    if scan_1d and not getattr(scan_1d, "error", None)
+                    else 0
+                )
                 # vcp_algo reserved for future VCP-weighted scoring
                 # vcp_algo = scan_1d.vcp.detected if scan_1d and not getattr(scan_1d, 'error', None) else False
                 visual_conf = result["confidence"]
                 algo_score = (tt_score / 8) * 10
-                combined = algo_score * 0.4 + visual_conf * 0.6 if visual_conf >= 9 else algo_score * 0.5 + visual_conf * 0.5
+                combined = (
+                    algo_score * 0.4 + visual_conf * 0.6
+                    if visual_conf >= 9
+                    else algo_score * 0.5 + visual_conf * 0.5
+                )
                 result["combined_score"] = f"{combined:.1f}/10"
 
-                is_long = "long" in result["analysis"].lower() or "mua" in result["analysis"].lower()
-                is_short = "short" in result["analysis"].lower() or "bán" in result["analysis"].lower()
-                is_avoid = "avoid" in result["analysis"].lower() or "đứng ngoài" in result["analysis"].lower() or "bỏ qua" in result["analysis"].lower()
+                is_long = (
+                    "long" in result["analysis"].lower()
+                    or "mua" in result["analysis"].lower()
+                )
+                is_short = (
+                    "short" in result["analysis"].lower()
+                    or "bán" in result["analysis"].lower()
+                )
+                is_avoid = (
+                    "avoid" in result["analysis"].lower()
+                    or "đứng ngoài" in result["analysis"].lower()
+                    or "bỏ qua" in result["analysis"].lower()
+                )
 
                 if is_avoid:
                     result["verdict"] = "🔴 AVOID — MTF Structure Neutral/Weak"
@@ -870,14 +970,16 @@ async def analyze_chart_vision_mtf(
             else:
                 result["combined_score"] = f"{result['confidence']}/10 (visual only)"
         else:
-            result["error"] = f"No valid images found: {image_paths}. Fallback error: {fallback_res['error']}"
+            result["error"] = (
+                f"No valid images found: {image_paths}. Fallback error: {fallback_res['error']}"
+            )
         return result
 
     # Build prompt context
     mtf_context_lines = []
     if mtf_scan_result and "timeframes" in mtf_scan_result:
         for tf, scan in mtf_scan_result["timeframes"].items():
-            if scan and not getattr(scan, 'error', None):
+            if scan and not getattr(scan, "error", None):
                 mtf_context_lines.append(
                     f"Khung {tf.upper()}:\n"
                     f"  - Price: {scan.price:,.2f}\n"
@@ -886,8 +988,12 @@ async def analyze_chart_vision_mtf(
                 )
             elif scan:
                 mtf_context_lines.append(f"Khung {tf.upper()}: Lỗi scan ({scan.error})")
-    
-    mtf_context = "\n".join(mtf_context_lines) if mtf_context_lines else "Không có dữ liệu scanner."
+
+    mtf_context = (
+        "\n".join(mtf_context_lines)
+        if mtf_context_lines
+        else "Không có dữ liệu scanner."
+    )
     user_prompt = VISION_MTF_USER_PROMPT.format(
         symbol=symbol,
         mtf_context=mtf_context,
@@ -898,6 +1004,7 @@ async def analyze_chart_vision_mtf(
         if provider == "claude_cli":
             try:
                 import rag as _rag
+
                 cli_prompt = f"{VISION_MTF_SYSTEM_PROMPT}\n\n{user_prompt}"
                 # call with the first image, since CLI only takes one primary image
                 analysis_text = await _rag._call_claude_cli(
@@ -908,12 +1015,18 @@ async def analyze_chart_vision_mtf(
                     getattr(config, "CLAUDE_CLI_FALLBACK_SDK", True)
                     and ANTHROPIC_AVAILABLE
                     and getattr(config, "ANTHROPIC_API_KEY", None)
-                    and not getattr(config, "ANTHROPIC_API_KEY", "").startswith("sk-ant-xxx")
+                    and not getattr(config, "ANTHROPIC_API_KEY", "").startswith(
+                        "sk-ant-xxx"
+                    )
                 ):
-                    log.warning(f"Vision MTF: Claude CLI fail ({cli_err}). Fallback SDK.")
+                    log.warning(
+                        f"Vision MTF: Claude CLI fail ({cli_err}). Fallback SDK."
+                    )
                     provider = "anthropic"
                 elif has_gemini:
-                    log.warning(f"Vision MTF: Claude CLI fail ({cli_err}). Falling back to Gemini...")
+                    log.warning(
+                        f"Vision MTF: Claude CLI fail ({cli_err}). Falling back to Gemini..."
+                    )
                     provider = "gemini"
                 else:
                     result["error"] = f"Claude CLI error: {cli_err}"
@@ -926,20 +1039,25 @@ async def analyze_chart_vision_mtf(
                 for path in valid_paths:
                     image_data, mime_type = _encode_image(path)
                     if image_data:
-                        content_blocks.append({
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": mime_type,
-                                "data": image_data,
-                            },
-                        })
-                content_blocks.append({
-                    "type": "text",
-                    "text": user_prompt,
-                })
+                        content_blocks.append(
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": mime_type,
+                                    "data": image_data,
+                                },
+                            }
+                        )
+                content_blocks.append(
+                    {
+                        "type": "text",
+                        "text": user_prompt,
+                    }
+                )
 
                 import anthropic
+
                 client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
                 message = client.messages.create(
                     model=model,
@@ -950,26 +1068,35 @@ async def analyze_chart_vision_mtf(
                 analysis_text = message.content[0].text
             except Exception as e:
                 if has_gemini:
-                    log.warning(f"Anthropic SDK MTF vision call failed: {e}. Falling back to Gemini...")
+                    log.warning(
+                        f"Anthropic SDK MTF vision call failed: {e}. Falling back to Gemini..."
+                    )
                     provider = "gemini"
                 else:
                     raise e
 
         # 3. Try Gemini (either initially or as a fallback)
         if provider == "gemini":
-            model_name = "gemini-2.5-pro" if model == "claude-sonnet-4-5" else "gemini-2.5-flash"
+            model_name = (
+                "gemini-2.5-pro" if model == "claude-sonnet-4-5" else "gemini-2.5-flash"
+            )
             max_retries = 3
             analysis_text = ""
-            
+
             for attempt in range(max_retries):
                 try:
-                    has_vertex = getattr(config, "GCP_PROJECT_ID", None) and VERTEXAI_AVAILABLE
-                    has_genai  = getattr(config, "GEMINI_API_KEY", None) and GENAI_AVAILABLE
+                    has_vertex = (
+                        getattr(config, "GCP_PROJECT_ID", None) and VERTEXAI_AVAILABLE
+                    )
+                    has_genai = (
+                        getattr(config, "GEMINI_API_KEY", None) and GENAI_AVAILABLE
+                    )
 
                     _use_vertex = False
                     if has_vertex:
                         try:
                             import google.auth
+
                             google.auth.default()
                             _use_vertex = True
                         except Exception:
@@ -977,18 +1104,33 @@ async def analyze_chart_vision_mtf(
 
                     if _use_vertex:
                         import vertexai
-                        from vertexai.generative_models import GenerativeModel as VertexGenerativeModel, Part as VertexPart
-                        vertexai.init(project=config.GCP_PROJECT_ID, location=getattr(config, "GCP_LOCATION", "us-central1"))
-                        g_model = VertexGenerativeModel(model_name, system_instruction=VISION_MTF_SYSTEM_PROMPT)
+                        from vertexai.generative_models import (
+                            GenerativeModel as VertexGenerativeModel,
+                            Part as VertexPart,
+                        )
+
+                        vertexai.init(
+                            project=config.GCP_PROJECT_ID,
+                            location=getattr(config, "GCP_LOCATION", "us-central1"),
+                        )
+                        g_model = VertexGenerativeModel(
+                            model_name, system_instruction=VISION_MTF_SYSTEM_PROMPT
+                        )
                         contents = [user_prompt]
                         for path in valid_paths:
-                            contents.append(VertexPart.from_data(data=path.read_bytes(), mime_type=_get_media_type(path)))
+                            contents.append(
+                                VertexPart.from_data(
+                                    data=path.read_bytes(),
+                                    mime_type=_get_media_type(path),
+                                )
+                            )
                         response = g_model.generate_content(contents)
                         analysis_text = response.text
                         break
                     elif has_genai:
                         from google import genai
                         from google.genai import types as genai_types
+
                         client = genai.Client(api_key=config.GEMINI_API_KEY)
                         contents = [user_prompt]
                         for path in valid_paths:
@@ -1011,9 +1153,14 @@ async def analyze_chart_vision_mtf(
                         raise RuntimeError("No Gemini credentials available")
                 except Exception as e:
                     error_str = str(e).lower()
-                    if "429" in error_str or "quota" in error_str or "exhausted" in error_str or "rate limit" in error_str:
+                    if (
+                        "429" in error_str
+                        or "quota" in error_str
+                        or "exhausted" in error_str
+                        or "rate limit" in error_str
+                    ):
                         if attempt < max_retries - 1:
-                            wait_time = 2 ** attempt
+                            wait_time = 2**attempt
                             await asyncio.sleep(wait_time)
                             continue
                     raise
@@ -1025,18 +1172,32 @@ async def analyze_chart_vision_mtf(
         # Combined scoring logic for MTF
         if mtf_scan_result and "timeframes" in mtf_scan_result:
             scan_1d = mtf_scan_result["timeframes"].get("1d")
-            tt_score = scan_1d.trend_template.score if scan_1d and not getattr(scan_1d, 'error', None) else 0
+            tt_score = (
+                scan_1d.trend_template.score
+                if scan_1d and not getattr(scan_1d, "error", None)
+                else 0
+            )
             # vcp_algo reserved for future VCP-weighted scoring
             # vcp_algo = scan_1d.vcp.detected if scan_1d and not getattr(scan_1d, 'error', None) else False
             visual_conf = result["confidence"]
 
             algo_score = (tt_score / 8) * 10
-            combined = algo_score * 0.4 + visual_conf * 0.6 if visual_conf >= 9 else algo_score * 0.5 + visual_conf * 0.5
+            combined = (
+                algo_score * 0.4 + visual_conf * 0.6
+                if visual_conf >= 9
+                else algo_score * 0.5 + visual_conf * 0.5
+            )
             result["combined_score"] = f"{combined:.1f}/10"
 
             is_long = "long" in analysis_text.lower() or "mua" in analysis_text.lower()
-            is_short = "short" in analysis_text.lower() or "bán" in analysis_text.lower()
-            is_avoid = "avoid" in analysis_text.lower() or "đứng ngoài" in analysis_text.lower() or "bỏ qua" in analysis_text.lower()
+            is_short = (
+                "short" in analysis_text.lower() or "bán" in analysis_text.lower()
+            )
+            is_avoid = (
+                "avoid" in analysis_text.lower()
+                or "đứng ngoài" in analysis_text.lower()
+                or "bỏ qua" in analysis_text.lower()
+            )
 
             if is_avoid:
                 result["verdict"] = "🔴 AVOID — MTF Structure Neutral/Weak"
@@ -1050,26 +1211,48 @@ async def analyze_chart_vision_mtf(
             result["combined_score"] = f"{result['confidence']}/10 (visual only)"
             result["verdict"] = ""
 
-        log.info(f"Vision MTF: {symbol} analyzed — confidence {result['confidence']}/10")
+        log.info(
+            f"Vision MTF: {symbol} analyzed — confidence {result['confidence']}/10"
+        )
 
     except Exception as e:
-        log.warning(f"Vision MTF API error for {symbol}: {e}. Triggering Tier 3 SDK Fallback...")
+        log.warning(
+            f"Vision MTF API error for {symbol}: {e}. Triggering Tier 3 SDK Fallback..."
+        )
         fallback_res = await _analyze_chart_mtf_sdk_fallback(symbol, mtf_scan_result)
         if not fallback_res.get("error"):
             result.update(fallback_res)
             if mtf_scan_result and "timeframes" in mtf_scan_result:
                 scan_1d = mtf_scan_result["timeframes"].get("1d")
-                tt_score = scan_1d.trend_template.score if scan_1d and not getattr(scan_1d, 'error', None) else 0
+                tt_score = (
+                    scan_1d.trend_template.score
+                    if scan_1d and not getattr(scan_1d, "error", None)
+                    else 0
+                )
                 # vcp_algo extraction reserved for future VCP-weighted scoring
                 # vcp_algo = scan_1d.vcp.detected if scan_1d and not getattr(scan_1d, 'error', None) else False
                 visual_conf = result["confidence"]
                 algo_score = (tt_score / 8) * 10
-                combined = algo_score * 0.4 + visual_conf * 0.6 if visual_conf >= 9 else algo_score * 0.5 + visual_conf * 0.5
+                combined = (
+                    algo_score * 0.4 + visual_conf * 0.6
+                    if visual_conf >= 9
+                    else algo_score * 0.5 + visual_conf * 0.5
+                )
                 result["combined_score"] = f"{combined:.1f}/10"
 
-                is_long = "long" in result["analysis"].lower() or "mua" in result["analysis"].lower()
-                is_short = "short" in result["analysis"].lower() or "bán" in result["analysis"].lower()
-                is_avoid = "avoid" in result["analysis"].lower() or "đứng ngoài" in result["analysis"].lower() or "bỏ qua" in result["analysis"].lower()
+                is_long = (
+                    "long" in result["analysis"].lower()
+                    or "mua" in result["analysis"].lower()
+                )
+                is_short = (
+                    "short" in result["analysis"].lower()
+                    or "bán" in result["analysis"].lower()
+                )
+                is_avoid = (
+                    "avoid" in result["analysis"].lower()
+                    or "đứng ngoài" in result["analysis"].lower()
+                    or "bỏ qua" in result["analysis"].lower()
+                )
 
                 if is_avoid:
                     result["verdict"] = "🔴 AVOID — MTF Structure Neutral/Weak"
@@ -1082,7 +1265,9 @@ async def analyze_chart_vision_mtf(
             else:
                 result["combined_score"] = f"{result['confidence']}/10 (visual only)"
         else:
-            result["error"] = f"Original error: {e}. Fallback error: {fallback_res['error']}"
+            result["error"] = (
+                f"Original error: {e}. Fallback error: {fallback_res['error']}"
+            )
 
     return result
 
@@ -1090,6 +1275,7 @@ async def analyze_chart_vision_mtf(
 def _parse_confidence(text: str) -> int:
     """Extract visual confidence score (1-10) from Claude/Gemini's response."""
     import re
+
     # Look for patterns like "7/10", "Score: 8", "confidence: 9/10"
     patterns = [
         r"(?:confidence|score|tin cậy)[:\s]*(\d+)\s*/\s*10",
@@ -1108,15 +1294,25 @@ def _parse_confidence(text: str) -> int:
 def _parse_patterns(text: str) -> list[str]:
     """Extract detected pattern names from the response."""
     known_patterns = [
-        "VCP", "Volatility Contraction",
-        "Cup-with-Handle", "Cup with Handle", "Cup and Handle",
-        "Ascending Base", "Flat Base",
-        "High Tight Flag", "HTF",
-        "Double Bottom", "Triple Bottom",
-        "Bull Flag", "Pennant",
-        "Breakout", "Pivot",
-        "Accumulation", "Tích lũy",
-        "Stage 2", "Stage 1",
+        "VCP",
+        "Volatility Contraction",
+        "Cup-with-Handle",
+        "Cup with Handle",
+        "Cup and Handle",
+        "Ascending Base",
+        "Flat Base",
+        "High Tight Flag",
+        "HTF",
+        "Double Bottom",
+        "Triple Bottom",
+        "Bull Flag",
+        "Pennant",
+        "Breakout",
+        "Pivot",
+        "Accumulation",
+        "Tích lũy",
+        "Stage 2",
+        "Stage 1",
     ]
     found = []
     text_lower = text.lower()

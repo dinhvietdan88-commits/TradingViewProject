@@ -9,7 +9,6 @@ import hmac
 import logging
 import time
 import uuid
-from dataclasses import dataclass, field
 from typing import Dict, Any, Optional
 
 import aiohttp
@@ -25,6 +24,7 @@ from exchanges.base import RiskParams, OrderResult
 # ═══════════════════════════════════════════════════════════════
 # BINANCE CLIENT
 # ═══════════════════════════════════════════════════════════════
+
 
 class BinanceClient:
     """Async Binance client — MARKET + OCO orders with risk management."""
@@ -82,7 +82,9 @@ class BinanceClient:
                     data = await resp.json()
 
             if isinstance(data, dict) and data.get("code"):
-                raise Exception(f"Binance API Error [{data.get('code')}]: {data.get('msg', data)}")
+                raise Exception(
+                    f"Binance API Error [{data.get('code')}]: {data.get('msg', data)}"
+                )
 
             return data
 
@@ -195,7 +197,11 @@ class BinanceClient:
     # ═══ ORDERS ════════════════════════════════════════════════
 
     async def place_market_order(
-        self, symbol: str, side: str, quote_qty: float = None, base_qty: float = None,
+        self,
+        symbol: str,
+        side: str,
+        quote_qty: float = None,
+        base_qty: float = None,
     ) -> Dict[str, Any]:
         """Place a MARKET order. Use quote_qty (USDT) OR base_qty (BTC)."""
         symbol_clean = symbol.replace("/", "").upper()
@@ -224,11 +230,19 @@ class BinanceClient:
                 "status": "FILLED",
                 "executedQty": str(round(qty, 8)),
                 "cummulativeQuoteQty": str(round(qty * fill_price, 2)),
-                "fills": [{"price": str(fill_price), "qty": str(round(qty, 8)), "commission": "0"}],
+                "fills": [
+                    {
+                        "price": str(fill_price),
+                        "qty": str(round(qty, 8)),
+                        "commission": "0",
+                    }
+                ],
                 "_dry_run": True,
             }
-            log.info(f"[DRY-RUN] MARKET {side_upper} {symbol_clean} "
-                      f"qty={round(qty, 8)} cost=${round(qty * fill_price, 2)}")
+            log.info(
+                f"[DRY-RUN] MARKET {side_upper} {symbol_clean} "
+                f"qty={round(qty, 8)} cost=${round(qty * fill_price, 2)}"
+            )
             return mock
 
         return await self._request("POST", "/api/v3/order", params)
@@ -278,7 +292,9 @@ class BinanceClient:
                 "executedQty": "0.0",
                 "_dry_run": True,
             }
-            log.info(f"[DRY-RUN] LIMIT {side_upper} {symbol_clean} at {price} qty={quantity}")
+            log.info(
+                f"[DRY-RUN] LIMIT {side_upper} {symbol_clean} at {price} qty={quantity}"
+            )
             return mock
         return await self._request("POST", "/api/v3/order", params)
 
@@ -326,9 +342,9 @@ class BinanceClient:
             "symbol": symbol_clean,
             "side": side_upper,
             "quantity": round(quantity, 8),
-            "price": round(take_profit_price, 2),       # LIMIT (TP)
-            "stopPrice": round(stop_price, 2),           # STOP trigger
-            "stopLimitPrice": round(stop_limit_price, 2),# STOP_LIMIT fill
+            "price": round(take_profit_price, 2),  # LIMIT (TP)
+            "stopPrice": round(stop_price, 2),  # STOP trigger
+            "stopLimitPrice": round(stop_limit_price, 2),  # STOP_LIMIT fill
             "stopLimitTimeInForce": "GTC",
         }
 
@@ -339,19 +355,26 @@ class BinanceClient:
                 "listOrderStatus": "EXECUTING",
                 "symbol": symbol_clean,
                 "orders": [
-                    {"orderId": f"DRY-TP-{uuid.uuid4().hex[:6].upper()}", "type": "LIMIT_MAKER"},
-                    {"orderId": f"DRY-SL-{uuid.uuid4().hex[:6].upper()}", "type": "STOP_LOSS_LIMIT"},
+                    {
+                        "orderId": f"DRY-TP-{uuid.uuid4().hex[:6].upper()}",
+                        "type": "LIMIT_MAKER",
+                    },
+                    {
+                        "orderId": f"DRY-SL-{uuid.uuid4().hex[:6].upper()}",
+                        "type": "STOP_LOSS_LIMIT",
+                    },
                 ],
                 "take_profit_price": take_profit_price,
                 "stop_loss_price": stop_price,
                 "_dry_run": True,
             }
-            log.info(f"[DRY-RUN] OCO {side_upper} {symbol_clean} "
-                      f"qty={round(quantity, 8)} TP=${take_profit_price} SL=${stop_price}")
+            log.info(
+                f"[DRY-RUN] OCO {side_upper} {symbol_clean} "
+                f"qty={round(quantity, 8)} TP=${take_profit_price} SL=${stop_price}"
+            )
             return mock
 
         return await self._request("POST", "/api/v3/order/oco", params)
-
 
     # ═══ SMART ORDER ═══════════════════════════════════════════
 
@@ -393,9 +416,21 @@ class BinanceClient:
             # 2. SL/TP levels
             if sl_price is not None and tp_price is not None:
                 # Use explicitly provided prices
-                rr_ratio = abs(tp_price - entry_price) / abs(sl_price - entry_price) if abs(sl_price - entry_price) > 0 else 0
-                calc_sl_pct = abs(sl_price - entry_price) / entry_price if entry_price > 0 else (sl_pct or config.STOP_LOSS_PCT)
-                calc_tp_pct = abs(tp_price - entry_price) / entry_price if entry_price > 0 else (tp_pct or config.TAKE_PROFIT_PCT)
+                rr_ratio = (
+                    abs(tp_price - entry_price) / abs(sl_price - entry_price)
+                    if abs(sl_price - entry_price) > 0
+                    else 0
+                )
+                calc_sl_pct = (
+                    abs(sl_price - entry_price) / entry_price
+                    if entry_price > 0
+                    else (sl_pct or config.STOP_LOSS_PCT)
+                )
+                calc_tp_pct = (
+                    abs(tp_price - entry_price) / entry_price
+                    if entry_price > 0
+                    else (tp_pct or config.TAKE_PROFIT_PCT)
+                )
             else:
                 levels = self.calculate_sl_tp(entry_price, side_upper, sl_pct, tp_pct)
                 sl_price = levels["stop_loss"]
@@ -432,17 +467,25 @@ class BinanceClient:
                 position_pct=cost / balance if balance > 0 else 0,
             )
 
-            log.info(f"Smart Order: {side_upper} {symbol_clean} | "
-                      f"Entry=${entry_price:,.2f} SL=${sl_price:,.2f} TP=${tp_price:,.2f} | "
-                      f"Qty={qty:.8f} Cost=${cost:,.2f} R:R={rr_ratio} Type={order_type}")
+            log.info(
+                f"Smart Order: {side_upper} {symbol_clean} | "
+                f"Entry=${entry_price:,.2f} SL=${sl_price:,.2f} TP=${tp_price:,.2f} | "
+                f"Qty={qty:.8f} Cost=${cost:,.2f} R:R={rr_ratio} Type={order_type}"
+            )
 
             # 4. entry
             if order_type.upper() == "LIMIT":
-                entry_result = await self.place_limit_order(symbol_clean, side_upper, price=entry_price, quantity=qty)
+                entry_result = await self.place_limit_order(
+                    symbol_clean, side_upper, price=entry_price, quantity=qty
+                )
             elif quote_qty:
-                entry_result = await self.place_market_order(symbol_clean, side_upper, quote_qty=quote_qty)
+                entry_result = await self.place_market_order(
+                    symbol_clean, side_upper, quote_qty=quote_qty
+                )
             else:
-                entry_result = await self.place_market_order(symbol_clean, side_upper, base_qty=qty)
+                entry_result = await self.place_market_order(
+                    symbol_clean, side_upper, base_qty=qty
+                )
 
             # Get actual fill price from entry
             exec_qty = float(entry_result.get("executedQty", qty))
@@ -451,15 +494,14 @@ class BinanceClient:
             cum_quote = float(entry_result.get("cummulativeQuoteQty", cost))
             fill_price = cum_quote / exec_qty if exec_qty > 0 else entry_price
 
-
             # Recalculate SL/TP from actual fill price
             if abs(fill_price - entry_price) > 0.01:
                 price_diff = fill_price - entry_price
-                if hasattr(self, '_explicit_sl') and self._explicit_sl: 
+                if hasattr(self, "_explicit_sl") and self._explicit_sl:
                     # Note: We just check if sl_price was passed into execute_smart_order
                     # By shifting them exactly by price_diff, we maintain the exact risk $ amount per share
                     pass
-                
+
                 # We shift the SL and TP by the exact same dollar amount of slippage to keep distance constant
                 sl_price += price_diff
                 tp_price += price_diff
@@ -485,8 +527,10 @@ class BinanceClient:
                 stop_limit_price=stop_limit,
             )
 
-            log.info(f"Smart Order complete: entry={entry_result.get('orderId')} "
-                     f"oco={oco_result.get('orderListId')}")
+            log.info(
+                f"Smart Order complete: entry={entry_result.get('orderId')} "
+                f"oco={oco_result.get('orderListId')}"
+            )
 
             return OrderResult(
                 success=True,
@@ -507,7 +551,6 @@ class BinanceClient:
                 symbol=symbol_clean,
                 error=str(e),
             )
-
 
 
 # ═══════════════════════════════════════════════════════════════

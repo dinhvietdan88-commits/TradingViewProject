@@ -79,7 +79,7 @@ sequenceDiagram
 
     TV->>SrvA: 1. Gửi alert webhook (VBS Signal)
     SrvA->>NH: 2. Emit IndicatorSignalReceived
-    
+
     rect rgb(20, 25, 40)
         Note over NH, Render: Tiến trình tự động dựng biểu đồ nến
         NH->>Bin: 3. Fetch 100 nến gần nhất của Symbol

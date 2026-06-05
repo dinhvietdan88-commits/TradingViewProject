@@ -5,19 +5,18 @@ Adapted to actual implementation API:
   - html_chunker (utils/html_chunker.py) for truncation/chunking
   - telegram_bot sends photo_path separately before interactive message
 """
+
 import sys
-import os
 import shutil
 import numpy as np
 from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock
 import pytest
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 from utils.chart_generator_mpl import generate_chart_mpl
 from utils.html_chunker import truncate_caption_html_safe, chunk_html_message
-from utils.pattern_overlay import detect_all_patterns, detect_vcp_contractions
+from utils.pattern_overlay import detect_all_patterns
 
 
 class TestPatternChallenger:
@@ -29,7 +28,7 @@ class TestPatternChallenger:
                 "high": 102.0 + i * 0.5,
                 "low": 99.0 + i * 0.5,
                 "close": 101.0 + i * 0.5,
-                "volume": 1000.0 * (i + 1)
+                "volume": 1000.0 * (i + 1),
             }
             for i in range(100)
         ]
@@ -52,7 +51,7 @@ class TestPatternChallenger:
             timeframe="1h",
             ohlcv_data=self.mock_ohlcv,
             save_path=save_path,
-            pattern_overlays="INVALID_PATTERN_NAME"  # string, not dataclass
+            pattern_overlays="INVALID_PATTERN_NAME",  # string, not dataclass
         )
         assert result_path.exists()
         assert result_path == save_path
@@ -68,7 +67,7 @@ class TestPatternChallenger:
             timeframe="1h",
             ohlcv_data=short_ohlcv,
             save_path=save_path,
-            pattern_overlays=overlays
+            pattern_overlays=overlays,
         )
         assert result_path.exists()
         assert result_path == save_path
@@ -86,7 +85,7 @@ class TestPatternChallenger:
                 timeframe="1h",
                 ohlcv_data=[],
                 save_path=save_path,
-                pattern_overlays=None
+                pattern_overlays=None,
             )
         assert "OHLCV data is empty" in str(ctx.value)
 
@@ -99,7 +98,7 @@ class TestPatternChallenger:
                 "high": 105.0 + (i % 10),
                 "low": 95.0 + (i % 10),
                 "close": 101.0 + (i % 10),
-                "volume": 5000.0
+                "volume": 5000.0,
             }
             for i in range(1000)
         ]
@@ -110,7 +109,7 @@ class TestPatternChallenger:
             timeframe="1h",
             ohlcv_data=large_ohlcv,
             save_path=save_path,
-            pattern_overlays=overlays
+            pattern_overlays=overlays,
         )
         assert result_path.exists()
         assert result_path == save_path
@@ -124,7 +123,7 @@ class TestPatternChallenger:
                 "high": 100.0,
                 "low": 100.0,
                 "close": 100.0,
-                "volume": 0.0
+                "volume": 0.0,
             }
             for i in range(50)
         ]
@@ -135,7 +134,7 @@ class TestPatternChallenger:
             timeframe="1h",
             ohlcv_data=flat_ohlcv,
             save_path=save_path,
-            pattern_overlays=overlays
+            pattern_overlays=overlays,
         )
         assert result_path.exists()
 
@@ -148,7 +147,7 @@ class TestPatternChallenger:
                 "high": 1e12 + i + 10,
                 "low": 1e12 + i - 10,
                 "close": 1e12 + i + 5,
-                "volume": 100.0
+                "volume": 100.0,
             }
             for i in range(50)
         ]
@@ -168,7 +167,7 @@ class TestPatternChallenger:
                 "high": 1e-8 + i * 1e-10 + 1e-11,
                 "low": 1e-8 + i * 1e-10 - 1e-11,
                 "close": 1e-8 + i * 1e-10 + 5e-12,
-                "volume": 10000000.0
+                "volume": 10000000.0,
             }
             for i in range(50)
         ]
@@ -196,13 +195,19 @@ class TestPatternChallenger:
         waves = [
             (x_start, x_start + widths[0], depths[0]),
             (x_start + widths[0], x_start + widths[0] + widths[1], depths[1]),
-            (x_start + widths[0] + widths[1], x_start + widths[0] + widths[1] + widths[2], depths[2])
+            (
+                x_start + widths[0] + widths[1],
+                x_start + widths[0] + widths[1] + widths[2],
+                depths[2],
+            ),
         ]
 
         for start, end, depth in waves:
             w_width = end - start
             x_vals = np.linspace(start, end, w_width * 5)
-            y_vals = P_pivot - (depth / 2.0) * (1.0 - np.cos(2.0 * np.pi * (x_vals - start) / w_width))
+            y_vals = P_pivot - (depth / 2.0) * (
+                1.0 - np.cos(2.0 * np.pi * (x_vals - start) / w_width)
+            )
 
             assert np.all(np.isfinite(x_vals))
             assert np.all(np.isfinite(y_vals))
@@ -221,7 +226,9 @@ class TestPatternChallenger:
         D_cup = 0.60 * 500.0
 
         x_vals_cup = np.linspace(x_start, x_start + cup_width, cup_width * 5)
-        y_vals_cup = P_rim - (D_cup / 2.0) * (1.0 - np.cos(2.0 * np.pi * (x_vals_cup - x_start) / cup_width))
+        y_vals_cup = P_rim - (D_cup / 2.0) * (
+            1.0 - np.cos(2.0 * np.pi * (x_vals_cup - x_start) / cup_width)
+        )
 
         assert np.all(np.isfinite(x_vals_cup))
         assert np.all(np.isfinite(y_vals_cup))
@@ -235,7 +242,12 @@ class TestPatternChallenger:
         channel_width = 0.04 * 500.0
 
         x_vals_handle = np.linspace(x_cup_end, x_end, handle_width * 5)
-        y_center_handle = D_handle_start + (D_handle_end - D_handle_start) * (x_vals_handle - x_cup_end) / handle_width
+        y_center_handle = (
+            D_handle_start
+            + (D_handle_end - D_handle_start)
+            * (x_vals_handle - x_cup_end)
+            / handle_width
+        )
         y_upper_handle = y_center_handle + channel_width
         y_lower_handle = y_center_handle - channel_width
 
@@ -262,11 +274,15 @@ class TestPatternChallenger:
                     y = P_neckline - D1 * 0.5 * (1.0 - np.cos(np.pi * t))
                 else:
                     t = (u - 0.25) / 0.25
-                    y = (P_neckline - D1) + (D1 - D_mid) * 0.5 * (1.0 - np.cos(np.pi * t))
+                    y = (P_neckline - D1) + (D1 - D_mid) * 0.5 * (
+                        1.0 - np.cos(np.pi * t)
+                    )
             else:
                 if u < 0.75:
                     t = (u - 0.5) / 0.25
-                    y = (P_neckline - D_mid) - (D2 - D_mid) * 0.5 * (1.0 - np.cos(np.pi * t))
+                    y = (P_neckline - D_mid) - (D2 - D_mid) * 0.5 * (
+                        1.0 - np.cos(np.pi * t)
+                    )
                 else:
                     t = (u - 0.75) / 0.25
                     y = (P_neckline - D2) + D2 * 0.5 * (1.0 - np.cos(np.pi * t))
@@ -325,7 +341,7 @@ class TestPatternChallenger:
         chunks = chunk_html_message(html_msg, 50)
         for chunk in chunks:
             # No broken tags
-            open_bracket = chunk.rfind('<')
-            close_bracket = chunk.rfind('>')
+            open_bracket = chunk.rfind("<")
+            close_bracket = chunk.rfind(">")
             if open_bracket >= 0:
-                assert close_bracket >= open_bracket or '<' not in chunk[open_bracket:]
+                assert close_bracket >= open_bracket or "<" not in chunk[open_bracket:]

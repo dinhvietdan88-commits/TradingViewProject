@@ -13,6 +13,7 @@ Usage (from telegram_bot.py setup):
     from claude_cli import telegram_commands
     telegram_commands.register_commands(application, claude_service)
 """
+
 import logging
 from typing import Optional, TYPE_CHECKING
 
@@ -35,6 +36,7 @@ _service: Optional[ClaudeService] = None
 
 
 # ─── Command handlers ──────────────────────────────────────────────────────────
+
 
 async def cmd_claude(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """/claude <query> — Ad-hoc Claude query with optional [SYMBOL] prefix."""
@@ -66,14 +68,18 @@ async def cmd_claude(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     await update.effective_message.reply_text("🔄 Đang phân tích, vui lòng chờ…")
 
     trading_ctx = _gather_trading_context(symbol)
-    resp = await _service.analyze(AnalysisRequest(
-        query=query,
-        symbol=symbol,
-        trading_context=trading_ctx,
-        include_rag_context=True,
-    ))
+    resp = await _service.analyze(
+        AnalysisRequest(
+            query=query,
+            symbol=symbol,
+            trading_context=trading_ctx,
+            include_rag_context=True,
+        )
+    )
 
-    text = _format_response(resp.text, resp.source, resp.confidence, resp.duration_seconds)
+    text = _format_response(
+        resp.text, resp.source, resp.confidence, resp.duration_seconds
+    )
     await update.effective_message.reply_text(text, parse_mode="HTML")
 
 
@@ -86,8 +92,7 @@ async def cmd_analyze(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     args = context.args or []
     if not args:
         await update.effective_message.reply_text(
-            "📖 <b>Usage:</b> /analyze &lt;SYMBOL&gt;\n"
-            "Example: /analyze BTCUSDT",
+            "📖 <b>Usage:</b> /analyze &lt;SYMBOL&gt;\nExample: /analyze BTCUSDT",
             parse_mode="HTML",
         )
         return
@@ -98,18 +103,24 @@ async def cmd_analyze(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         "Trend Template, VCP setup, volume confirmation, và khuyến nghị hành động."
     )
 
-    await update.effective_message.reply_text(f"🔬 Đang phân tích <b>{symbol}</b>…", parse_mode="HTML")
+    await update.effective_message.reply_text(
+        f"🔬 Đang phân tích <b>{symbol}</b>…", parse_mode="HTML"
+    )
 
     trading_ctx = _gather_trading_context(symbol)
-    resp = await _service.analyze(AnalysisRequest(
-        query=query,
-        symbol=symbol,
-        action="analyze",
-        trading_context=trading_ctx,
-        include_rag_context=True,
-    ))
+    resp = await _service.analyze(
+        AnalysisRequest(
+            query=query,
+            symbol=symbol,
+            action="analyze",
+            trading_context=trading_ctx,
+            include_rag_context=True,
+        )
+    )
 
-    text = _format_response(resp.text, resp.source, resp.confidence, resp.duration_seconds)
+    text = _format_response(
+        resp.text, resp.source, resp.confidence, resp.duration_seconds
+    )
     await update.effective_message.reply_text(text, parse_mode="HTML")
 
 
@@ -149,12 +160,12 @@ async def cmd_claude_status(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     provider = getattr(config, "AI_PROVIDER", "anthropic")
 
     lines = [
-        f"<b>🤖 Claude SDK Status</b>",
-        f"",
+        "<b>🤖 Claude SDK Status</b>",
+        "",
         f"SDK Client: {status_icon} {'Available' if sdk_available else 'Unavailable'}",
         f"AI Provider: <code>{provider}</code>",
-        f"",
-        f"<b>📊 Context Stats</b>",
+        "",
+        "<b>📊 Context Stats</b>",
         f"Active symbols: {ctx_stats.get('total_symbols', 0)}",
         f"Total turns: {ctx_stats.get('total_turns', 0)}",
         f"Est. tokens: {ctx_stats.get('total_estimated_tokens', 0):,}",
@@ -162,8 +173,8 @@ async def cmd_claude_status(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     if sdk_stats:
         lines += [
-            f"",
-            f"<b>⚙️ Rate Limit</b>",
+            "",
+            "<b>⚙️ Rate Limit</b>",
             f"Requests in window: {sdk_stats.get('requests_in_window', 0)}/{sdk_stats.get('rate_limit', 10)}",
             f"Timeout: {sdk_stats.get('timeout_seconds', 120)}s",
             f"Max parallel: {sdk_stats.get('max_parallel', 2)}",
@@ -173,7 +184,7 @@ async def cmd_claude_status(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # Per-symbol breakdown
     symbol_data = ctx_stats.get("symbols", {})
     if symbol_data:
-        lines.append(f"\n<b>💾 Per-Symbol</b>")
+        lines.append("\n<b>💾 Per-Symbol</b>")
         for sym, info in symbol_data.items():
             lines.append(
                 f"• {sym}: {info['turns']} turns ({info['estimated_tokens']:,} tok)"
@@ -183,6 +194,7 @@ async def cmd_claude_status(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 
 # ─── Registration ──────────────────────────────────────────────────────────────
+
 
 def register_commands(application, claude_service: ClaudeService) -> None:
     """
@@ -209,6 +221,7 @@ def register_commands(application, claude_service: ClaudeService) -> None:
 
 # ─── Formatting helpers ────────────────────────────────────────────────────────
 
+
 def _format_response(text: str, source: str, confidence: int, duration: float) -> str:
     """
     Format analysis response for Telegram HTML.
@@ -219,7 +232,9 @@ def _format_response(text: str, source: str, confidence: int, duration: float) -
         "none": "🔴 Unavailable",
     }.get(source, source)
 
-    conf_bar = "⭐" * max(0, min(10, confidence)) + "☆" * (10 - max(0, min(10, confidence)))
+    conf_bar = "⭐" * max(0, min(10, confidence)) + "☆" * (
+        10 - max(0, min(10, confidence))
+    )
     header = (
         f"<b>🤖 AI Analysis</b> | {source_label}\n"
         f"Confidence: {conf_bar} ({confidence}/10) | {duration:.1f}s\n"

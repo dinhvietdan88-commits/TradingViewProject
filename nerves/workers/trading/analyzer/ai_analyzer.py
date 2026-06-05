@@ -13,6 +13,7 @@ Design Invariants (v6.0):
 - The confidence gate thresholds (>=8 auto, 5-7 human, <5 reject) are enforced
   by NotificationHub, NOT here. AIAnalyzer only computes the score.
 """
+
 import logging
 import re
 import json
@@ -62,30 +63,36 @@ def reset_capture_state() -> None:
 # EVENT HANDLER: AlertTriggered → route to unified pipeline
 # ═══════════════════════════════════════════════════════════════
 
+
 @_default_bus.on(AlertTriggered)
 async def process_alert(event: AlertTriggered) -> None:
     """
     Handle stealth capture workflow for 'alert' actions.
     Re-emit as SignalValidated so the unified pipeline handles it.
     """
-    log.info(f"AIAnalyzer: Stealth capture alert for {event.symbol} — routing to unified pipeline")
-    await _bus.emit(SignalValidated(
-        signal_id=event.signal_id,
-        symbol=event.symbol,
-        action="alert",
-        price=float(event.price) if event.price else None,
-        quote_qty=event.quote_qty,
-        sl="",
-        tp="",
-        exchange=getattr(event, "exchange", None) or "binance",
-        is_recovered=event.is_recovered,
-        age_minutes=event.age_minutes,
-    ))
+    log.info(
+        f"AIAnalyzer: Stealth capture alert for {event.symbol} — routing to unified pipeline"
+    )
+    await _bus.emit(
+        SignalValidated(
+            signal_id=event.signal_id,
+            symbol=event.symbol,
+            action="alert",
+            price=float(event.price) if event.price else None,
+            quote_qty=event.quote_qty,
+            sl="",
+            tp="",
+            exchange=getattr(event, "exchange", None) or "binance",
+            is_recovered=event.is_recovered,
+            age_minutes=event.age_minutes,
+        )
+    )
 
 
 # ═══════════════════════════════════════════════════════════════
 # EVENT HANDLER: SignalValidated → Unified AI Analysis Pipeline
 # ═══════════════════════════════════════════════════════════════
+
 
 @_default_bus.on(SignalValidated)
 async def process_validated_signal(event: SignalValidated) -> None:
@@ -100,7 +107,9 @@ async def process_validated_signal(event: SignalValidated) -> None:
     v6.0: AIAnalyzer does NOT enforce confidence thresholds.
     That responsibility belongs to NotificationHub (INV-5/6).
     """
-    log.info(f"AIAnalyzer: Processing validated signal #{event.signal_id} for {event.symbol} (Action: {event.action})")
+    log.info(
+        f"AIAnalyzer: Processing validated signal #{event.signal_id} for {event.symbol} (Action: {event.action})"
+    )
 
     symbol = event.symbol
     now = datetime.now(timezone.utc).timestamp()
@@ -122,19 +131,37 @@ async def process_validated_signal(event: SignalValidated) -> None:
     # ── Step 1: Screenshot + Vision AI ───────────────────────
     try:
         mcp = get_mcp_client()
-        
+
         # Build drawings and strategy table parameters for fast rendering
         drawings = []
         if event.price is not None:
-            drawings.append({"price": event.price, "label": f"Entry ({event.price:.2f})", "color": "#26a69a"})
+            drawings.append(
+                {
+                    "price": event.price,
+                    "label": f"Entry ({event.price:.2f})",
+                    "color": "#26a69a",
+                }
+            )
         try:
             if event.sl:
-                drawings.append({"price": float(event.sl), "label": f"SL ({float(event.sl):.2f})", "color": "#ef5350"})
+                drawings.append(
+                    {
+                        "price": float(event.sl),
+                        "label": f"SL ({float(event.sl):.2f})",
+                        "color": "#ef5350",
+                    }
+                )
         except (ValueError, TypeError):
             pass
         try:
             if event.tp:
-                drawings.append({"price": float(event.tp), "label": f"TP ({float(event.tp):.2f})", "color": "#2962ff"})
+                drawings.append(
+                    {
+                        "price": float(event.tp),
+                        "label": f"TP ({float(event.tp):.2f})",
+                        "color": "#2962ff",
+                    }
+                )
         except (ValueError, TypeError):
             pass
 
@@ -156,14 +183,15 @@ async def process_validated_signal(event: SignalValidated) -> None:
 
         strategy_table = None
         if rows:
-            strategy_table = {
-                "title": f"{symbol} Setup",
-                "rows": rows
-            }
+            strategy_table = {"title": f"{symbol} Setup", "rows": rows}
 
         ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_symbol = re.sub(r'[^A-Za-z0-9_\-]', '', symbol)
-        save_path = Path(__file__).parent.parent / "screenshots" / f"stealth_{safe_symbol}_{ts_str}.png"
+        safe_symbol = re.sub(r"[^A-Za-z0-9_\-]", "", symbol)
+        save_path = (
+            Path(__file__).parent.parent
+            / "screenshots"
+            / f"stealth_{safe_symbol}_{ts_str}.png"
+        )
 
         screenshot_path = await mcp.capture_screenshot(
             symbol=symbol,
@@ -173,7 +201,7 @@ async def process_validated_signal(event: SignalValidated) -> None:
             active_only=False,  # Specific symbol rendering is preferred
             crop=True,
             drawings=drawings,
-            strategy_table=strategy_table
+            strategy_table=strategy_table,
         )
 
         if screenshot_path and Path(screenshot_path).exists():
@@ -183,15 +211,21 @@ async def process_validated_signal(event: SignalValidated) -> None:
             )
 
             if not vision_result.get("error"):
-                analysis_text += "👁️ **VISION AI:**\n" + vision_result.get("analysis", "") + "\n\n"
+                analysis_text += (
+                    "👁️ **VISION AI:**\n" + vision_result.get("analysis", "") + "\n\n"
+                )
                 # v6.0: Use vision confidence directly (1-10 scale)
                 confidence = vision_result.get("confidence", 5)
             else:
                 analysis_text += f"❌ Vision Error: {vision_result['error']}\n\n"
                 confidence = 3  # Error → low confidence
         else:
-            log.warning("AIAnalyzer: Screenshot capture failed or not found, skipping Vision AI.")
-            analysis_text += "⚠️ Không thể chụp ảnh biểu đồ. Bỏ qua phân tích hình ảnh.\n\n"
+            log.warning(
+                "AIAnalyzer: Screenshot capture failed or not found, skipping Vision AI."
+            )
+            analysis_text += (
+                "⚠️ Không thể chụp ảnh biểu đồ. Bỏ qua phân tích hình ảnh.\n\n"
+            )
             confidence = 5
 
     except Exception as e:
@@ -207,36 +241,43 @@ async def process_validated_signal(event: SignalValidated) -> None:
     try:
         from utils.pattern_overlay import detect_all_patterns
         from capture_client import get_capture_client
+
         capture = get_capture_client()
-        
+
         # Fetch OHLCV for pattern detection (reuse existing client)
         ohlcv_data = await capture.fetch_ohlcv(symbol, timeframe="1d", limit=150)
         if ohlcv_data and len(ohlcv_data) >= 30:
             patterns = detect_all_patterns(ohlcv_data, pivot_window=5)
-            
+
             if patterns.any_detected:
                 pattern_summary = f"📐 **PATTERN DETECTION:** {patterns.summary}\n"
                 analysis_text += pattern_summary
-                
+
                 # Boost confidence if VCP with high quality detected
                 if patterns.vcp.detected and patterns.vcp.quality_score >= 70:
                     confidence = min(10, confidence + 1)
                     analysis_text += f"   ↳ VCP Quality={patterns.vcp.quality_score:.0f} → confidence +1\n"
-                
+
                 # Store pattern info in vision_result for chart rendering
                 vision_result["pattern_overlay"] = {
                     "vcp_detected": patterns.vcp.detected,
                     "cup_handle_detected": patterns.cup_handle.detected,
                     "double_bottom_detected": patterns.double_bottom.detected,
                     "summary": patterns.summary,
-                    "vcp_quality": patterns.vcp.quality_score if patterns.vcp.detected else 0,
+                    "vcp_quality": patterns.vcp.quality_score
+                    if patterns.vcp.detected
+                    else 0,
                 }
             else:
-                analysis_text += "📐 **PATTERN:** Không phát hiện VCP/Cup/DoubleBottom\n"
+                analysis_text += (
+                    "📐 **PATTERN:** Không phát hiện VCP/Cup/DoubleBottom\n"
+                )
                 # Penalize if NO pattern and confidence is borderline
                 if confidence == 8:
                     confidence = 7
-                    analysis_text += "   ↳ Không có pattern → confidence 8→7 (cần human gate)\n"
+                    analysis_text += (
+                        "   ↳ Không có pattern → confidence 8→7 (cần human gate)\n"
+                    )
     except Exception as pat_err:
         log.warning(f"AIAnalyzer: Pattern detection failed (non-fatal): {pat_err}")
 
@@ -245,11 +286,14 @@ async def process_validated_signal(event: SignalValidated) -> None:
     if config.RAG_ENABLED:
         try:
             import rag
+
             payload = {
-                "action": event.action, 
-                "symbol": event.symbol, 
+                "action": event.action,
+                "symbol": event.symbol,
                 "alert_type": "webhook",
-                "pattern_detection": pattern_summary if pattern_summary else "Không phát hiện VCP/Cup/DoubleBottom"
+                "pattern_detection": pattern_summary
+                if pattern_summary
+                else "Không phát hiện VCP/Cup/DoubleBottom",
             }
             query = rag.build_rag_query(event.symbol, event.action, payload)
             if rag._collection is not None:
@@ -266,7 +310,10 @@ async def process_validated_signal(event: SignalValidated) -> None:
 
                     # v6.0: RAG can penalize confidence for warnings
                     advice_upper = rag_advice.upper()
-                    if any(kw in advice_upper for kw in ("CẢNH BÁO", "WARNING", "YẾU", "CHỜ THÊM XÁC NHẬN")):
+                    if any(
+                        kw in advice_upper
+                        for kw in ("CẢNH BÁO", "WARNING", "YẾU", "CHỜ THÊM XÁC NHẬN")
+                    ):
                         confidence = max(1, confidence - 2)
         except Exception as e:
             log.error(f"AIAnalyzer: RAG analysis error: {e}")
@@ -276,6 +323,7 @@ async def process_validated_signal(event: SignalValidated) -> None:
     if getattr(config, "SENTIMENT_ENABLED", True):
         try:
             from analyzer.sentiment_analyzer import SentimentAnalyzer
+
             sent_analyzer = SentimentAnalyzer()
             sentiment_res = await sent_analyzer.analyze_symbol(symbol)
             if sentiment_res.get("enabled"):
@@ -283,26 +331,32 @@ async def process_validated_signal(event: SignalValidated) -> None:
                 r_score = sentiment_res["breakdown"]["rss"]
                 g_score = sentiment_res["breakdown"]["glassnode"]
                 combined = sentiment_res["combined_score"]
-                
+
                 analysis_text += (
                     f"📰 **SENTIMENT ANALYSIS:** Combined={combined:.2f} "
                     f"(Twitter={t_score:.2f}, RSS={r_score:.2f}, Glassnode={g_score:.2f})\n"
                 )
-                
+
                 # Apply sentiment modifier to confidence score
                 if combined > 0.5:
                     confidence = min(10, confidence + 1)
-                    analysis_text += f"   ↳ Bullish sentiment boost → confidence +1\n\n"
+                    analysis_text += "   ↳ Bullish sentiment boost → confidence +1\n\n"
                 elif combined < -0.7:
                     confidence = max(1, confidence - 2)
-                    analysis_text += f"   ↳ Panic/Extreme bearish sentiment penalty → confidence -2\n\n"
+                    analysis_text += "   ↳ Panic/Extreme bearish sentiment penalty → confidence -2\n\n"
                 elif combined < -0.4:
                     confidence = max(1, confidence - 1)
-                    analysis_text += f"   ↳ Bearish sentiment penalty → confidence -1\n\n"
+                    analysis_text += (
+                        "   ↳ Bearish sentiment penalty → confidence -1\n\n"
+                    )
                 else:
-                    analysis_text += "   ↳ Neutral sentiment → no confidence modifier\n\n"
+                    analysis_text += (
+                        "   ↳ Neutral sentiment → no confidence modifier\n\n"
+                    )
         except Exception as sent_err:
-            log.warning(f"AIAnalyzer: Sentiment analysis failed (non-fatal): {sent_err}")
+            log.warning(
+                f"AIAnalyzer: Sentiment analysis failed (non-fatal): {sent_err}"
+            )
 
     # ── Step 3: Compute final verdict flags ──────────────────
     # v6.0 INV-5/6: Threshold enforcement is in NotificationHub.
@@ -331,10 +385,20 @@ async def process_validated_signal(event: SignalValidated) -> None:
     sl_val = event.sl
     tp_val = event.tp
     if not sl_val or not tp_val:
-        sl_match = re.search(r"Stop\s*Loss:.*?(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)", analysis_text, re.IGNORECASE)
-        tp_match = re.search(r"Take\s*Profit:.*?(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)", analysis_text, re.IGNORECASE)
-        if sl_match and not sl_val: sl_val = sl_match.group(1).replace(",", "")
-        if tp_match and not tp_val: tp_val = tp_match.group(1).replace(",", "")
+        sl_match = re.search(
+            r"Stop\s*Loss:.*?(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)",
+            analysis_text,
+            re.IGNORECASE,
+        )
+        tp_match = re.search(
+            r"Take\s*Profit:.*?(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)",
+            analysis_text,
+            re.IGNORECASE,
+        )
+        if sl_match and not sl_val:
+            sl_val = sl_match.group(1).replace(",", "")
+        if tp_match and not tp_val:
+            tp_val = tp_match.group(1).replace(",", "")
 
     # BUG-05 fix: Directional validation of AI-extracted SL/TP.
     # Vision AI / RAG text may output SL/TP using BUY-side convention
@@ -369,22 +433,24 @@ async def process_validated_signal(event: SignalValidated) -> None:
         f"AIAnalyzer: Analysis complete for #{event.signal_id} {symbol} — "
         f"confidence={confidence}/10, should_trade={should_trade}, interactive={interactive_required}"
     )
-    await _bus.emit(AnalysisComplete(
-        signal_id=event.signal_id,
-        symbol=event.symbol,
-        action=event.action,
-        price=event.price,
-        quote_qty=event.quote_qty,
-        sl=sl_val,
-        tp=tp_val,
-        confidence=confidence,
-        analysis_text=analysis_text,
-        screenshot_path=str(screenshot_path) if screenshot_path else "",
-        should_trade=should_trade,
-        interactive_required=interactive_required,
-        vision_result=vision_result,
-        combined_score=combined_score_str,
-        exchange=getattr(event, 'exchange', 'binance'),
-        is_recovered=event.is_recovered,
-        age_minutes=event.age_minutes,
-    ))
+    await _bus.emit(
+        AnalysisComplete(
+            signal_id=event.signal_id,
+            symbol=event.symbol,
+            action=event.action,
+            price=event.price,
+            quote_qty=event.quote_qty,
+            sl=sl_val,
+            tp=tp_val,
+            confidence=confidence,
+            analysis_text=analysis_text,
+            screenshot_path=str(screenshot_path) if screenshot_path else "",
+            should_trade=should_trade,
+            interactive_required=interactive_required,
+            vision_result=vision_result,
+            combined_score=combined_score_str,
+            exchange=getattr(event, "exchange", "binance"),
+            is_recovered=event.is_recovered,
+            age_minutes=event.age_minutes,
+        )
+    )

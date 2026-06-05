@@ -24,6 +24,7 @@ from auth.service import AuthService
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 
+
 def _env(**kwargs):
     """Build env dict for AuthConfig."""
     defaults = {
@@ -46,6 +47,7 @@ def _svc(**env_overrides):
 # ═══════════════════════════════════════════════════════════════
 # Config Edge Cases
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestAuthConfig:
     """Configuration loading edge cases."""
@@ -73,13 +75,17 @@ class TestAuthConfig:
 
     def test_non_numeric_user_ids_ignored(self):
         """Non-numeric entries in user list are silently ignored."""
-        with patch.dict(os.environ, _env(TELEGRAM_ALLOWED_USERS="123,abc,456"), clear=False):
+        with patch.dict(
+            os.environ, _env(TELEGRAM_ALLOWED_USERS="123,abc,456"), clear=False
+        ):
             cfg = AuthConfig()
             assert cfg.allowed_users == [123, 456]
 
     def test_session_expiry_string_fallback(self):
         """Non-integer SESSION_EXPIRY_HOURS → fallback 24."""
-        with patch.dict(os.environ, _env(SESSION_EXPIRY_HOURS="not_a_number"), clear=False):
+        with patch.dict(
+            os.environ, _env(SESSION_EXPIRY_HOURS="not_a_number"), clear=False
+        ):
             cfg = AuthConfig()
             assert cfg.session_expiry_hours == 24
 
@@ -87,6 +93,7 @@ class TestAuthConfig:
 # ═══════════════════════════════════════════════════════════════
 # Service Edge Cases
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestAuthService:
     """AuthService edge case tests."""
@@ -121,7 +128,9 @@ class TestAuthService:
         svc_b = _svc(AUTH_SECRET_KEY="b" * 32)
 
         session = SessionData(
-            session_id="sid", telegram_id=12345, username="u",
+            session_id="sid",
+            telegram_id=12345,
+            username="u",
             created_at=datetime.now(timezone.utc),
             expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
         )
@@ -135,7 +144,9 @@ class TestAuthService:
         """Session expiring in 30 min → should_refresh returns True."""
         svc = _svc()
         session = SessionData(
-            session_id="sid", telegram_id=12345, username="u",
+            session_id="sid",
+            telegram_id=12345,
+            username="u",
             created_at=datetime.now(timezone.utc) - timedelta(hours=23),
             expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
         )
@@ -145,7 +156,9 @@ class TestAuthService:
         """Session expiring in 2hr → should_refresh returns False."""
         svc = _svc()
         session = SessionData(
-            session_id="sid", telegram_id=12345, username="u",
+            session_id="sid",
+            telegram_id=12345,
+            username="u",
             created_at=datetime.now(timezone.utc),
             expires_at=datetime.now(timezone.utc) + timedelta(hours=2),
         )
@@ -156,7 +169,9 @@ class TestAuthService:
         svc = _svc()
         created = datetime.now(timezone.utc) - timedelta(days=6, hours=23)
         session = SessionData(
-            session_id="sid", telegram_id=12345, username="u",
+            session_id="sid",
+            telegram_id=12345,
+            username="u",
             created_at=created,
             expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
         )

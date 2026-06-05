@@ -216,7 +216,7 @@
                     },
                     priceScaleId: '', // Overlay volume on the main pane but separate scale
                 });
-                
+
                 // Position volume histogram in bottom 25% of the chart
                 chart.priceScale('').applyOptions({
                     scaleMargins: {
@@ -256,7 +256,7 @@
                     chartData.drawings.forEach(draw => {
                         const price = parseFloat(draw.price);
                         if (isNaN(price) || price <= 0) return;
-                        
+
                         candleSeries.createPriceLine({
                             price: price,
                             color: draw.color || '#2962ff',
@@ -273,10 +273,10 @@
                     const tableOverlay = document.getElementById('strategy-table-overlay');
                     const tableTitle = document.getElementById('table-title');
                     const tableBody = document.getElementById('table-body');
-                    
+
                     tableTitle.innerText = chartData.strategy_table.title || 'Strategy Specs';
                     tableBody.innerHTML = '';
-                    
+
                     if (chartData.strategy_table.rows && chartData.strategy_table.rows.length > 0) {
                         chartData.strategy_table.rows.forEach(row => {
                             const tr = document.createElement('tr');
@@ -306,10 +306,10 @@
                         parentContainer.style.left = 'auto';
                     }
                     parentContainer.style.display = 'block';
-                    
+
                     const parentTf = chartData.parent_timeframe || '1H';
                     document.getElementById('parent-inset-title').innerText = `${parentTf} Parent Trend`;
-                    
+
                     const parentChart = LightweightCharts.createChart(document.getElementById('parent-inset-chart'), {
                         width: parentContainer.clientWidth - 16,
                         height: parentContainer.clientHeight - 36,
@@ -371,14 +371,14 @@
                     const lastCandle = candles[candles.length - 1];
                     const mainX = chart.timeScale().timeToCoordinate(lastCandle.time);
                     const mainY = candleSeries.priceToCoordinate(lastCandle.close);
-                    
+
                     const rect = parentContainer.getBoundingClientRect();
                     let startX, startY, endX, endY;
-                    
+
                     if (pos === 'top-left') {
                         startX = rect.right;
                         startY = rect.top + rect.height / 2;
-                        
+
                         if (typeof mainX === 'number' && typeof mainY === 'number') {
                             endX = mainX;
                             endY = mainY;
@@ -389,7 +389,7 @@
                     } else {
                         startX = rect.left;
                         startY = rect.top + rect.height / 2;
-                        
+
                         if (typeof mainX === 'number' && typeof mainY === 'number') {
                             endX = mainX;
                             endY = mainY;
@@ -403,7 +403,7 @@
                     const connector = document.getElementById('svg-connector');
                     connector.style.display = 'block';
                     const line = document.getElementById('connector-line');
-                    
+
                     line.setAttribute('d', `M ${startX} ${startY} L ${endX} ${endY}`);
                     line.setAttribute('marker-end', 'url(#arrow)');
                 }

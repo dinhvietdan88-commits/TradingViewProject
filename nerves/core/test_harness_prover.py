@@ -2,12 +2,13 @@
 """
 Tests for harness_prover.py — MDASH Stage 5 (Prove) implementation.
 """
+
 import sys
 import tempfile
 import textwrap
 import unittest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 # Ensure project root is on path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
@@ -47,8 +48,16 @@ class TestPoCTemplates(unittest.TestCase):
     def test_all_templates_exist(self):
         """Verify we have templates for the expected rules."""
         expected_rules = [
-            "TVP-001", "TVP-002", "TVP-003", "TVP-004", "TVP-005", "TVP-007",
-            "STA-001", "STA-002", "STA-003", "STA-005",
+            "TVP-001",
+            "TVP-002",
+            "TVP-003",
+            "TVP-004",
+            "TVP-005",
+            "TVP-007",
+            "STA-001",
+            "STA-002",
+            "STA-003",
+            "STA-005",
             "SEC-001",
         ]
         for rule in expected_rules:
@@ -61,13 +70,19 @@ class TestPoCTemplates(unittest.TestCase):
     def test_templates_have_file_placeholder(self):
         """All templates should have {file} placeholder."""
         for rule_id, template in POC_TEMPLATES.items():
-            self.assertIn("{file}", template, f"{rule_id} template missing {{file}} placeholder")
+            self.assertIn(
+                "{file}", template, f"{rule_id} template missing {{file}} placeholder"
+            )
 
     def test_templates_have_exit_codes(self):
         """All templates should use sys.exit(0) for success and sys.exit(1) for failure."""
         for rule_id, template in POC_TEMPLATES.items():
-            self.assertIn("sys.exit(0)", template, f"{rule_id}: missing success exit code")
-            self.assertIn("sys.exit(1)", template, f"{rule_id}: missing failure exit code")
+            self.assertIn(
+                "sys.exit(0)", template, f"{rule_id}: missing success exit code"
+            )
+            self.assertIn(
+                "sys.exit(1)", template, f"{rule_id}: missing failure exit code"
+            )
 
 
 class TestHarnessProverGeneration(unittest.TestCase):
@@ -78,7 +93,11 @@ class TestHarnessProverGeneration(unittest.TestCase):
 
     def test_generate_known_rule(self):
         """Should generate PoC for a known rule."""
-        finding = {"rule_id": "TVP-001", "file": "server/gateway/webhook.py", "line": 50}
+        finding = {
+            "rule_id": "TVP-001",
+            "file": "server/gateway/webhook.py",
+            "line": 50,
+        }
         poc = self.prover._generate_poc(finding)
         self.assertIn("TVP-001", poc)
         self.assertIn("HMAC", poc)
@@ -98,7 +117,11 @@ class TestHarnessProverGeneration(unittest.TestCase):
 
     def test_generate_sta003_poc(self):
         """STA-003 should generate subprocess shell=True detection."""
-        finding = {"rule_id": "STA-003", "file": "nerves/core/hook_service.py", "line": 187}
+        finding = {
+            "rule_id": "STA-003",
+            "file": "nerves/core/hook_service.py",
+            "line": 187,
+        }
         poc = self.prover._generate_poc(finding)
         self.assertIn("subprocess", poc)
         self.assertIn("shell", poc)
@@ -157,11 +180,13 @@ class TestHarnessProverExecution(unittest.TestCase):
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".py", delete=False, encoding="utf-8"
         ) as f:
-            f.write(textwrap.dedent("""\
+            f.write(
+                textwrap.dedent("""\
                 import subprocess
                 def run_cmd(user_input):
                     subprocess.run(user_input, shell=True)
-            """))
+            """)
+            )
             f.flush()
             temp_path = f.name
 
@@ -180,11 +205,13 @@ class TestHarnessProverExecution(unittest.TestCase):
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".py", delete=False, encoding="utf-8"
         ) as f:
-            f.write(textwrap.dedent("""\
+            f.write(
+                textwrap.dedent("""\
                 import subprocess
                 def run_cmd():
                     subprocess.run(["ls", "-la"])
-            """))
+            """)
+            )
             f.flush()
             temp_path = f.name
 
@@ -202,12 +229,24 @@ class TestHarnessProverReport(unittest.TestCase):
     def test_report_generation(self):
         prover = HarnessProver()
         results = [
-            ProofResult(finding_id="STA-003", rule_id="STA-003", status="PROVEN",
-                       poc_output="EXPLOIT_SUCCESS: shell=True with dynamic cmd"),
-            ProofResult(finding_id="STA-001", rule_id="STA-001", status="THEORETICAL",
-                       poc_output="EXPLOIT_FAILED: literal import"),
-            ProofResult(finding_id="TVP-006", rule_id="TVP-006", status="SAFE_SKIP",
-                       poc_output="Safety-critical rule"),
+            ProofResult(
+                finding_id="STA-003",
+                rule_id="STA-003",
+                status="PROVEN",
+                poc_output="EXPLOIT_SUCCESS: shell=True with dynamic cmd",
+            ),
+            ProofResult(
+                finding_id="STA-001",
+                rule_id="STA-001",
+                status="THEORETICAL",
+                poc_output="EXPLOIT_FAILED: literal import",
+            ),
+            ProofResult(
+                finding_id="TVP-006",
+                rule_id="TVP-006",
+                status="SAFE_SKIP",
+                poc_output="Safety-critical rule",
+            ),
         ]
         report = prover.generate_report(results)
         self.assertIn("PROVEN", report)
@@ -226,35 +265,39 @@ class TestProverIntegration(unittest.TestCase):
 
     def test_gate7_with_enable_prove(self):
         """Gate 7 should run when enable_prove=True and findings exist."""
-        from nerves.core.harness_bridge import run_harness_full, Verdict
+        from nerves.core.harness_bridge import run_harness_full
 
         # Create a temp file with a shell=True subprocess
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".py", delete=False, encoding="utf-8"
         ) as f:
-            f.write(textwrap.dedent("""\
+            f.write(
+                textwrap.dedent("""\
                 import subprocess
                 def dangerous(user_cmd):
                     subprocess.run(user_cmd, shell=True)
-            """))
+            """)
+            )
             f.flush()
             temp_path = f.name
 
         try:
             # Mock the security scan to return a finding
             with patch("nerves.core.harness_bridge.scan_files_full") as mock_scan:
-                mock_scan.return_value = [{
-                    "rule_id": "STA-003",
-                    "title": "subprocess with shell=True",
-                    "severity": "high",
-                    "file": temp_path,
-                    "line": 3,
-                    "description": "test",
-                    "evidence": "shell=True",
-                    "confidence": 1.0,
-                    "remediation": "",
-                    "cwe": "CWE-78",
-                }]
+                mock_scan.return_value = [
+                    {
+                        "rule_id": "STA-003",
+                        "title": "subprocess with shell=True",
+                        "severity": "high",
+                        "file": temp_path,
+                        "line": 3,
+                        "description": "test",
+                        "evidence": "shell=True",
+                        "confidence": 1.0,
+                        "remediation": "",
+                        "cwe": "CWE-78",
+                    }
+                ]
 
                 result = run_harness_full(
                     files=[temp_path],

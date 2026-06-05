@@ -8,7 +8,6 @@ Verifies:
   4. query_knowledge() works after remote init
 """
 
-import os
 import sys
 import pathlib
 
@@ -16,12 +15,13 @@ import pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_mock_collection(doc_count: int = 5):
     """Create a mock ChromaDB collection with realistic behavior."""
@@ -29,10 +29,16 @@ def _make_mock_collection(doc_count: int = 5):
     coll.count.return_value = doc_count
     coll.query.return_value = {
         "documents": [["Doc about VCP pattern", "Doc about trend template"]],
-        "metadatas": [[
-            {"filename": "chunk_001.md", "topic": "VCP", "chapter": "001"},
-            {"filename": "chunk_002.md", "topic": "Trend Template", "chapter": "002"},
-        ]],
+        "metadatas": [
+            [
+                {"filename": "chunk_001.md", "topic": "VCP", "chapter": "001"},
+                {
+                    "filename": "chunk_002.md",
+                    "topic": "Trend Template",
+                    "chapter": "002",
+                },
+            ]
+        ],
         "distances": [[0.15, 0.25]],
     }
     return coll
@@ -55,6 +61,7 @@ def _make_mock_persistent_client(collection: MagicMock):
 # ---------------------------------------------------------------------------
 # Test 1: Remote mode uses HttpClient with correct host:port
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_remote_mode_uses_http_client():
@@ -79,9 +86,10 @@ async def test_remote_mode_uses_http_client():
         config.CHROMA_SERVER_HOST = "chroma.example.com"
         config.CHROMA_SERVER_PORT = 9000
 
-        with patch("chromadb.HttpClient", return_value=mock_client) as mock_http_cls, \
-             patch.object(rag, "_get_embedding_function", return_value=mock_ef):
-
+        with (
+            patch("chromadb.HttpClient", return_value=mock_client) as mock_http_cls,
+            patch.object(rag, "_get_embedding_function", return_value=mock_ef),
+        ):
             result = await rag.init_vector_db()
 
         assert result is True, "init_vector_db should return True in remote mode"
@@ -109,6 +117,7 @@ async def test_remote_mode_uses_http_client():
 # Test 2: Local mode uses PersistentClient (backward compat)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_local_mode_uses_persistent_client(tmp_path):
     """When CHROMA_REMOTE=false (default), init_vector_db should use
@@ -123,7 +132,9 @@ async def test_local_mode_uses_persistent_client(tmp_path):
     # Create a fake knowledge dir with at least one chunk file
     knowledge_dir = tmp_path / "knowledge"
     knowledge_dir.mkdir()
-    (knowledge_dir / "chunk_001.md").write_text("# Test Chunk\nSome content", encoding="utf-8")
+    (knowledge_dir / "chunk_001.md").write_text(
+        "# Test Chunk\nSome content", encoding="utf-8"
+    )
 
     chroma_dir = tmp_path / "chroma_db"
 
@@ -138,9 +149,12 @@ async def test_local_mode_uses_persistent_client(tmp_path):
         config.KNOWLEDGE_DIR = str(knowledge_dir)
         config.CHROMA_DB_PATH = str(chroma_dir)
 
-        with patch("chromadb.PersistentClient", return_value=mock_client) as mock_persist_cls, \
-             patch.object(rag, "_get_embedding_function", return_value=mock_ef):
-
+        with (
+            patch(
+                "chromadb.PersistentClient", return_value=mock_client
+            ) as mock_persist_cls,
+            patch.object(rag, "_get_embedding_function", return_value=mock_ef),
+        ):
             result = await rag.init_vector_db()
 
         assert result is True, "init_vector_db should return True in local mode"
@@ -158,6 +172,7 @@ async def test_local_mode_uses_persistent_client(tmp_path):
 # ---------------------------------------------------------------------------
 # Test 3: Collection properly initialized in remote mode
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_remote_mode_collection_initialized():
@@ -181,15 +196,19 @@ async def test_remote_mode_collection_initialized():
         config.CHROMA_SERVER_HOST = "localhost"
         config.CHROMA_SERVER_PORT = 8000
 
-        with patch("chromadb.HttpClient", return_value=mock_client), \
-             patch.object(rag, "_get_embedding_function", return_value=mock_ef):
+        with (
+            patch("chromadb.HttpClient", return_value=mock_client),
+            patch.object(rag, "_get_embedding_function", return_value=mock_ef),
+        ):
             await rag.init_vector_db()
 
         # Verify _collection is set to the mock collection
-        assert rag._collection is mock_collection, \
+        assert rag._collection is mock_collection, (
             "_collection should be set to the collection from HttpClient"
-        assert rag._chroma_client is mock_client, \
+        )
+        assert rag._chroma_client is mock_client, (
             "_chroma_client should be set to the HttpClient instance"
+        )
 
     finally:
         config.CHROMA_REMOTE = orig_remote
@@ -202,6 +221,7 @@ async def test_remote_mode_collection_initialized():
 # ---------------------------------------------------------------------------
 # Test 4: query_knowledge works after remote init
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_query_knowledge_after_remote_init():
@@ -224,8 +244,10 @@ async def test_query_knowledge_after_remote_init():
         config.CHROMA_SERVER_HOST = "localhost"
         config.CHROMA_SERVER_PORT = 8000
 
-        with patch("chromadb.HttpClient", return_value=mock_client), \
-             patch.object(rag, "_get_embedding_function", return_value=mock_ef):
+        with (
+            patch("chromadb.HttpClient", return_value=mock_client),
+            patch.object(rag, "_get_embedding_function", return_value=mock_ef),
+        ):
             await rag.init_vector_db()
 
         # Now call query_knowledge — it should use the mocked _collection
@@ -256,6 +278,7 @@ async def test_query_knowledge_after_remote_init():
 # Test 5: Remote mode does NOT require knowledge_dir to exist
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_remote_mode_skips_knowledge_dir_check():
     """In remote mode, init_vector_db should succeed even if KNOWLEDGE_DIR
@@ -281,12 +304,15 @@ async def test_remote_mode_skips_knowledge_dir_check():
         # Set knowledge dir to a path that does NOT exist
         config.KNOWLEDGE_DIR = "/nonexistent/knowledge/dir"
 
-        with patch("chromadb.HttpClient", return_value=mock_client), \
-             patch.object(rag, "_get_embedding_function", return_value=mock_ef):
+        with (
+            patch("chromadb.HttpClient", return_value=mock_client),
+            patch.object(rag, "_get_embedding_function", return_value=mock_ef),
+        ):
             result = await rag.init_vector_db()
 
-        assert result is True, \
+        assert result is True, (
             "Remote mode should succeed even if KNOWLEDGE_DIR does not exist"
+        )
 
     finally:
         config.CHROMA_REMOTE = orig_remote
@@ -300,6 +326,7 @@ async def test_remote_mode_skips_knowledge_dir_check():
 # ---------------------------------------------------------------------------
 # Test 6: Remote mode does NOT create local chroma_db directory
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_remote_mode_no_local_dir_created(tmp_path):
@@ -327,12 +354,15 @@ async def test_remote_mode_no_local_dir_created(tmp_path):
         config.CHROMA_SERVER_PORT = 8000
         config.CHROMA_DB_PATH = str(local_chroma_dir)
 
-        with patch("chromadb.HttpClient", return_value=mock_client), \
-             patch.object(rag, "_get_embedding_function", return_value=mock_ef):
+        with (
+            patch("chromadb.HttpClient", return_value=mock_client),
+            patch.object(rag, "_get_embedding_function", return_value=mock_ef),
+        ):
             await rag.init_vector_db()
 
-        assert not local_chroma_dir.exists(), \
+        assert not local_chroma_dir.exists(), (
             "Remote mode should NOT create local chroma_db directory"
+        )
 
     finally:
         config.CHROMA_REMOTE = orig_remote
@@ -346,6 +376,7 @@ async def test_remote_mode_no_local_dir_created(tmp_path):
 # ---------------------------------------------------------------------------
 # Test 7: Config vars have correct defaults
 # ---------------------------------------------------------------------------
+
 
 def test_config_remote_defaults():
     """Verify CHROMA_REMOTE, CHROMA_SERVER_HOST, CHROMA_SERVER_PORT exist
@@ -366,6 +397,7 @@ def test_config_remote_defaults():
 # ---------------------------------------------------------------------------
 # Test 8: HttpClient NOT called in local mode
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_http_client_not_called_in_local_mode(tmp_path):
@@ -392,10 +424,11 @@ async def test_http_client_not_called_in_local_mode(tmp_path):
         config.KNOWLEDGE_DIR = str(knowledge_dir)
         config.CHROMA_DB_PATH = str(tmp_path / "chroma_db")
 
-        with patch("chromadb.PersistentClient", return_value=mock_persist_client), \
-             patch("chromadb.HttpClient") as mock_http_cls, \
-             patch.object(rag, "_get_embedding_function", return_value=mock_ef):
-
+        with (
+            patch("chromadb.PersistentClient", return_value=mock_persist_client),
+            patch("chromadb.HttpClient") as mock_http_cls,
+            patch.object(rag, "_get_embedding_function", return_value=mock_ef),
+        ):
             await rag.init_vector_db()
 
         mock_http_cls.assert_not_called()

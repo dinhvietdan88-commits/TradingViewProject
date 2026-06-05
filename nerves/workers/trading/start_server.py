@@ -8,6 +8,7 @@ SCAR-TVP-001: Never use Start-Process powershell for uvicorn.
 SCAR-TVP-002: Always kill existing process on port before binding.
               Old process = stale code in memory → fixes 401/409 zombie bugs.
 """
+
 import io
 import os
 import sys
@@ -51,7 +52,10 @@ def _kill_port(p: int) -> None:
                         ["taskkill", "/PID", proc_id, "/F"],
                         capture_output=True,
                     )
-                    print(f"[Sovereign Launcher] Killed stale PID {proc_id} on :{p}", flush=True)
+                    print(
+                        f"[Sovereign Launcher] Killed stale PID {proc_id} on :{p}",
+                        flush=True,
+                    )
                     killed = True
     except Exception as e:
         print(f"[Sovereign Launcher] kill_port warning: {e}", flush=True)
@@ -68,17 +72,31 @@ def _kill_stale_pid() -> None:
             if old_pid.isdigit():
                 # Check if process is running and is python
                 out = subprocess.check_output(
-                    ["tasklist", "/FI", f"PID eq {old_pid}", "/FI", "IMAGENAME eq python.exe", "/NH"],
-                    text=True, stderr=subprocess.DEVNULL
+                    [
+                        "tasklist",
+                        "/FI",
+                        f"PID eq {old_pid}",
+                        "/FI",
+                        "IMAGENAME eq python.exe",
+                        "/NH",
+                    ],
+                    text=True,
+                    stderr=subprocess.DEVNULL,
                 )
                 if "python.exe" in out.lower():
                     subprocess.run(
                         ["taskkill", "/PID", old_pid, "/F"],
                         capture_output=True,
                     )
-                    print(f"[Sovereign Launcher] Killed zombie PID {old_pid} from .server.pid", flush=True)
+                    print(
+                        f"[Sovereign Launcher] Killed zombie PID {old_pid} from .server.pid",
+                        flush=True,
+                    )
                 else:
-                    print(f"[Sovereign Launcher] PID {old_pid} from .server.pid is not python or not running.", flush=True)
+                    print(
+                        f"[Sovereign Launcher] PID {old_pid} from .server.pid is not python or not running.",
+                        flush=True,
+                    )
         except Exception as e:
             print(f"[Sovereign Launcher] kill_stale_pid warning: {e}", flush=True)
         finally:
@@ -91,6 +109,7 @@ def _kill_stale_pid() -> None:
 
 # ── SCAR-TVP-002: Kill stale server before binding ───────────────────────────
 from pathlib import Path
+
 _kill_stale_pid()
 _kill_port(port)
 
@@ -103,13 +122,16 @@ import asyncio  # noqa: E402
 
 # Pre-create socket with SO_REUSEADDR to bypass zombie socket on Windows
 import time as _time
+
 _time.sleep(0.5)  # brief pause after kill for OS to release port
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 sock.bind(("0.0.0.0", port))
 sock.set_inheritable(True)
 
-print(f"[Sovereign Launcher] Port {port} bound with SO_REUSEADDR + UTF-8 OK", flush=True)
+print(
+    f"[Sovereign Launcher] Port {port} bound with SO_REUSEADDR + UTF-8 OK", flush=True
+)
 
 config = uvicorn.Config("main:app", host="0.0.0.0", port=port, log_level="info")
 server = uvicorn.Server(config)
@@ -133,4 +155,6 @@ async def serve():
 try:
     asyncio.run(serve())
 except (KeyboardInterrupt, asyncio.exceptions.CancelledError):
-    print("\n[Sovereign Launcher] Server stopped gracefully by user (Ctrl+C).", flush=True)
+    print(
+        "\n[Sovereign Launcher] Server stopped gracefully by user (Ctrl+C).", flush=True
+    )

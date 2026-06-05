@@ -11,7 +11,7 @@ Below is the conceptual architecture of the 3-server pipeline, showing how signa
 ```mermaid
 graph TD
     TV[TradingView Webhook] -->|Ingest / Post| ServerA(Server A: VBS FastAPI)
-    
+
     subgraph VBS Layer (Server A)
         ServerA -->|Dedup & Queue| SQLite_A[(SQLite: signal_queue.db)]
         ServerA -->|Notify| TG_Silent[Telegram: Queue Notify]
@@ -20,11 +20,11 @@ graph TD
     subgraph AI Core Layer (Server C)
         Worker[VpsAnalyzerWorker Daemon] -->|Long-Poll /consume-long| ServerA
         Worker -->|RAG Query| ChromaDB[(ChromaDB / VectorStore)]
-        
+
         %% Decoupled Modes
         Worker -->|Circuit CLOSED| AI_Mode{AI Mode}
         Worker -->|Circuit OPEN / Timeout| Algo_Mode{Algorithmic Fallback}
-        
+
         AI_Mode -->|LLM Advice + Extract Conf| Size_SL_TP[Calculate Position, SL & TP]
         Algo_Mode -->|Minervini SEPA Scoring| Size_SL_TP
     end
@@ -46,7 +46,7 @@ graph TD
 
 To ensure reliability, speed, and prevent port collision during concurrent test executions, the test suite implements a **Zero-Network Footprint Bridge**:
 
-- **FastAPI Transport Bridge (`httpx.ASGITransport`)**: 
+- **FastAPI Transport Bridge (`httpx.ASGITransport`)**:
   Instead of launching physical webservers on network interfaces (e.g. binding `127.0.0.1:8000`), the test instantiates an in-memory transport bridge that feeds HTTP requests directly into the FastAPI `vbs_app`.
 - **Mock session (`MockAiohttpSession`)**:
   The `VpsAnalyzerWorker` uses `aiohttp` for networking. In tests, the worker's session is mocked to capture outgoing requests to `VPS_BUFFER_URL` and redirect them dynamically through the `httpx.ASGITransport` bridge, mapping routes completely in-memory.

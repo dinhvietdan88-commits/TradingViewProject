@@ -14,18 +14,18 @@ Rewrite of tests/test_decentralized_approval.py into pure unit tests:
 
 All external dependencies are mocked — no network, no DB, no Telegram token.
 """
+
 import sys
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from core.event_bus import EventBus
-from core.events import AnalysisComplete, TradeApproved, SignalRejected, TradeFailed, TradeApprovalTimeout
+from core.events import AnalysisComplete, TradeApproved, TradeApprovalTimeout
 from hub.notification_hub import (
     process_analysis_complete,
     set_bus,
     PENDING_TRADES,
     get_pending_trade,
-    remove_pending_trade,
     handle_approval_timeout,
 )
 
@@ -33,6 +33,7 @@ from hub.notification_hub import (
 # ═══════════════════════════════════════════════════════════════
 # HELPERS
 # ═══════════════════════════════════════════════════════════════
+
 
 def _make_event(confidence: int, signal_id: int = 100, **overrides) -> AnalysisComplete:
     """Factory helper — builds an AnalysisComplete event with sane defaults."""
@@ -87,6 +88,7 @@ def _clean_pending_and_bus():
     yield test_bus
     # Restore default bus
     from core.event_bus import bus as default_bus
+
     set_bus(default_bus)
     PENDING_TRADES.clear()
 
@@ -94,6 +96,7 @@ def _clean_pending_and_bus():
 # ═══════════════════════════════════════════════════════════════
 # 1. APPROVE CALLBACK — pops pending, emits TradeApproved
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_approve_callback_pops_pending_and_emits(_clean_pending_and_bus):
@@ -115,10 +118,13 @@ async def test_approve_callback_pops_pending_and_emits(_clean_pending_and_bus):
     query = _make_callback_query("approve_100", username="trader1")
     update = _make_update(query)
 
-    with patch("core.event_bus.bus", bus), \
-         patch("notifier.sanitize_for_telegram_html", side_effect=lambda x: x):
+    with (
+        patch("core.event_bus.bus", bus),
+        patch("notifier.sanitize_for_telegram_html", side_effect=lambda x: x),
+    ):
         # Import and call the real button_callback
         from telegram_bot import button_callback
+
         await button_callback(update, MagicMock())
 
     # Pending should be popped
@@ -135,6 +141,7 @@ async def test_approve_callback_pops_pending_and_emits(_clean_pending_and_bus):
 # 2. REJECT CALLBACK — pops pending, sends rejection notification
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_reject_callback_pops_pending_and_notifies(_clean_pending_and_bus):
     """Khi user nhấn Reject → pending trade bị xóa và notification gửi về từ chối."""
@@ -146,9 +153,12 @@ async def test_reject_callback_pops_pending_and_notifies(_clean_pending_and_bus)
     query = _make_callback_query("reject_200", username="trader2")
     update = _make_update(query)
 
-    with patch("core.event_bus.bus", bus), \
-         patch("notifier.sanitize_for_telegram_html", side_effect=lambda x: x):
+    with (
+        patch("core.event_bus.bus", bus),
+        patch("notifier.sanitize_for_telegram_html", side_effect=lambda x: x),
+    ):
         from telegram_bot import button_callback
+
         await button_callback(update, MagicMock())
 
     # Pending should be popped
@@ -164,6 +174,7 @@ async def test_reject_callback_pops_pending_and_notifies(_clean_pending_and_bus)
 # 3. IGNORE CALLBACK — removes pending silently
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_ignore_callback_removes_pending_silently(_clean_pending_and_bus):
     """Nhấn Ignore → message được sửa nhưng KHÔNG gửi notification riêng,
@@ -173,6 +184,7 @@ async def test_ignore_callback_removes_pending_silently(_clean_pending_and_bus):
 
     with patch("notifier.sanitize_for_telegram_html", side_effect=lambda x: x):
         from telegram_bot import button_callback
+
         await button_callback(update, MagicMock())
 
     # Message should be edited (silently) to show ignored state
@@ -184,6 +196,7 @@ async def test_ignore_callback_removes_pending_silently(_clean_pending_and_bus):
 # ═══════════════════════════════════════════════════════════════
 # 4. TIMEOUT EXPIRE — removes pending and notifies
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_timeout_expire_removes_and_notifies(_clean_pending_and_bus):
@@ -209,12 +222,18 @@ async def test_timeout_expire_removes_and_notifies(_clean_pending_and_bus):
         # User should have been notified
         mock_notifier.notify_all.assert_awaited_once()
         msg = mock_notifier.notify_all.call_args[0][0]
-        assert "⏰" in msg or "400" in msg or "hết thời gian" in msg.lower() or "Hết" in msg
+        assert (
+            "⏰" in msg
+            or "400" in msg
+            or "hết thời gian" in msg.lower()
+            or "Hết" in msg
+        )
 
 
 # ═══════════════════════════════════════════════════════════════
 # 5. DOUBLE APPROVE GUARD — second approve is no-op
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_double_approve_guard(_clean_pending_and_bus):
@@ -234,6 +253,7 @@ async def test_double_approve_guard(_clean_pending_and_bus):
 
     with patch("notifier.sanitize_for_telegram_html", side_effect=lambda x: x):
         from telegram_bot import button_callback
+
         await button_callback(update, MagicMock())
 
     # Should edit message to show already-processed state
@@ -246,6 +266,7 @@ async def test_double_approve_guard(_clean_pending_and_bus):
 # 6. BOT OFFLINE FALLBACK — returns [] and hub uses notify_all
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_bot_offline_fallback(_clean_pending_and_bus):
     """Khi _bot_app is None → send_interactive_trade_approval trả [] và hub
@@ -256,8 +277,10 @@ async def test_bot_offline_fallback(_clean_pending_and_bus):
     mock_bot.send_interactive_trade_approval = AsyncMock(return_value=[])
     mock_bot.get_approval_timeout_mgr = MagicMock(return_value=None)
 
-    with patch("hub.notification_hub.notifier") as mock_notifier, \
-         patch.dict(sys.modules, {"telegram_bot": mock_bot}):
+    with (
+        patch("hub.notification_hub.notifier") as mock_notifier,
+        patch.dict(sys.modules, {"telegram_bot": mock_bot}),
+    ):
         mock_notifier.notify_all = AsyncMock()
         mock_notifier.send_telegram_photo = MagicMock()
 
@@ -277,6 +300,7 @@ async def test_bot_offline_fallback(_clean_pending_and_bus):
 # 7. MEDIUM CONFIDENCE — stores in PENDING_TRADES
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_medium_confidence_stores_in_pending(_clean_pending_and_bus):
     """AnalysisComplete với confidence=6 → event được lưu vào PENDING_TRADES,
@@ -293,8 +317,10 @@ async def test_medium_confidence_stores_in_pending(_clean_pending_and_bus):
     mock_bot.send_interactive_trade_approval = AsyncMock(return_value=[(12345, 67890)])
     mock_bot.get_approval_timeout_mgr = MagicMock(return_value=None)
 
-    with patch("hub.notification_hub.notifier") as mock_notifier, \
-         patch.dict(sys.modules, {"telegram_bot": mock_bot}):
+    with (
+        patch("hub.notification_hub.notifier") as mock_notifier,
+        patch.dict(sys.modules, {"telegram_bot": mock_bot}),
+    ):
         mock_notifier.notify_all = AsyncMock()
         mock_notifier.send_telegram_photo = MagicMock()
 
@@ -315,6 +341,7 @@ async def test_medium_confidence_stores_in_pending(_clean_pending_and_bus):
 # ═══════════════════════════════════════════════════════════════
 # 8. HIGH CONFIDENCE — bypasses PENDING_TRADES, emits TradeApproved
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_high_confidence_bypasses_pending(_clean_pending_and_bus):

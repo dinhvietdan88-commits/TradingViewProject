@@ -15,13 +15,14 @@ References:
     - guardrail_registry.py: Declarative policy definitions
     - adk_callback_bridge.py: ADK Event/Context adapters
 """
+
 import sys
 
 # Configure sys.stdout and sys.stderr to ignore encoding errors (SCAR-019)
-if sys.stdout.encoding != 'utf-8':
+if sys.stdout.encoding != "utf-8":
     try:
-        sys.stdout.reconfigure(encoding='utf-8', errors='ignore')
-        sys.stderr.reconfigure(encoding='utf-8', errors='ignore')
+        sys.stdout.reconfigure(encoding="utf-8", errors="ignore")
+        sys.stderr.reconfigure(encoding="utf-8", errors="ignore")
     except Exception:
         pass
 
@@ -40,8 +41,11 @@ sys.path.insert(0, str(AGENTS_ROOT / "nerves" / "core"))
 try:
     import core_scar_memory as scar_memory
     import core_reflex as reflex
+
     if scar_memory:
-        print("[SRA Server] Eagerly warming up FastEmbed model in RAM...", file=sys.stderr)
+        print(
+            "[SRA Server] Eagerly warming up FastEmbed model in RAM...", file=sys.stderr
+        )
         scar_memory._get_embedding_model()
         print("[SRA Server] FastEmbed model loaded successfully.", file=sys.stderr)
 except Exception as e:
@@ -52,6 +56,7 @@ except Exception as e:
 # ── Load guardrail registry ──────────────────────────────────
 try:
     from guardrail_registry import evaluate_guardrails
+
     print("[SRA Server] Guardrail registry loaded.", file=sys.stderr)
 except Exception as e:
     print(f"[SRA Server] Guardrail registry load error: {e}", file=sys.stderr)
@@ -60,6 +65,7 @@ except Exception as e:
 # ── Load ADK telemetry exporter ───────────────────────────────
 try:
     from adk_callback_bridge import AngatiCallbackContext, ADKTelemetryExporter
+
     _telemetry = ADKTelemetryExporter(
         output_path=str(AGENTS_ROOT / "memory" / "hook_events.jsonl")
     )
@@ -77,8 +83,8 @@ _VERBOSE = False
 # C: TTL cache by command prefix (5 min)
 # A: Fallback to angati.exe subprocess
 
-_scar_cache = {}          # {cmd_prefix: (timestamp, advisory_str | None)}
-_SCAR_CACHE_TTL = 300     # 5 minutes
+_scar_cache = {}  # {cmd_prefix: (timestamp, advisory_str | None)}
+_SCAR_CACHE_TTL = 300  # 5 minutes
 _SCAR_SCORE_THRESHOLD = 0.82
 _qdrant_client_cached = None
 
@@ -104,10 +110,10 @@ def _cmd_prefix(cmd_line: str) -> str:
     if not tokens:
         return ""
     binary = tokens[0].lower()
-    
+
     if "/" in binary or "\\" in binary:
         binary = Path(binary).name
-        
+
     target = ""
     # Phase 1: Look for any token that looks like a file path or has an extension
     for t in tokens[1:]:
@@ -117,14 +123,14 @@ def _cmd_prefix(cmd_line: str) -> str:
             else:
                 target = t
             break
-            
+
     # Phase 2: Fallback to the first non-option token longer than 3 chars
     if not target:
         for t in tokens[1:]:
             if not t.startswith("-") and len(t) > 3:
                 target = t
                 break
-                
+
     return f"{binary}:{target}".lower()
 
 
@@ -195,7 +201,10 @@ def _scar_consult_fast(cmd_line: str) -> str:
 
     except Exception as exc_b:
         # B failed (e.g., no Qdrant connection) — fall through to A
-        print(f"[SRA Server] Scar consult B (in-process) failed: {exc_b}, falling back to A (subprocess)", file=sys.stderr)
+        print(
+            f"[SRA Server] Scar consult B (in-process) failed: {exc_b}, falling back to A (subprocess)",
+            file=sys.stderr,
+        )
 
     # ── A: Fallback to angati.exe subprocess (~300ms) ──
     try:
@@ -203,7 +212,11 @@ def _scar_consult_fast(cmd_line: str) -> str:
         if scars:
             relevant = [s for s in scars if s.get("score", 0) >= _SCAR_SCORE_THRESHOLD]
             if relevant:
-                rules = [s.get("prevention_rule", "") for s in relevant if s.get("prevention_rule")]
+                rules = [
+                    s.get("prevention_rule", "")
+                    for s in relevant
+                    if s.get("prevention_rule")
+                ]
                 if rules:
                     advisory = " | ".join(rules[:2])
                     _scar_cache[prefix] = (now, advisory)
@@ -213,12 +226,16 @@ def _scar_consult_fast(cmd_line: str) -> str:
         return ""
 
     except Exception as exc_a:
-        print(f"[SRA Server] Scar consult A (subprocess) also failed: {exc_a}", file=sys.stderr)
+        print(
+            f"[SRA Server] Scar consult A (subprocess) also failed: {exc_a}",
+            file=sys.stderr,
+        )
         _scar_cache[prefix] = (now, None)
         return ""
 
 
 # ── Build guardrail context ──────────────────────────────────
+
 
 def _build_context(**extra) -> dict:
     """Build context dict for guardrail handlers with injected dependencies."""
@@ -234,6 +251,7 @@ def _build_context(**extra) -> dict:
 
 # ── HTTP Server ───────────────────────────────────────────────
 
+
 class ThreadingHTTPServer(ThreadingTCPServer, HTTPServer):
     daemon_threads = True
     allow_reuse_address = True
@@ -242,8 +260,14 @@ class ThreadingHTTPServer(ThreadingTCPServer, HTTPServer):
     def handle_error(self, request, client_address):
         # Silence connection reset exceptions when clients exit abruptly
         import traceback
+
         tb = traceback.format_exc()
-        if "ConnectionResetError" in tb or "ConnectionAbortedError" in tb or "BrokenPipeError" in tb or "WinError 10054" in tb:
+        if (
+            "ConnectionResetError" in tb
+            or "ConnectionAbortedError" in tb
+            or "BrokenPipeError" in tb
+            or "WinError 10054" in tb
+        ):
             pass
         else:
             super().handle_error(request, client_address)
@@ -265,7 +289,7 @@ class SRAHookHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/health":
-            body = json.dumps({"status": "healthy"}).encode('utf-8')
+            body = json.dumps({"status": "healthy"}).encode("utf-8")
             self._send_json(200, body)
         elif self.path == "/stats":
             uptime = _time.time() - _stats["start_time"]
@@ -280,7 +304,7 @@ class SRAHookHandler(BaseHTTPRequestHandler):
             }
             # Remove non-serializable start_time
             stats_data.pop("start_time", None)
-            body = json.dumps(stats_data, indent=2).encode('utf-8')
+            body = json.dumps(stats_data, indent=2).encode("utf-8")
             self._send_json(200, body)
         else:
             self.send_response(404)
@@ -296,13 +320,13 @@ class SRAHookHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
-        content_length = int(self.headers.get('Content-Length', 0))
+        content_length = int(self.headers.get("Content-Length", 0))
         post_data = self.rfile.read(content_length)
 
         try:
-            input_data = json.loads(post_data.decode('utf-8'))
+            input_data = json.loads(post_data.decode("utf-8"))
         except Exception as e:
-            body = json.dumps({"error": f"Invalid JSON: {e}"}).encode('utf-8')
+            body = json.dumps({"error": f"Invalid JSON: {e}"}).encode("utf-8")
             self._send_json(400, body)
             return
 
@@ -313,7 +337,7 @@ class SRAHookHandler(BaseHTTPRequestHandler):
         elif self.path == "/on-error":
             response_data = self.handle_on_error(input_data)
         elif self.path == "/shutdown":
-            body = json.dumps({"status": "shutdown"}).encode('utf-8')
+            body = json.dumps({"status": "shutdown"}).encode("utf-8")
             self._send_json(200, body)
             threading.Thread(target=self.server.shutdown).start()
             return
@@ -322,7 +346,7 @@ class SRAHookHandler(BaseHTTPRequestHandler):
             self.end_headers()
             return
 
-        body = json.dumps(response_data).encode('utf-8')
+        body = json.dumps(response_data).encode("utf-8")
         self._send_json(200, body)
 
     def handle_pre_tool(self, input_data):
@@ -341,7 +365,9 @@ class SRAHookHandler(BaseHTTPRequestHandler):
             # Emit ADK telemetry
             if _telemetry and AngatiCallbackContext:
                 try:
-                    ctx = AngatiCallbackContext.from_hook_data(input_data, lifecycle="before_tool")
+                    ctx = AngatiCallbackContext.from_hook_data(
+                        input_data, lifecycle="before_tool"
+                    )
                     event = ctx.to_guardrail_event(result)
                     _telemetry.record(event)
                 except Exception:
@@ -352,27 +378,33 @@ class SRAHookHandler(BaseHTTPRequestHandler):
                 verdict = v.get("verdict", "")
                 name = v.get("guardrail", "")
                 if verdict == "BLOCK":
-                    print(f"[SRA Server] BLOCKED by {name}: {v.get('reason', '')}", file=sys.stderr)
+                    print(
+                        f"[SRA Server] BLOCKED by {name}: {v.get('reason', '')}",
+                        file=sys.stderr,
+                    )
                     _stats["blocks"] += 1
                 elif verdict == "WARN":
-                    print(f"[SRA Server] WARN from {name}: {v.get('reason', '')}", file=sys.stderr)
+                    print(
+                        f"[SRA Server] WARN from {name}: {v.get('reason', '')}",
+                        file=sys.stderr,
+                    )
                     _stats["advisories"] += 1
                 elif v.get("advisory"):
-                    print(f"[SRA Server] Advisory from {name}: {v['advisory']}", file=sys.stderr)
+                    print(
+                        f"[SRA Server] Advisory from {name}: {v['advisory']}",
+                        file=sys.stderr,
+                    )
 
             if result["decision"] == "deny":
                 return {
                     "decision": "deny",
-                    "message": result.get("message", "Blocked by guardrail")
+                    "message": result.get("message", "Blocked by guardrail"),
                 }
 
             # Return advisory message if any
             message = result.get("message", "")
             if message:
-                return {
-                    "decision": "allow",
-                    "message": f"[SCAR ADVISORY] {message}"
-                }
+                return {"decision": "allow", "message": f"[SCAR ADVISORY] {message}"}
 
         return {"decision": "allow"}
 
@@ -407,7 +439,6 @@ class SRAHookHandler(BaseHTTPRequestHandler):
 
         print(f"[SRA Server] OnError processing: {tool_name}", file=sys.stderr)
 
-
         # ── Declarative guardrail evaluation ──
         if evaluate_guardrails:
             context = _build_context(
@@ -419,7 +450,9 @@ class SRAHookHandler(BaseHTTPRequestHandler):
             # Emit ADK telemetry
             if _telemetry and AngatiCallbackContext:
                 try:
-                    ctx = AngatiCallbackContext.from_hook_data(input_data, lifecycle="on_error")
+                    ctx = AngatiCallbackContext.from_hook_data(
+                        input_data, lifecycle="on_error"
+                    )
                     event = ctx.to_guardrail_event(result)
                     _telemetry.record(event)
                 except Exception:
@@ -435,8 +468,10 @@ class SRAHookHandler(BaseHTTPRequestHandler):
 
 # ── Version Check ─────────────────────────────────────────────
 
+
 def check_angati_version_async():
     """Runs asynchronously in a daemon thread to check version compatibility of local and brain angati.exe."""
+
     def run_check():
         import os
         import hashlib
@@ -496,7 +531,10 @@ def check_angati_version_async():
 
         # 5. Warn on mismatch
         if local_hash != brain_hash:
-            print("[SRA Server] WARNING: Local angati.exe version mismatch detected! Please manually restart the hook server to synchronize the binary.", file=sys.stderr)
+            print(
+                "[SRA Server] WARNING: Local angati.exe version mismatch detected! Please manually restart the hook server to synchronize the binary.",
+                file=sys.stderr,
+            )
 
     t = threading.Thread(target=run_check, daemon=True)
     t.start()
@@ -512,15 +550,22 @@ def main():
                 port = int(sys.argv[i + 1])
             except ValueError:
                 pass
-    server_address = ('', port)
+    server_address = ("", port)
     httpd = ThreadingHTTPServer(server_address, SRAHookHandler)
-    print(f"[SRA Server] Running SRA Hybrid Hook Server on port {port}...", file=sys.stderr)
-    print("[SRA Server] Endpoints: /pre-tool, /post-tool, /on-error, /health, /stats, /shutdown", file=sys.stderr)
+    print(
+        f"[SRA Server] Running SRA Hybrid Hook Server on port {port}...",
+        file=sys.stderr,
+    )
+    print(
+        "[SRA Server] Endpoints: /pre-tool, /post-tool, /on-error, /health, /stats, /shutdown",
+        file=sys.stderr,
+    )
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         pass
     print("[SRA Server] Stopping server...", file=sys.stderr)
+
 
 if __name__ == "__main__":
     main()

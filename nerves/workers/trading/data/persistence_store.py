@@ -11,6 +11,7 @@ log = logging.getLogger(__name__)
 # SIGNAL WRITE
 # ═══════════════════════════════════════════════════════════════
 
+
 async def insert_signal(
     symbol: str,
     action: str,
@@ -26,12 +27,26 @@ async def insert_signal(
         cursor = await db.execute(
             """INSERT INTO signals (symbol, action, price, quote_qty, source_ip, payload, mode, vbs_queue_id)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (symbol, action, price, quote_qty, source_ip, json.dumps(payload) if payload else None, mode, vbs_queue_id),
+            (
+                symbol,
+                action,
+                price,
+                quote_qty,
+                source_ip,
+                json.dumps(payload) if payload else None,
+                mode,
+                vbs_queue_id,
+            ),
         )
         await db.commit()
         signal_id = cursor.lastrowid
-        log.info(f"Signal #{signal_id} saved: {action} {symbol}" + (f" [{mode}]" if mode else "") + (f" (vbs_queue_id={vbs_queue_id})" if vbs_queue_id else ""))
+        log.info(
+            f"Signal #{signal_id} saved: {action} {symbol}"
+            + (f" [{mode}]" if mode else "")
+            + (f" (vbs_queue_id={vbs_queue_id})" if vbs_queue_id else "")
+        )
         return signal_id
+
 
 async def update_signal_status(signal_id: int, processed: int):
     """Cap nhat trang thai signal: 0=pending, 1=success, 2=failed."""
@@ -41,6 +56,7 @@ async def update_signal_status(signal_id: int, processed: int):
             (processed, signal_id),
         )
         await db.commit()
+
 
 async def insert_indicator_signal(
     signal_id: int,
@@ -62,8 +78,19 @@ async def insert_indicator_signal(
                (signal_id, symbol, indicator_name, signal_type, interval, price,
                 confidence_score, conditions_met, metadata, source_ip, exchange)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (signal_id, symbol, indicator_name, signal_type, interval, price,
-             confidence_score, conditions_met, metadata, source_ip, exchange),
+            (
+                signal_id,
+                symbol,
+                indicator_name,
+                signal_type,
+                interval,
+                price,
+                confidence_score,
+                conditions_met,
+                metadata,
+                source_ip,
+                exchange,
+            ),
         )
         await db.commit()
         indicator_signal_id = cursor.lastrowid
@@ -77,6 +104,7 @@ async def insert_indicator_signal(
 # ═══════════════════════════════════════════════════════════════
 # TRADE WRITE
 # ═══════════════════════════════════════════════════════════════
+
 
 async def insert_trade(
     signal_id: int,
@@ -99,12 +127,16 @@ async def insert_trade(
         # Auto-resolve vbs_queue_id from signals if not provided
         if vbs_queue_id is None:
             try:
-                async with db.execute("SELECT vbs_queue_id FROM signals WHERE id = ?", (signal_id,)) as cur:
+                async with db.execute(
+                    "SELECT vbs_queue_id FROM signals WHERE id = ?", (signal_id,)
+                ) as cur:
                     row = await cur.fetchone()
                     if row:
                         vbs_queue_id = row[0]
             except Exception as e:
-                log.warning(f"Failed to auto-resolve vbs_queue_id for signal #{signal_id}: {e}")
+                log.warning(
+                    f"Failed to auto-resolve vbs_queue_id for signal #{signal_id}: {e}"
+                )
 
         cursor = await db.execute(
             """INSERT INTO trades
@@ -112,14 +144,30 @@ async def insert_trade(
                 requested_qty, executed_qty, executed_price,
                 commission, error_message, pnl, combined_score, exchange, vbs_queue_id)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (signal_id, symbol, side, order_id, status,
-             requested_qty, executed_qty, executed_price,
-             commission, error_message, pnl, combined_score, exchange, vbs_queue_id),
+            (
+                signal_id,
+                symbol,
+                side,
+                order_id,
+                status,
+                requested_qty,
+                executed_qty,
+                executed_price,
+                commission,
+                error_message,
+                pnl,
+                combined_score,
+                exchange,
+                vbs_queue_id,
+            ),
         )
         await db.commit()
         trade_id = cursor.lastrowid
-        log.info(f"Trade #{trade_id} saved: {side} {symbol} on {exchange} (signal #{signal_id}, vbs_queue_id={vbs_queue_id})")
+        log.info(
+            f"Trade #{trade_id} saved: {side} {symbol} on {exchange} (signal #{signal_id}, vbs_queue_id={vbs_queue_id})"
+        )
         return trade_id
+
 
 async def update_trade_oco(
     trade_id: int,
@@ -138,11 +186,15 @@ async def update_trade_oco(
             (stop_loss_price, take_profit_price, oco_order_id, order_type, trade_id),
         )
         await db.commit()
-        log.info(f"Trade #{trade_id} updated: OCO SL=${stop_loss_price} TP=${take_profit_price}")
+        log.info(
+            f"Trade #{trade_id} updated: OCO SL=${stop_loss_price} TP=${take_profit_price}"
+        )
+
 
 # ═══════════════════════════════════════════════════════════════
 # BRIEF WRITE
 # ═══════════════════════════════════════════════════════════════
+
 
 async def insert_brief(
     symbols_scanned: int,
@@ -160,8 +212,15 @@ async def insert_brief(
                (symbols_scanned, scan_data, ai_analysis, vision_data,
                 screenshot, brief_text, success)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (symbols_scanned, scan_data, ai_analysis, vision_data,
-             screenshot, brief_text, success),
+            (
+                symbols_scanned,
+                scan_data,
+                ai_analysis,
+                vision_data,
+                screenshot,
+                brief_text,
+                success,
+            ),
         )
         await db.commit()
         brief_id = cursor.lastrowid
@@ -172,6 +231,7 @@ async def insert_brief(
 # ═══════════════════════════════════════════════════════════════
 # SENTIMENT WRITE
 # ═══════════════════════════════════════════════════════════════
+
 
 async def insert_sentiment_log(
     symbol: str,
@@ -187,9 +247,18 @@ async def insert_sentiment_log(
             """INSERT INTO sentiment_logs
                (symbol, twitter_score, rss_score, glassnode_score, combined_score, raw_data)
                VALUES (?, ?, ?, ?, ?, ?)""",
-            (symbol, twitter_score, rss_score, glassnode_score, combined_score, json.dumps(raw_data) if raw_data else None),
+            (
+                symbol,
+                twitter_score,
+                rss_score,
+                glassnode_score,
+                combined_score,
+                json.dumps(raw_data) if raw_data else None,
+            ),
         )
         await db.commit()
         log_id = cursor.lastrowid
-        log.info(f"Sentiment log #{log_id} saved for {symbol}: combined={combined_score}")
+        log.info(
+            f"Sentiment log #{log_id} saved for {symbol}: combined={combined_score}"
+        )
         return log_id

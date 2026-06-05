@@ -13,10 +13,11 @@ Original responsibilities (Infrastructure Layer invariants):
 - Never calls Service or Interface layers.
 - All execution errors are captured in CliResult; no exceptions escape invoke().
 """
+
 import asyncio
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import config
@@ -26,9 +27,11 @@ log = logging.getLogger(__name__)
 
 # ─── Result dataclass ──────────────────────────────────────────────────────────
 
+
 @dataclass
 class CliResult:
     """Structured outcome of one Claude CLI subprocess invocation."""
+
     success: bool
     stdout: str
     stderr: str
@@ -40,26 +43,38 @@ class CliResult:
     @classmethod
     def rate_limit_exceeded(cls) -> "CliResult":
         return cls(
-            success=False, stdout="", stderr="Rate limit exceeded",
-            exit_code=-1, duration_seconds=0.0, rate_limited=True,
+            success=False,
+            stdout="",
+            stderr="Rate limit exceeded",
+            exit_code=-1,
+            duration_seconds=0.0,
+            rate_limited=True,
         )
 
     @classmethod
     def timeout(cls, timeout: float, stderr: str = "") -> "CliResult":
         return cls(
-            success=False, stdout="", stderr=stderr or f"Timeout after {timeout}s",
-            exit_code=-1, duration_seconds=timeout, timed_out=True,
+            success=False,
+            stdout="",
+            stderr=stderr or f"Timeout after {timeout}s",
+            exit_code=-1,
+            duration_seconds=timeout,
+            timed_out=True,
         )
 
     @classmethod
     def error(cls, msg: str, duration: float = 0.0, exit_code: int = -1) -> "CliResult":
         return cls(
-            success=False, stdout="", stderr=msg,
-            exit_code=exit_code, duration_seconds=duration,
+            success=False,
+            stdout="",
+            stderr=msg,
+            exit_code=exit_code,
+            duration_seconds=duration,
         )
 
 
 # ─── Infrastructure class ──────────────────────────────────────────────────────
+
 
 class CliInfrastructure:
     """
@@ -81,7 +96,9 @@ class CliInfrastructure:
     ):
         self._cli_path: str = cli_path or getattr(config, "CLAUDE_CLI_PATH", "claude")
         self._timeout: int = timeout or getattr(config, "CLAUDE_CLI_TIMEOUT", 120)
-        self._rate_limit: int = rate_limit or getattr(config, "CLAUDE_CLI_RATE_LIMIT", 10)
+        self._rate_limit: int = rate_limit or getattr(
+            config, "CLAUDE_CLI_RATE_LIMIT", 10
+        )
         max_par: int = max_parallel or getattr(config, "CLAUDE_CLI_MAX_PARALLEL", 2)
         self._semaphore = asyncio.Semaphore(max(1, max_par))
         self._request_timestamps: list[float] = []
@@ -99,18 +116,23 @@ class CliInfrastructure:
         """
         try:
             proc = await asyncio.create_subprocess_exec(
-                self._cli_path, "--version",
+                self._cli_path,
+                "--version",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10)
             if proc.returncode == 0:
                 version_info = stdout.decode("utf-8", errors="replace").strip()
-                log.info(f"Claude CLI available: {version_info!r} at '{self._cli_path}'")
+                log.info(
+                    f"Claude CLI available: {version_info!r} at '{self._cli_path}'"
+                )
                 self._available = True
             else:
                 err = stderr.decode("utf-8", errors="replace").strip()[:200]
-                log.warning(f"Claude CLI returned non-zero at '{self._cli_path}': {err}")
+                log.warning(
+                    f"Claude CLI returned non-zero at '{self._cli_path}': {err}"
+                )
                 self._available = False
         except FileNotFoundError:
             log.warning(f"Claude CLI binary not found at '{self._cli_path}'")
@@ -154,7 +176,9 @@ class CliInfrastructure:
             log.warning("Claude CLI: rate limit exceeded — request rejected")
             return CliResult.rate_limit_exceeded()
 
-        full_prompt = f"{system_prompt}\n\n{prompt}".strip() if system_prompt else prompt
+        full_prompt = (
+            f"{system_prompt}\n\n{prompt}".strip() if system_prompt else prompt
+        )
         args = self._build_args(image_path)
 
         t_start = time.monotonic()
@@ -196,15 +220,21 @@ class CliInfrastructure:
         if rc != 0:
             log.warning(f"Claude CLI rc={rc} stderr={stderr[:200]!r}")
             return CliResult(
-                success=False, stdout=stdout, stderr=stderr,
-                exit_code=rc, duration_seconds=duration,
+                success=False,
+                stdout=stdout,
+                stderr=stderr,
+                exit_code=rc,
+                duration_seconds=duration,
             )
 
         log.debug(f"Claude CLI success in {duration:.2f}s ({len(stdout)} chars)")
         self._record_timestamp()
         return CliResult(
-            success=True, stdout=stdout, stderr=stderr,
-            exit_code=0, duration_seconds=duration,
+            success=True,
+            stdout=stdout,
+            stderr=stderr,
+            exit_code=0,
+            duration_seconds=duration,
         )
 
     # ── Rate limiting ──────────────────────────────────────────────────────────
@@ -237,10 +267,13 @@ class CliInfrastructure:
             args += ["--model", self._model]
         if image_path:
             from pathlib import Path as _Path
+
             img = _Path(image_path).resolve()
             args += [
-                "--add-dir", str(img.parent),
-                "--allowedTools", "Read",
+                "--add-dir",
+                str(img.parent),
+                "--allowedTools",
+                "Read",
                 "--dangerously-skip-permissions",
             ]
         return args

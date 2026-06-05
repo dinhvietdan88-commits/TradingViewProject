@@ -1,8 +1,10 @@
-﻿"""
+"""
 Integration tests: test_trades.py
 Tests the /trades endpoint for retrieving trade history and pagination.
 """
+
 import pytest
+
 
 @pytest.mark.asyncio
 async def test_get_trades_empty(client):
@@ -13,6 +15,7 @@ async def test_get_trades_empty(client):
     assert data["total"] == 0
     assert data["trades"] == []
 
+
 @pytest.mark.asyncio
 async def test_get_trades_with_data(client_with_trades):
     """Should return all trades correctly."""
@@ -22,6 +25,7 @@ async def test_get_trades_with_data(client_with_trades):
     assert data["total"] == 5
     assert len(data["trades"]) == 5
 
+
 @pytest.mark.asyncio
 async def test_get_trades_pagination(client_with_trades):
     """Should properly paginate results."""
@@ -29,6 +33,7 @@ async def test_get_trades_pagination(client_with_trades):
     assert response.status_code == 200
     data = response.json()
     assert len(data["trades"]) == 2
+
 
 @pytest.mark.asyncio
 async def test_get_trades_filter_by_symbol(client_with_trades):

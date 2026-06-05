@@ -5,10 +5,11 @@ Tests the actual implementation where:
   - capture_screenshot is called with method="mplfinance"
   - Pattern detection runs on OHLCV data inside the rendering pipeline
 """
+
 import sys
 import pytest
 from pathlib import Path
-from unittest.mock import AsyncMock, patch, MagicMock, ANY
+from unittest.mock import AsyncMock, patch, MagicMock
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
@@ -38,7 +39,7 @@ async def test_analysis_complete_renders_chart_with_vcp_vision_result():
         combined_score="6/10",
         vision_result={"vcp_detected": True, "patterns": ["VCP pattern detected"]},
         should_trade=False,
-        interactive_required=True
+        interactive_required=True,
     )
 
     mock_client = MagicMock()
@@ -50,10 +51,11 @@ async def test_analysis_complete_renders_chart_with_vcp_vision_result():
     mock_bot.send_interactive_trade_approval = AsyncMock(return_value=[(12345, 67890)])
     mock_bot.get_approval_timeout_mgr = MagicMock(return_value=None)
 
-    with patch("hub.notification_hub.notifier") as mock_notifier, \
-         patch("capture_client.get_capture_client", return_value=mock_client), \
-         patch.dict(sys.modules, {"telegram_bot": mock_bot}):
-
+    with (
+        patch("hub.notification_hub.notifier") as mock_notifier,
+        patch("capture_client.get_capture_client", return_value=mock_client),
+        patch.dict(sys.modules, {"telegram_bot": mock_bot}),
+    ):
         mock_notifier.notify_all = MagicMock()
 
         await process_analysis_complete(event)
@@ -93,7 +95,7 @@ async def test_analysis_complete_with_cup_pattern_in_vision():
         combined_score="7/10",
         vision_result={"patterns": ["Cup and handle base"]},
         should_trade=False,
-        interactive_required=True
+        interactive_required=True,
     )
 
     mock_client = MagicMock()
@@ -105,10 +107,11 @@ async def test_analysis_complete_with_cup_pattern_in_vision():
     mock_bot.send_interactive_trade_approval = AsyncMock(return_value=[(12345, 67890)])
     mock_bot.get_approval_timeout_mgr = MagicMock(return_value=None)
 
-    with patch("hub.notification_hub.notifier") as mock_notifier, \
-         patch("capture_client.get_capture_client", return_value=mock_client), \
-         patch.dict(sys.modules, {"telegram_bot": mock_bot}):
-
+    with (
+        patch("hub.notification_hub.notifier") as mock_notifier,
+        patch("capture_client.get_capture_client", return_value=mock_client),
+        patch.dict(sys.modules, {"telegram_bot": mock_bot}),
+    ):
         mock_notifier.notify_all = MagicMock()
 
         await process_analysis_complete(event)
@@ -145,21 +148,24 @@ async def test_chart_rendering_non_fatal_on_failure():
         combined_score="6/10",
         vision_result={},
         should_trade=False,
-        interactive_required=True
+        interactive_required=True,
     )
 
     mock_client = MagicMock()
     # Simulate capture failure
-    mock_client.capture_screenshot = AsyncMock(side_effect=Exception("OHLCV fetch failed"))
+    mock_client.capture_screenshot = AsyncMock(
+        side_effect=Exception("OHLCV fetch failed")
+    )
 
     mock_bot = MagicMock()
     mock_bot.send_interactive_trade_approval = AsyncMock(return_value=[(12345, 67890)])
     mock_bot.get_approval_timeout_mgr = MagicMock(return_value=None)
 
-    with patch("hub.notification_hub.notifier") as mock_notifier, \
-         patch("capture_client.get_capture_client", return_value=mock_client), \
-         patch.dict(sys.modules, {"telegram_bot": mock_bot}):
-
+    with (
+        patch("hub.notification_hub.notifier") as mock_notifier,
+        patch("capture_client.get_capture_client", return_value=mock_client),
+        patch.dict(sys.modules, {"telegram_bot": mock_bot}),
+    ):
         mock_notifier.notify_all = MagicMock()
 
         # Should NOT raise — chart failure is non-fatal

@@ -5,6 +5,7 @@ Tests the specialized analytical endpoints utilized by dashboard-features.js
 
 BUG-07 fix: Added missing Scanner endpoint test and Watchlist mutation tests.
 """
+
 import pytest
 
 
@@ -51,6 +52,7 @@ async def test_rag_query_endpoint(client):
 
 
 # ── BUG-07: Scanner and Watchlist mutation coverage ───────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_watchlist_add_symbol(client):
@@ -120,10 +122,11 @@ async def test_vision_capture_endpoint(client):
         "patterns": ["VCP"],
     }
 
-    with patch("config.MCP_ENABLED", True), \
-         patch("main._mcp_module.get_mcp_client") as mock_get_mcp, \
-         patch("main.vision_module.analyze_chart_vision") as mock_vision:
-        
+    with (
+        patch("config.MCP_ENABLED", True),
+        patch("main._mcp_module.get_mcp_client") as mock_get_mcp,
+        patch("main.vision_module.analyze_chart_vision") as mock_vision,
+    ):
         mock_mcp = mock_get_mcp.return_value
         mock_mcp.health_check = AsyncMock(return_value={"connected": True})
         mock_mcp.capture_screenshot = AsyncMock(return_value=Path(__file__))
@@ -139,7 +142,9 @@ async def test_vision_capture_endpoint(client):
         assert data["has_screenshot"] is True
         assert "brief_id" in data
         mock_vision.assert_called_once()
-        mock_mcp.capture_screenshot.assert_called_once_with(symbol="BTCUSDT", timeframe="1H")
+        mock_mcp.capture_screenshot.assert_called_once_with(
+            symbol="BTCUSDT", timeframe="1H"
+        )
 
 
 @pytest.mark.asyncio
@@ -151,11 +156,12 @@ async def test_scanner_trigger_endpoint(client):
     """
     from unittest.mock import patch, AsyncMock
 
-    with patch("config.MCP_ENABLED", True), \
-         patch("main.wl_module.get_watchlist", return_value=["BTCUSDT"]), \
-         patch("main._mcp_module.get_mcp_client"), \
-         patch("main.analysis_module.scan_symbols") as mock_scan:
-        
+    with (
+        patch("config.MCP_ENABLED", True),
+        patch("main.wl_module.get_watchlist", return_value=["BTCUSDT"]),
+        patch("main._mcp_module.get_mcp_client"),
+        patch("main.analysis_module.scan_symbols") as mock_scan,
+    ):
         mock_scan.side_effect = AsyncMock(return_value=[])
 
         response = await client.post("/api/scan/trigger")
@@ -179,12 +185,13 @@ async def test_watchlist_sync_endpoint(client):
         "removed": 0,
         "watchlist": ["AAPL", "GOOG", "MSFT"],
     }
-    with patch("config.MCP_ENABLED", True), \
-         patch("main.wl_module.sync_from_tradingview") as mock_sync, \
-         patch("main._mcp_module.get_mcp_client"):
-        
+    with (
+        patch("config.MCP_ENABLED", True),
+        patch("main.wl_module.sync_from_tradingview") as mock_sync,
+        patch("main._mcp_module.get_mcp_client"),
+    ):
         mock_sync.side_effect = AsyncMock(return_value=mock_sync_result)
-        
+
         response = await client.put("/api/watchlist/sync")
         assert response.status_code == 200
         assert response.json() == mock_sync_result

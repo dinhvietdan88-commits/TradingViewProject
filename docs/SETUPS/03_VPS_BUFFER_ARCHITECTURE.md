@@ -82,7 +82,7 @@ graph TB
     CF -->|"POST /ingest<br/>+ BUFFER_SECRET"| VBS
     VBS -->|"INSERT PENDING"| DB_VPS
     VBS -->|"Push notification<br/>signal queued"| TG
-    
+
     LOCAL -->|"GET /consume<br/>on startup + poll"| VBS
     VBS -->|"UPDATE DISPATCHED<br/>return signals"| DB_VPS
     VBS -->|"List[SignalPayload]"| LOCAL
@@ -645,13 +645,13 @@ Vì Local có thể crash giữa chừng, một signal có thể được PULL 2
 async def process_signal(signal: SignalPayload) -> str:
     # Kiểm tra xem signal này đã được xử lý chưa (theo queue_id)
     existing = await db.query_one(
-        "SELECT id FROM trades WHERE vbs_queue_id = ?", 
+        "SELECT id FROM trades WHERE vbs_queue_id = ?",
         (signal.queue_id,)
     )
     if existing:
         log.warning(f"[VBS] Duplicate signal #{signal.queue_id}, already executed. Sending ACK.")
         return "executed"  # ACK lại để VPS cập nhật trạng thái
-    
+
     # Thực thi bình thường...
 ```
 

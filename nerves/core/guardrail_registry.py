@@ -85,6 +85,7 @@ def _resolve_npx_cmd() -> str:
 # Guardrail Handler Functions
 # ---------------------------------------------------------------------------
 
+
 def powershell_syntax_check(tool_name: str, tool_input: dict, context: dict) -> dict:
     """
     Windows PowerShell Syntax Guard — prevents running invalid bash statements/operators,
@@ -99,34 +100,49 @@ def powershell_syntax_check(tool_name: str, tool_input: dict, context: dict) -> 
 
     errors = []
     if "&&" in cmd_line:
-        errors.append("Invalid operator '&&' in PowerShell. Use ';' or run commands sequentially, or use a Python script.")
+        errors.append(
+            "Invalid operator '&&' in PowerShell. Use ';' or run commands sequentially, or use a Python script."
+        )
     if "||" in cmd_line:
-        errors.append("Invalid operator '||' in PowerShell. Use try/catch or if/else, or run a Python script.")
+        errors.append(
+            "Invalid operator '||' in PowerShell. Use try/catch or if/else, or run a Python script."
+        )
     if "cat <<" in cmd_line or "<< EOF" in cmd_line:
-        errors.append("Invalid heredoc '<<' in Windows PowerShell. Use write_to_file or a Python script.")
+        errors.append(
+            "Invalid heredoc '<<' in Windows PowerShell. Use write_to_file or a Python script."
+        )
 
     # Validate gh api stopping-parser usage
     if "gh api" in cmd_line and "--%" not in cmd_line:
-        errors.append("Potential 'gh api' argument parsing error. Always use the PowerShell stop-parsing operator '--%' (e.g. 'gh api --% repos/...') or quote your arguments to prevent PowerShell from splitting them.")
+        errors.append(
+            "Potential 'gh api' argument parsing error. Always use the PowerShell stop-parsing operator '--%' (e.g. 'gh api --% repos/...') or quote your arguments to prevent PowerShell from splitting them."
+        )
 
     # Validate jq quoting/interpolation issues in PowerShell
     if "jq" in cmd_line and '"' in cmd_line:
-        if '\\(' in cmd_line or '(' in cmd_line:
-            if any(p in cmd_line for p in (".name", ".conclusion", ".status", ".state")):
-                errors.append("PowerShell subexpression evaluation detected in 'jq' filter. Wrap 'jq' queries in single quotes (') instead of double quotes (\") to prevent PowerShell from executing '\\(.name)' as a command.")
+        if "\\(" in cmd_line or "(" in cmd_line:
+            if any(
+                p in cmd_line for p in (".name", ".conclusion", ".status", ".state")
+            ):
+                errors.append(
+                    "PowerShell subexpression evaluation detected in 'jq' filter. Wrap 'jq' queries in single quotes (') instead of double quotes (\") to prevent PowerShell from executing '\\(.name)' as a command."
+                )
 
     # Validate Unix commands (including piped or chained commands like | grep)
     import re
-    unix_match = re.search(r'(?:^|\||;)\s*(grep|sed|awk)\b', cmd_line.lower())
+
+    unix_match = re.search(r"(?:^|\||;)\s*(grep|sed|awk)\b", cmd_line.lower())
     if unix_match:
         binary = unix_match.group(1)
-        errors.append(f"Unix binary '{binary}' is not natively supported on Windows. Use python scripts, python -c, or native tools (e.g. grep_search).")
+        errors.append(
+            f"Unix binary '{binary}' is not natively supported on Windows. Use python scripts, python -c, or native tools (e.g. grep_search)."
+        )
 
     if errors:
         return {
             "verdict": "BLOCK",
             "reason": " | ".join(errors),
-            "remediation": "Rewrite the command using valid PowerShell syntax (e.g., replace '&&' with ';'), use Python, or use native file/search tools."
+            "remediation": "Rewrite the command using valid PowerShell syntax (e.g., replace '&&' with ';'), use Python, or use native file/search tools.",
         }
 
     return {"verdict": "ALLOW"}
@@ -145,24 +161,42 @@ def kg_guard_check(tool_name: str, tool_input: dict, context: dict) -> dict:
 
     angati_exe = _resolve_angati_exe()
     if not angati_exe:
-        return {"verdict": "ALLOW", "reason": "angati.exe not found — allowing by default"}
+        return {
+            "verdict": "ALLOW",
+            "reason": "angati.exe not found — allowing by default",
+        }
 
     try:
         res = subprocess.run(
-            [str(angati_exe), "kg", "guard", "--file", str(target_file), "--action", "edit"],
-            capture_output=True, text=True, encoding="utf-8", errors="ignore",
-            timeout=15, check=False
+            [
+                str(angati_exe),
+                "kg",
+                "guard",
+                "--file",
+                str(target_file),
+                "--action",
+                "edit",
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=15,
+            check=False,
         )
         if res.returncode == 2:
             return {
                 "verdict": "BLOCK",
                 "reason": f"KG Guard blocked write to {target_file} (Exit Code 2)",
-                "remediation": r"Write sandbox patch to C:\Users\pesil\EAIS\_sandbox_patches\ instead."
+                "remediation": r"Write sandbox patch to C:\Users\pesil\EAIS\_sandbox_patches\ instead.",
             }
         elif res.returncode == 1:
             return {"verdict": "WARN", "reason": f"KG Guard caution for {target_file}"}
     except subprocess.TimeoutExpired:
-        return {"verdict": "ALLOW", "reason": "KG Guard timed out — allowing by default"}
+        return {
+            "verdict": "ALLOW",
+            "reason": "KG Guard timed out — allowing by default",
+        }
     except Exception as exc:
         return {"verdict": "ALLOW", "reason": f"KG Guard error: {exc}"}
 
@@ -186,7 +220,7 @@ def circuit_breaker_check(tool_name: str, tool_input: dict, context: dict) -> di
         if scar_memory.circuit_breaker_check(instruction):
             return {
                 "verdict": "BLOCK",
-                "reason": "Circuit breaker tripped: This exact failure pattern has occurred >= 3 times in 1 hour."
+                "reason": "Circuit breaker tripped: This exact failure pattern has occurred >= 3 times in 1 hour.",
             }
     except Exception as exc:
         return {"verdict": "ALLOW", "reason": f"Circuit breaker error: {exc}"}
@@ -229,7 +263,11 @@ def scar_consult_advisory(tool_name: str, tool_input: dict, context: dict) -> di
         if results:
             relevant = [s for s in results if s.get("score", 0) >= 0.82]
             if relevant:
-                rules = [s.get("prevention_rule", "") for s in relevant if s.get("prevention_rule")]
+                rules = [
+                    s.get("prevention_rule", "")
+                    for s in relevant
+                    if s.get("prevention_rule")
+                ]
                 if rules:
                     return {
                         "verdict": "WARN",
@@ -279,8 +317,12 @@ def gitnexus_post_commit(tool_name: str, tool_input: dict, context: dict) -> dic
         subprocess.run(
             [npx_cmd, "gitnexus", "analyze", "--embeddings"],
             cwd=str(AGENTS_ROOT),
-            capture_output=True, text=True, encoding="utf-8", errors="ignore",
-            timeout=120, check=False
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=120,
+            check=False,
         )
     except Exception as exc:
         return {"verdict": "ALLOW", "reason": f"gitnexus error: {exc}"}
@@ -303,8 +345,12 @@ def memory_stats_post_commit(tool_name: str, tool_input: dict, context: dict) ->
     try:
         subprocess.run(
             [str(angati_exe), "memory", "stats"],
-            capture_output=True, text=True, encoding="utf-8", errors="ignore",
-            timeout=15, check=False
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=15,
+            check=False,
         )
     except Exception as exc:
         return {"verdict": "ALLOW", "reason": f"memory stats error: {exc}"}
@@ -314,14 +360,27 @@ def memory_stats_post_commit(tool_name: str, tool_input: dict, context: dict) ->
 
 # Error patterns for run_command failure detection in post-tool
 _ERROR_PATTERNS = [
-    "SyntaxError", "NameError", "TypeError", "ImportError",
-    "ModuleNotFoundError", "FileNotFoundError", "PermissionError",
-    "TimeoutExpired", "ConnectionRefusedError", "OSError",
-    "ValueError", "KeyError", "IndexError", "AttributeError",
+    "SyntaxError",
+    "NameError",
+    "TypeError",
+    "ImportError",
+    "ModuleNotFoundError",
+    "FileNotFoundError",
+    "PermissionError",
+    "TimeoutExpired",
+    "ConnectionRefusedError",
+    "OSError",
+    "ValueError",
+    "KeyError",
+    "IndexError",
+    "AttributeError",
     "Traceback (most recent call last)",
-    "command not found", "is not recognized",
-    "The term", "CommandNotFoundException",
-    "Access is denied", "ENOENT",
+    "command not found",
+    "is not recognized",
+    "The term",
+    "CommandNotFoundException",
+    "Access is denied",
+    "ENOENT",
 ]
 
 
@@ -345,7 +404,9 @@ def error_detect_post_tool(tool_name: str, tool_input: dict, context: dict) -> d
     output_str = ""
     exit_code = None
     if isinstance(tool_output, dict):
-        output_str = str(tool_output.get("Output", "")) + str(tool_output.get("Stderr", ""))
+        output_str = str(tool_output.get("Output", "")) + str(
+            tool_output.get("Stderr", "")
+        )
         exit_code = tool_output.get("ExitCode")
     else:
         output_str = str(tool_output)
@@ -371,21 +432,33 @@ def error_detect_post_tool(tool_name: str, tool_input: dict, context: dict) -> d
     # Enhance the result
     patterns_found = ", ".join(detected[:3])
     result["action"] = f"error_detected_post_tool:{patterns_found}"
-    print(f"[SRA Server] Error detected in post-tool output: {patterns_found}", file=sys.stderr)
+    print(
+        f"[SRA Server] Error detected in post-tool output: {patterns_found}",
+        file=sys.stderr,
+    )
 
     return result
 
 
 _scar_record_queue = queue.Queue()
 
+
 def _scar_record_worker():
     while True:
         task = _scar_record_queue.get()
         if task is None:
             break
-        failed_action, error_msg, tool_name, cache_invalidator, context_name, prevention_rule = task
+        (
+            failed_action,
+            error_msg,
+            tool_name,
+            cache_invalidator,
+            context_name,
+            prevention_rule,
+        ) = task
         try:
             import core_scar_memory as scar_memory
+
             if scar_memory:
                 scar_memory.record_scar(
                     failed_action=failed_action,
@@ -400,6 +473,7 @@ def _scar_record_worker():
             print(f"[SRA Async Worker] Error recording scar: {e}", file=sys.stderr)
         finally:
             _scar_record_queue.task_done()
+
 
 _worker_thread = threading.Thread(target=_scar_record_worker, daemon=True)
 _worker_thread.start()
@@ -425,7 +499,11 @@ def scar_record_on_error(tool_name: str, tool_input: dict, context: dict) -> dic
         cmd_line = tool_input.get("CommandLine", "unknown command")
         failed_action = cmd_line[:300]
         prevention_rule = f"Command failed: {cmd_line[:100]}. Error: {error_msg[:150]}"
-    elif tool_name in {"write_to_file", "replace_file_content", "multi_replace_file_content"}:
+    elif tool_name in {
+        "write_to_file",
+        "replace_file_content",
+        "multi_replace_file_content",
+    }:
         target_file = tool_input.get("TargetFile", "unknown file")
         failed_action = f"Write to {target_file}"
         prevention_rule = f"File write failed: {target_file}. Error: {error_msg[:150]}"
@@ -436,7 +514,16 @@ def scar_record_on_error(tool_name: str, tool_input: dict, context: dict) -> dic
     cache_invalidator = context.get("cache_invalidator")
     context_name = f"hook_on_error/{tool_name}"
 
-    _scar_record_queue.put((failed_action, error_msg, tool_name, cache_invalidator, context_name, prevention_rule))
+    _scar_record_queue.put(
+        (
+            failed_action,
+            error_msg,
+            tool_name,
+            cache_invalidator,
+            context_name,
+            prevention_rule,
+        )
+    )
 
     return {"verdict": "ALLOW", "action": f"scar_recorded_queued:{tool_name}"}
 
@@ -445,11 +532,13 @@ def scar_record_on_error(tool_name: str, tool_input: dict, context: dict) -> dic
 # Guardrail Registry (The Data-Driven Backbone)
 # ---------------------------------------------------------------------------
 
-FILE_WRITING_TOOLS = frozenset({
-    "write_to_file",
-    "replace_file_content",
-    "multi_replace_file_content",
-})
+FILE_WRITING_TOOLS = frozenset(
+    {
+        "write_to_file",
+        "replace_file_content",
+        "multi_replace_file_content",
+    }
+)
 
 GUARDRAILS = {
     # ── before_tool (pre-tool) ──
@@ -458,67 +547,65 @@ GUARDRAILS = {
         "tools": {"run_command"},
         "handler": powershell_syntax_check,
         "short_circuit": True,
-        "description": "Windows PowerShell Syntax Guard — prevents running invalid statement separators/operators on Windows"
+        "description": "Windows PowerShell Syntax Guard — prevents running invalid statement separators/operators on Windows",
     },
     "kg_guard": {
         "type": "before_tool",
         "tools": FILE_WRITING_TOOLS,
         "handler": kg_guard_check,
         "short_circuit": True,
-        "description": "Knowledge Graph Guard — blocks writes to protected files"
+        "description": "Knowledge Graph Guard — blocks writes to protected files",
     },
     "circuit_breaker": {
         "type": "before_tool",
         "tools": {"*"},  # Applies to all tools
         "handler": circuit_breaker_check,
         "short_circuit": True,
-        "description": "Circuit Breaker — prevents repeated failure patterns"
+        "description": "Circuit Breaker — prevents repeated failure patterns",
     },
     "scar_consult": {
         "type": "before_tool",
         "tools": {"run_command"},
         "handler": scar_consult_advisory,
         "short_circuit": False,
-        "description": "Scar Consultation — advisory check against historical failures"
+        "description": "Scar Consultation — advisory check against historical failures",
     },
     "reflex": {
         "type": "before_tool",
         "tools": {"*"},
         "handler": reflex_advisory,
         "short_circuit": False,
-        "description": "Reflex System — keyword-triggered skill advisory"
+        "description": "Reflex System — keyword-triggered skill advisory",
     },
-
     # ── after_tool (post-tool) ──
     "gitnexus_post_commit": {
         "type": "after_tool",
         "tools": {"run_command"},
         "handler": gitnexus_post_commit,
         "short_circuit": False,
-        "description": "GitNexus Post-Commit — KG update after git operations"
+        "description": "GitNexus Post-Commit — KG update after git operations",
     },
     "memory_stats_post_commit": {
         "type": "after_tool",
         "tools": {"run_command"},
         "handler": memory_stats_post_commit,
         "short_circuit": False,
-        "description": "Memory Stats — refresh after git operations"
+        "description": "Memory Stats — refresh after git operations",
     },
     "error_detect": {
         "type": "after_tool",
         "tools": {"run_command"},
         "handler": error_detect_post_tool,
         "short_circuit": False,
-        "description": "Error Detection — catches run_command errors in post-tool (bridges IDE gap)"
+        "description": "Error Detection — catches run_command errors in post-tool (bridges IDE gap)",
     },
-
     # ── on_error ──
     "scar_record": {
         "type": "on_error",
         "tools": {"*"},  # Record scars for ALL tool errors
         "handler": scar_record_on_error,
         "short_circuit": False,
-        "description": "Scar Recording — records failures for future prevention"
+        "description": "Scar Recording — records failures for future prevention",
     },
 }
 
@@ -527,11 +614,9 @@ GUARDRAILS = {
 # Guardrail Evaluation Engine
 # ---------------------------------------------------------------------------
 
+
 def evaluate_guardrails(
-    lifecycle_type: str,
-    tool_name: str,
-    tool_input: dict,
-    context: dict = None
+    lifecycle_type: str, tool_name: str, tool_input: dict, context: dict = None
 ) -> dict:
     """
     Evaluate all guardrails matching the given lifecycle type and tool.
@@ -585,14 +670,12 @@ def evaluate_guardrails(
                 break
 
         except Exception as exc:
-            verdicts.append({
-                "guardrail": name,
-                "verdict": "ERROR",
-                "reason": str(exc)
-            })
+            verdicts.append({"guardrail": name, "verdict": "ERROR", "reason": str(exc)})
 
     return {
         "decision": "deny" if blocked else "allow",
-        "message": block_message if blocked else (" | ".join(advisories) if advisories else ""),
+        "message": block_message
+        if blocked
+        else (" | ".join(advisories) if advisories else ""),
         "verdicts": verdicts,
     }

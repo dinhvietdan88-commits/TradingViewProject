@@ -1,0 +1,55 @@
+# Pre-commit hooks for TradingViewProject
+# Install: pip install pre-commit && pre-commit install
+# Manual run: pre-commit run --all-files
+#
+# Purpose: Catch lint, format, and security issues BEFORE push,
+# eliminating the "fix → push → wait CI → fix again" cycle.
+# See: docs/retrospective/dev_to_main_process_gaps.md
+
+repos:
+  # ── Ruff: Fast Python linter + formatter ──────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.13
+    hooks:
+      # Lint: catches E/W/F/S/B errors before they reach CI
+      - id: ruff
+        name: "🔍 Ruff Lint (E/W/F/S/B)"
+        args: [check, --fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi]
+
+      # Format: consistent code style
+      - id: ruff-format
+        name: "✨ Ruff Format"
+        types_or: [python, pyi]
+
+  # ── Basic file hygiene ────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        name: "🧹 Trailing Whitespace"
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+        name: "📄 End of File Fixer"
+      - id: check-yaml
+        name: "📋 YAML Syntax Check"
+      - id: check-merge-conflict
+        name: "⚠️ Merge Conflict Markers"
+      - id: check-added-large-files
+        name: "📦 Large File Check"
+        args: [--maxkb=500]
+
+  # ── Security: detect secrets before they hit remote ───────────────
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        name: "🔐 Secret Detection"
+        args: [--baseline, .secrets.baseline]
+        exclude: |
+          (?x)^(
+            \.env\..*|
+            .*\.log|
+            .*\.db|
+            .*test.*fixture.*
+          )$

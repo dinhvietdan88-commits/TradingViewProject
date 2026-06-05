@@ -1,6 +1,7 @@
 """
 Unit tests for core/event_bus.py and processor/signal_processor.py
 """
+
 import pytest
 import sys
 import pathlib
@@ -9,14 +10,17 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent.parent))
 
 from core.event_bus import EventBus
 from core.events import (
-    SignalReceived, SignalValidated, SignalRejected,
-    TradeExecuted, TradeFailed, Event,
+    SignalReceived,
+    SignalValidated,
+    SignalRejected,
+    TradeExecuted,
 )
 
 
 # ═══════════════════════════════════════════════════════════════
 # EVENT BUS TESTS
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_bus_emit_triggers_handler():
@@ -146,10 +150,12 @@ async def test_event_immutability():
 # SIGNAL PROCESSOR TESTS
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_processor_validates_1h_signal():
     """A 1h buy signal should emit SignalValidated."""
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
+
     reset_dedup_cache()
 
     test_bus = EventBus()
@@ -161,15 +167,22 @@ async def test_processor_validates_1h_signal():
         validated.append(event)
 
     try:
-        await process_signal(SignalReceived(
-            signal_id=10, symbol="BTCUSDT", action="buy",
-            price=68000.0, interval="60", quote_qty=50.0,
-        ))
+        await process_signal(
+            SignalReceived(
+                signal_id=10,
+                symbol="BTCUSDT",
+                action="buy",
+                price=68000.0,
+                interval="60",
+                quote_qty=50.0,
+            )
+        )
         assert len(validated) == 1
         assert validated[0].symbol == "BTCUSDT"
         assert validated[0].signal_id == 10
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         reset_dedup_cache()
 
@@ -178,6 +191,7 @@ async def test_processor_validates_1h_signal():
 async def test_processor_rejects_4h_signal():
     """A 4h buy signal should be rejected by Circuit Breaker."""
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
+
     reset_dedup_cache()
 
     test_bus = EventBus()
@@ -189,13 +203,20 @@ async def test_processor_rejects_4h_signal():
         rejected.append(event)
 
     try:
-        await process_signal(SignalReceived(
-            signal_id=11, symbol="BTCUSDT", action="buy",
-            price=68000.0, interval="4h", quote_qty=50.0,
-        ))
+        await process_signal(
+            SignalReceived(
+                signal_id=11,
+                symbol="BTCUSDT",
+                action="buy",
+                price=68000.0,
+                interval="4h",
+                quote_qty=50.0,
+            )
+        )
         assert len(rejected) == 1
         assert rejected[0].reason == "invalid_timeframe"
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         reset_dedup_cache()

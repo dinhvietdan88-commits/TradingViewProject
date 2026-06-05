@@ -7,7 +7,7 @@
 
 ## Mục tiêu
 
-Cho Claude **nhìn** chart screenshot và nhận diện pattern trực quan — kết hợp với 
+Cho Claude **nhìn** chart screenshot và nhận diện pattern trực quan — kết hợp với
 TT scoring algorithmics để cho ra **combined intelligence score**.
 
 **Đây là gap cuối cùng với FX Tactix được close.**
@@ -79,7 +79,7 @@ Visual      = Claude Vision confidence  # 1-10 from response
 | `format_vision_telegram()` | Format result for Telegram display |
 
 **Supported patterns (20 types):**
-VCP, Cup-with-Handle, Ascending Base, Flat Base, High Tight Flag, Double Bottom, 
+VCP, Cup-with-Handle, Ascending Base, Flat Base, High Tight Flag, Double Bottom,
 Triple Bottom, Bull Flag, Pennant, Breakout, Pivot, Accumulation, Stage 2, Stage 1
 
 ### [MODIFY] `server/brief.py`

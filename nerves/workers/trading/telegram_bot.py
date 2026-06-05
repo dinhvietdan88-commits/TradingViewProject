@@ -40,7 +40,6 @@ running_tasks = set()
 active_commands = set()
 
 
-
 def _get_imports():
     """Lazy import python-telegram-bot to avoid crash if not installed."""
     from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -50,11 +49,20 @@ def _get_imports():
         CallbackQueryHandler,
         ContextTypes,
     )
-    return Update, InlineKeyboardButton, InlineKeyboardMarkup, \
-           ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
+
+    return (
+        Update,
+        InlineKeyboardButton,
+        InlineKeyboardMarkup,
+        ApplicationBuilder,
+        CommandHandler,
+        CallbackQueryHandler,
+        ContextTypes,
+    )
 
 
 # ── Interactive Messaging ──────────────────────────────────────────────────
+
 
 async def send_interactive_trade_approval(
     signal_id: int, message: str, photo_path: Optional[str] = None
@@ -83,8 +91,12 @@ async def send_interactive_trade_approval(
 
         keyboard = [
             [
-                InlineKeyboardButton("✅ Duyệt (Approve)", callback_data=f"approve_{signal_id}"),
-                InlineKeyboardButton("❌ Hủy (Reject)", callback_data=f"reject_{signal_id}"),
+                InlineKeyboardButton(
+                    "✅ Duyệt (Approve)", callback_data=f"approve_{signal_id}"
+                ),
+                InlineKeyboardButton(
+                    "❌ Hủy (Reject)", callback_data=f"reject_{signal_id}"
+                ),
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -96,6 +108,7 @@ async def send_interactive_trade_approval(
                 if photo_path:
                     try:
                         from pathlib import Path
+
                         photo_file_path = Path(photo_path)
                         if photo_file_path.exists():
                             caption = f"📊 Chart Analysis — Signal #{signal_id}"
@@ -105,9 +118,13 @@ async def send_interactive_trade_approval(
                                     photo=f,
                                     caption=caption,
                                 )
-                            log.info(f"Chart photo sent for signal #{signal_id} to {chat_id}")
+                            log.info(
+                                f"Chart photo sent for signal #{signal_id} to {chat_id}"
+                            )
                     except Exception as photo_err:
-                        log.warning(f"Failed to send chart photo to {chat_id}: {photo_err}")
+                        log.warning(
+                            f"Failed to send chart photo to {chat_id}: {photo_err}"
+                        )
 
                 # Send interactive message with Approve/Reject buttons
                 msg = await _bot_app.bot.send_message(
@@ -149,8 +166,13 @@ async def send_interactive_indicator_alert(
 
         keyboard = [
             [
-                InlineKeyboardButton("🔍 Quét AI / VCP", callback_data=f"analyze_{symbol}"),
-                InlineKeyboardButton("📊 Xem Chart", url=f"https://www.tradingview.com/chart/?symbol={symbol}"),
+                InlineKeyboardButton(
+                    "🔍 Quét AI / VCP", callback_data=f"analyze_{symbol}"
+                ),
+                InlineKeyboardButton(
+                    "📊 Xem Chart",
+                    url=f"https://www.tradingview.com/chart/?symbol={symbol}",
+                ),
                 InlineKeyboardButton("❌ Bỏ Qua", callback_data=f"ignore_{signal_id}"),
             ]
         ]
@@ -163,18 +185,25 @@ async def send_interactive_indicator_alert(
                 if photo_path:
                     try:
                         from pathlib import Path
+
                         photo_file_path = Path(photo_path)
                         if photo_file_path.exists():
-                            caption = f"📊 Indicator Chart — {symbol} (Signal #{signal_id})"
+                            caption = (
+                                f"📊 Indicator Chart — {symbol} (Signal #{signal_id})"
+                            )
                             with open(photo_file_path, "rb") as f:
                                 await _bot_app.bot.send_photo(
                                     chat_id=chat_id,
                                     photo=f,
                                     caption=caption,
                                 )
-                            log.info(f"Indicator chart photo sent for signal #{signal_id} to {chat_id}")
+                            log.info(
+                                f"Indicator chart photo sent for signal #{signal_id} to {chat_id}"
+                            )
                     except Exception as photo_err:
-                        log.warning(f"Failed to send indicator chart photo to {chat_id}: {photo_err}")
+                        log.warning(
+                            f"Failed to send indicator chart photo to {chat_id}: {photo_err}"
+                        )
 
                 msg = await _bot_app.bot.send_message(
                     chat_id=chat_id,
@@ -184,7 +213,9 @@ async def send_interactive_indicator_alert(
                 )
                 results.append((int(chat_id), msg.message_id))
             except Exception as e:
-                log.error(f"Failed to send interactive indicator alert to {chat_id}: {e}")
+                log.error(
+                    f"Failed to send interactive indicator alert to {chat_id}: {e}"
+                )
 
     except Exception as e:
         log.error(f"Error sending interactive indicator alert: {e}")
@@ -208,8 +239,12 @@ async def send_circuit_breaker_alert(
 
         keyboard = [
             [
-                InlineKeyboardButton("🔄 Reset Closed", callback_data=f"cbreset_{exchange}"),
-                InlineKeyboardButton("⚡ Bypass 1h", callback_data=f"cbbypass_{exchange}"),
+                InlineKeyboardButton(
+                    "🔄 Reset Closed", callback_data=f"cbreset_{exchange}"
+                ),
+                InlineKeyboardButton(
+                    "⚡ Bypass 1h", callback_data=f"cbbypass_{exchange}"
+                ),
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -221,6 +256,7 @@ async def send_circuit_breaker_alert(
                 if photo_path:
                     try:
                         from pathlib import Path
+
                         photo_file_path = Path(photo_path)
                         if photo_file_path.exists():
                             caption = f"🚨 Circuit Breaker Alert — {exchange.upper()}"
@@ -231,7 +267,9 @@ async def send_circuit_breaker_alert(
                                     caption=caption,
                                 )
                     except Exception as photo_err:
-                        log.warning(f"Failed to send cb photo to {chat_id}: {photo_err}")
+                        log.warning(
+                            f"Failed to send cb photo to {chat_id}: {photo_err}"
+                        )
 
                 msg = await _bot_app.bot.send_message(
                     chat_id=chat_id,
@@ -251,14 +289,12 @@ async def send_circuit_breaker_alert(
 
 # ── Command Handlers ──────────────────────────────────────────────────────
 
+
 async def cmd_start(update, context):
     """Giới thiệu bot."""
     from telegram import ReplyKeyboardMarkup
 
-    reply_keyboard = [
-        ["📊 Scan", "🌅 Morning Brief"],
-        ["📋 Watchlist", "🔧 Status"]
-    ]
+    reply_keyboard = [["📊 Scan", "🌅 Morning Brief"], ["📋 Watchlist", "🔧 Status"]]
     reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True)
 
     text = (
@@ -312,18 +348,28 @@ async def cmd_status(update, context):
     ]
 
     # RAG status
-    has_anthropic = bool(config.ANTHROPIC_API_KEY and not config.ANTHROPIC_API_KEY.startswith("sk-ant-xxx"))
+    has_anthropic = bool(
+        config.ANTHROPIC_API_KEY
+        and not config.ANTHROPIC_API_KEY.startswith("sk-ant-xxx")
+    )
     has_gemini = bool(config.GEMINI_API_KEY or config.GCP_PROJECT_ID)
-    rag_status = "✅ Enabled" if config.RAG_ENABLED and (has_anthropic or has_gemini) else "❌ Disabled"
+    rag_status = (
+        "✅ Enabled"
+        if config.RAG_ENABLED and (has_anthropic or has_gemini)
+        else "❌ Disabled"
+    )
     lines.append(f"🧠 RAG: {rag_status}")
 
     # MCP status
     if config.MCP_ENABLED:
         try:
             from mcp_client import get_mcp_client
+
             mcp = get_mcp_client()
             health = await mcp.health_check()
-            mcp_status = "✅ Connected" if health.get("connected") else "⚠️ Not connected"
+            mcp_status = (
+                "✅ Connected" if health.get("connected") else "⚠️ Not connected"
+            )
         except Exception:
             mcp_status = "⚠️ Error"
     else:
@@ -341,6 +387,7 @@ async def cmd_status(update, context):
     # Watchlist
     try:
         from watchlist import get_watchlist
+
         wl = get_watchlist()
         lines.append(f"📋 Watchlist: {len(wl)} symbols")
     except Exception:
@@ -358,7 +405,9 @@ async def cmd_status(update, context):
                 if eh.is_dry_run:
                     mode_parts.append("DRY")
                 mode_parts.append("TEST" if eh.is_testnet else "LIVE")
-                latency_str = f" | {eh.latency_ms:.0f}ms" if eh.latency_ms is not None else ""
+                latency_str = (
+                    f" | {eh.latency_ms:.0f}ms" if eh.latency_ms is not None else ""
+                )
                 mode_label = "/".join(mode_parts)
                 lines.append(
                     f"- {status_icon} `{eh.exchange.upper()}` [{mode_label}]{latency_str}"
@@ -371,14 +420,25 @@ async def cmd_status(update, context):
     # ── P8 background task status ─────────────────────────────────────────
     lines.append("")
     lines.append("⚙️ **P8 Background Tasks**")
-    pm_status = "✅ Running" if _position_monitor and _position_monitor._running else "❌ Stopped"
-    tm_status = "✅ Running" if _approval_timeout_mgr and _approval_timeout_mgr._running else "❌ Stopped"
+    pm_status = (
+        "✅ Running"
+        if _position_monitor and _position_monitor._running
+        else "❌ Stopped"
+    )
+    tm_status = (
+        "✅ Running"
+        if _approval_timeout_mgr and _approval_timeout_mgr._running
+        else "❌ Stopped"
+    )
     lines.append(f"- 📡 PositionMonitor: {pm_status}")
     lines.append(f"- ⏱️ ApprovalTimeout: {tm_status}")
     report_sched = "✅ Active" if config.REPORT_AUTO_SEND else "❌ Off"
-    lines.append(f"- 📊 ReportScheduler: {report_sched} ({config.REPORT_SEND_TIME} ICT)")
+    lines.append(
+        f"- 📊 ReportScheduler: {report_sched} ({config.REPORT_SEND_TIME} ICT)"
+    )
 
     from notifier import sanitize_for_telegram_html
+
     html_text = sanitize_for_telegram_html("\n".join(lines))
     await update.message.reply_text(html_text, parse_mode="HTML")
 
@@ -387,6 +447,7 @@ async def cmd_watchlist(update, context):
     """Xem watchlist hiện tại."""
     try:
         from watchlist import get_watchlist
+
         symbols = get_watchlist()
 
         if not symbols:
@@ -419,6 +480,7 @@ async def cmd_add(update, context):
 
     try:
         from watchlist import add_symbol
+
         result = add_symbol(symbol)
 
         if result.get("added"):
@@ -449,6 +511,7 @@ async def cmd_remove(update, context):
 
     try:
         from watchlist import remove_symbol
+
         result = remove_symbol(symbol)
 
         if result.get("removed"):
@@ -471,7 +534,10 @@ async def cmd_scan(update, context):
     chat_id = update.effective_chat.id
     cmd_key = (chat_id, "scan")
     if cmd_key in active_commands:
-        await context.bot.send_message(chat_id=chat_id, text="⚠️ Yêu cầu scan trước đó của bạn vẫn đang được xử lý. Vui lòng đợi.")
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="⚠️ Yêu cầu scan trước đó của bạn vẫn đang được xử lý. Vui lòng đợi.",
+        )
         return
     active_commands.add(cmd_key)
     await context.bot.send_message(chat_id=chat_id, text="🔄 Đang xử lý...")
@@ -483,15 +549,20 @@ async def cmd_scan(update, context):
 
             symbols = get_watchlist()
             if not symbols:
-                await context.bot.send_message(chat_id=chat_id, text="📋 Watchlist trống. Dùng /add để thêm symbols.")
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text="📋 Watchlist trống. Dùng /add để thêm symbols.",
+                )
                 return
 
             # Check MCP
             import config
+
             mcp = None
             if config.MCP_ENABLED:
                 try:
                     from mcp_client import get_mcp_client
+
                     mcp = get_mcp_client()
                 except Exception:
                     pass
@@ -499,22 +570,34 @@ async def cmd_scan(update, context):
             results = await scan_symbols(symbols, mcp)
 
             if not results:
-                await context.bot.send_message(chat_id=chat_id, text="⚠️ Không scan được symbol nào. Kiểm tra MCP connection.")
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text="⚠️ Không scan được symbol nào. Kiểm tra MCP connection.",
+                )
                 return
 
             # ── Save to shared cache so the website can see these results ────────
             try:
                 import scan_cache
+
                 serialised = [
                     {
                         "symbol": r.symbol,
                         "price": r.price,
                         "change_pct": r.change_pct,
-                        "trend_template_score": r.trend_template.score if r.trend_template else 0,
-                        "trend_template_stage": r.trend_template.stage if r.trend_template else "-",
-                        "trend_template_criteria": r.trend_template.criteria if r.trend_template else [],
+                        "trend_template_score": r.trend_template.score
+                        if r.trend_template
+                        else 0,
+                        "trend_template_stage": r.trend_template.stage
+                        if r.trend_template
+                        else "-",
+                        "trend_template_criteria": r.trend_template.criteria
+                        if r.trend_template
+                        else [],
                         "vcp_detected": r.vcp.detected if r.vcp else False,
-                        "vol_breakout": getattr(r.vcp, "vol_breakout", False) if r.vcp else False,
+                        "vol_breakout": getattr(r.vcp, "vol_breakout", False)
+                        if r.vcp
+                        else False,
                         "volume_ratio": round(r.vcp.volume_ratio, 2) if r.vcp else 0,
                         "range_ratio": round(r.vcp.range_ratio, 2) if r.vcp else 0,
                         "pivot_level": r.vcp.pivot_level if r.vcp else None,
@@ -523,14 +606,18 @@ async def cmd_scan(update, context):
                     }
                     for r in results
                 ]
-                scan_cache.save_scan_results(serialised, source="telegram", symbol_list=symbols)
+                scan_cache.save_scan_results(
+                    serialised, source="telegram", symbol_list=symbols
+                )
             except Exception as _ce:
                 log.warning(f"cmd_scan cache save failed (non-fatal): {_ce}")
 
             # Format results table
             lines = [f"📊 **Scan Results** ({len(results)} symbols)\n"]
             lines.append("```")
-            lines.append(f"{'Symbol':<10} {'Price':>10} {'TT':>4} {'VCP':>5} {'Vol%':>6}")
+            lines.append(
+                f"{'Symbol':<10} {'Price':>10} {'TT':>4} {'VCP':>5} {'Vol%':>6}"
+            )
             lines.append("─" * 40)
 
             for r in results:
@@ -538,7 +625,7 @@ async def cmd_scan(update, context):
                 tt_max = 8
                 vcp = "⭐" if r.vcp and r.vcp.detected else ""
                 vol_ratio = r.vcp.volume_ratio if r.vcp else 0
-                vol_pct = f"{vol_ratio*100:.0f}%" if vol_ratio else "N/A"
+                vol_pct = f"{vol_ratio * 100:.0f}%" if vol_ratio else "N/A"
                 price = r.price
 
                 if price >= 1000:
@@ -560,15 +647,20 @@ async def cmd_scan(update, context):
                 lines.append("\n🎯 **VCP Setups:**")
                 for r in vcp_setups:
                     pivot = r.vcp.pivot_level if r.vcp and r.vcp.pivot_level else 0
-                    vol_ratio = r.vcp.volume_ratio if r.vcp and r.vcp.volume_ratio else 0
+                    vol_ratio = (
+                        r.vcp.volume_ratio if r.vcp and r.vcp.volume_ratio else 0
+                    )
                     lines.append(
-                        f"• `{r.symbol}` — Vol: {vol_ratio*100:.0f}% avg, "
+                        f"• `{r.symbol}` — Vol: {vol_ratio * 100:.0f}% avg, "
                         f"Pivot: {pivot:,.2f}"
                     )
 
             from notifier import sanitize_for_telegram_html
+
             html_output = sanitize_for_telegram_html("\n".join(lines))
-            await context.bot.send_message(chat_id=chat_id, text=html_output, parse_mode="HTML")
+            await context.bot.send_message(
+                chat_id=chat_id, text=html_output, parse_mode="HTML"
+            )
 
         except Exception as e:
             log.error(f"Scan error: {e}", exc_info=True)
@@ -583,10 +675,13 @@ async def cmd_scan(update, context):
 
 async def cmd_brief(update, context):
     """Chạy Morning Brief on-demand."""
-    await update.message.reply_text("🌅 Đang chạy Morning Brief... Vui lòng chờ 30-60s.")
+    await update.message.reply_text(
+        "🌅 Đang chạy Morning Brief... Vui lòng chờ 30-60s."
+    )
 
     try:
         from brief import generate_morning_brief
+
         result = await generate_morning_brief()
 
         if result and result.get("success"):
@@ -607,7 +702,10 @@ async def cmd_vision(update, context):
     chat_id = update.effective_chat.id
     cmd_key = (chat_id, "vision")
     if cmd_key in active_commands:
-        await context.bot.send_message(chat_id=chat_id, text="⚠️ Yêu cầu vision trước đó của bạn vẫn đang được xử lý. Vui lòng đợi.")
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="⚠️ Yêu cầu vision trước đó của bạn vẫn đang được xử lý. Vui lòng đợi.",
+        )
         return
     active_commands.add(cmd_key)
     await context.bot.send_message(chat_id=chat_id, text="🔄 Đang xử lý...")
@@ -623,7 +721,11 @@ async def cmd_vision(update, context):
                 return
 
             symbol = context.args[0].strip().upper()
-            await context.bot.send_message(chat_id=chat_id, text=f"👁️ Đang phân tích chart <code>{symbol}</code>... Vui lòng chờ.", parse_mode="HTML")
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"👁️ Đang phân tích chart <code>{symbol}</code>... Vui lòng chờ.",
+                parse_mode="HTML",
+            )
 
             try:
                 import config
@@ -637,17 +739,20 @@ async def cmd_vision(update, context):
                 if config.MCP_ENABLED:
                     try:
                         from mcp_client import get_mcp_client
+
                         mcp = get_mcp_client()
                         health = await mcp.health_check()
                         if health.get("connected"):
                             from datetime import datetime as dt
                             import re
-                            safe_symbol = re.sub(r'[^A-Za-z0-9_\-]', '', symbol)
+
+                            safe_symbol = re.sub(r"[^A-Za-z0-9_\-]", "", symbol)
                             screenshot_path = await mcp.capture_screenshot(
                                 symbol=symbol,
                                 timeframe="D",
                                 region="chart",
-                                save_path=screenshots_dir / f"vision_{safe_symbol}_{dt.now().strftime('%Y%m%d_%H%M%S')}.png"
+                                save_path=screenshots_dir
+                                / f"vision_{safe_symbol}_{dt.now().strftime('%Y%m%d_%H%M%S')}.png",
                             )
                     except Exception as e:
                         log.warning(f"Vision screenshot capture failed: {e}")
@@ -667,7 +772,7 @@ async def cmd_vision(update, context):
                     await context.bot.send_message(
                         chat_id=chat_id,
                         text=f"⚠️ Không tìm thấy screenshot cho <code>{symbol}</code>.\n"
-                             "Cần TradingView MCP connected hoặc screenshot sẵn có.",
+                        "Cần TradingView MCP connected hoặc screenshot sẵn có.",
                         parse_mode="HTML",
                     )
                     return
@@ -681,16 +786,25 @@ async def cmd_vision(update, context):
                 )
 
                 if result.get("error"):
-                    await context.bot.send_message(chat_id=chat_id, text=f"❌ Vision error: {result['error']}")
+                    await context.bot.send_message(
+                        chat_id=chat_id, text=f"❌ Vision error: {result['error']}"
+                    )
                     return
 
                 from notifier import sanitize_for_telegram_html
+
                 vision_text = format_vision_telegram(result)
-                await context.bot.send_message(chat_id=chat_id, text=sanitize_for_telegram_html(vision_text), parse_mode="HTML")
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=sanitize_for_telegram_html(vision_text),
+                    parse_mode="HTML",
+                )
 
             except Exception as e:
                 log.error(f"Vision command error: {e}", exc_info=True)
-                await context.bot.send_message(chat_id=chat_id, text=f"❌ Vision failed: {e}")
+                await context.bot.send_message(
+                    chat_id=chat_id, text=f"❌ Vision failed: {e}"
+                )
         finally:
             active_commands.discard(cmd_key)
 
@@ -704,20 +818,30 @@ async def cmd_grade(update, context):
     chat_id = update.effective_chat.id
     cmd_key = (chat_id, "grade")
     if cmd_key in active_commands:
-        await context.bot.send_message(chat_id=chat_id, text="⚠️ Yêu cầu grade trước đó của bạn vẫn đang được xử lý. Vui lòng đợi.")
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="⚠️ Yêu cầu grade trước đó của bạn vẫn đang được xử lý. Vui lòng đợi.",
+        )
         return
     active_commands.add(cmd_key)
     await context.bot.send_message(chat_id=chat_id, text="🔄 Đang xử lý...")
 
     async def process_task():
         try:
-            await context.bot.send_message(chat_id=chat_id, text="👨‍🏫 Đang chụp và phân tích lệnh của bạn... Vui lòng chờ.", parse_mode="HTML")
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="👨‍🏫 Đang chụp và phân tích lệnh của bạn... Vui lòng chờ.",
+                parse_mode="HTML",
+            )
 
             import config
             from pathlib import Path
 
             if not config.MCP_ENABLED:
-                await context.bot.send_message(chat_id=chat_id, text="⚠️ Tính năng này yêu cầu bật MCP_ENABLED = True.")
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text="⚠️ Tính năng này yêu cầu bật MCP_ENABLED = True.",
+                )
                 return
 
             screenshots_dir = Path(__file__).parent / "screenshots"
@@ -725,28 +849,37 @@ async def cmd_grade(update, context):
 
             try:
                 from mcp_client import get_mcp_client
+
                 mcp = get_mcp_client()
                 health = await mcp.health_check()
                 if health.get("connected"):
                     from datetime import datetime as dt
+
                     # Chụp màn hình hiện tại (active_only=True) để không phá Bar Replay
                     screenshot_path = await mcp.capture_screenshot(
                         symbol="active",
                         timeframe="active",
                         region="chart",
-                        save_path=screenshots_dir / f"grade_{dt.now().strftime('%Y%m%d_%H%M%S')}.png",
-                        active_only=True
+                        save_path=screenshots_dir
+                        / f"grade_{dt.now().strftime('%Y%m%d_%H%M%S')}.png",
+                        active_only=True,
                     )
                 else:
-                    await context.bot.send_message(chat_id=chat_id, text="⚠️ TradingView chưa kết nối (MCP CDP).")
+                    await context.bot.send_message(
+                        chat_id=chat_id, text="⚠️ TradingView chưa kết nối (MCP CDP)."
+                    )
                     return
             except Exception as e:
                 log.warning(f"Grade screenshot capture failed: {e}")
-                await context.bot.send_message(chat_id=chat_id, text=f"❌ Lỗi chụp TradingView: {e}")
+                await context.bot.send_message(
+                    chat_id=chat_id, text=f"❌ Lỗi chụp TradingView: {e}"
+                )
                 return
 
             if not screenshot_path or not Path(screenshot_path).exists():
-                await context.bot.send_message(chat_id=chat_id, text="⚠️ Không lấy được ảnh từ TradingView.")
+                await context.bot.send_message(
+                    chat_id=chat_id, text="⚠️ Không lấy được ảnh từ TradingView."
+                )
                 return
 
             # Run Vision analysis on the captured screenshot
@@ -761,16 +894,25 @@ async def cmd_grade(update, context):
             )
 
             if result.get("error"):
-                await context.bot.send_message(chat_id=chat_id, text=f"\u274c Vision error: {result['error']}")
+                await context.bot.send_message(
+                    chat_id=chat_id, text=f"\u274c Vision error: {result['error']}"
+                )
                 return
 
             from notifier import sanitize_for_telegram_html
+
             formatted = format_vision_telegram(result)
-            await context.bot.send_message(chat_id=chat_id, text=sanitize_for_telegram_html(formatted), parse_mode="HTML")
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=sanitize_for_telegram_html(formatted),
+                parse_mode="HTML",
+            )
 
         except Exception as e:
             log.error(f"Grade command error: {e}", exc_info=True)
-            await context.bot.send_message(chat_id=chat_id, text=f"❌ Grade failed: {e}")
+            await context.bot.send_message(
+                chat_id=chat_id, text=f"❌ Grade failed: {e}"
+            )
         finally:
             active_commands.discard(cmd_key)
 
@@ -795,6 +937,7 @@ async def cmd_balance(update, context):
         mode_str = ", ".join(mode)
 
         from notifier import sanitize_for_telegram_html
+
         text = (
             f"💰 **Binance Balance**\n\n"
             f"- Asset: `{asset}`\n"
@@ -807,6 +950,7 @@ async def cmd_balance(update, context):
         )
     except Exception as e:
         await update.message.reply_text(f"❌ Error: {e}")
+
 
 async def handle_menu_text(update, context):
     """Handler cho ReplyKeyboardMarkup buttons."""
@@ -823,9 +967,11 @@ async def handle_menu_text(update, context):
 
 # ── P8 New Command Handlers ────────────────────────────────────────────────
 
+
 async def cmd_positions(update, context):
     """REQ3: /positions [EXCHANGE] — show open positions with unrealized P&L."""
     from notifier import sanitize_for_telegram_html
+
     exchange_id = context.args[0].lower() if context.args else None
     await update.message.reply_text("📡 Đang tải vị thế mở...")
 
@@ -857,8 +1003,13 @@ async def cmd_positions(update, context):
 async def cmd_rag(update, context):
     """REQ5: /rag <query> — ask Minervini knowledge base."""
     import config
-    if not config.RAG_ENABLED or not (config.ANTHROPIC_API_KEY or config.GEMINI_API_KEY):
-        await update.message.reply_text("❌ RAG system is disabled (RAG_ENABLED=false or no API key).")
+
+    if not config.RAG_ENABLED or not (
+        config.ANTHROPIC_API_KEY or config.GEMINI_API_KEY
+    ):
+        await update.message.reply_text(
+            "❌ RAG system is disabled (RAG_ENABLED=false or no API key)."
+        )
         return
 
     if not context.args:
@@ -869,19 +1020,27 @@ async def cmd_rag(update, context):
         return
 
     query = " ".join(context.args)
-    thinking_msg = await update.message.reply_text(f"🧠 Đang suy nghĩ về: <i>{query}</i>...", parse_mode="HTML")
+    thinking_msg = await update.message.reply_text(
+        f"🧠 Đang suy nghĩ về: <i>{query}</i>...", parse_mode="HTML"
+    )
 
     try:
         from rag import query_knowledge, generate_trading_advice
+
         chunks = await query_knowledge(query)
         if not chunks:
-            await thinking_msg.edit_text("⚠️ Không tìm thấy thông tin liên quan trong knowledge base.")
+            await thinking_msg.edit_text(
+                "⚠️ Không tìm thấy thông tin liên quan trong knowledge base."
+            )
             return
 
         advice = await generate_trading_advice(query, chunks)
         response_text = f"🧠 <b>RAG Answer</b>\n\n<i>Q: {query}</i>\n\n{advice}"
         from notifier import sanitize_for_telegram_html
-        await thinking_msg.edit_text(sanitize_for_telegram_html(response_text), parse_mode="HTML")
+
+        await thinking_msg.edit_text(
+            sanitize_for_telegram_html(response_text), parse_mode="HTML"
+        )
     except Exception as e:
         log.error(f"cmd_rag error: {e}", exc_info=True)
         await thinking_msg.edit_text(f"❌ RAG failed: {e}")
@@ -914,39 +1073,41 @@ async def cmd_trades(update, context):
         )
 
     from notifier import sanitize_for_telegram_html
+
     await update.message.reply_text(
         sanitize_for_telegram_html("\n".join(lines)), parse_mode="HTML"
     )
 
 
-
 # ── /backtest menu helpers ────────────────────────────────────────────────────
+
 
 def _backtest_menu_keyboard():
     """Build the InlineKeyboardMarkup for /backtest menu."""
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
     keyboard = [
         [
-            InlineKeyboardButton("📈 Equity Curve (All)",    callback_data="bt_all"),
-            InlineKeyboardButton("📊 MTT vs MIS",            callback_data="bt_mode"),
+            InlineKeyboardButton("📈 Equity Curve (All)", callback_data="bt_all"),
+            InlineKeyboardButton("📊 MTT vs MIS", callback_data="bt_mode"),
         ],
         [
-            InlineKeyboardButton("📋 Trade History",         callback_data="bt_history"),
-            InlineKeyboardButton("🔢 All 3 Charts",          callback_data="bt_full"),
+            InlineKeyboardButton("📋 Trade History", callback_data="bt_history"),
+            InlineKeyboardButton("🔢 All 3 Charts", callback_data="bt_full"),
         ],
         [
-            InlineKeyboardButton("₿  BTCUSDT",              callback_data="bt_sym_BTCUSDT"),
-            InlineKeyboardButton("Ξ  ETHUSDT",              callback_data="bt_sym_ETHUSDT"),
-            InlineKeyboardButton("◎ SOLUSDT",               callback_data="bt_sym_SOLUSDT"),
+            InlineKeyboardButton("₿  BTCUSDT", callback_data="bt_sym_BTCUSDT"),
+            InlineKeyboardButton("Ξ  ETHUSDT", callback_data="bt_sym_ETHUSDT"),
+            InlineKeyboardButton("◎ SOLUSDT", callback_data="bt_sym_SOLUSDT"),
         ],
     ]
     return InlineKeyboardMarkup(keyboard)
 
 
 async def _run_backtest_charts(
-    send_fn,            # coroutine func(photo=buf, caption=...) — bot.send_photo wrapper
-    send_msg_fn,        # coroutine func(text=...) — bot.send_message wrapper
-    mode: str = "full", # "full" | "equity" | "mode" | "history"
+    send_fn,  # coroutine func(photo=buf, caption=...) — bot.send_photo wrapper
+    send_msg_fn,  # coroutine func(text=...) — bot.send_message wrapper
+    mode: str = "full",  # "full" | "equity" | "mode" | "history"
     symbol: str | None = None,
 ):
     """Shared chart executor called from both inline callback and direct command.
@@ -964,7 +1125,11 @@ async def _run_backtest_charts(
     import asyncio
     from notifier import sanitize_for_telegram_html
     import database
-    from charting import generate_backtest_chart, generate_mode_chart, generate_history_chart
+    from charting import (
+        generate_backtest_chart,
+        generate_mode_chart,
+        generate_history_chart,
+    )
 
     # ── Fetch all data in parallel ────────────────────────────────────────────
     equity_data, stats_data, recent_trades = await asyncio.gather(
@@ -973,12 +1138,14 @@ async def _run_backtest_charts(
         database.get_recent_trades(limit=10, symbol=symbol),
     )
 
-    has_equity  = len(equity_data.get("labels", [])) > 0
-    has_stats   = stats_data.get("overall", {}).get("total_trades", 0) > 0
+    has_equity = len(equity_data.get("labels", [])) > 0
+    has_stats = stats_data.get("overall", {}).get("total_trades", 0) > 0
     has_history = len(recent_trades) > 0
 
     if not has_equity and not has_stats and not has_history:
-        await send_msg_fn("📭 Chưa có dữ liệu giao dịch. Hệ thống đang ở DRY-RUN — chờ lệnh đầu tiên được fill.")
+        await send_msg_fn(
+            "📭 Chưa có dữ liệu giao dịch. Hệ thống đang ở DRY-RUN — chờ lệnh đầu tiên được fill."
+        )
         return
 
     sym_lbl = f" [{symbol}]" if symbol else ""
@@ -986,10 +1153,12 @@ async def _run_backtest_charts(
 
     # ── Chart 1: Equity Curve ─────────────────────────────────────────────────
     if mode in ("full", "equity") and has_equity:
-        title  = f"Minervini Strategy{sym_lbl}"
-        buf    = await asyncio.to_thread(generate_backtest_chart, equity_data, title, symbol)
-        n      = len(equity_data["labels"])
-        final  = equity_data["cumulative_pnl"][-1]
+        title = f"Minervini Strategy{sym_lbl}"
+        buf = await asyncio.to_thread(
+            generate_backtest_chart, equity_data, title, symbol
+        )
+        n = len(equity_data["labels"])
+        final = equity_data["cumulative_pnl"][-1]
         dd_max = max(equity_data.get("drawdown_pct", [0]) or [0])
         caption = (
             f"📈 <b>Equity Curve{sym_lbl}</b>\n"
@@ -1001,13 +1170,13 @@ async def _run_backtest_charts(
 
     # ── Chart 2: MTT vs MIS Mode Comparison ───────────────────────────────────
     if mode in ("full", "mode") and has_stats:
-        buf2   = await asyncio.to_thread(generate_mode_chart, stats_data)
-        mtt    = stats_data["by_mode"].get("MTT", {})
-        mis    = stats_data["by_mode"].get("MIS", {})
+        buf2 = await asyncio.to_thread(generate_mode_chart, stats_data)
+        mtt = stats_data["by_mode"].get("MTT", {})
+        mis = stats_data["by_mode"].get("MIS", {})
         caption2 = (
             "📊 <b>MTT vs MIS — Mode Comparison</b>\n"
-            f"[MTT] Daily: {mtt.get('total_trades',0)}T  WR={mtt.get('win_rate',0):.1f}%  P&L=${mtt.get('total_pnl',0):+,.2f}\n"
-            f"[MIS] 1H: {mis.get('total_trades',0)}T  WR={mis.get('win_rate',0):.1f}%  P&L=${mis.get('total_pnl',0):+,.2f}"
+            f"[MTT] Daily: {mtt.get('total_trades', 0)}T  WR={mtt.get('win_rate', 0):.1f}%  P&L=${mtt.get('total_pnl', 0):+,.2f}\n"
+            f"[MIS] 1H: {mis.get('total_trades', 0)}T  WR={mis.get('win_rate', 0):.1f}%  P&L=${mis.get('total_pnl', 0):+,.2f}"
         )
         await send_fn(buf2, sanitize_for_telegram_html(caption2))
         sent += 1
@@ -1017,20 +1186,26 @@ async def _run_backtest_charts(
     # ── Chart 3: Trade History Table ──────────────────────────────────────────
     if mode in ("full", "history") and has_history:
         hist_title = f"Trade History (Last {len(recent_trades)}){sym_lbl}"
-        buf3 = await asyncio.to_thread(generate_history_chart, recent_trades, hist_title)
+        buf3 = await asyncio.to_thread(
+            generate_history_chart, recent_trades, hist_title
+        )
         hist_lines = []
         for t in recent_trades[:5]:
-            pnl   = t.get("pnl") or 0
+            pnl = t.get("pnl") or 0
             emoji = "✅" if pnl > 0 else "❌"
-            date  = str(t.get("created_at", ""))[:10]
+            date = str(t.get("created_at", ""))[:10]
             hist_lines.append(
-                f"{emoji} <b>{t.get('symbol')}</b> [{t.get('mode','?')}] "
-                f"{str(t.get('side','')).upper()}  <b>${pnl:+,.2f}</b>  <i>{date}</i>"
+                f"{emoji} <b>{t.get('symbol')}</b> [{t.get('mode', '?')}] "
+                f"{str(t.get('side', '')).upper()}  <b>${pnl:+,.2f}</b>  <i>{date}</i>"
             )
         caption3 = (
             f"📋 <b>Lịch sử {len(recent_trades)} lệnh gần nhất{sym_lbl}</b>\n"
             + "\n".join(hist_lines)
-            + ("\n<i>...xem bảng đầy đủ trong ảnh</i>" if len(recent_trades) > 5 else "")
+            + (
+                "\n<i>...xem bảng đầy đủ trong ảnh</i>"
+                if len(recent_trades) > 5
+                else ""
+            )
         )
         await send_fn(buf3, sanitize_for_telegram_html(caption3))
         sent += 1
@@ -1047,29 +1222,34 @@ async def cmd_backtest(update, context):
     Khi gọi không có argument → hiện inline keyboard menu.
     Khi gọi với argument (BTCUSDT, mode, ...) → chạy trực tiếp (legacy).
     """
-    from telegram import InlineKeyboardMarkup
     from notifier import sanitize_for_telegram_html
 
     chat_id = update.effective_chat.id
-    args    = context.args
+    args = context.args
 
     # ── Legacy direct call: /backtest BTCUSDT or /backtest mode ──────────────
     if args:
-        mode_only  = args[0].lower() == "mode"
+        mode_only = args[0].lower() == "mode"
         history_only = args[0].lower() == "history"
         symbol_arg = args[0].upper() if not mode_only and not history_only else None
         chart_mode = "mode" if mode_only else ("history" if history_only else "full")
 
-        await context.bot.send_message(chat_id=chat_id, text="📊 Đang tạo chart... vui lòng chờ 5-10s.")
+        await context.bot.send_message(
+            chat_id=chat_id, text="📊 Đang tạo chart... vui lòng chờ 5-10s."
+        )
 
         async def _send_photo(buf, caption):
-            await context.bot.send_photo(chat_id=chat_id, photo=buf, caption=caption, parse_mode="HTML")
+            await context.bot.send_photo(
+                chat_id=chat_id, photo=buf, caption=caption, parse_mode="HTML"
+            )
 
         async def _send_msg(text):
             await context.bot.send_message(chat_id=chat_id, text=text)
 
         try:
-            await _run_backtest_charts(_send_photo, _send_msg, mode=chart_mode, symbol=symbol_arg)
+            await _run_backtest_charts(
+                _send_photo, _send_msg, mode=chart_mode, symbol=symbol_arg
+            )
         except Exception as e:
             log.error(f"cmd_backtest direct error: {e}", exc_info=True)
             await context.bot.send_message(chat_id=chat_id, text=f"❌ Lỗi: {e}")
@@ -1093,7 +1273,6 @@ async def cmd_backtest(update, context):
     )
 
 
-
 async def cmd_stats(update, context):
     """REQ-STATS: /stats — overall and per-mode (MTT vs MIS) performance breakdown.
 
@@ -1102,10 +1281,12 @@ async def cmd_stats(update, context):
     """
 
     from notifier import sanitize_for_telegram_html
+
     await update.message.reply_text("📊 Đang tải thống kê hiệu suất...")
 
     try:
         import database
+
         result = await database.get_stats_by_mode()
     except Exception as e:
         log.error(f"cmd_stats error: {e}", exc_info=True)
@@ -1155,7 +1336,9 @@ async def cmd_stats(update, context):
         "\n═══ <b>THEO CHẾ ĐỘ</b> ═══",
     ]
 
-    lines.append(_mode_block("MTT — Daily Trend Follower", "📅", by_mode.get("MTT", {})))
+    lines.append(
+        _mode_block("MTT — Daily Trend Follower", "📅", by_mode.get("MTT", {}))
+    )
     lines.append(_mode_block("MIS — 1H Momentum", "⚡", by_mode.get("MIS", {})))
 
     other = by_mode.get("OTHER", {})
@@ -1172,12 +1355,15 @@ async def cmd_report(update, context):
     """REQ8: /report [YYYY-MM-DD] — daily performance summary."""
 
     from notifier import sanitize_for_telegram_html
+
     date_arg = context.args[0] if context.args else None
     stats = await _data_facade.get_daily_stats(date_arg)
 
     if stats.total_trades == 0:
         await update.message.reply_text(
-            sanitize_for_telegram_html(f"📭 Không có giao dịch nào vào ngày **{stats.date}**."),
+            sanitize_for_telegram_html(
+                f"📭 Không có giao dịch nào vào ngày **{stats.date}**."
+            ),
             parse_mode="HTML",
         )
         return
@@ -1227,7 +1413,10 @@ async def cmd_balance_enhanced(update, context):
             f"⚙️ Mode: `{', '.join(mode_parts)}`"
         )
         from notifier import sanitize_for_telegram_html
-        await update.message.reply_text(sanitize_for_telegram_html(text), parse_mode="HTML")
+
+        await update.message.reply_text(
+            sanitize_for_telegram_html(text), parse_mode="HTML"
+        )
     except ValueError as e:
         await update.message.reply_text(f"❌ {e}", parse_mode="HTML")
     except Exception as e:
@@ -1239,7 +1428,10 @@ async def cmd_scan_enhanced(update, context):
     chat_id = update.effective_chat.id
     cmd_key = (chat_id, "scan")
     if cmd_key in active_commands:
-        await context.bot.send_message(chat_id=chat_id, text="⚠️ Yêu cầu scan trước đó của bạn vẫn đang được xử lý. Vui lòng đợi.")
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="⚠️ Yêu cầu scan trước đó của bạn vẫn đang được xử lý. Vui lòng đợi.",
+        )
         return
     active_commands.add(cmd_key)
     await context.bot.send_message(chat_id=chat_id, text="🔄 Đang xử lý...")
@@ -1252,13 +1444,17 @@ async def cmd_scan_enhanced(update, context):
 
             symbols = get_watchlist()
             if not symbols:
-                await context.bot.send_message(chat_id=chat_id, text="📋 Watchlist trống. Dùng /add để thêm symbols.")
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text="📋 Watchlist trống. Dùng /add để thêm symbols.",
+                )
                 return
 
             mcp = None
             if config.MCP_ENABLED:
                 try:
                     from mcp_client import get_mcp_client
+
                     mcp = get_mcp_client()
                 except Exception:
                     pass
@@ -1266,12 +1462,16 @@ async def cmd_scan_enhanced(update, context):
             results = await scan_symbols(symbols, mcp)
 
             if not results:
-                await context.bot.send_message(chat_id=chat_id, text="⚠️ Không scan được symbol nào.")
+                await context.bot.send_message(
+                    chat_id=chat_id, text="⚠️ Không scan được symbol nào."
+                )
                 return
 
             lines = [f"📊 **Scan Results** ({len(results)} symbols)\n"]
             lines.append("```")
-            lines.append(f"{'Symbol':<10} {'Price':>10} {'TT':>4} {'VCP':>5} {'Vol%':>6}")
+            lines.append(
+                f"{'Symbol':<10} {'Price':>10} {'TT':>4} {'VCP':>5} {'Vol%':>6}"
+            )
             lines.append("─" * 40)
 
             vcp_setups = []
@@ -1279,10 +1479,12 @@ async def cmd_scan_enhanced(update, context):
                 tt_score = r.trend_template.score if r.trend_template else "?"
                 vcp_flag = "⭐" if r.vcp and r.vcp.detected else ""
                 vol_ratio = r.vcp.volume_ratio if r.vcp else 0
-                vol_pct = f"{vol_ratio*100:.0f}%" if vol_ratio else "N/A"
+                vol_pct = f"{vol_ratio * 100:.0f}%" if vol_ratio else "N/A"
                 price = r.price
                 price_str = f"{price:,.2f}" if price >= 1 else f"{price:.4f}"
-                lines.append(f"{r.symbol:<10} {price_str:>10} {tt_score}/8  {vcp_flag:<3} {vol_pct:>5}")
+                lines.append(
+                    f"{r.symbol:<10} {price_str:>10} {tt_score}/8  {vcp_flag:<3} {vol_pct:>5}"
+                )
                 if r.vcp and r.vcp.detected:
                     vcp_setups.append(r.symbol)
 
@@ -1291,23 +1493,38 @@ async def cmd_scan_enhanced(update, context):
             # Build inline keyboard for VCP symbols (REQ4)
             keyboard = []
             if vcp_setups:
-                lines.append(f"\n🎯 **VCP Setups:** {', '.join(f'`{s}`' for s in vcp_setups)}")
-                keyboard = [[
-                    {"text": f"👁 Analyze {sym}", "callback_data": f"analyze_{sym}"}
-                ] for sym in vcp_setups]
+                lines.append(
+                    f"\n🎯 **VCP Setups:** {', '.join(f'`{s}`' for s in vcp_setups)}"
+                )
+                keyboard = [
+                    [{"text": f"👁 Analyze {sym}", "callback_data": f"analyze_{sym}"}]
+                    for sym in vcp_setups
+                ]
 
             from notifier import sanitize_for_telegram_html
+
             text = sanitize_for_telegram_html("\n".join(lines))
 
             if keyboard:
                 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-                kb = InlineKeyboardMarkup([
-                    [InlineKeyboardButton(row[0]["text"], callback_data=row[0]["callback_data"])]
-                    for row in keyboard
-                ])
-                await context.bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML", reply_markup=kb)
+
+                kb = InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                row[0]["text"], callback_data=row[0]["callback_data"]
+                            )
+                        ]
+                        for row in keyboard
+                    ]
+                )
+                await context.bot.send_message(
+                    chat_id=chat_id, text=text, parse_mode="HTML", reply_markup=kb
+                )
             else:
-                await context.bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML")
+                await context.bot.send_message(
+                    chat_id=chat_id, text=text, parse_mode="HTML"
+                )
 
         except Exception as e:
             log.error(f"cmd_scan_enhanced error: {e}", exc_info=True)
@@ -1325,47 +1542,63 @@ async def cmd_scan_all(update, context):
     chat_id = update.effective_chat.id
     cmd_key = (chat_id, "scan_all")
     if cmd_key in active_commands:
-        await update.message.reply_text("⚠️ Yêu cầu scan_all trước đó của bạn vẫn đang được xử lý. Vui lòng đợi.")
+        await update.message.reply_text(
+            "⚠️ Yêu cầu scan_all trước đó của bạn vẫn đang được xử lý. Vui lòng đợi."
+        )
         return
     active_commands.add(cmd_key)
-    await update.message.reply_text("🔄 Đang bắt đầu scan toàn bộ các sàn trong background... Vui lòng chờ kết quả.")
-    
+    await update.message.reply_text(
+        "🔄 Đang bắt đầu scan toàn bộ các sàn trong background... Vui lòng chờ kết quả."
+    )
+
     async def run_scan_and_notify():
         try:
             from analysis import scan_all_configured_exchanges
+
             results = await scan_all_configured_exchanges()
-            
+
             if not results:
-                await context.bot.send_message(chat_id=chat_id, text="⚠️ Quá trình scan hoàn tất nhưng không tìm thấy kết quả nào.")
-                return
-                
-            filtered_results = [
-                r for r in results 
-                if (r.trend_template and r.trend_template.score >= 6) or (r.vcp and r.vcp.detected)
-            ]
-            
-            if not filtered_results:
                 await context.bot.send_message(
-                    chat_id=chat_id, 
-                    text=f"✅ Scan hoàn tất ({len(results)} symbols).\nKhông có symbol nào đạt Trend Template >= 6/8 hoặc phát hiện VCP."
+                    chat_id=chat_id,
+                    text="⚠️ Quá trình scan hoàn tất nhưng không tìm thấy kết quả nào.",
                 )
                 return
 
-            lines = [f"📊 **Kết quả Scan All (TT ≥ 6 hoặc VCP)** ({len(filtered_results)}/{len(results)} symbols)\n"]
+            filtered_results = [
+                r
+                for r in results
+                if (r.trend_template and r.trend_template.score >= 6)
+                or (r.vcp and r.vcp.detected)
+            ]
+
+            if not filtered_results:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"✅ Scan hoàn tất ({len(results)} symbols).\nKhông có symbol nào đạt Trend Template >= 6/8 hoặc phát hiện VCP.",
+                )
+                return
+
+            lines = [
+                f"📊 **Kết quả Scan All (TT ≥ 6 hoặc VCP)** ({len(filtered_results)}/{len(results)} symbols)\n"
+            ]
             lines.append("```")
-            lines.append(f"{'Exchange':<8} {'Symbol':<12} {'Price':>10} {'TT':>4} {'VCP':>5}")
+            lines.append(
+                f"{'Exchange':<8} {'Symbol':<12} {'Price':>10} {'TT':>4} {'VCP':>5}"
+            )
             lines.append("─" * 45)
-            
+
             for r in filtered_results:
                 tt_score = r.trend_template.score if r.trend_template else "?"
                 vcp_flag = "⭐" if r.vcp and r.vcp.detected else ""
                 price = r.price
                 price_str = f"{price:,.2f}" if price >= 1 else f"{price:.4f}"
                 exchange_label = r.exchange[:8]
-                lines.append(f"{exchange_label:<8} {r.symbol:<12} {price_str:>10} {tt_score}/8  {vcp_flag:<3}")
-                
+                lines.append(
+                    f"{exchange_label:<8} {r.symbol:<12} {price_str:>10} {tt_score}/8  {vcp_flag:<3}"
+                )
+
             lines.append("```")
-            
+
             vcp_setups = [r for r in filtered_results if r.vcp and r.vcp.detected]
             if vcp_setups:
                 lines.append("\n🎯 **Chi tiết VCP Setups:**")
@@ -1373,32 +1606,52 @@ async def cmd_scan_all(update, context):
                     pivot = r.vcp.pivot_level if r.vcp.pivot_level else 0
                     vol_ratio = r.vcp.volume_ratio if r.vcp.volume_ratio else 0
                     lines.append(
-                        f"• `{r.symbol}` ({r.exchange.upper()}) — Vol: {vol_ratio*100:.0f}% avg, "
+                        f"• `{r.symbol}` ({r.exchange.upper()}) — Vol: {vol_ratio * 100:.0f}% avg, "
                         f"Pivot: {pivot:,.2f}"
                     )
-            
+
             from notifier import sanitize_for_telegram_html
+
             text = sanitize_for_telegram_html("\n".join(lines))
-            
+
             keyboard = []
             if vcp_setups:
-                keyboard = [[
-                    {"text": f"👁 Analyze {r.symbol} ({r.exchange})", "callback_data": f"analyze_{r.symbol}"}
-                ] for r in vcp_setups]
-                
+                keyboard = [
+                    [
+                        {
+                            "text": f"👁 Analyze {r.symbol} ({r.exchange})",
+                            "callback_data": f"analyze_{r.symbol}",
+                        }
+                    ]
+                    for r in vcp_setups
+                ]
+
             if keyboard:
                 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-                kb = InlineKeyboardMarkup([
-                    [InlineKeyboardButton(row[0]["text"], callback_data=row[0]["callback_data"])]
-                    for row in keyboard
-                ])
-                await context.bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML", reply_markup=kb)
+
+                kb = InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                row[0]["text"], callback_data=row[0]["callback_data"]
+                            )
+                        ]
+                        for row in keyboard
+                    ]
+                )
+                await context.bot.send_message(
+                    chat_id=chat_id, text=text, parse_mode="HTML", reply_markup=kb
+                )
             else:
-                await context.bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML")
-                
+                await context.bot.send_message(
+                    chat_id=chat_id, text=text, parse_mode="HTML"
+                )
+
         except Exception as err:
             log.error(f"Background scan notify error: {err}", exc_info=True)
-            await context.bot.send_message(chat_id=chat_id, text=f"❌ Quá trình scan background bị lỗi: {err}")
+            await context.bot.send_message(
+                chat_id=chat_id, text=f"❌ Quá trình scan background bị lỗi: {err}"
+            )
         finally:
             active_commands.discard(cmd_key)
 
@@ -1407,8 +1660,11 @@ async def cmd_scan_all(update, context):
     task.add_done_callback(running_tasks.discard)
 
 
-def parse_mtf_trade_params(text: str, current_price: float) -> Tuple[Optional[float], Optional[float], Optional[float], str]:
+def parse_mtf_trade_params(
+    text: str, current_price: float
+) -> Tuple[Optional[float], Optional[float], Optional[float], str]:
     import re
+
     entry, sl, tp = None, None, None
     side = "AVOID"
     text_lower = text.lower()
@@ -1416,7 +1672,10 @@ def parse_mtf_trade_params(text: str, current_price: float) -> Tuple[Optional[fl
     # Search for specific lines containing verdict/signal indicators
     for line in text.splitlines():
         line_lower = line.lower()
-        if any(kw in line_lower for kw in ["tín hiệu", "hành động", "decision", "verdict", "khuyến nghị"]):
+        if any(
+            kw in line_lower
+            for kw in ["tín hiệu", "hành động", "decision", "verdict", "khuyến nghị"]
+        ):
             if "short" in line_lower or "bán" in line_lower or "sell" in line_lower:
                 side = "SELL"
                 break
@@ -1429,33 +1688,40 @@ def parse_mtf_trade_params(text: str, current_price: float) -> Tuple[Optional[fl
             side = "SELL"
         elif "long" in text_lower or "mua" in text_lower:
             side = "BUY"
-        
+
     num_pattern = r"[\d,]+(?:\.\d+)?"
-    
-    entry_match = re.search(r"(?:entry|giá vào|vào)[^:\d]*[:\s]*\$?\s*(" + num_pattern + ")", text_lower)
+
+    entry_match = re.search(
+        r"(?:entry|giá vào|vào)[^:\d]*[:\s]*\$?\s*(" + num_pattern + ")", text_lower
+    )
     if entry_match:
         try:
             entry = float(entry_match.group(1).replace(",", ""))
         except ValueError:
             pass
-            
-    sl_match = re.search(r"(?:stop loss|cắt lỗ|sl)[^:\d]*[:\s]*\$?\s*(" + num_pattern + ")", text_lower)
+
+    sl_match = re.search(
+        r"(?:stop loss|cắt lỗ|sl)[^:\d]*[:\s]*\$?\s*(" + num_pattern + ")", text_lower
+    )
     if sl_match:
         try:
             sl = float(sl_match.group(1).replace(",", ""))
         except ValueError:
             pass
-            
-    tp_match = re.search(r"(?:take profit|chốt lời|tp)[^:\d]*[:\s]*\$?\s*(" + num_pattern + ")", text_lower)
+
+    tp_match = re.search(
+        r"(?:take profit|chốt lời|tp)[^:\d]*[:\s]*\$?\s*(" + num_pattern + ")",
+        text_lower,
+    )
     if tp_match:
         try:
             tp = float(tp_match.group(1).replace(",", ""))
         except ValueError:
             pass
-            
+
     if not entry or entry <= 0:
         entry = current_price
-        
+
     return entry, sl, tp, side
 
 
@@ -1465,7 +1731,11 @@ async def cmd_scan_mtf(update, context):
     interactive buttons to execute.
     Usage: /scan_mtf <symbol> [exchange]
     """
-    message = update.message if update.message else (update.callback_query.message if update.callback_query else None)
+    message = (
+        update.message
+        if update.message
+        else (update.callback_query.message if update.callback_query else None)
+    )
     if not message:
         return
 
@@ -1480,136 +1750,169 @@ async def cmd_scan_mtf(update, context):
         # Show watchlist/recommended symbols menu
         try:
             from watchlist import get_watchlist
+
             watchlist = get_watchlist()
         except Exception:
             watchlist = []
-            
+
         if not watchlist:
             import config
+
             wl_str = getattr(config, "WATCHLIST_SYMBOLS", "")
             if wl_str:
                 watchlist = [s.strip().upper() for s in wl_str.split(",") if s.strip()]
-                
+
         if not watchlist:
             watchlist = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"]
-            
+
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
         keyboard = []
         for i in range(0, len(watchlist), 2):
             row = []
-            row.append(InlineKeyboardButton(text=f"🔍 {watchlist[i]}", callback_data=f"scanmtf_{watchlist[i]}"))
+            row.append(
+                InlineKeyboardButton(
+                    text=f"🔍 {watchlist[i]}", callback_data=f"scanmtf_{watchlist[i]}"
+                )
+            )
             if i + 1 < len(watchlist):
-                row.append(InlineKeyboardButton(text=f"🔍 {watchlist[i+1]}", callback_data=f"scanmtf_{watchlist[i+1]}"))
+                row.append(
+                    InlineKeyboardButton(
+                        text=f"🔍 {watchlist[i + 1]}",
+                        callback_data=f"scanmtf_{watchlist[i + 1]}",
+                    )
+                )
             keyboard.append(row)
-            
+
         reply_markup = InlineKeyboardMarkup(keyboard)
         await message.reply_text(
             "🔍 *Multi-Timeframe Scan Studio*\n\n"
             "Vui lòng chọn một mã giao dịch từ danh sách dưới đây để bắt đầu phân tích đa khung thời gian (1D → 4H → 1H) bằng AI Vision:",
             parse_mode="Markdown",
-            reply_markup=reply_markup
+            reply_markup=reply_markup,
         )
         return
 
     symbol = args[0].strip().upper()
-    
+
     import config
-    exchange_name = args[1].strip().lower() if len(args) > 1 else config.DEFAULT_EXCHANGE.lower()
-    
+
+    exchange_name = (
+        args[1].strip().lower() if len(args) > 1 else config.DEFAULT_EXCHANGE.lower()
+    )
+
     chat_id = update.effective_chat.id
     cmd_key = (chat_id, "scan_mtf")
     if cmd_key in active_commands:
-        await context.bot.send_message(chat_id=chat_id, text="⚠️ Yêu cầu scan_mtf trước đó của bạn vẫn đang được xử lý. Vui lòng đợi.")
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="⚠️ Yêu cầu scan_mtf trước đó của bạn vẫn đang được xử lý. Vui lòng đợi.",
+        )
         return
     active_commands.add(cmd_key)
     await context.bot.send_message(chat_id=chat_id, text="🔄 Đang xử lý...")
-    
+
     async def process_task():
         progress_msg = await message.reply_text(
             f"🔍 Đang tiến hành phân tích đa khung thời gian (1D → 4H → 1H) cho <code>{symbol}</code> trên sàn <code>{exchange_name}</code>...\n"
             f"1. Fetching klines & scoring Trend Template/VCP...",
-            parse_mode="HTML"
+            parse_mode="HTML",
         )
-        
+
         try:
             import aiohttp
             import asyncio
             from analysis import scan_symbol_multi_timeframe
             from mcp_client import get_mcp_client
-            
+
             # 2. Algorithmic MTF scan
             semaphore = asyncio.Semaphore(1)
             async with aiohttp.ClientSession() as session:
-                mtf_scan_result = await scan_symbol_multi_timeframe(session, exchange_name, symbol, semaphore)
-                
+                mtf_scan_result = await scan_symbol_multi_timeframe(
+                    session, exchange_name, symbol, semaphore
+                )
+
             await progress_msg.edit_text(
                 f"🔍 Phân tích đa khung thời gian cho <code>{symbol}</code> ({exchange_name}):\n"
                 f"✅ 1. Hoàn tất scan thuật toán.\n"
                 f"2. Đang chụp ảnh biểu đồ 3 khung thời gian...",
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
-            
+
             # 3. Capture screenshots
             from pathlib import Path
             import re
             from datetime import datetime
-            
-            screenshots_dir = Path(config.CHROMA_DB_PATH).parent.resolve() / "screenshots"
+
+            screenshots_dir = (
+                Path(config.CHROMA_DB_PATH).parent.resolve() / "screenshots"
+            )
             screenshots_dir.mkdir(parents=True, exist_ok=True)
-            
-            safe_symbol = re.sub(r'[^A-Za-z0-9_\-]', '', symbol)
+
+            safe_symbol = re.sub(r"[^A-Za-z0-9_\-]", "", symbol)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            
+
             path_1d = screenshots_dir / f"mtf_1d_{safe_symbol}_{timestamp}.png"
             path_4h = screenshots_dir / f"mtf_4h_{safe_symbol}_{timestamp}.png"
             path_1h = screenshots_dir / f"mtf_1h_{safe_symbol}_{timestamp}.png"
-            
+
             mcp = get_mcp_client()
-            
+
             # Capture screenshots sequentially to avoid TradingView browser collisions
-            captured_1d = await mcp.capture_screenshot(symbol=symbol, timeframe="D", save_path=path_1d)
+            captured_1d = await mcp.capture_screenshot(
+                symbol=symbol, timeframe="D", save_path=path_1d
+            )
             await asyncio.sleep(0.5)
-            captured_4h = await mcp.capture_screenshot(symbol=symbol, timeframe="240", save_path=path_4h)
+            captured_4h = await mcp.capture_screenshot(
+                symbol=symbol, timeframe="240", save_path=path_4h
+            )
             await asyncio.sleep(0.5)
-            captured_1h = await mcp.capture_screenshot(symbol=symbol, timeframe="60", save_path=path_1h)
-            
+            captured_1h = await mcp.capture_screenshot(
+                symbol=symbol, timeframe="60", save_path=path_1h
+            )
+
             image_paths = []
             for p in [captured_1d, captured_4h, captured_1h]:
                 if p and Path(p).exists():
                     image_paths.append(Path(p))
-                    
+
             if not image_paths:
-                await progress_msg.edit_text("❌ Lỗi: Không thể chụp ảnh biểu đồ (TradingView MCP & local fallback failed).")
+                await progress_msg.edit_text(
+                    "❌ Lỗi: Không thể chụp ảnh biểu đồ (TradingView MCP & local fallback failed)."
+                )
                 return
-                
+
             await progress_msg.edit_text(
                 f"🔍 Phân tích đa khung thời gian cho <code>{symbol}</code> ({exchange_name}):\n"
                 f"✅ 1. Hoàn tất scan thuật toán.\n"
                 f"✅ 2. Đã chụp xong {len(image_paths)} biểu đồ.\n"
                 f"3. Đang gửi ảnh cho AI Vision phân tích...",
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
-            
+
             # 4. Vision AI analysis
             from vision import analyze_chart_vision_mtf
-            
+
             vision_result = await analyze_chart_vision_mtf(
                 image_paths=image_paths,
                 symbol=symbol,
-                mtf_scan_result={
-                    "timeframes": mtf_scan_result.timeframes
-                }
+                mtf_scan_result={"timeframes": mtf_scan_result.timeframes},
             )
-            
+
             if vision_result.get("error"):
-                await progress_msg.edit_text(f"❌ AI Vision analysis error: {vision_result['error']}")
+                await progress_msg.edit_text(
+                    f"❌ AI Vision analysis error: {vision_result['error']}"
+                )
                 return
-                
+
             # Parse Entry, SL, TP, and Side
-            entry, sl, tp, side = parse_mtf_trade_params(vision_result["analysis"], mtf_scan_result.price)
-            
+            entry, sl, tp, side = parse_mtf_trade_params(
+                vision_result["analysis"], mtf_scan_result.price
+            )
+
             # 5. Insert manual signal into database
             import database
+
             signal_id = await database.insert_signal(
                 symbol=symbol,
                 action=side.lower(),
@@ -1623,17 +1926,17 @@ async def cmd_scan_mtf(update, context):
                     "verdict": vision_result.get("verdict", ""),
                     "sl": str(sl) if sl else "",
                     "tp": str(tp) if tp else "",
-                    "analysis_text": vision_result.get("analysis", "")
-                }
+                    "analysis_text": vision_result.get("analysis", ""),
+                },
             )
-            
+
             # 6. Create AnalysisComplete event and store in PENDING_TRADES
             from core.events import AnalysisComplete
             from hub.notification_hub import PENDING_TRADES
-            
+
             confidence = vision_result.get("confidence", 5)
             combined_score = vision_result.get("combined_score", "N/A")
-            
+
             event = AnalysisComplete(
                 signal_id=signal_id,
                 symbol=symbol,
@@ -1648,48 +1951,64 @@ async def cmd_scan_mtf(update, context):
                 screenshot_path=str(image_paths[0]),
                 combined_score=combined_score,
                 should_trade=(side != "AVOID"),
-                interactive_required=True
+                interactive_required=True,
             )
-            
+
             PENDING_TRADES[signal_id] = event
-            
+
             # Track for timeout
             from telegram_bot import get_approval_timeout_mgr
+
             timeout_mgr = get_approval_timeout_mgr()
-            
+
             # 7. Send the screenshots as a media group
             from telegram import InputMediaPhoto
+
             media_group = []
             file_handles = []
             for i, p in enumerate(image_paths):
-                fh = open(p, 'rb')
+                fh = open(p, "rb")
                 file_handles.append(fh)
-                caption = f"📊 {symbol} Multi-Timeframe Charts (1D, 4H, 1H)" if i == 0 else None
+                caption = (
+                    f"📊 {symbol} Multi-Timeframe Charts (1D, 4H, 1H)"
+                    if i == 0
+                    else None
+                )
                 media_group.append(InputMediaPhoto(media=fh, caption=caption))
-                
+
             await message.reply_media_group(media=media_group)
             for fh in file_handles:
                 fh.close()
-                
+
             # 8. Send the text report with inline buttons
             from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-            
+
             keyboard = []
             if side != "AVOID":
-                keyboard.append([
-                    InlineKeyboardButton(f"📈 APPROVE {side}", callback_data=f"approve_{signal_id}"),
-                    InlineKeyboardButton("❌ REJECT", callback_data=f"reject_{signal_id}")
-                ])
+                keyboard.append(
+                    [
+                        InlineKeyboardButton(
+                            f"📈 APPROVE {side}", callback_data=f"approve_{signal_id}"
+                        ),
+                        InlineKeyboardButton(
+                            "❌ REJECT", callback_data=f"reject_{signal_id}"
+                        ),
+                    ]
+                )
             else:
-                keyboard.append([
-                    InlineKeyboardButton("❌ DISMISS", callback_data=f"reject_{signal_id}")
-                ])
-                
+                keyboard.append(
+                    [
+                        InlineKeyboardButton(
+                            "❌ DISMISS", callback_data=f"reject_{signal_id}"
+                        )
+                    ]
+                )
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             from notifier import sanitize_for_telegram_html
             import re
-            
+
             clean_analysis = vision_result["analysis"].strip()
             # Remove any leading header line starting with "👁️ MULTI-TIMEFRAME ANALYSIS" (case-insensitive) recursively
             while True:
@@ -1698,17 +2017,17 @@ async def cmd_scan_mtf(update, context):
                     rf"^👁️?\s*(?:MULTI-TIMEFRAME\s+ANALYSIS|PHÂN\s+TÍCH\s+ĐA\s+KHUNG\s+THỜI\s+GIAN)\s*(?:[-—–:]\s*{re.escape(symbol)})?\s*\n*",
                     "",
                     clean_analysis,
-                    flags=re.IGNORECASE
+                    flags=re.IGNORECASE,
                 ).strip()
                 if len(clean_analysis) == prev_len:
                     break
-            
+
             formatted_analysis = sanitize_for_telegram_html(clean_analysis)
-            
+
             entry_str = f"{entry:,.4f}" if entry is not None else "N/A"
             sl_str = f"{sl:,.4f}" if sl is not None else "N/A"
             tp_str = f"{tp:,.4f}" if tp is not None else "N/A"
-            
+
             report_text = (
                 f"👁️ <b>MULTI-TIMEFRAME ANALYSIS — {symbol}</b>\n\n"
                 f"{formatted_analysis}\n\n"
@@ -1717,18 +2036,18 @@ async def cmd_scan_mtf(update, context):
                 f"💰 Entry: <code>{entry_str}</code> | SL: <code>{sl_str}</code> | TP: <code>{tp_str}</code>\n"
                 f"🏦 Sàn: <code>{exchange_name.upper()}</code>"
             )
-            
+
             sent_msg = await message.reply_text(
-                report_text,
-                parse_mode="HTML",
-                reply_markup=reply_markup
+                report_text, parse_mode="HTML", reply_markup=reply_markup
             )
-            
+
             if timeout_mgr:
-                timeout_mgr.track_message(signal_id, update.effective_chat.id, sent_msg.message_id)
-                
+                timeout_mgr.track_message(
+                    signal_id, update.effective_chat.id, sent_msg.message_id
+                )
+
             await progress_msg.delete()
-            
+
         except Exception as e:
             log.error(f"cmd_scan_mtf failed: {e}", exc_info=True)
             await progress_msg.edit_text(f"❌ Phân tích thất bại: {e}")
@@ -1745,54 +2064,81 @@ async def cmd_recommend(update, context):
     chat_id = update.effective_chat.id
     cmd_key = (chat_id, "recommend")
     if cmd_key in active_commands:
-        await context.bot.send_message(chat_id=chat_id, text="⚠️ Yêu cầu recommend trước đó của bạn vẫn đang được xử lý. Vui lòng đợi.")
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="⚠️ Yêu cầu recommend trước đó của bạn vẫn đang được xử lý. Vui lòng đợi.",
+        )
         return
     active_commands.add(cmd_key)
     await context.bot.send_message(chat_id=chat_id, text="🔄 Đang xử lý...")
-    
+
     async def process_task():
         try:
-            await context.bot.send_message(chat_id=chat_id, text="🔄 Đang quét danh sách Watchlist để tìm điểm đồng thuận đa khung thời gian (1D → 4H → 1H)...")
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="🔄 Đang quét danh sách Watchlist để tìm điểm đồng thuận đa khung thời gian (1D → 4H → 1H)...",
+            )
             from watchlist import get_watchlist
             from analysis import scan_symbol_multi_timeframe
             import config
             import aiohttp
-            
+
             symbols = get_watchlist()
             if not symbols:
-                await context.bot.send_message(chat_id=chat_id, text="📋 Watchlist trống. Dùng /add để thêm symbols.")
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text="📋 Watchlist trống. Dùng /add để thêm symbols.",
+                )
                 return
-                
-            exchange_name = context.args[0].strip().lower() if context.args else config.DEFAULT_EXCHANGE.lower()
-            
+
+            exchange_name = (
+                context.args[0].strip().lower()
+                if context.args
+                else config.DEFAULT_EXCHANGE.lower()
+            )
+
             semaphore = asyncio.Semaphore(3)
-            
+
             async with aiohttp.ClientSession() as session:
                 tasks = [
                     scan_symbol_multi_timeframe(session, exchange_name, sym, semaphore)
                     for sym in symbols
                 ]
                 results = await asyncio.gather(*tasks, return_exceptions=True)
-                
+
             lines = ["📊 **Gợi ý Đa Khung Thời Gian (Watchlist)**\n"]
             lines.append("```")
-            lines.append(f"{'Symbol':<12} {'Price':>10} {'1D/4H/1H':>10} {'Verdict':<15}")
+            lines.append(
+                f"{'Symbol':<12} {'Price':>10} {'1D/4H/1H':>10} {'Verdict':<15}"
+            )
             lines.append("─" * 50)
-            
+
             aligned_count = 0
             for r in results:
-                if isinstance(r, Exception) or not r or getattr(r, 'error', None):
+                if isinstance(r, Exception) or not r or getattr(r, "error", None):
                     continue
-                
+
                 # Format scores
-                score_1d = r.timeframes.get("1d").trend_template.score if r.timeframes.get("1d") and not r.timeframes.get("1d").error else "?"
-                score_4h = r.timeframes.get("4h").trend_template.score if r.timeframes.get("4h") and not r.timeframes.get("4h").error else "?"
-                score_1h = r.timeframes.get("1h").trend_template.score if r.timeframes.get("1h") and not r.timeframes.get("1h").error else "?"
+                score_1d = (
+                    r.timeframes.get("1d").trend_template.score
+                    if r.timeframes.get("1d") and not r.timeframes.get("1d").error
+                    else "?"
+                )
+                score_4h = (
+                    r.timeframes.get("4h").trend_template.score
+                    if r.timeframes.get("4h") and not r.timeframes.get("4h").error
+                    else "?"
+                )
+                score_1h = (
+                    r.timeframes.get("1h").trend_template.score
+                    if r.timeframes.get("1h") and not r.timeframes.get("1h").error
+                    else "?"
+                )
                 scores_str = f"{score_1d}/{score_4h}/{score_1h}"
-                
+
                 price = r.price
                 price_str = f"{price:,.2f}" if price >= 1 else f"{price:.4f}"
-                
+
                 # Check if aligned
                 alignment = "NEUTRAL"
                 if r.aligned_long:
@@ -1801,22 +2147,35 @@ async def cmd_recommend(update, context):
                 elif r.aligned_short:
                     alignment = "SHORT 📉"
                     aligned_count += 1
-                    
-                lines.append(f"{r.symbol:<12} {price_str:>10} {scores_str:>10} {alignment:<15}")
-                
+
+                lines.append(
+                    f"{r.symbol:<12} {price_str:>10} {scores_str:>10} {alignment:<15}"
+                )
+
             lines.append("```")
-            
+
             if aligned_count == 0:
-                lines.append("\n⚠️ Không tìm thấy đồng thuận xu hướng cho symbol nào trong Watchlist hiện tại.")
+                lines.append(
+                    "\n⚠️ Không tìm thấy đồng thuận xu hướng cho symbol nào trong Watchlist hiện tại."
+                )
             else:
-                lines.append(f"\n🎯 Phát hiện {aligned_count} cơ hội giao dịch có đồng thuận xu hướng đa khung thời gian!")
-                
+                lines.append(
+                    f"\n🎯 Phát hiện {aligned_count} cơ hội giao dịch có đồng thuận xu hướng đa khung thời gian!"
+                )
+
             from notifier import sanitize_for_telegram_html
-            await context.bot.send_message(chat_id=chat_id, text=sanitize_for_telegram_html("\n".join(lines)), parse_mode="HTML")
-            
+
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=sanitize_for_telegram_html("\n".join(lines)),
+                parse_mode="HTML",
+            )
+
         except Exception as e:
             log.error(f"cmd_recommend failed: {e}", exc_info=True)
-            await context.bot.send_message(chat_id=chat_id, text=f"❌ Lỗi khi quét Watchlist: {e}")
+            await context.bot.send_message(
+                chat_id=chat_id, text=f"❌ Lỗi khi quét Watchlist: {e}"
+            )
         finally:
             active_commands.discard(cmd_key)
 
@@ -1826,6 +2185,7 @@ async def cmd_recommend(update, context):
 
 
 # ── Inline Keyboard Callback ──────────────────────────────────────────────
+
 
 async def button_callback(update, context):
     """Handle inline keyboard button presses."""
@@ -1837,60 +2197,76 @@ async def button_callback(update, context):
     if data.startswith("approve_"):
         signal_id = int(data.split("_")[1])
         from hub.notification_hub import PENDING_TRADES
+
         if signal_id in PENDING_TRADES:
             event = PENDING_TRADES.pop(signal_id)
             from core.event_bus import bus as _default_bus
             from core.events import TradeApproved
-            
+
             user = query.from_user.username or query.from_user.first_name
-            
+
             # Emit TradeApproved event in background
             import asyncio
-            asyncio.create_task(_default_bus.emit_background(TradeApproved(
-                signal_id=event.signal_id,
-                symbol=event.symbol,
-                action=event.action,
-                price=event.price,
-                quote_qty=event.quote_qty,
-                sl=event.sl,
-                tp=event.tp,
-                approved_by=f"Human (@{user})",
-                analysis_text=event.analysis_text,
-                exchange=getattr(event, "exchange", "binance")
-            )))
+
+            asyncio.create_task(
+                _default_bus.emit_background(
+                    TradeApproved(
+                        signal_id=event.signal_id,
+                        symbol=event.symbol,
+                        action=event.action,
+                        price=event.price,
+                        quote_qty=event.quote_qty,
+                        sl=event.sl,
+                        tp=event.tp,
+                        approved_by=f"Human (@{user})",
+                        analysis_text=event.analysis_text,
+                        exchange=getattr(event, "exchange", "binance"),
+                    )
+                )
+            )
             from notifier import sanitize_for_telegram_html
+
             safe_text = sanitize_for_telegram_html(query.message.text)
             new_text = safe_text + f"\n\n✅ <b>ĐÃ DUYỆT BỞI @{user}</b>"
             await query.message.edit_text(new_text, parse_mode="HTML")
         else:
             from notifier import sanitize_for_telegram_html
+
             safe_text = sanitize_for_telegram_html(query.message.text)
             new_text = safe_text + "\n\n<i>(Lệnh đã hết hạn hoặc đã được xử lý)</i>"
             await query.message.edit_text(new_text, parse_mode="HTML")
-            
+
     elif data.startswith("reject_"):
         signal_id = int(data.split("_")[1])
         from hub.notification_hub import PENDING_TRADES
+
         if signal_id in PENDING_TRADES:
             event = PENDING_TRADES.pop(signal_id)
             user = query.from_user.username or query.from_user.first_name
             from core.event_bus import bus as _default_bus
             from core.events import TradeFailed
             import asyncio
-            asyncio.create_task(_default_bus.emit_background(TradeFailed(
-                signal_id=event.signal_id,
-                symbol=event.symbol,
-                side=event.action,
-                error=f"Rejected by user (@{user})",
-                quote_qty=event.quote_qty,
-                exchange=getattr(event, "exchange", "binance"),
-            )))
+
+            asyncio.create_task(
+                _default_bus.emit_background(
+                    TradeFailed(
+                        signal_id=event.signal_id,
+                        symbol=event.symbol,
+                        side=event.action,
+                        error=f"Rejected by user (@{user})",
+                        quote_qty=event.quote_qty,
+                        exchange=getattr(event, "exchange", "binance"),
+                    )
+                )
+            )
             from notifier import sanitize_for_telegram_html
+
             safe_text = sanitize_for_telegram_html(query.message.text)
             new_text = safe_text + f"\n\n❌ <b>ĐÃ TỪ CHỐI BỞI @{user}</b>"
             await query.message.edit_text(new_text, parse_mode="HTML")
         else:
             from notifier import sanitize_for_telegram_html
+
             safe_text = sanitize_for_telegram_html(query.message.text)
             new_text = safe_text + "\n\n<i>(Lệnh đã hết hạn hoặc đã được xử lý)</i>"
             await query.message.edit_text(new_text, parse_mode="HTML")
@@ -1899,6 +2275,7 @@ async def button_callback(update, context):
         signal_id = int(data.split("_")[1])
         user = query.from_user.username or query.from_user.first_name
         from notifier import sanitize_for_telegram_html
+
         safe_text = sanitize_for_telegram_html(query.message.text)
         new_text = safe_text + f"\n\n❌ <b>ĐÃ BỎ QUA BỞI @{user}</b>"
         await query.message.edit_text(new_text, parse_mode="HTML")
@@ -1907,18 +2284,24 @@ async def button_callback(update, context):
         exchange = data.split("_")[1].lower()
         user = query.from_user.username or query.from_user.first_name
         import database
+
         try:
             prev_status = await database.get_risk_settings(exchange)
             prev_state = prev_status.get("state", "CLOSED")
             await database.update_circuit_breaker_state(exchange, "CLOSED")
             await database.log_circuit_breaker(
-                exchange, "*", prev_state, "CLOSED", f"Reset Closed via Telegram by @{user}",
-                {"action": "reset"}
+                exchange,
+                "*",
+                prev_state,
+                "CLOSED",
+                f"Reset Closed via Telegram by @{user}",
+                {"action": "reset"},
             )
             # Clear bypass
             await database.set_setting(f"bypass_until_{exchange}", "")
-            
+
             from notifier import sanitize_for_telegram_html
+
             safe_text = sanitize_for_telegram_html(query.message.text)
             new_text = safe_text + f"\n\n✅ <b>RESET CLOSED BỞI @{user}</b>"
             await query.message.edit_text(new_text, parse_mode="HTML")
@@ -1930,21 +2313,29 @@ async def button_callback(update, context):
         user = query.from_user.username or query.from_user.first_name
         import database
         from datetime import datetime, timezone, timedelta
+
         try:
             prev_status = await database.get_risk_settings(exchange)
             prev_state = prev_status.get("state", "CLOSED")
-            
+
             # Set bypass for 1 hour
             bypass_until = datetime.now(timezone.utc) + timedelta(hours=1)
-            await database.set_setting(f"bypass_until_{exchange}", bypass_until.isoformat())
-            
+            await database.set_setting(
+                f"bypass_until_{exchange}", bypass_until.isoformat()
+            )
+
             await database.update_circuit_breaker_state(exchange, "CLOSED")
             await database.log_circuit_breaker(
-                exchange, "*", prev_state, "CLOSED", f"Bypassed 1h via Telegram by @{user}",
-                {"action": "bypass"}
+                exchange,
+                "*",
+                prev_state,
+                "CLOSED",
+                f"Bypassed 1h via Telegram by @{user}",
+                {"action": "bypass"},
             )
-            
+
             from notifier import sanitize_for_telegram_html
+
             safe_text = sanitize_for_telegram_html(query.message.text)
             new_text = safe_text + f"\n\n⚡ <b>ĐÃ BYPASS 1H BỞI @{user}</b>"
             await query.message.edit_text(new_text, parse_mode="HTML")
@@ -1962,7 +2353,9 @@ async def button_callback(update, context):
         await query.message.reply_text("🔄 Đang scan watchlist... Vui lòng chờ.")
         await cmd_scan_inline(query.message)
     elif data == "brief":
-        await query.message.reply_text("🌅 Đang chạy Morning Brief... Vui lòng chờ 30-60s.")
+        await query.message.reply_text(
+            "🌅 Đang chạy Morning Brief... Vui lòng chờ 30-60s."
+        )
         await cmd_brief_inline(query.message)
 
     elif data.startswith("bt_"):
@@ -1971,26 +2364,26 @@ async def button_callback(update, context):
 
         # Map button data → (chart_mode, symbol)
         bt_map = {
-            "bt_all":     ("equity", None),
-            "bt_mode":    ("mode",   None),
+            "bt_all": ("equity", None),
+            "bt_mode": ("mode", None),
             "bt_history": ("history", None),
-            "bt_full":    ("full",   None),
+            "bt_full": ("full", None),
         }
 
         if data in bt_map:
             chart_mode, symbol = bt_map[data]
         elif data.startswith("bt_sym_"):
-            symbol     = data[len("bt_sym_"):]
+            symbol = data[len("bt_sym_") :]
             chart_mode = "full"
         else:
             chart_mode, symbol = "full", None
 
-        sym_lbl  = f" [{symbol}]" if symbol else ""
+        sym_lbl = f" [{symbol}]" if symbol else ""
         mode_lbl = {
-            "equity":  "📈 Equity Curve",
-            "mode":    "📊 MTT vs MIS",
+            "equity": "📈 Equity Curve",
+            "mode": "📊 MTT vs MIS",
             "history": "📋 Trade History",
-            "full":    "🔢 All 3 Charts",
+            "full": "🔢 All 3 Charts",
         }.get(chart_mode, "📊 Chart")
 
         await context.bot.send_message(
@@ -2007,7 +2400,9 @@ async def button_callback(update, context):
             await context.bot.send_message(chat_id=chat_id, text=text)
 
         try:
-            await _run_backtest_charts(_send_photo_cb, _send_msg_cb, mode=chart_mode, symbol=symbol)
+            await _run_backtest_charts(
+                _send_photo_cb, _send_msg_cb, mode=chart_mode, symbol=symbol
+            )
         except Exception as e:
             log.error(f"bt_ callback error: {e}", exc_info=True)
             await context.bot.send_message(chat_id=chat_id, text=f"❌ Lỗi: {e}")
@@ -2019,7 +2414,8 @@ async def button_callback(update, context):
         # REQ4: Inline Vision Pipeline Shortcut from /scan results
         symbol = data.split("_", 1)[1].upper()
         import re
-        safe_symbol = re.sub(r'[^A-Za-z0-9_\-]', '', symbol)
+
+        safe_symbol = re.sub(r"[^A-Za-z0-9_\-]", "", symbol)
         await query.message.reply_text(
             f"👁 Đang phân tích <code>{safe_symbol}</code>...",
             parse_mode="HTML",
@@ -2027,6 +2423,7 @@ async def button_callback(update, context):
         try:
             import config
             from pathlib import Path
+
             screenshots_dir = Path(__file__).parent / "screenshots"
             screenshot_path = None
 
@@ -2034,6 +2431,7 @@ async def button_callback(update, context):
                 try:
                     from mcp_client import get_mcp_client
                     from datetime import datetime as dt
+
                     mcp = get_mcp_client()
                     health = await mcp.health_check()
                     if health.get("connected"):
@@ -2041,7 +2439,8 @@ async def button_callback(update, context):
                             symbol=symbol,
                             timeframe="D",
                             region="chart",
-                            save_path=screenshots_dir / f"vision_{safe_symbol}_{dt.now().strftime('%Y%m%d_%H%M%S')}.png",
+                            save_path=screenshots_dir
+                            / f"vision_{safe_symbol}_{dt.now().strftime('%Y%m%d_%H%M%S')}.png",
                         )
                 except Exception as e:
                     log.warning(f"analyze_ callback screenshot failed: {e}")
@@ -2064,51 +2463,67 @@ async def button_callback(update, context):
                 return
 
             from vision import analyze_chart_vision, format_vision_telegram
-            result = await analyze_chart_vision(image_path=Path(screenshot_path), symbol=symbol)
+
+            result = await analyze_chart_vision(
+                image_path=Path(screenshot_path), symbol=symbol
+            )
             if result.get("error"):
                 await query.message.reply_text(f"❌ Vision error: {result['error']}")
                 return
 
             from notifier import sanitize_for_telegram_html
+
             vision_text = format_vision_telegram(result)
-            await query.message.reply_text(sanitize_for_telegram_html(vision_text), parse_mode="HTML")
+            await query.message.reply_text(
+                sanitize_for_telegram_html(vision_text), parse_mode="HTML"
+            )
 
         except Exception as e:
             log.error(f"analyze_ callback error: {e}", exc_info=True)
             await query.message.reply_text(f"❌ Vision failed: {e}")
 
 
-
 async def cmd_status_inline(message):
     """Status handler for inline buttons (receives Message instead of Update)."""
     import config
+
     lines = [
         "🔧 **System Status**\n",
         f"⏰ Time: `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`",
         f"🌐 Server: FastAPI v7.0 on :{config.PORT}",
     ]
-    has_anthropic = bool(config.ANTHROPIC_API_KEY and not config.ANTHROPIC_API_KEY.startswith("sk-ant-xxx"))
+    has_anthropic = bool(
+        config.ANTHROPIC_API_KEY
+        and not config.ANTHROPIC_API_KEY.startswith("sk-ant-xxx")
+    )
     has_gemini = bool(config.GEMINI_API_KEY or config.GCP_PROJECT_ID)
     rag_status = "✅" if config.RAG_ENABLED and (has_anthropic or has_gemini) else "❌"
     mcp_status = "✅" if config.MCP_ENABLED else "❌"
     brief_status = "✅" if config.BRIEF_ENABLED else "❌"
-    lines.append(f"🧠 RAG: {rag_status}  |  🖥️ MCP: {mcp_status}  |  ⏰ Brief: {brief_status}")
+    lines.append(
+        f"🧠 RAG: {rag_status}  |  🖥️ MCP: {mcp_status}  |  ⏰ Brief: {brief_status}"
+    )
 
     try:
         from watchlist import get_watchlist
+
         wl = get_watchlist()
         lines.append(f"📋 Watchlist: {len(wl)} symbols")
     except Exception:
         pass
 
     from notifier import sanitize_for_telegram_html
-    await message.reply_text(sanitize_for_telegram_html("\n".join(lines)), parse_mode="HTML")
+
+    await message.reply_text(
+        sanitize_for_telegram_html("\n".join(lines)), parse_mode="HTML"
+    )
 
 
 async def cmd_watchlist_inline(message):
     """Watchlist handler for inline buttons."""
     try:
         from watchlist import get_watchlist
+
         symbols = get_watchlist()
         if symbols:
             symbol_list = ", ".join(f"<code>{s}</code>" for s in symbols)
@@ -2138,6 +2553,7 @@ async def cmd_scan_inline(message):
         if config.MCP_ENABLED:
             try:
                 from mcp_client import get_mcp_client
+
                 mcp = get_mcp_client()
             except Exception:
                 pass
@@ -2150,8 +2566,11 @@ async def cmd_scan_inline(message):
                 vcp = "⭐" if r.vcp and r.vcp.detected else ""
                 summary.append(f"`{r.symbol}` TT:{tt}/8 {vcp}")
             from notifier import sanitize_for_telegram_html
+
             await message.reply_text(
-                sanitize_for_telegram_html(f"📊 **Scan** ({len(results)} symbols):\n" + "\n".join(summary)),
+                sanitize_for_telegram_html(
+                    f"📊 **Scan** ({len(results)} symbols):\n" + "\n".join(summary)
+                ),
                 parse_mode="HTML",
             )
         else:
@@ -2164,6 +2583,7 @@ async def cmd_brief_inline(message):
     """Brief handler for inline buttons."""
     try:
         from brief import generate_morning_brief
+
         result = await generate_morning_brief()
         if result and result.get("success"):
             await message.reply_text("✅ Morning Brief đã gửi!")
@@ -2179,6 +2599,7 @@ async def cmd_brief_inline(message):
 @dataclass
 class PositionSnapshot:
     """Tracked position state for change detection inside PositionMonitor."""
+
     symbol: str
     side: str
     entry_price: float
@@ -2188,9 +2609,11 @@ class PositionSnapshot:
     exchange: str
     last_seen: "datetime"
 
+
 @dataclass
 class PositionInfo:
     """Position data returned to command handlers."""
+
     symbol: str
     side: str
     entry_price: float
@@ -2200,9 +2623,11 @@ class PositionInfo:
     unrealized_pnl_pct: float
     exchange: str
 
+
 @dataclass
 class BalanceInfo:
     """Balance data returned to command handlers."""
+
     asset: str
     free: float
     locked: float
@@ -2211,9 +2636,11 @@ class BalanceInfo:
     is_testnet: bool
     is_dry_run: bool
 
+
 @dataclass
 class TradeRecord:
     """Trade history record for display."""
+
     trade_id: int
     symbol: str
     side: str
@@ -2224,9 +2651,11 @@ class TradeRecord:
     exchange: str
     created_at: str
 
+
 @dataclass
 class DailyStats:
     """Aggregated daily performance metrics."""
+
     date: str
     total_trades: int
     winning_trades: int
@@ -2236,9 +2665,11 @@ class DailyStats:
     best_trade: float
     worst_trade: float
 
+
 @dataclass
 class ExchangeHealthInfo:
     """Exchange connectivity status."""
+
     exchange: str
     healthy: bool
     is_testnet: bool
@@ -2247,6 +2678,7 @@ class ExchangeHealthInfo:
 
 
 # ── P8 TelegramSender (singleton) ─────────────────────────────────────────
+
 
 class TelegramSender:
     """Single point of Telegram API interaction.
@@ -2270,6 +2702,7 @@ class TelegramSender:
         """
         import config
         from notifier import sanitize_for_telegram_html
+
         results: List[Tuple[int, int]] = []
         safe_text = sanitize_for_telegram_html(text)
         for chat_id in config.TELEGRAM_CHAT_IDS:
@@ -2295,6 +2728,7 @@ class TelegramSender:
     ) -> bool:
         """Edit an existing message. Returns True on success."""
         from notifier import sanitize_for_telegram_html
+
         try:
             await self._app.bot.edit_message_text(
                 chat_id=chat_id,
@@ -2305,14 +2739,19 @@ class TelegramSender:
             )
             return True
         except Exception as e:
-            log.warning(f"TelegramSender: edit_message failed ({chat_id}/{message_id}): {e}")
+            log.warning(
+                f"TelegramSender: edit_message failed ({chat_id}/{message_id}): {e}"
+            )
             return False
 
     async def send_typing_action(self, chat_id: int) -> None:
         """Send 'typing...' action indicator."""
         try:
             from telegram import ChatAction
-            await self._app.bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+
+            await self._app.bot.send_chat_action(
+                chat_id=chat_id, action=ChatAction.TYPING
+            )
         except Exception:
             pass
 
@@ -2327,6 +2766,7 @@ def get_sender() -> Optional[TelegramSender]:
 
 # ── P8 ExchangeQueryFacade ─────────────────────────────────────────────────
 
+
 class ExchangeQueryFacade:
     """Facade over ExchangeRegistry for read-only position/balance/health queries.
 
@@ -2340,14 +2780,18 @@ class ExchangeQueryFacade:
     ) -> BalanceInfo:
         """Get balance from specified or default exchange."""
         import config
+
         exch_id = (exchange_id or config.DEFAULT_EXCHANGE).lower()
         try:
             from exchange_registry import ExchangeRegistry
+
             registry = ExchangeRegistry.get_instance()
             client = registry.get(exch_id)
             if client is None:
                 available = registry.list_exchange_ids()
-                raise ValueError(f"Exchange '{exch_id}' not registered. Available: {available}")
+                raise ValueError(
+                    f"Exchange '{exch_id}' not registered. Available: {available}"
+                )
             balance = await client.get_account_balance(asset)
             return BalanceInfo(
                 asset=asset,
@@ -2361,6 +2805,7 @@ class ExchangeQueryFacade:
         except Exception:
             # Fallback: try direct binance_client for backwards compat
             import binance_client as bm
+
             client = bm.get_client()
             balance = await client.get_account_balance(asset)
             return BalanceInfo(
@@ -2381,6 +2826,7 @@ class ExchangeQueryFacade:
         results: List[PositionInfo] = []
         try:
             from exchange_registry import ExchangeRegistry
+
             registry = ExchangeRegistry.get_instance()
             ids = [exchange_id.lower()] if exchange_id else registry.list_exchange_ids()
             for eid in ids:
@@ -2389,19 +2835,25 @@ class ExchangeQueryFacade:
                     continue
                 try:
                     raw = await client.get_open_positions()
-                    for p in (raw or []):
-                        results.append(PositionInfo(
-                            symbol=p.get("symbol", ""),
-                            side=p.get("side", ""),
-                            entry_price=float(p.get("entry_price", 0)),
-                            current_price=float(p.get("current_price", 0)),
-                            quantity=float(p.get("quantity", 0)),
-                            unrealized_pnl=float(p.get("unrealized_pnl", 0)),
-                            unrealized_pnl_pct=float(p.get("unrealized_pnl_pct", 0)),
-                            exchange=eid,
-                        ))
+                    for p in raw or []:
+                        results.append(
+                            PositionInfo(
+                                symbol=p.get("symbol", ""),
+                                side=p.get("side", ""),
+                                entry_price=float(p.get("entry_price", 0)),
+                                current_price=float(p.get("current_price", 0)),
+                                quantity=float(p.get("quantity", 0)),
+                                unrealized_pnl=float(p.get("unrealized_pnl", 0)),
+                                unrealized_pnl_pct=float(
+                                    p.get("unrealized_pnl_pct", 0)
+                                ),
+                                exchange=eid,
+                            )
+                        )
                 except Exception as e:
-                    log.warning(f"ExchangeQueryFacade: get_open_positions({eid}) failed: {e}")
+                    log.warning(
+                        f"ExchangeQueryFacade: get_open_positions({eid}) failed: {e}"
+                    )
         except ImportError:
             log.warning("ExchangeQueryFacade: ExchangeRegistry not available")
         return results
@@ -2411,26 +2863,35 @@ class ExchangeQueryFacade:
         results: List[ExchangeHealthInfo] = []
         try:
             from exchange_registry import ExchangeRegistry
+
             registry = ExchangeRegistry.get_instance()
             for eid in registry.list_exchange_ids():
                 client = registry.get(eid)
                 try:
                     import time
+
                     t0 = time.monotonic()
                     ok = await client.ping() if hasattr(client, "ping") else True
                     latency = (time.monotonic() - t0) * 1000
-                    results.append(ExchangeHealthInfo(
-                        exchange=eid,
-                        healthy=bool(ok),
-                        is_testnet=getattr(client, "testnet", False),
-                        is_dry_run=getattr(client, "dry_run", True),
-                        latency_ms=round(latency, 1),
-                    ))
+                    results.append(
+                        ExchangeHealthInfo(
+                            exchange=eid,
+                            healthy=bool(ok),
+                            is_testnet=getattr(client, "testnet", False),
+                            is_dry_run=getattr(client, "dry_run", True),
+                            latency_ms=round(latency, 1),
+                        )
+                    )
                 except Exception:
-                    results.append(ExchangeHealthInfo(
-                        exchange=eid, healthy=False,
-                        is_testnet=False, is_dry_run=True, latency_ms=None,
-                    ))
+                    results.append(
+                        ExchangeHealthInfo(
+                            exchange=eid,
+                            healthy=False,
+                            is_testnet=False,
+                            is_dry_run=True,
+                            latency_ms=None,
+                        )
+                    )
         except ImportError:
             pass
         return results
@@ -2439,6 +2900,7 @@ class ExchangeQueryFacade:
         """Return list of registered exchange IDs."""
         try:
             from exchange_registry import ExchangeRegistry
+
             return ExchangeRegistry.get_instance().list_exchange_ids()
         except Exception:
             return ["binance"]
@@ -2448,6 +2910,7 @@ _exchange_facade = ExchangeQueryFacade()
 
 
 # ── P8 DataQueryFacade ─────────────────────────────────────────────────────
+
 
 class DataQueryFacade:
     """Facade over database.py for trade history and daily performance stats."""
@@ -2466,13 +2929,16 @@ class DataQueryFacade:
         try:
             import aiosqlite
             import config
+
             async with aiosqlite.connect(config.DB_PATH) as db:
                 db.row_factory = aiosqlite.Row
 
                 # P9-C1: Detect whether 'exchange' column exists
                 has_exchange_col = False
                 try:
-                    async with db.execute("SELECT exchange FROM trades LIMIT 1") as _probe:
+                    async with db.execute(
+                        "SELECT exchange FROM trades LIMIT 1"
+                    ) as _probe:
                         await _probe.fetchone()
                     has_exchange_col = True
                 except Exception:
@@ -2504,7 +2970,9 @@ class DataQueryFacade:
                         symbol=row["symbol"],
                         side=row["side"],
                         entry_price=float(row["entry_price"] or 0),
-                        exit_price=float(row["exit_price"]) if row["exit_price"] else None,
+                        exit_price=float(row["exit_price"])
+                        if row["exit_price"]
+                        else None,
                         pnl=float(row["pnl"]) if row["pnl"] else None,
                         status=row["status"] or "",
                         exchange=row["exchange"] if has_exchange_col else "binance",
@@ -2519,10 +2987,12 @@ class DataQueryFacade:
     async def get_daily_stats(self, date: Optional[str] = None) -> DailyStats:
         """Get aggregated performance stats for a given date (YYYY-MM-DD, default today UTC)."""
         from datetime import datetime as dt, timezone
+
         target = date or dt.now(timezone.utc).strftime("%Y-%m-%d")
         try:
             import aiosqlite
             import config
+
             async with aiosqlite.connect(config.DB_PATH) as db:
                 db.row_factory = aiosqlite.Row
                 async with db.execute(
@@ -2536,14 +3006,19 @@ class DataQueryFacade:
 
                 if not rows:
                     return DailyStats(
-                        date=target, total_trades=0, winning_trades=0,
-                        losing_trades=0, win_rate=0.0, total_pnl=0.0,
-                        best_trade=0.0, worst_trade=0.0,
+                        date=target,
+                        total_trades=0,
+                        winning_trades=0,
+                        losing_trades=0,
+                        win_rate=0.0,
+                        total_pnl=0.0,
+                        best_trade=0.0,
+                        worst_trade=0.0,
                     )
 
                 pnls = [float(r["pnl"]) for r in rows if r["pnl"] is not None]
                 winners = [p for p in pnls if p > 0]
-                losers  = [p for p in pnls if p <= 0]
+                losers = [p for p in pnls if p <= 0]
                 return DailyStats(
                     date=target,
                     total_trades=len(rows),
@@ -2557,9 +3032,14 @@ class DataQueryFacade:
         except Exception as e:
             log.error(f"DataQueryFacade.get_daily_stats: {e}")
             return DailyStats(
-                date=target, total_trades=0, winning_trades=0,
-                losing_trades=0, win_rate=0.0, total_pnl=0.0,
-                best_trade=0.0, worst_trade=0.0,
+                date=target,
+                total_trades=0,
+                winning_trades=0,
+                losing_trades=0,
+                win_rate=0.0,
+                total_pnl=0.0,
+                best_trade=0.0,
+                worst_trade=0.0,
             )
 
 
@@ -2567,6 +3047,7 @@ _data_facade = DataQueryFacade()
 
 
 # ── P8 TradeLifecycleHandler ───────────────────────────────────────────────
+
 
 def _register_trade_lifecycle_handlers():
     """Register EventBus listeners for TradeExecuted, TradeFailed, PositionClosed.
@@ -2583,7 +3064,9 @@ def _register_trade_lifecycle_handlers():
             return
         sl = f"{event.stop_loss_price:,.4f}" if event.stop_loss_price else "—"
         tp = f"{event.take_profit_price:,.4f}" if event.take_profit_price else "—"
-        price = f"{event.executed_price:,.4f}" if event.executed_price is not None else "—"
+        price = (
+            f"{event.executed_price:,.4f}" if event.executed_price is not None else "—"
+        )
         qty = f"{event.executed_qty:,.4f}" if event.executed_qty is not None else "—"
         text = (
             f"✅ <b>LỆNH ĐÃ KHỚP</b>\n\n"
@@ -2620,7 +3103,11 @@ def _register_trade_lifecycle_handlers():
         if sender is None:
             return
         pnl_emoji = "🟢" if event.pnl >= 0 else "🔴"
-        reason_map = {"STOP_LOSS": "🛡️ Stop-Loss", "TAKE_PROFIT": "🎯 Take-Profit", "MANUAL": "✋ Manual"}
+        reason_map = {
+            "STOP_LOSS": "🛡️ Stop-Loss",
+            "TAKE_PROFIT": "🎯 Take-Profit",
+            "MANUAL": "✋ Manual",
+        }
         reason_label = reason_map.get(event.exit_reason, event.exit_reason)
         text = (
             f"{pnl_emoji} <b>VỊ THẾ ĐÃ ĐÓNG — {reason_label}</b>\n\n"
@@ -2636,6 +3123,7 @@ def _register_trade_lifecycle_handlers():
 
 # ── P8 PositionMonitor ─────────────────────────────────────────────────────
 
+
 class PositionMonitor:
     """Background asyncio task polling exchanges for SL/TP fills.
 
@@ -2646,6 +3134,7 @@ class PositionMonitor:
 
     def __init__(self, poll_interval: int = 30):
         import config
+
         self._poll_interval = poll_interval or config.POSITION_POLL_INTERVAL
         self._tracked: Dict[str, PositionSnapshot] = {}
         self._running = False
@@ -2681,19 +3170,22 @@ class PositionMonitor:
                 # Position gone — SL/TP or manual close
                 from core.event_bus import bus as _bus
                 from core.events import PositionClosed
+
                 # Approximate P&L from snapshot (exact values need exchange history)
                 log.info(f"PositionMonitor: position closed detected — {key}")
-                await _bus.emit(PositionClosed(
-                    symbol=snap.symbol,
-                    side=snap.side,
-                    entry_price=snap.entry_price,
-                    exit_price=0.0,  # not available without order history query
-                    quantity=snap.quantity,
-                    pnl=0.0,
-                    pnl_pct=0.0,
-                    exit_reason="UNKNOWN",
-                    exchange=snap.exchange,
-                ))
+                await _bus.emit(
+                    PositionClosed(
+                        symbol=snap.symbol,
+                        side=snap.side,
+                        entry_price=snap.entry_price,
+                        exit_price=0.0,  # not available without order history query
+                        quantity=snap.quantity,
+                        pnl=0.0,
+                        pnl_pct=0.0,
+                        exit_reason="UNKNOWN",
+                        exchange=snap.exchange,
+                    )
+                )
                 del self._tracked[key]
 
         # Update tracked with current positions
@@ -2721,6 +3213,7 @@ _position_monitor: Optional[PositionMonitor] = None
 
 # ── P8 ApprovalTimeoutManager ─────────────────────────────────────────────
 
+
 class ApprovalTimeoutManager:
     """Background asyncio task that auto-rejects stale pending trade approvals.
 
@@ -2731,6 +3224,7 @@ class ApprovalTimeoutManager:
 
     def __init__(self, timeout_minutes: int = 5, check_interval: int = 30):
         import config
+
         self._timeout_minutes = timeout_minutes or config.APPROVAL_TIMEOUT_MINUTES
         self._check_interval = check_interval
         # signal_id -> list of (chat_id, message_id, sent_at_timestamp)
@@ -2748,11 +3242,10 @@ class ApprovalTimeoutManager:
         if self._task and not self._task.done():
             self._task.cancel()
 
-    def track_message(
-        self, signal_id: int, chat_id: int, message_id: int
-    ) -> None:
+    def track_message(self, signal_id: int, chat_id: int, message_id: int) -> None:
         """Register a sent approval message for editing on timeout."""
         import time
+
         if signal_id not in self._tracked:
             self._tracked[signal_id] = []
         self._tracked[signal_id].append((chat_id, message_id, time.time()))
@@ -2771,6 +3264,7 @@ class ApprovalTimeoutManager:
         """Find expired entries, remove from PENDING_TRADES, notify, edit msgs."""
         import time
         from hub.notification_hub import PENDING_TRADES
+
         sender = get_sender()
         timeout_sec = self._timeout_minutes * 60
 
@@ -2784,11 +3278,17 @@ class ApprovalTimeoutManager:
 
             # Expired
             event = PENDING_TRADES.pop(signal_id, None)
-            symbol = getattr(event, "symbol", f"Signal #{signal_id}") if event else f"Signal #{signal_id}"
+            symbol = (
+                getattr(event, "symbol", f"Signal #{signal_id}")
+                if event
+                else f"Signal #{signal_id}"
+            )
             action = getattr(event, "action", "").upper() if event else ""
             elapsed_min = int(elapsed_sec // 60)
 
-            log.warning(f"ApprovalTimeoutManager: signal #{signal_id} ({symbol}) timed out after {elapsed_min}m")
+            log.warning(
+                f"ApprovalTimeoutManager: signal #{signal_id} ({symbol}) timed out after {elapsed_min}m"
+            )
 
             timeout_text = (
                 f"⏰ <b>HẾT HẠN DUYỆT LỆNH</b>\n\n"
@@ -2801,10 +3301,14 @@ class ApprovalTimeoutManager:
             # Edit original approval messages to show expired state
             if sender:
                 for chat_id, message_id, _ in msg_list:
-                    expired_suffix = "\n\n<i>⏰ Lệnh đã hết hạn — không thể duyệt/từ chối.</i>"
+                    expired_suffix = (
+                        "\n\n<i>⏰ Lệnh đã hết hạn — không thể duyệt/từ chối.</i>"
+                    )
                     # Try to edit; swallow errors if message too old to edit
                     try:
-                        await sender.edit_message(chat_id, message_id, f"<i>[HẾT HẠN]</i>{expired_suffix}")
+                        await sender.edit_message(
+                            chat_id, message_id, f"<i>[HẾT HẠN]</i>{expired_suffix}"
+                        )
                     except Exception:
                         pass
                 await sender.send_message(timeout_text)
@@ -2827,6 +3331,7 @@ def get_application():
 
 # ── P9-B1: Daily Report Auto-Send Scheduler ───────────────────────────
 
+
 async def _report_auto_send_loop() -> None:
     """Background loop that auto-sends the daily P&L report at REPORT_SEND_TIME (ICT).
 
@@ -2839,7 +3344,9 @@ async def _report_auto_send_loop() -> None:
     from datetime import datetime as _dt
 
     ICT = timezone(timedelta(hours=7))
-    log.info(f"📊 _report_auto_send_loop running (target={config.REPORT_SEND_TIME} ICT)")
+    log.info(
+        f"📊 _report_auto_send_loop running (target={config.REPORT_SEND_TIME} ICT)"
+    )
 
     while True:
         try:
@@ -2856,7 +3363,9 @@ async def _report_auto_send_loop() -> None:
             target_today = target_today + timedelta(days=1)
 
         wait_seconds = (target_today - now_ict).total_seconds()
-        log.info(f"📊 ReportAutoSend: next send in {wait_seconds/3600:.1f}h ({target_today.strftime('%Y-%m-%d %H:%M')} ICT)")
+        log.info(
+            f"📊 ReportAutoSend: next send in {wait_seconds / 3600:.1f}h ({target_today.strftime('%Y-%m-%d %H:%M')} ICT)"
+        )
         await asyncio.sleep(wait_seconds)
 
         # Send report for today (UTC date, which is ICT-1 day at 22:00)
@@ -2880,6 +3389,7 @@ async def _report_auto_send_loop() -> None:
                     f"💔 Tệ nhất: <code>${stats.worst_trade:+,.2f}</code>"
                 )
             from notifier import sanitize_for_telegram_html
+
             await sender.send_message(sanitize_for_telegram_html(text))
             log.info(f"📊 ReportAutoSend: daily report sent for {utc_date}")
         except Exception as e:
@@ -2890,6 +3400,7 @@ async def _report_auto_send_loop() -> None:
 
 
 # ── P10: Dashboard Login/Logout Commands ─────────────────────────────────
+
 
 async def cmd_login(update, context):
     """Generate a one-time dashboard login link.
@@ -2933,14 +3444,22 @@ async def cmd_login(update, context):
         )
 
         dashboard_url = auth_cfg.dashboard_url.rstrip("/")
-        if not dashboard_url.startswith("http://") and not dashboard_url.startswith("https://"):
+        if not dashboard_url.startswith("http://") and not dashboard_url.startswith(
+            "https://"
+        ):
             dashboard_url = f"http://{dashboard_url}"
-            
+
         # ⚠️ BỘ LỌC CỦA TELEGRAM: Telegram tự động chặn KHÔNG CHO CLICK vào các link có chứa "localhost" hoặc "127.0.0.1".
         # Sử dụng Regex để thay thế linh hoạt mọi trường hợp localhost/127.0.0.1 thành 127.0.0.1.nip.io
         import re
-        safe_dashboard_url = re.sub(r'(://)(localhost|127\.0\.0\.1)(:?\d*)', r'\g<1>127.0.0.1.nip.io\g<3>', dashboard_url, flags=re.IGNORECASE)
-        
+
+        safe_dashboard_url = re.sub(
+            r"(://)(localhost|127\.0\.0\.1)(:?\d*)",
+            r"\g<1>127.0.0.1.nip.io\g<3>",
+            dashboard_url,
+            flags=re.IGNORECASE,
+        )
+
         login_url = f"{safe_dashboard_url}/auth/callback?code={otp.code}"
 
         # ⚠️ DO NOT pass through sanitize_for_telegram_html — the message
@@ -2955,7 +3474,9 @@ async def cmd_login(update, context):
             f"⚠️ Link hết hạn sau <b>5 phút</b> và chỉ dùng được 1 lần.\n"
             f"<code>{otp.code}</code>"
         )
-        await update.message.reply_text(msg, parse_mode="HTML", disable_web_page_preview=True)
+        await update.message.reply_text(
+            msg, parse_mode="HTML", disable_web_page_preview=True
+        )
         log.info(f"🔐 Login code generated for user {user.id} (@{user.username})")
 
     except Exception as e:
@@ -2972,6 +3493,7 @@ async def cmd_logout(update, context):
 
     try:
         import database as db
+
         count = db.delete_all_user_sessions(user.id)
         if count > 0:
             await update.message.reply_text(
@@ -2999,9 +3521,16 @@ def start_bot():
     Multiple calls (e.g. on hot-reload) must NOT spawn duplicate pollers.
     409 Conflict from Telegram = two getUpdates sessions running simultaneously.
     """
-    global _bot_app, _bot_thread, _bot_loop, _sender, _position_monitor, _approval_timeout_mgr
+    global \
+        _bot_app, \
+        _bot_thread, \
+        _bot_loop, \
+        _sender, \
+        _position_monitor, \
+        _approval_timeout_mgr
 
     import config
+
     if not config.TELEGRAM_BOT_TOKEN:
         log.warning("Telegram bot token not set — Telegram Bot disabled")
         return
@@ -3009,20 +3538,33 @@ def start_bot():
     try:
         _get_imports()
     except ImportError:
-        log.warning("python-telegram-bot not installed — run: pip install python-telegram-bot")
+        log.warning(
+            "python-telegram-bot not installed — run: pip install python-telegram-bot"
+        )
         return
 
     with _bot_thread_lock:
         # ── Singleton guard ────────────────────────────────────────────
         if _bot_thread is not None and _bot_thread.is_alive():
-            log.info("🤖 Telegram Bot already running — skipping duplicate start (SCAR-TG-001)")
+            log.info(
+                "🤖 Telegram Bot already running — skipping duplicate start (SCAR-TG-001)"
+            )
             return
 
-        from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
+        from telegram.ext import (
+            ApplicationBuilder,
+            CommandHandler,
+            CallbackQueryHandler,
+        )
 
         def _run_bot():
             """Bot runner in separate thread with its own event loop."""
-            global _bot_app, _sender, _position_monitor, _approval_timeout_mgr, _bot_loop
+            global \
+                _bot_app, \
+                _sender, \
+                _position_monitor, \
+                _approval_timeout_mgr, \
+                _bot_loop
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             _bot_loop = loop
@@ -3039,8 +3581,15 @@ def start_bot():
             )
             request._client = request._build_client()
 
-            app = ApplicationBuilder().token(config.TELEGRAM_BOT_TOKEN).request(request).build()
-            log.info("🤖 Telegram Bot using IPv4-forced async transport (fix for Windows)")
+            app = (
+                ApplicationBuilder()
+                .token(config.TELEGRAM_BOT_TOKEN)
+                .request(request)
+                .build()
+            )
+            log.info(
+                "🤖 Telegram Bot using IPv4-forced async transport (fix for Windows)"
+            )
 
             # ── P8: Initialise TelegramSender singleton ───────────────
             _sender = TelegramSender(app)
@@ -3053,9 +3602,12 @@ def start_bot():
             # ── Conflict error handler (suppress 409 log spam) ────────
             async def _on_error(update, context):
                 from telegram.error import Conflict, NetworkError
+
                 err = context.error
                 if isinstance(err, Conflict):
-                    log.warning("🤖 TG Conflict (409) — another instance terminated. Resuming...")
+                    log.warning(
+                        "🤖 TG Conflict (409) — another instance terminated. Resuming..."
+                    )
                 elif isinstance(err, NetworkError):
                     log.warning(f"🤖 TG NetworkError: {err}")
                 else:
@@ -3066,23 +3618,24 @@ def start_bot():
             # Register bot commands globally
             async def post_init(application):
                 from telegram import BotCommand
+
                 commands = [
-                    BotCommand("start",     "Giới thiệu bot & Menu"),
-                    BotCommand("help",      "Danh sách lệnh"),
-                    BotCommand("status",    "Trạng thái hệ thống"),
-                    BotCommand("scan",      "Scan watchlist (TT + VCP + 👁 Vision)"),
-                    BotCommand("scan_mtf",  "Scan đa khung (1D/4H/1H) & Duyệt lệnh"),
+                    BotCommand("start", "Giới thiệu bot & Menu"),
+                    BotCommand("help", "Danh sách lệnh"),
+                    BotCommand("status", "Trạng thái hệ thống"),
+                    BotCommand("scan", "Scan watchlist (TT + VCP + 👁 Vision)"),
+                    BotCommand("scan_mtf", "Scan đa khung (1D/4H/1H) & Duyệt lệnh"),
                     BotCommand("recommend", "Gợi ý cơ hội giao dịch đa khung"),
-                    BotCommand("brief",     "Chạy Morning Brief"),
+                    BotCommand("brief", "Chạy Morning Brief"),
                     BotCommand("watchlist", "Xem watchlist"),
-                    BotCommand("balance",   "Xem balance [EXCHANGE] [ASSET]"),
-                    BotCommand("grade",     "Chấm điểm lệnh (Bar Replay)"),
+                    BotCommand("balance", "Xem balance [EXCHANGE] [ASSET]"),
+                    BotCommand("grade", "Chấm điểm lệnh (Bar Replay)"),
                     BotCommand("positions", "Vị thế mở + Unrealized P&L"),
-                    BotCommand("rag",       "Hỏi Minervini AI Knowledge Base"),
-                    BotCommand("trades",    "Lịch sử giao dịch [N]"),
-                    BotCommand("report",    "Báo cáo ngày [YYYY-MM-DD]"),
-                    BotCommand("login",     "Đăng nhập Dashboard"),
-                    BotCommand("logout",    "Huỷ phiên Dashboard"),
+                    BotCommand("rag", "Hỏi Minervini AI Knowledge Base"),
+                    BotCommand("trades", "Lịch sử giao dịch [N]"),
+                    BotCommand("report", "Báo cáo ngày [YYYY-MM-DD]"),
+                    BotCommand("login", "Đăng nhập Dashboard"),
+                    BotCommand("logout", "Huỷ phiên Dashboard"),
                 ]
                 await application.bot.set_my_commands(commands)
 
@@ -3100,39 +3653,52 @@ def start_bot():
                     _report_auto_send_task = asyncio.create_task(
                         _report_auto_send_loop(), name="report-auto-send"
                     )
-                    log.info(f"📊 ReportAutoSend scheduler started (time={config.REPORT_SEND_TIME} ICT)")
-            
+                    log.info(
+                        f"📊 ReportAutoSend scheduler started (time={config.REPORT_SEND_TIME} ICT)"
+                    )
+
             app.post_init = post_init
 
             # Register command handlers
-            app.add_handler(CommandHandler("start",     cmd_start))
-            app.add_handler(CommandHandler("help",      cmd_help))
-            app.add_handler(CommandHandler("status",    cmd_status))
+            app.add_handler(CommandHandler("start", cmd_start))
+            app.add_handler(CommandHandler("help", cmd_help))
+            app.add_handler(CommandHandler("status", cmd_status))
             app.add_handler(CommandHandler("watchlist", cmd_watchlist))
-            app.add_handler(CommandHandler("add",       cmd_add))
-            app.add_handler(CommandHandler("remove",    cmd_remove))
-            app.add_handler(CommandHandler("scan",      cmd_scan_enhanced))  # P8: replaces cmd_scan
-            app.add_handler(CommandHandler("scan_all",  cmd_scan_all))
-            app.add_handler(CommandHandler("scan_mtf",  cmd_scan_mtf))
+            app.add_handler(CommandHandler("add", cmd_add))
+            app.add_handler(CommandHandler("remove", cmd_remove))
+            app.add_handler(
+                CommandHandler("scan", cmd_scan_enhanced)
+            )  # P8: replaces cmd_scan
+            app.add_handler(CommandHandler("scan_all", cmd_scan_all))
+            app.add_handler(CommandHandler("scan_mtf", cmd_scan_mtf))
             app.add_handler(CommandHandler("recommend", cmd_recommend))
-            app.add_handler(CommandHandler("brief",     cmd_brief))
-            app.add_handler(CommandHandler("vision",    cmd_vision))
-            app.add_handler(CommandHandler("grade",     cmd_grade))
-            app.add_handler(CommandHandler("balance",   cmd_balance_enhanced))  # P8: replaces cmd_balance
+            app.add_handler(CommandHandler("brief", cmd_brief))
+            app.add_handler(CommandHandler("vision", cmd_vision))
+            app.add_handler(CommandHandler("grade", cmd_grade))
+            app.add_handler(
+                CommandHandler("balance", cmd_balance_enhanced)
+            )  # P8: replaces cmd_balance
             # ── P8 new commands ──────────────────────────────────────
             app.add_handler(CommandHandler("positions", cmd_positions))
-            app.add_handler(CommandHandler("rag",       cmd_rag))
-            app.add_handler(CommandHandler("trades",    cmd_trades))
-            app.add_handler(CommandHandler("stats",     cmd_stats))      # Phase 3: mode breakdown
-            app.add_handler(CommandHandler("backtest",  cmd_backtest))   # Phase 3: visual chart
-            app.add_handler(CommandHandler("report",    cmd_report))
+            app.add_handler(CommandHandler("rag", cmd_rag))
+            app.add_handler(CommandHandler("trades", cmd_trades))
+            app.add_handler(
+                CommandHandler("stats", cmd_stats)
+            )  # Phase 3: mode breakdown
+            app.add_handler(
+                CommandHandler("backtest", cmd_backtest)
+            )  # Phase 3: visual chart
+            app.add_handler(CommandHandler("report", cmd_report))
 
             # ── P10: Dashboard auth commands ─────────────────────────────
-            app.add_handler(CommandHandler("login",     cmd_login))
-            app.add_handler(CommandHandler("logout",    cmd_logout))
+            app.add_handler(CommandHandler("login", cmd_login))
+            app.add_handler(CommandHandler("logout", cmd_logout))
 
             from telegram.ext import MessageHandler, filters
-            app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_text))
+
+            app.add_handler(
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_menu_text)
+            )
 
             app.add_handler(CallbackQueryHandler(button_callback))
 
@@ -3147,14 +3713,22 @@ def start_bot():
                 except Exception:
                     pass
 
-        _bot_thread = threading.Thread(target=_run_bot, daemon=True, name="telegram-bot")
+        _bot_thread = threading.Thread(
+            target=_run_bot, daemon=True, name="telegram-bot"
+        )
         _bot_thread.start()
         log.info("🤖 Telegram Bot thread launched")
 
 
 def stop_bot():
     """Stop Telegram bot gracefully."""
-    global _bot_app, _bot_thread, _bot_loop, _position_monitor, _approval_timeout_mgr, _report_auto_send_task
+    global \
+        _bot_app, \
+        _bot_thread, \
+        _bot_loop, \
+        _position_monitor, \
+        _approval_timeout_mgr, \
+        _report_auto_send_task
     if _bot_app is not None:
         log.info("🤖 Telegram Bot stopping...")
         try:
@@ -3174,7 +3748,10 @@ def stop_bot():
 
             if _approval_timeout_mgr is not None:
                 _approval_timeout_mgr._running = False
-                if _approval_timeout_mgr._task and not _approval_timeout_mgr._task.done():
+                if (
+                    _approval_timeout_mgr._task
+                    and not _approval_timeout_mgr._task.done()
+                ):
                     _approval_timeout_mgr._task.cancel()
                 _approval_timeout_mgr = None
 
@@ -3188,12 +3765,16 @@ def stop_bot():
             if _bot_loop is not None:
                 if _bot_loop.is_running():
                     log.info("🤖 Stopping bot using original event loop (running)...")
-                    fut_updater = asyncio.run_coroutine_threadsafe(_bot_app.updater.stop(), _bot_loop)
+                    fut_updater = asyncio.run_coroutine_threadsafe(
+                        _bot_app.updater.stop(), _bot_loop
+                    )
                     try:
                         fut_updater.result(timeout=10)
                     except Exception as e:
                         log.warning(f"🤖 Updater stop error: {e}")
-                    fut_app = asyncio.run_coroutine_threadsafe(_bot_app.stop(), _bot_loop)
+                    fut_app = asyncio.run_coroutine_threadsafe(
+                        _bot_app.stop(), _bot_loop
+                    )
                     try:
                         fut_app.result(timeout=10)
                     except Exception as e:
@@ -3206,7 +3787,9 @@ def stop_bot():
                     except Exception as e:
                         log.warning(f"🤖 App stop error (idle loop): {e}")
                 else:
-                    log.warning("🤖 Original event loop is closed. Falling back to new loop stop...")
+                    log.warning(
+                        "🤖 Original event loop is closed. Falling back to new loop stop..."
+                    )
                     loop = asyncio.new_event_loop()
                     try:
                         loop.run_until_complete(_bot_app.updater.stop())
@@ -3214,7 +3797,9 @@ def stop_bot():
                     finally:
                         loop.close()
             else:
-                log.warning("🤖 Original bot event loop not found. Falling back to new loop stop...")
+                log.warning(
+                    "🤖 Original bot event loop not found. Falling back to new loop stop..."
+                )
                 loop = asyncio.new_event_loop()
                 try:
                     loop.run_until_complete(_bot_app.updater.stop())

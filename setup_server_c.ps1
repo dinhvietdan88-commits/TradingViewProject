@@ -41,7 +41,7 @@ function Prompt-Var ($VarName, $PromptText, $DefaultValue) {
     if (-not [string]::IsNullOrEmpty($currentVal)) {
         $DefaultValue = $currentVal
     }
-    
+
     $inputVal = Read-Host "$PromptText (Mặc định: $DefaultValue)"
     if ([string]::IsNullOrEmpty($inputVal)) {
         $inputVal = $DefaultValue

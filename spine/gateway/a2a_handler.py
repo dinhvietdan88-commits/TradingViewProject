@@ -34,8 +34,10 @@ from typing import Optional
 # Task State Machine
 # ---------------------------------------------------------------------------
 
+
 class TaskState(Enum):
     """A2A-compliant task states."""
+
     SUBMITTED = "submitted"
     WORKING = "working"
     INPUT_REQUIRED = "input-required"
@@ -58,13 +60,14 @@ class TaskStatus:
             "id": self.task_id,
             "state": self.state.value,
             "message": self.message,
-            "timestamp": self.timestamp
+            "timestamp": self.timestamp,
         }
 
 
 # ---------------------------------------------------------------------------
 # In-Memory Task Store (Sovereign — no external dependency)
 # ---------------------------------------------------------------------------
+
 
 class TaskStore:
     """
@@ -93,7 +96,7 @@ class TaskStore:
                 "payload": payload,
                 "status": TaskStatus(task_id, TaskState.SUBMITTED).to_dict(),
                 "result": None,
-                "created_at": time.time()
+                "created_at": time.time(),
             }
             self._tasks[task_id] = task
             return task
@@ -103,7 +106,9 @@ class TaskStore:
         with self._lock:
             return self._tasks.get(task_id)
 
-    def update_status(self, task_id: str, state: TaskState, message: str = "", result: dict = None):
+    def update_status(
+        self, task_id: str, state: TaskState, message: str = "", result: dict = None
+    ):
         """Update task status."""
         with self._lock:
             task = self._tasks.get(task_id)
@@ -119,9 +124,15 @@ class TaskStore:
             if not task:
                 return False
             current_state = task["status"].get("state", "")
-            if current_state in (TaskState.COMPLETED.value, TaskState.FAILED.value, TaskState.CANCELED.value):
+            if current_state in (
+                TaskState.COMPLETED.value,
+                TaskState.FAILED.value,
+                TaskState.CANCELED.value,
+            ):
                 return False
-            task["status"] = TaskStatus(task_id, TaskState.CANCELED, "Canceled by external request").to_dict()
+            task["status"] = TaskStatus(
+                task_id, TaskState.CANCELED, "Canceled by external request"
+            ).to_dict()
             return True
 
     def _evict_completed(self):
@@ -129,20 +140,22 @@ class TaskStore:
         completed = [
             (tid, t["created_at"])
             for tid, t in self._tasks.items()
-            if t["status"].get("state") in (
+            if t["status"].get("state")
+            in (
                 TaskState.COMPLETED.value,
                 TaskState.FAILED.value,
-                TaskState.CANCELED.value
+                TaskState.CANCELED.value,
             )
         ]
         completed.sort(key=lambda x: x[1])
-        for tid, _ in completed[:max(1, len(completed) // 2)]:
+        for tid, _ in completed[: max(1, len(completed) // 2)]:
             del self._tasks[tid]
 
 
 # ---------------------------------------------------------------------------
 # Skill Dispatchers (Route A2A tasks to Angati capabilities)
 # ---------------------------------------------------------------------------
+
 
 def _dispatch_webhook_signal(payload: dict) -> dict:
     """
@@ -157,7 +170,10 @@ def _dispatch_webhook_signal(payload: dict) -> dict:
     if not symbol:
         return {"error": "Missing required field: symbol", "code": "INVALID_INPUT"}
     if not indicator_name:
-        return {"error": "Missing required field: indicator_name", "code": "INVALID_INPUT"}
+        return {
+            "error": "Missing required field: indicator_name",
+            "code": "INVALID_INPUT",
+        }
 
     # Simulate signal processing (in production: POST to internal /webhook)
     return {
@@ -165,7 +181,7 @@ def _dispatch_webhook_signal(payload: dict) -> dict:
         "symbol": symbol,
         "indicator_name": indicator_name,
         "action": "Signal received and queued for processing",
-        "note": "V10 A2A bridge — full integration requires FastAPI webhook routing"
+        "note": "V10 A2A bridge — full integration requires FastAPI webhook routing",
     }
 
 
@@ -185,6 +201,7 @@ def _dispatch_scar_query(payload: dict) -> dict:
     try:
         import sys
         from pathlib import Path
+
         agents_root = Path(__file__).resolve().parent.parent.parent
         sys.path.insert(0, str(agents_root / "nerves" / "core"))
         import core_scar_memory as scar_memory
@@ -194,7 +211,7 @@ def _dispatch_scar_query(payload: dict) -> dict:
             "status": "success",
             "query": query,
             "results": results if results else [],
-            "source": "chromadb_local"
+            "source": "chromadb_local",
         }
     except Exception as e:
         return {
@@ -202,21 +219,28 @@ def _dispatch_scar_query(payload: dict) -> dict:
             "query": query,
             "results": [],
             "error": f"Scar memory unavailable: {e}",
-            "source": "none"
+            "source": "none",
         }
 
 
 SKILL_DISPATCHERS = {
     "webhook-signal-processor": _dispatch_webhook_signal,
-    "trade-executor": lambda p: {"error": "Trade executor requires human approval", "code": "INPUT_REQUIRED"},
+    "trade-executor": lambda p: {
+        "error": "Trade executor requires human approval",
+        "code": "INPUT_REQUIRED",
+    },
     "scar-memory-query": _dispatch_scar_query,
-    "indicator-dashboard": lambda p: {"error": "Dashboard is read-only via HTTP GET", "code": "METHOD_NOT_ALLOWED"},
+    "indicator-dashboard": lambda p: {
+        "error": "Dashboard is read-only via HTTP GET",
+        "code": "METHOD_NOT_ALLOWED",
+    },
 }
 
 
 # ---------------------------------------------------------------------------
 # JSON-RPC 2.0 A2A Handler
 # ---------------------------------------------------------------------------
+
 
 class A2AHandler:
     """
@@ -272,13 +296,16 @@ class A2AHandler:
         payload = params.get("payload", {})
 
         if not skill_id:
-            return self._error_response(req_id, -32602, "Missing required param: skill_id")
+            return self._error_response(
+                req_id, -32602, "Missing required param: skill_id"
+            )
 
         dispatcher = SKILL_DISPATCHERS.get(skill_id)
         if not dispatcher:
             return self._error_response(
-                req_id, -32602,
-                f"Unknown skill: {skill_id}. Available: {list(SKILL_DISPATCHERS.keys())}"
+                req_id,
+                -32602,
+                f"Unknown skill: {skill_id}. Available: {list(SKILL_DISPATCHERS.keys())}",
             )
 
         # Create task
@@ -317,7 +344,9 @@ class A2AHandler:
         """Handle tasks/get — retrieve task status."""
         task_id = params.get("task_id", "")
         if not task_id:
-            return self._error_response(req_id, -32602, "Missing required param: task_id")
+            return self._error_response(
+                req_id, -32602, "Missing required param: task_id"
+            )
 
         task = self.task_store.get(task_id)
         if not task:
@@ -329,13 +358,16 @@ class A2AHandler:
         """Handle tasks/cancel — cancel a pending/working task."""
         task_id = params.get("task_id", "")
         if not task_id:
-            return self._error_response(req_id, -32602, "Missing required param: task_id")
+            return self._error_response(
+                req_id, -32602, "Missing required param: task_id"
+            )
 
         success = self.task_store.cancel(task_id)
         if not success:
             return self._error_response(
-                req_id, -32602,
-                f"Cannot cancel task {task_id}: not found or already terminal"
+                req_id,
+                -32602,
+                f"Cannot cancel task {task_id}: not found or already terminal",
             )
 
         task = self.task_store.get(task_id)
@@ -347,7 +379,11 @@ class A2AHandler:
 
     @staticmethod
     def _error_response(req_id, code: int, message: str) -> dict:
-        return {"jsonrpc": "2.0", "id": req_id, "error": {"code": code, "message": message}}
+        return {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "error": {"code": code, "message": message},
+        }
 
 
 # ---------------------------------------------------------------------------

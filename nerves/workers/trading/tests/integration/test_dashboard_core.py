@@ -2,6 +2,7 @@
 Integration tests: test_dashboard_core.py
 Tests the specific API endpoints utilized by dashboard-core.js.
 """
+
 import pytest
 from unittest.mock import patch
 

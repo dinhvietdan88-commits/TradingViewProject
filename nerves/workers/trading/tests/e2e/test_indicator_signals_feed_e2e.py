@@ -6,6 +6,7 @@ Covers:
 3. Query API endpoints (GET /api/indicator-signals and GET /api/indicator-signals/stats).
 4. Watchlist management API (GET, POST, DELETE /api/watchlist, PUT /api/watchlist/sync).
 """
+
 import sys
 from pathlib import Path
 
@@ -20,18 +21,16 @@ if str(trading_dir) not in sys.path:
     sys.path.insert(0, str(trading_dir))
 
 import pytest
-import os
-import json
 import asyncio
 from unittest.mock import AsyncMock
 
 # Explicitly import persistence module to register the EventBus handler in tests
-import data.indicator_persistence
+
 
 @pytest.mark.asyncio
 async def test_indicator_signal_feed_full_e2e(client, mocker):
     # Mock EventBus notify/telegram calls if they do background calls
-    mocker.patch('main.notifier.notify_all', return_value=True)
+    mocker.patch("main.notifier.notify_all", return_value=True)
 
     # 1. Post a valid indicator signal with ATR risk metadata
     payload = {
@@ -47,7 +46,7 @@ async def test_indicator_signal_feed_full_e2e(client, mocker):
         "price": 68000.0,
         "exchange": "binance",
     }
-    
+
     response = await client.post("/webhook", json=payload)
     assert response.status_code == 200
     data = response.json()
@@ -58,6 +57,7 @@ async def test_indicator_signal_feed_full_e2e(client, mocker):
 
     # Await all background tasks on the bus to ensure persistence is complete
     from core.event_bus import bus as _event_bus
+
     if _event_bus._background_tasks:
         await asyncio.gather(*list(_event_bus._background_tasks))
 
@@ -66,7 +66,7 @@ async def test_indicator_signal_feed_full_e2e(client, mocker):
     assert query_resp.status_code == 200
     query_data = query_resp.json()
     assert query_data["total"] >= 1
-    
+
     # Verify properties of the received signal
     signal = query_data["signals"][0]
     assert signal["symbol"] == "BTCUSDT"
@@ -105,11 +105,15 @@ async def test_indicator_signal_feed_full_e2e(client, mocker):
     assert stats_eth.json()["total"] == 0
 
     # Test filtering stats by indicator_name
-    stats_ind = await client.get("/api/indicator-signals/stats?indicator_name=SuperTrend")
+    stats_ind = await client.get(
+        "/api/indicator-signals/stats?indicator_name=SuperTrend"
+    )
     assert stats_ind.status_code == 200
     assert stats_ind.json()["total"] >= 1
 
-    stats_ind_none = await client.get("/api/indicator-signals/stats?indicator_name=NonExistent")
+    stats_ind_none = await client.get(
+        "/api/indicator-signals/stats?indicator_name=NonExistent"
+    )
     assert stats_ind_none.status_code == 200
     assert stats_ind_none.json()["total"] == 0
 
@@ -143,7 +147,8 @@ async def test_indicator_signal_validation_e2e(client):
 async def test_watchlist_crud_e2e(client, mocker, tmp_path):
     # Set path of watchlist to a temp path to isolate test
     import watchlist
-    mocker.patch.object(watchlist, '_WATCHLIST_FILE', tmp_path / "watchlist.json")
+
+    mocker.patch.object(watchlist, "_WATCHLIST_FILE", tmp_path / "watchlist.json")
 
     # 1. Fetch initial watchlist (should be default)
     get_resp = await client.get("/api/watchlist")
@@ -166,13 +171,14 @@ async def test_watchlist_crud_e2e(client, mocker, tmp_path):
     assert "DOGEUSDT" not in del_data["watchlist"]
 
     # 4. Sync from TradingView (mock MCP response)
-    mock_mcp = mocker.patch('mcp_client.get_mcp_client')
+    mock_mcp = mocker.patch("mcp_client.get_mcp_client")
     mock_client = AsyncMock()
     mock_client._run.return_value = ["ETHUSDT", "ADAUSDT"]
     mock_mcp.return_value = mock_client
 
     # Set MCP_ENABLED temporarily to True for the endpoint to allow sync
     import config
+
     original_mcp_enabled = config.MCP_ENABLED
     try:
         config.MCP_ENABLED = True

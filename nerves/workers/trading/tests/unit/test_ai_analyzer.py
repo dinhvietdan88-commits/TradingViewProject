@@ -10,12 +10,16 @@ Tests verify:
 v6.0: AIAnalyzer no longer imports notifier — all notifications
       are delegated to NotificationHub via events.
 """
+
 import pytest
 from unittest.mock import AsyncMock, patch
 
 from core.event_bus import EventBus
 from core.events import (
-    SignalReceived, AlertTriggered, AnalysisComplete, SignalValidated,
+    SignalReceived,
+    AlertTriggered,
+    AnalysisComplete,
+    SignalValidated,
 )
 
 
@@ -23,10 +27,11 @@ from core.events import (
 # AI ANALYZER TESTS
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_cooldown_rejects_duplicate():
     """A second capture within COOLDOWN_SEC should be silently rejected."""
-    from analyzer.ai_analyzer import process_alert, set_bus, reset_capture_state, LAST_CAPTURE_TIME
+    from analyzer.ai_analyzer import set_bus, reset_capture_state, LAST_CAPTURE_TIME
     import time
 
     test_bus = EventBus()
@@ -49,8 +54,11 @@ async def test_cooldown_rejects_duplicate():
         from analyzer.ai_analyzer import process_validated_signal
 
         event = SignalValidated(
-            signal_id=200, symbol="BTCUSDT", action="alert",
-            price=68000.0, quote_qty=50.0,
+            signal_id=200,
+            symbol="BTCUSDT",
+            action="alert",
+            price=68000.0,
+            quote_qty=50.0,
         )
         await process_validated_signal(event)
 
@@ -58,6 +66,7 @@ async def test_cooldown_rejects_duplicate():
         assert len(events_emitted) == 0
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         reset_capture_state()
 
@@ -65,7 +74,11 @@ async def test_cooldown_rejects_duplicate():
 @pytest.mark.asyncio
 async def test_signal_processor_emits_alert_triggered():
     """SignalProcessor should emit AlertTriggered for action='alert'."""
-    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus as sp_set_bus
+    from processor.signal_processor import (
+        process_signal,
+        reset_dedup_cache,
+        set_bus as sp_set_bus,
+    )
 
     test_bus = EventBus()
     sp_set_bus(test_bus)
@@ -79,8 +92,11 @@ async def test_signal_processor_emits_alert_triggered():
 
     try:
         event = SignalReceived(
-            signal_id=201, symbol="ETHUSDT", action="alert",
-            price=3500.0, quote_qty=50.0,
+            signal_id=201,
+            symbol="ETHUSDT",
+            action="alert",
+            price=3500.0,
+            quote_qty=50.0,
         )
         await process_signal(event)
 
@@ -89,6 +105,7 @@ async def test_signal_processor_emits_alert_triggered():
         assert alert_events[0].signal_id == 201
     finally:
         from core.event_bus import bus as default_bus
+
         sp_set_bus(default_bus)
         reset_dedup_cache()
 
@@ -101,7 +118,11 @@ async def test_high_confidence_triggers_trade():
     v6.0: Vision confidence is used directly (1-10 scale).
     A vision confidence of 9 → should_trade=True, interactive_required=False.
     """
-    from analyzer.ai_analyzer import process_validated_signal, set_bus, reset_capture_state
+    from analyzer.ai_analyzer import (
+        process_validated_signal,
+        set_bus,
+        reset_capture_state,
+    )
     from pathlib import Path
 
     test_bus = EventBus()
@@ -124,11 +145,12 @@ async def test_high_confidence_triggers_trade():
             "error": None,
         }
 
-        with patch("analyzer.ai_analyzer.config") as mock_config, \
-             patch("analyzer.ai_analyzer.database") as mock_db, \
-             patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory, \
-             patch("analyzer.ai_analyzer.vision_module") as mock_vision:
-
+        with (
+            patch("analyzer.ai_analyzer.config") as mock_config,
+            patch("analyzer.ai_analyzer.database") as mock_db,
+            patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory,
+            patch("analyzer.ai_analyzer.vision_module") as mock_vision,
+        ):
             # Config
             mock_config.MCP_ENABLED = True
             mock_config.RAG_ENABLED = False
@@ -138,18 +160,26 @@ async def test_high_confidence_triggers_trade():
             mock_mcp.health_check = AsyncMock(return_value={"connected": True})
             mock_screenshot_path = Path(__file__).parent / "fake_screenshot.png"
             mock_screenshot_path.touch()  # Create a temp file
-            mock_mcp.capture_screenshot = AsyncMock(return_value=str(mock_screenshot_path))
+            mock_mcp.capture_screenshot = AsyncMock(
+                return_value=str(mock_screenshot_path)
+            )
             mock_mcp_factory.return_value = mock_mcp
 
             # Vision
-            mock_vision.analyze_chart_vision = AsyncMock(return_value=mock_vision_result)
+            mock_vision.analyze_chart_vision = AsyncMock(
+                return_value=mock_vision_result
+            )
             mock_vision.format_vision_telegram.return_value = "Vision text"
 
             # DB
             mock_db.insert_brief = AsyncMock(return_value=1)
 
             event = SignalValidated(
-                signal_id=202, symbol="BTCUSDT", action="buy", price=68000.0, quote_qty=50.0,
+                signal_id=202,
+                symbol="BTCUSDT",
+                action="buy",
+                price=68000.0,
+                quote_qty=50.0,
             )
             await process_validated_signal(event)
 
@@ -164,5 +194,6 @@ async def test_high_confidence_triggers_trade():
             mock_screenshot_path.unlink(missing_ok=True)
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         reset_capture_state()

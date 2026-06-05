@@ -2,7 +2,9 @@
 Integration tests: test_stats.py
 Tests the KPI stats endpoint to verify correct win rate and total P&L.
 """
+
 import pytest
+
 
 @pytest.mark.asyncio
 async def test_get_stats_empty(client):
@@ -11,6 +13,7 @@ async def test_get_stats_empty(client):
     data = response.json()
     assert data["total_trades"] == 0
     assert data["win_rate"] == 0.0
+
 
 @pytest.mark.asyncio
 async def test_get_stats_with_data(client_with_trades):

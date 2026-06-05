@@ -11,8 +11,13 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 
-from security import Finding, Severity, FindingStatus, SecurityReport
-from security.scanners import trading_rules, static_scanner, dependency_scanner, secret_scanner
+from security import Finding, Severity, SecurityReport
+from security.scanners import (
+    trading_rules,
+    static_scanner,
+    dependency_scanner,
+    secret_scanner,
+)
 
 
 log = logging.getLogger("security.harness")
@@ -67,8 +72,12 @@ class SecurityHarness:
         """Filter out excluded rules."""
         if self.exclude_rules:
             before = len(self._findings)
-            self._findings = [f for f in self._findings if f.rule_id not in self.exclude_rules]
-            log.info(f"[FILTER] Excluded {before - len(self._findings)} findings by rule filter")
+            self._findings = [
+                f for f in self._findings if f.rule_id not in self.exclude_rules
+            ]
+            log.info(
+                f"[FILTER] Excluded {before - len(self._findings)} findings by rule filter"
+            )
         return self
 
     def build_report(self) -> SecurityReport:
@@ -98,9 +107,13 @@ class SecurityHarness:
             findings=self._findings,
             summary={
                 "total_findings": len(self._findings),
-                "critical": sum(1 for f in self._findings if f.severity == Severity.CRITICAL),
+                "critical": sum(
+                    1 for f in self._findings if f.severity == Severity.CRITICAL
+                ),
                 "high": sum(1 for f in self._findings if f.severity == Severity.HIGH),
-                "medium": sum(1 for f in self._findings if f.severity == Severity.MEDIUM),
+                "medium": sum(
+                    1 for f in self._findings if f.severity == Severity.MEDIUM
+                ),
                 "low": sum(1 for f in self._findings if f.severity == Severity.LOW),
                 "info": sum(1 for f in self._findings if f.severity == Severity.INFO),
                 "scanners_used": list({f.scanner for f in self._findings}),

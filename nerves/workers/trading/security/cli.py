@@ -24,10 +24,15 @@ from pathlib import Path
 def main():
     # Fix Windows cp1252 encoding for emoji in report output
     import io
-    if sys.stdout and hasattr(sys.stdout, 'buffer'):
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    if sys.stderr and hasattr(sys.stderr, 'buffer'):
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+    if sys.stdout and hasattr(sys.stdout, "buffer"):
+        sys.stdout = io.TextIOWrapper(
+            sys.stdout.buffer, encoding="utf-8", errors="replace"
+        )
+    if sys.stderr and hasattr(sys.stderr, "buffer"):
+        sys.stderr = io.TextIOWrapper(
+            sys.stderr.buffer, encoding="utf-8", errors="replace"
+        )
 
     parser = argparse.ArgumentParser(
         prog="mini-mdash",
@@ -38,18 +43,21 @@ def main():
     # scan command
     scan_parser = subparsers.add_parser("scan", help="Run security scan")
     scan_parser.add_argument(
-        "--target", "-t",
+        "--target",
+        "-t",
         default=".",
         help="Target directory to scan (default: current directory)",
     )
     scan_parser.add_argument(
-        "--format", "-f",
+        "--format",
+        "-f",
         choices=["markdown", "json", "telegram"],
         default="markdown",
         help="Output format (default: markdown)",
     )
     scan_parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         default=None,
         help="Output file path (default: stdout)",
     )
@@ -70,7 +78,8 @@ def main():
         help="Comma-separated rule IDs to exclude (e.g., TVP-006,STA-004)",
     )
     scan_parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Verbose logging",
     )
@@ -102,7 +111,11 @@ def _run_scan(args):
         sys.exit(2)
 
     # Parse excluded rules
-    exclude = [r.strip() for r in args.exclude.split(",") if r.strip()] if args.exclude else []
+    exclude = (
+        [r.strip() for r in args.exclude.split(",") if r.strip()]
+        if args.exclude
+        else []
+    )
 
     # Import here to avoid circular imports at CLI parse time
     from security.harness import SecurityHarness
@@ -131,6 +144,7 @@ def _run_scan(args):
     # CI exit code
     if args.ci:
         from security import Severity
+
         threshold_map = {
             "critical": Severity.CRITICAL,
             "high": Severity.HIGH,
@@ -139,13 +153,17 @@ def _run_scan(args):
         }
         threshold = threshold_map[args.fail_on]
         severity_rank = {
-            Severity.CRITICAL: 0, Severity.HIGH: 1,
-            Severity.MEDIUM: 2, Severity.LOW: 3, Severity.INFO: 4,
+            Severity.CRITICAL: 0,
+            Severity.HIGH: 1,
+            Severity.MEDIUM: 2,
+            Severity.LOW: 3,
+            Severity.INFO: 4,
         }
         threshold_rank = severity_rank[threshold]
 
         failing = [
-            f for f in security_report.findings
+            f
+            for f in security_report.findings
             if severity_rank.get(f.severity, 99) <= threshold_rank
         ]
         if failing:
@@ -155,7 +173,10 @@ def _run_scan(args):
             )
             sys.exit(1)
         else:
-            print(f"\nCI PASS: No findings at or above {args.fail_on} severity", file=sys.stderr)
+            print(
+                f"\nCI PASS: No findings at or above {args.fail_on} severity",
+                file=sys.stderr,
+            )
             sys.exit(0)
 
 

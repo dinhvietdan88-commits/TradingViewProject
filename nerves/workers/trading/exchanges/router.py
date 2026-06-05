@@ -4,6 +4,7 @@ import json
 from .base import ExchangeAdapter, ExchangeUnavailableError
 from .registry import ExchangeRegistry
 
+
 class ExchangeRouter:
     """Routes trade signals to the appropriate exchange adapter."""
 
@@ -51,12 +52,15 @@ class ExchangeRouter:
             return fallback.lower() if fallback else None
         return None
 
+
 # Singleton initialization
 _router: Optional[ExchangeRouter] = None
+
 
 def get_router() -> ExchangeRouter:
     from .registry import get_registry
     import config
+
     global _router
     if _router is None:
         try:

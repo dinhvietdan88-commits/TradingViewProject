@@ -240,7 +240,7 @@ function renderAnalysisTable(trades, total, limit, offset) {
       <td style="color:${pnl >= 0 ? 'var(--buy)' : 'var(--sell)'}; font-family:var(--mono)">${pnl !== null && pnl !== undefined ? (pnl >= 0 ? '+' : '') + pnl.toFixed(2) : '—'}</td>
       <td><span class="badge ${status === 'FILLED' ? 'badge-ok' : status === 'REJECTED' ? 'badge-fail' : 'badge-warn'}">${status}</span></td>
       <td>
-        <button class="qbtn btn-sm-3" style="padding: 2px 6px; font-size: 0.72rem;" 
+        <button class="qbtn btn-sm-3" style="padding: 2px 6px; font-size: 0.72rem;"
                 onclick="openInVisualizer({
                   direction: '${side === 'BUY' ? 'long' : 'short'}',
                   entryPrice: ${t.executed_price || 0},

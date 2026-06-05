@@ -3,12 +3,14 @@ Tests for get_stats_by_mode() in data/query_service.py.
 
 Strategy: use aiosqlite in-memory DB (":memory:") to avoid filesystem dependencies.
 """
+
 import pytest
 import aiosqlite
 from unittest.mock import patch, AsyncMock
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
+
 
 async def _make_db():
     """Return an in-memory aiosqlite connection with signals + trades schema."""
@@ -38,9 +40,7 @@ async def _make_db():
 async def _seed(db, rows):
     """Insert (signal_mode, trade_pnl, trade_status) tuples."""
     for i, (mode, pnl, status) in enumerate(rows, start=1):
-        await db.execute(
-            "INSERT INTO signals (id, mode) VALUES (?, ?)", (i, mode)
-        )
+        await db.execute("INSERT INTO signals (id, mode) VALUES (?, ?)", (i, mode))
         await db.execute(
             "INSERT INTO trades (id, signal_id, status, pnl, order_id, exchange) VALUES (?, ?, ?, ?, ?, ?)",
             (i, i, status, pnl, f"10000{i}", "binance"),
@@ -49,6 +49,7 @@ async def _seed(db, rows):
 
 
 # ── Tests ──────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_get_stats_by_mode_empty():
@@ -81,12 +82,15 @@ async def test_get_stats_by_mode_groups_correctly():
 
     db = await _make_db()
     # 2 MTT wins, 1 MTT loss; 1 MIS win
-    await _seed(db, [
-        ("MTT", +10.0, "FILLED"),
-        ("MTT", +20.0, "FILLED"),
-        ("MTT", -5.0,  "FILLED"),
-        ("MIS", +15.0, "FILLED"),
-    ])
+    await _seed(
+        db,
+        [
+            ("MTT", +10.0, "FILLED"),
+            ("MTT", +20.0, "FILLED"),
+            ("MTT", -5.0, "FILLED"),
+            ("MIS", +15.0, "FILLED"),
+        ],
+    )
 
     with patch("data.query_service.aiosqlite.connect") as mock_connect:
         mock_ctx = AsyncMock()
@@ -126,11 +130,14 @@ async def test_get_stats_by_mode_unknown_mode_grouped_as_other():
 
     db = await _make_db()
     # NULL mode and empty string mode — both should land in OTHER
-    await _seed(db, [
-        (None,  +8.0, "FILLED"),  # NULL mode
-        ("",   -3.0,  "FILLED"),  # empty string mode
-        ("MTT", +5.0, "FILLED"),  # known mode — should NOT go to OTHER
-    ])
+    await _seed(
+        db,
+        [
+            (None, +8.0, "FILLED"),  # NULL mode
+            ("", -3.0, "FILLED"),  # empty string mode
+            ("MTT", +5.0, "FILLED"),  # known mode — should NOT go to OTHER
+        ],
+    )
 
     with patch("data.query_service.aiosqlite.connect") as mock_connect:
         mock_ctx = AsyncMock()
@@ -161,25 +168,25 @@ async def test_get_stats_by_mode_weex_dry_run_included():
     from data.query_service import get_stats_by_mode
 
     db = await _make_db()
-    
+
     await db.execute("INSERT INTO signals (id, mode) VALUES (1, 'MTT')")
     await db.execute("INSERT INTO signals (id, mode) VALUES (2, 'MTT')")
     await db.execute("INSERT INTO signals (id, mode) VALUES (3, 'MTT')")
-    
+
     # 1. Binance dry-run trade
     await db.execute(
         "INSERT INTO trades (id, signal_id, status, pnl, order_type, order_id, exchange) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (1, 1, "FILLED", 10.0, "DRY_RUN", "DRY-LIM-12345", "binance")
+        (1, 1, "FILLED", 10.0, "DRY_RUN", "DRY-LIM-12345", "binance"),
     )
     # 2. Weex dry-run trade
     await db.execute(
         "INSERT INTO trades (id, signal_id, status, pnl, order_type, order_id, exchange) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (2, 2, "FILLED", 20.0, "DRY_RUN", "DRY-WEX-54", "weex")
+        (2, 2, "FILLED", 20.0, "DRY_RUN", "DRY-WEX-54", "weex"),
     )
     # 3. Normal Binance trade
     await db.execute(
         "INSERT INTO trades (id, signal_id, status, pnl, order_type, order_id, exchange) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (3, 3, "FILLED", 30.0, "LIMIT", "REAL-12345", "binance")
+        (3, 3, "FILLED", 30.0, "LIMIT", "REAL-12345", "binance"),
     )
     await db.commit()
 
@@ -198,4 +205,3 @@ async def test_get_stats_by_mode_weex_dry_run_included():
     # Total should be 2: Weex dry-run (20.0) + Normal Binance (30.0)
     assert result["overall"]["total_trades"] == 2
     assert result["overall"]["total_pnl"] == pytest.approx(50.0)
-

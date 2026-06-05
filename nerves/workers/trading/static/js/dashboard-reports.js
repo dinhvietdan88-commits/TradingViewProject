@@ -106,11 +106,11 @@ function selectReport(id) {
   // Show header and iframe, hide empty state
   document.getElementById('repViewerHeader').classList.remove('d-none');
   document.getElementById('repEmptyState').classList.add('d-none');
-  
+
   const iframe = document.getElementById('repIframe');
   iframe.classList.remove('d-none');
   iframe.src = reportUrl;
-  
+
   if (typeof showToast === 'function') {
     showToast(`Đang tải báo cáo: ${report.title}...`, 'info');
   }
@@ -139,7 +139,7 @@ function refreshActiveReport() {
   window.switchTab = function(tab) {
     // Call original switchTab
     _orig.apply(this, arguments);
-    
+
     // If reports tab is clicked, initialize it
     if (tab === 'reports') {
       initReports();

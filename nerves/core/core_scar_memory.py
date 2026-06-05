@@ -24,13 +24,14 @@ Usage:
   python scar_memory.py sync-ltm
   python scar_memory.py test
 """
+
 import sys
 
 # Configure sys.stdout and sys.stderr to ignore encoding errors (SCAR-019)
-if sys.stdout.encoding != 'utf-8':
+if sys.stdout.encoding != "utf-8":
     try:
-        sys.stdout.reconfigure(encoding='utf-8', errors='ignore')
-        sys.stderr.reconfigure(encoding='utf-8', errors='ignore')
+        sys.stdout.reconfigure(encoding="utf-8", errors="ignore")
+        sys.stderr.reconfigure(encoding="utf-8", errors="ignore")
     except Exception:
         pass
 
@@ -47,19 +48,21 @@ AGENTS_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(AGENTS_ROOT / "tools"))
 
 # ── Dependencies ──────────────────────────────────────────────
-# Imports like qdrant_client and fastembed are deferred to runtime 
+# Imports like qdrant_client and fastembed are deferred to runtime
 # to avoid blocking orchestrator or codex_cli on boot / import time.
 import core_env_loader as env_loader  # noqa: E402 — must come after sys.path.insert
+
 env_loader.load()
 
 # ── Constants ─────────────────────────────────────────────────
 import os  # noqa: E402 — must come after env_loader.load() to get fresh env vars
+
 _tenant = os.environ.get("EAIS_TENANT_ID", "").strip().lower()
 COLLECTION_NAME = f"scar_memory_{_tenant}" if _tenant else "scar_memory"
 VECTOR_SIZE = 384  # bge-small-en-v1.5
 CONSULT_THRESHOLD = 0.80  # Lower than cache (0.92) — want broad recall
-DEDUP_THRESHOLD = 0.90    # High similarity = same scar, increment frequency
-CIRCUIT_BREAKER_MAX = 3   # Max identical failures within time window
+DEDUP_THRESHOLD = 0.90  # High similarity = same scar, increment frequency
+CIRCUIT_BREAKER_MAX = 3  # Max identical failures within time window
 CIRCUIT_BREAKER_WINDOW_HOURS = 1
 
 CONFIG_FILE = AGENTS_ROOT / "memory" / "qdrant_config.json"
@@ -70,16 +73,18 @@ CORE_STATE = AGENTS_ROOT / "cortex" / "state" / "core_state.yaml"
 # Lazy singletons
 _embedding_model = None
 _qdrant_client = None
-_l1_db = None   # L1 sqlite-vec (V2_brain.db)
-_l1_mm = None   # memory_manager module ref
+_l1_db = None  # L1 sqlite-vec (V2_brain.db)
+_l1_mm = None  # memory_manager module ref
 
 
 # ── Infrastructure ────────────────────────────────────────────
+
 
 def _get_embedding_model():
     global _embedding_model
     if _embedding_model is None:
         from fastembed import TextEmbedding
+
         _embedding_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5")
     return _embedding_model
 
@@ -106,9 +111,13 @@ def _get_client():
             # Stray SIGINT (inherited from PS terminal) fires during _path_stat in
             # frozen importlib while loading qdrant_client.http — not an install error.
             # Run via subprocess.run(capture_output=True) to reproduce clean import.
-            print(json.dumps({"error": "qdrant-client import failed (run isolated to retry)"}))
+            print(
+                json.dumps(
+                    {"error": "qdrant-client import failed (run isolated to retry)"}
+                )
+            )
             sys.exit(1)
-            
+
         config = _load_config()
         _qdrant_client = QdrantClient(
             url=config.get("qdrant_url", ""),
@@ -123,9 +132,13 @@ def _get_l1_db():
     return None
 
 
-def _scar_to_l1_text(failed_action: str, error_signature: str,
-                     recovery_action: str, prevention_rule: str,
-                     context: str) -> str:
+def _scar_to_l1_text(
+    failed_action: str,
+    error_signature: str,
+    recovery_action: str,
+    prevention_rule: str,
+    context: str,
+) -> str:
     """Encode scar as searchable text for L1 storage."""
     return (
         f"SCAR[{context}] "
@@ -138,8 +151,8 @@ def _scar_to_l1_text(failed_action: str, error_signature: str,
 def _parse_l1_result(r: dict) -> dict:
     """Parse L1 recall result back into scar-shaped dict."""
     text = r.get("text", "")
-    rule_match = re.search(r'RULE: (.+?)(?:\s*\|\s*RECOVERY|\s*$)', text)
-    err_match = re.search(r'FAILURE: (.+?)(?:\s*\|\s*RULE|\s*$)', text)
+    rule_match = re.search(r"RULE: (.+?)(?:\s*\|\s*RECOVERY|\s*$)", text)
+    err_match = re.search(r"FAILURE: (.+?)(?:\s*\|\s*RULE|\s*$)", text)
     prevention_rule = rule_match.group(1).strip() if rule_match else text[:150]
     error_sig = err_match.group(1).strip() if err_match else ""
     # Extract name/description from stored text if available
@@ -167,15 +180,22 @@ def _parse_l1_result(r: dict) -> dict:
 
 def _ensure_collection(client):
     from qdrant_client.models import VectorParams, Distance
+
     collections = [c.name for c in client.get_collections().collections]
     if COLLECTION_NAME not in collections:
         client.create_collection(
             collection_name=COLLECTION_NAME,
             vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE),
         )
-        client.create_payload_index(COLLECTION_NAME, field_name="severity", field_schema="keyword")
-        client.create_payload_index(COLLECTION_NAME, field_name="context", field_schema="keyword")
-        client.create_payload_index(COLLECTION_NAME, field_name="type", field_schema="keyword")
+        client.create_payload_index(
+            COLLECTION_NAME, field_name="severity", field_schema="keyword"
+        )
+        client.create_payload_index(
+            COLLECTION_NAME, field_name="context", field_schema="keyword"
+        )
+        client.create_payload_index(
+            COLLECTION_NAME, field_name="type", field_schema="keyword"
+        )
 
 
 def _content_hash(text: str) -> str:
@@ -198,6 +218,7 @@ def _severity_from_frequency(freq: int) -> str:
 
 # ── Core Operations ──────────────────────────────────────────
 
+
 def _get_angati_exe() -> str:
     """Dynamically resolve path to angati.exe binary."""
     angati_exe = AGENTS_ROOT / "angati.exe"
@@ -210,11 +231,18 @@ def _get_angati_exe() -> str:
     return str(angati_exe)
 
 
-def record_scar(failed_action: str = "", error_signature: str = "",
-                recovery_action: str = "", prevention_rule: str = "",
-                context: str = "", auto_extracted: bool = False,
-                name: str = "", description: str = "", type_val: str = "scar",
-                is_creative_innovation: bool = False) -> dict:
+def record_scar(
+    failed_action: str = "",
+    error_signature: str = "",
+    recovery_action: str = "",
+    prevention_rule: str = "",
+    context: str = "",
+    auto_extracted: bool = False,
+    name: str = "",
+    description: str = "",
+    type_val: str = "scar",
+    is_creative_innovation: bool = False,
+) -> dict:
     """
     Record a failure-recovery pattern as a "scar" or a generic Knowledge Item.
     Delegates to angati.exe scar record.
@@ -222,32 +250,52 @@ def record_scar(failed_action: str = "", error_signature: str = "",
     angati_exe = _get_angati_exe()
     import subprocess
     import json
-    
+
     _cmd = [
-        angati_exe, "scar", "record",
-        "--failed", failed_action,
-        "--error", error_signature,
-        "--recovery", recovery_action,
-        "--rule", prevention_rule,
-        "--context", context,
-        "--name", name,
-        "--desc", description
+        angati_exe,
+        "scar",
+        "record",
+        "--failed",
+        failed_action,
+        "--error",
+        error_signature,
+        "--recovery",
+        recovery_action,
+        "--rule",
+        prevention_rule,
+        "--context",
+        context,
+        "--name",
+        name,
+        "--desc",
+        description,
     ]
-    
+
     try:
-        res = subprocess.run(_cmd, capture_output=True, text=True,
-                             encoding="utf-8", errors="ignore", timeout=30)
+        res = subprocess.run(
+            _cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=30,
+        )
         if res.returncode == 0:
             try:
                 return json.loads(
-                    res.stdout.split('\n')[-2]
-                    if '\n' in res.stdout.strip() else res.stdout
+                    res.stdout.split("\n")[-2]
+                    if "\n" in res.stdout.strip()
+                    else res.stdout
                 )
             except Exception:
                 pass
         return {"status": "error", "error": res.stderr[:100], "severity": "low"}
     except subprocess.TimeoutExpired:
-        return {"status": "error", "error": "angati.exe record timed out", "severity": "low"}
+        return {
+            "status": "error",
+            "error": "angati.exe record timed out",
+            "severity": "low",
+        }
     except Exception as e:
         return {"status": "error", "error": str(e)[:100], "severity": "low"}
 
@@ -260,11 +308,15 @@ def consult(instruction: str, top_k: int = 5) -> list[dict]:
     angati_exe = _get_angati_exe()
     import subprocess
     import json
+
     try:
         res = subprocess.run(
             [angati_exe, "scar", "consult", "--instruction", instruction],
-            capture_output=True, text=True,
-            encoding="utf-8", errors="ignore", timeout=30
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=30,
         )
         if res.returncode == 0:
             return json.loads(res.stdout)
@@ -284,11 +336,15 @@ def circuit_breaker_check(action_signature: str) -> bool:
     angati_exe = _get_angati_exe()
     import subprocess
     import json
+
     try:
         res = subprocess.run(
             [angati_exe, "scar", "check", "--action", action_signature],
-            capture_output=True, text=True,
-            encoding="utf-8", errors="ignore", timeout=10
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=10,
         )
         if res.returncode == 0:
             data = json.loads(res.stdout)
@@ -305,11 +361,15 @@ def summary(top_k: int = 10) -> list[dict]:
     angati_exe = _get_angati_exe()
     import subprocess
     import json
+
     try:
         res = subprocess.run(
             [angati_exe, "scar", "summary"],
-            capture_output=True, text=True,
-            encoding="utf-8", errors="ignore", timeout=30
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=30,
         )
         if res.returncode == 0:
             results = json.loads(res.stdout)
@@ -327,7 +387,7 @@ def stats() -> dict:
     return {
         "total_scars": h.get("total_scars", 0),
         "severity": h.get("severity", {}),
-        "backend": "angati-daemon"
+        "backend": "angati-daemon",
     }
 
 
@@ -336,11 +396,15 @@ def health_check(l1_only: bool = False) -> dict:
     angati_exe = _get_angati_exe()
     import subprocess
     import json
+
     try:
         res = subprocess.run(
             [angati_exe, "scar", "health"],
-            capture_output=True, text=True,
-            encoding="utf-8", errors="ignore", timeout=15
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=15,
         )
         if res.returncode == 0:
             return json.loads(res.stdout)
@@ -358,6 +422,7 @@ def health_check(l1_only: bool = False) -> dict:
 
 
 # ── Trace Analyzer: FAILED→SUCCESS Pattern Detection ─────────
+
 
 def auto_extract_from_traces() -> dict:
     """
@@ -425,7 +490,8 @@ def auto_extract_from_traces() -> dict:
                 pattern = {
                     "agent": agent_id,
                     "failed_action": error_info[:200],
-                    "recovery": recovery_info[:200] or f"Succeeded with model={recovery_model}",
+                    "recovery": recovery_info[:200]
+                    or f"Succeeded with model={recovery_model}",
                     "rule": rule,
                 }
                 detected_patterns.append(pattern)
@@ -461,7 +527,9 @@ def auto_extract_from_traces() -> dict:
     }
 
 
-def _generate_prevention_rule(failed_ev: dict, success_ev: dict, error_info: str) -> str:
+def _generate_prevention_rule(
+    failed_ev: dict, success_ev: dict, error_info: str
+) -> str:
     """
     Generate a prevention rule by comparing failed vs success event metadata.
     Pure pattern matching — NO LLM call.
@@ -472,7 +540,9 @@ def _generate_prevention_rule(failed_ev: dict, success_ev: dict, error_info: str
     failed_model = failed_meta.get("model", "")
     success_model = success_meta.get("model", "")
 
-    rules: list[str] = []  # Collected candidate rules (currently unused — single-exit pattern)
+    rules: list[
+        str
+    ] = []  # Collected candidate rules (currently unused — single-exit pattern)
     _ = rules  # Suppress unused-variable lint until multi-rule collection is implemented
 
     # Pattern: wrong CLI flag
@@ -553,7 +623,7 @@ def _extract_repeated_failures_from_event_log() -> int:
     for sig, count in error_counts.items():
         if count >= CIRCUIT_BREAKER_MAX:
             event = error_examples[sig]
-            action = event.get('action', 'unknown')
+            action = event.get("action", "unknown")
             result = record_scar(
                 failed_action=sig,
                 error_signature=sig,
@@ -575,11 +645,15 @@ def check_duplicate(text: str) -> dict:
     angati_exe = _get_angati_exe()
     import subprocess
     import json
+
     try:
         res = subprocess.run(
             [angati_exe, "memory", "recall", text, "--json"],
-            capture_output=True, text=True,
-            encoding="utf-8", errors="ignore", timeout=15
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            timeout=15,
         )
         if res.returncode == 0:
             results = json.loads(res.stdout)
@@ -589,7 +663,7 @@ def check_duplicate(text: str) -> dict:
                     return {
                         "is_duplicate": True,
                         "original_id": top_result.get("id", ""),
-                        "score": top_result.get("score", 0)
+                        "score": top_result.get("score", 0),
                     }
     except subprocess.TimeoutExpired:
         pass
@@ -599,6 +673,7 @@ def check_duplicate(text: str) -> dict:
 
 
 # ── LTM Sync ─────────────────────────────────────────────────
+
 
 def sync_to_ltm() -> dict:
     """
@@ -668,6 +743,7 @@ def sync_to_ltm() -> dict:
 
 # ── Self-Test ─────────────────────────────────────────────────
 
+
 def self_test() -> dict:
     """Test: record → consult → circuit_breaker → summary."""
     test_error = "Self-test scar: unexpected argument '--fake-flag-xyz'"
@@ -709,7 +785,9 @@ def self_test() -> dict:
         if test_id:
             client = _get_client()
             try:
-                client.delete(collection_name=COLLECTION_NAME, points_selector=[test_id])
+                client.delete(
+                    collection_name=COLLECTION_NAME, points_selector=[test_id]
+                )
             except Exception:
                 pass
 
@@ -728,10 +806,11 @@ def self_test() -> dict:
 
 # ── CLI ───────────────────────────────────────────────────────
 
+
 def main():
-    if sys.stdout.encoding != 'utf-8':
+    if sys.stdout.encoding != "utf-8":
         try:
-            sys.stdout.reconfigure(encoding='utf-8', errors='ignore')
+            sys.stdout.reconfigure(encoding="utf-8", errors="ignore")
         except Exception:
             pass
 
@@ -779,9 +858,16 @@ def main():
     p.add_argument("--text", required=True)
 
     # health-check
-    p_health = sub.add_parser("health-check", help="Boot-time health check: L1 (sqlite-vec) + L2 (Qdrant) status")
-    p_health.add_argument("--l1-only", action="store_true", default=False,
-                          help="Skip L2 Qdrant ping (avoids Windows zipimport crash at boot)")
+    p_health = sub.add_parser(
+        "health-check",
+        help="Boot-time health check: L1 (sqlite-vec) + L2 (Qdrant) status",
+    )
+    p_health.add_argument(
+        "--l1-only",
+        action="store_true",
+        default=False,
+        help="Skip L2 Qdrant ping (avoids Windows zipimport crash at boot)",
+    )
 
     # test
     sub.add_parser("test", help="Self-test")
@@ -789,7 +875,17 @@ def main():
     args = parser.parse_args()
 
     if args.command == "record":
-        result = record_scar(args.failed, args.error, args.recovery, args.rule, args.context, False, args.name, args.description, args.type)
+        result = record_scar(
+            args.failed,
+            args.error,
+            args.recovery,
+            args.rule,
+            args.context,
+            False,
+            args.name,
+            args.description,
+            args.type,
+        )
     elif args.command == "consult":
         result = consult(args.instruction, args.top_k)
     elif args.command == "auto-extract":

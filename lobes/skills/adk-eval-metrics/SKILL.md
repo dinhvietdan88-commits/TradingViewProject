@@ -96,4 +96,3 @@ Thresholds are defined in `nerves/core/test_config.json`.
 - KI: `harness-taxonomy-mdash-aqh` (Harness Taxonomy)
 - Skill: `angati-core-qa` (extended by this skill, including `harness-light` and `harness-full` modes)
 - Bridge: `nerves/core/harness_bridge.py` (wires eval_metrics into AQH MDASH pipeline)
-

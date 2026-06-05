@@ -60,7 +60,7 @@ Chúng ta tách biệt hệ thống thành 3 vùng độc lập, kết nối v�
 graph TB
     TV["🖥️ TradingView Alerts"]
     CF["☁️ Cloudflare Tunnel"]
-    
+
     subgraph SERVER_A["SERVER A: Gateway (1U2G Linux)"]
         VBS["📦 VPS Buffer Service<br/>FastAPI :5000"]
         DB_A[("🗄️ SQLite Queue<br/>signal_queue.db")]
@@ -85,13 +85,13 @@ graph TB
 
     TV -->|Webhook| CF
     CF -->|POST /ingest| VBS
-    
+
     AZ -->|GET /consume| VBS
     AZ -->|POST /ack| VBS
     AZ -->|POST /api/execute-trade| EX
-    
+
     TE -->|Place Order| EXCHANGE["🏦 Exchange API<br/>(Binance/Bybit/Weex)"]
-    
+
     VBS -.->|Queue Alerts| TG
     EX -.->|Execution Alerts| TG
     AZ -.->|Analysis Alerts| TG
@@ -143,23 +143,23 @@ sequenceDiagram
     TV->>A: POST /ingest (Webhook qua Cloudflare)
     A->>A: Lưu vào SQLite (PENDING, status=PENDING, TTL=4h)
     A-->>TV: 200 OK {"queued": true, "queue_id": 42}
-    
+
     Note over C: Poll interval: 15 giây
     C->>A: GET /consume?consumer_id=server-c-analyzer
     A->>A: Đánh dấu DISPATCHED
     A-->>C: Trả về signal #42
-    
+
     C->>C: Truy vấn ChromaDB & phân tích RAG (SEPA Minervini)
     C->>C: Gọi AI (Claude/Gemini) chấm điểm tín hiệu
     C->>C: Tính toán Position Sizing & Stop Loss
-    
+
     C->>B: POST /api/execute-trade (X-Server-B-Secret qua Tailscale)
     B->>B: Xác thực Secret & Lưu thông tin lệnh
     B->>EX: Đặt lệnh thật (Binance/Bybit/Weex)
     EX-->>B: Trả về kết quả Order ID
     B-->>C: 200 OK {"status": "ok", "order_id": "ORD-123"}
     B->>Telegram: 🟢 Order Executed: BTCUSDT BUY @ 68,000
-    
+
     C->>A: POST /ack {"acks": [{"queue_id": 42, "status": "executed"}]}
     A->>A: Cập nhật status=ACKED
     A-->>C: 200 OK

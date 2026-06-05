@@ -6,6 +6,7 @@ Tests verify:
 - Notification message contains rejection reason.
 - set_bus() pattern works for test isolation.
 """
+
 import pytest
 from unittest.mock import AsyncMock, patch
 
@@ -45,6 +46,7 @@ async def test_rejected_signal_notified():
             assert "Từ Chối" in call_args or "⛔" in call_args
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -76,6 +78,7 @@ async def test_duplicate_rejection_notified():
             assert "trùng lặp" in call_args or "dedup" in call_args
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -90,5 +93,6 @@ async def test_bus_isolation():
     assert get_bus() is test_bus
 
     from core.event_bus import bus as default_bus
+
     set_bus(default_bus)
     assert get_bus() is default_bus

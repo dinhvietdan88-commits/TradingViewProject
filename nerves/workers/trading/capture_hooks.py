@@ -5,7 +5,7 @@ with per-symbol cooldown enforcement.
 
 Design ref: design.md § "HookDispatcher"
 """
-import asyncio
+
 import logging
 import time
 from typing import Optional, Dict
@@ -48,12 +48,16 @@ class HookDispatcher:
         for hook in self._active_hooks:
             if hook == "on_signal":
                 bus.subscribe(SignalValidated, self._on_signal_handler)
-                logger.info("HookDispatcher: ✅ on_signal hook registered (SignalValidated)")
+                logger.info(
+                    "HookDispatcher: ✅ on_signal hook registered (SignalValidated)"
+                )
             elif hook == "on_schedule":
                 # Placeholder: schedule integration via APScheduler or similar
                 logger.info("HookDispatcher: on_schedule hook registered (placeholder)")
             elif hook == "on_command":
-                logger.info("HookDispatcher: on_command hook registered (manual trigger)")
+                logger.info(
+                    "HookDispatcher: on_command hook registered (manual trigger)"
+                )
             else:
                 logger.warning(f"HookDispatcher: Unknown hook '{hook}', skipping")
 
@@ -88,11 +92,13 @@ class HookDispatcher:
         self._last_capture_time[symbol] = time.monotonic()
 
         # Emit tracing event
-        await bus.emit_background(CaptureTriggered(
-            symbol=symbol,
-            trigger="signal",
-            source_event_id=event.event_id,
-        ))
+        await bus.emit_background(
+            CaptureTriggered(
+                symbol=symbol,
+                trigger="signal",
+                source_event_id=event.event_id,
+            )
+        )
 
         try:
             result = await self._client.capture_screenshot(
@@ -129,10 +135,12 @@ class HookDispatcher:
         logger.info(f"HookDispatcher: on_command triggered for {symbol}")
 
         # Emit tracing event
-        await bus.emit_background(CaptureTriggered(
-            symbol=symbol,
-            trigger="command",
-        ))
+        await bus.emit_background(
+            CaptureTriggered(
+                symbol=symbol,
+                trigger="command",
+            )
+        )
 
         try:
             result = await self._client.capture_screenshot(

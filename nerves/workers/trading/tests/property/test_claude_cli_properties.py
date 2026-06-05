@@ -9,19 +9,25 @@ Properties tested:
   P7: Telegram response length ≤ 4096
   P10: Context reset completeness (per-symbol & global)
 """
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
+import asyncio
+from unittest.mock import AsyncMock, MagicMock
+
 from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
 from claude_cli.sdk_client import SdkClient
-from claude_cli.service import ClaudeService, ContextManager, AnalysisRequest, AnalysisResponse, ContextEntry
+from claude_cli.service import (
+    ClaudeService,
+    ContextManager,
+    AnalysisRequest,
+    AnalysisResponse,
+)
 from claude_cli.telegram_commands import _format_response
 
 
 # ── helpers ─────────────────────────────────────────────────────────────────────
+
 
 def _run(coro):
     return asyncio.run(coro)
@@ -30,9 +36,11 @@ def _run(coro):
 def _make_sdk(text: str = "ok [Confidence: 7/10]") -> MagicMock:
     sdk = MagicMock(spec=SdkClient)
     sdk.available = True
-    sdk.invoke = AsyncMock(return_value=AnalysisResponse(
-        text=text, confidence=5, source="anthropic_api", duration_seconds=0.01
-    ))
+    sdk.invoke = AsyncMock(
+        return_value=AnalysisResponse(
+            text=text, confidence=5, source="anthropic_api", duration_seconds=0.01
+        )
+    )
     return sdk
 
 
@@ -44,6 +52,7 @@ def _make_svc(depth: int = 5, max_tokens: int = 50_000) -> ClaudeService:
 
 
 # ── P2: Rate Limiting (SdkClient internal) ──────────────────────────────────────
+
 
 @given(
     limit=st.integers(min_value=1, max_value=10),
@@ -60,6 +69,7 @@ def test_p2_rate_limit_exactly_n_pass(limit, extra):
     )
     # Manually simulate: fill timestamps up to `limit`
     import time
+
     now = time.monotonic()
     sdk._request_timestamps = [now for _ in range(limit)]
     sdk._available = True
@@ -79,6 +89,7 @@ def test_p2_rate_limit_exactly_n_pass(limit, extra):
 
 # ── P3: Context Depth Enforcement ───────────────────────────────────────────────
 
+
 @given(
     depth=st.integers(min_value=1, max_value=5),
     interactions=st.integers(min_value=1, max_value=20),
@@ -90,16 +101,19 @@ def test_p3_context_depth_never_exceeded(depth, interactions):
 
     async def run():
         for i in range(interactions):
-            await svc.analyze(AnalysisRequest(
-                query=f"q{i}", symbol="SYM", include_rag_context=False
-            ))
+            await svc.analyze(
+                AnalysisRequest(query=f"q{i}", symbol="SYM", include_rag_context=False)
+            )
 
     _run(run())
     ctx = svc._ctx.get_history("SYM")
-    assert len(ctx) <= depth * 2, f"depth={depth}, interactions={interactions}, got {len(ctx)}"
+    assert len(ctx) <= depth * 2, (
+        f"depth={depth}, interactions={interactions}, got {len(ctx)}"
+    )
 
 
 # ── P4: Context Token Budget Enforcement ────────────────────────────────────────
+
 
 @given(
     max_tokens=st.integers(min_value=10, max_value=500),
@@ -108,15 +122,19 @@ def test_p3_context_depth_never_exceeded(depth, interactions):
 @settings(max_examples=100, deadline=None)
 def test_p4_token_budget_never_exceeded(max_tokens, interactions):
     """Total estimated tokens per symbol never exceeds max_tokens after pruning."""
-    svc = _make_svc(depth=100, max_tokens=max_tokens)  # depth huge → token is the binding constraint
+    svc = _make_svc(
+        depth=100, max_tokens=max_tokens
+    )  # depth huge → token is the binding constraint
 
     async def run():
         for i in range(interactions):
-            await svc.analyze(AnalysisRequest(
-                query=f"query number {i} with some text",
-                symbol="TOK",
-                include_rag_context=False,
-            ))
+            await svc.analyze(
+                AnalysisRequest(
+                    query=f"query number {i} with some text",
+                    symbol="TOK",
+                    include_rag_context=False,
+                )
+            )
 
     _run(run())
     ctx = svc._ctx.get_history("TOK")
@@ -125,6 +143,7 @@ def test_p4_token_budget_never_exceeded(max_tokens, interactions):
 
 
 # ── P7: Telegram Response Length ─────────────────────────────────────────────────
+
 
 @given(
     text=st.text(min_size=0, max_size=10_000),
@@ -135,16 +154,21 @@ def test_p4_token_budget_never_exceeded(max_tokens, interactions):
 @settings(max_examples=100, deadline=None)
 def test_p7_telegram_response_never_exceeds_4096(text, source, confidence, duration):
     """Formatted Telegram message is always ≤ 4096 characters."""
-    formatted = _format_response(text=text, source=source, confidence=confidence, duration=duration)
+    formatted = _format_response(
+        text=text, source=source, confidence=confidence, duration=duration
+    )
     assert len(formatted) <= 4096, f"Message exceeded 4096: len={len(formatted)}"
 
 
 # ── P10: Context Reset Completeness ─────────────────────────────────────────────
 
+
 @given(
     symbols=st.lists(
         st.text(min_size=1, max_size=10, alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
-        min_size=1, max_size=5, unique=True,
+        min_size=1,
+        max_size=5,
+        unique=True,
     ),
     target_idx=st.integers(min_value=0, max_value=4),
 )
@@ -164,13 +188,17 @@ def test_p10_per_symbol_reset_clears_only_target(symbols, target_idx):
     assert len(ctx.get_history(target)) == 0, f"Symbol {target} not cleared"
     for sym in symbols:
         if sym != target:
-            assert len(ctx.get_history(sym)) > 0, f"Symbol {sym} was incorrectly cleared"
+            assert len(ctx.get_history(sym)) > 0, (
+                f"Symbol {sym} was incorrectly cleared"
+            )
 
 
 @given(
     symbols=st.lists(
         st.text(min_size=1, max_size=10, alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
-        min_size=1, max_size=6, unique=True,
+        min_size=1,
+        max_size=6,
+        unique=True,
     )
 )
 @settings(max_examples=100, deadline=None)

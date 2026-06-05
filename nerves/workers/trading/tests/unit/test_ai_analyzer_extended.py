@@ -12,6 +12,7 @@ Tests verify gaps from original test_ai_analyzer.py:
 - interactive_required=True only when 5 <= confidence <= 7.
 - reset_capture_state clears LAST_CAPTURE_TIME.
 """
+
 import pytest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -23,6 +24,7 @@ from core.events import AlertTriggered, SignalValidated, AnalysisComplete
 # ═══════════════════════════════════════════════════════════════
 # ALERT → SIGNAL VALIDATED ROUTING
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_alert_triggered_re_emits_as_signal_validated():
@@ -40,8 +42,11 @@ async def test_alert_triggered_re_emits_as_signal_validated():
 
     try:
         event = AlertTriggered(
-            signal_id=10, symbol="BTCUSDT", price="68000.0",
-            quote_qty=50.0, exchange="bybit",
+            signal_id=10,
+            symbol="BTCUSDT",
+            price="68000.0",
+            quote_qty=50.0,
+            exchange="bybit",
         )
         await process_alert(event)
 
@@ -52,6 +57,7 @@ async def test_alert_triggered_re_emits_as_signal_validated():
         assert re_emitted[0].exchange == "bybit"
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         reset_capture_state()
 
@@ -71,12 +77,15 @@ async def test_alert_triggered_with_numeric_price():
         re_emitted.append(event)
 
     try:
-        event = AlertTriggered(signal_id=11, symbol="ETHUSDT", price="3500.5", quote_qty=20.0)
+        event = AlertTriggered(
+            signal_id=11, symbol="ETHUSDT", price="3500.5", quote_qty=20.0
+        )
         await process_alert(event)
 
         assert re_emitted[0].price == pytest.approx(3500.5)
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         reset_capture_state()
 
@@ -85,10 +94,15 @@ async def test_alert_triggered_with_numeric_price():
 # MCP NOT CONNECTED PATH
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_mcp_not_connected_emits_analysis_complete_with_default_confidence():
     """When MCP is not connected, AIAnalyzer emits AnalysisComplete with default confidence 5."""
-    from analyzer.ai_analyzer import process_validated_signal, set_bus, reset_capture_state
+    from analyzer.ai_analyzer import (
+        process_validated_signal,
+        set_bus,
+        reset_capture_state,
+    )
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -100,10 +114,11 @@ async def test_mcp_not_connected_emits_analysis_complete_with_default_confidence
         analysis_events.append(event)
 
     try:
-        with patch("analyzer.ai_analyzer.config") as mock_config, \
-             patch("analyzer.ai_analyzer.database") as mock_db, \
-             patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory:
-
+        with (
+            patch("analyzer.ai_analyzer.config") as mock_config,
+            patch("analyzer.ai_analyzer.database") as mock_db,
+            patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory,
+        ):
             mock_config.MCP_ENABLED = True
             mock_config.RAG_ENABLED = False
             mock_config.SENTIMENT_ENABLED = False
@@ -114,7 +129,9 @@ async def test_mcp_not_connected_emits_analysis_complete_with_default_confidence
 
             mock_db.insert_brief = AsyncMock(return_value=1)
 
-            event = SignalValidated(signal_id=20, symbol="BTCUSDT", action="buy", price=68000.0)
+            event = SignalValidated(
+                signal_id=20, symbol="BTCUSDT", action="buy", price=68000.0
+            )
             await process_validated_signal(event)
 
             assert len(analysis_events) == 1
@@ -124,6 +141,7 @@ async def test_mcp_not_connected_emits_analysis_complete_with_default_confidence
             assert analysis_events[0].interactive_required is True
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         reset_capture_state()
 
@@ -132,10 +150,15 @@ async def test_mcp_not_connected_emits_analysis_complete_with_default_confidence
 # VISION ERROR PATH
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_vision_error_reduces_confidence_to_3():
     """When vision returns an error result, confidence should drop to 3."""
-    from analyzer.ai_analyzer import process_validated_signal, set_bus, reset_capture_state
+    from analyzer.ai_analyzer import (
+        process_validated_signal,
+        set_bus,
+        reset_capture_state,
+    )
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -147,11 +170,12 @@ async def test_vision_error_reduces_confidence_to_3():
         analysis_events.append(event)
 
     try:
-        with patch("analyzer.ai_analyzer.config") as mock_config, \
-             patch("analyzer.ai_analyzer.database") as mock_db, \
-             patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory, \
-             patch("analyzer.ai_analyzer.vision_module") as mock_vision:
-
+        with (
+            patch("analyzer.ai_analyzer.config") as mock_config,
+            patch("analyzer.ai_analyzer.database") as mock_db,
+            patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory,
+            patch("analyzer.ai_analyzer.vision_module") as mock_vision,
+        ):
             mock_config.MCP_ENABLED = True
             mock_config.RAG_ENABLED = False
             mock_config.SENTIMENT_ENABLED = False
@@ -161,7 +185,9 @@ async def test_vision_error_reduces_confidence_to_3():
 
             mock_screenshot_path = Path(__file__).parent / "error_screenshot.png"
             mock_screenshot_path.touch()
-            mock_mcp.capture_screenshot = AsyncMock(return_value=str(mock_screenshot_path))
+            mock_mcp.capture_screenshot = AsyncMock(
+                return_value=str(mock_screenshot_path)
+            )
             mock_mcp_factory.return_value = mock_mcp
 
             # Vision returns an error
@@ -181,6 +207,7 @@ async def test_vision_error_reduces_confidence_to_3():
             mock_screenshot_path.unlink(missing_ok=True)
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         reset_capture_state()
 
@@ -189,12 +216,17 @@ async def test_vision_error_reduces_confidence_to_3():
 # RAG PENALTY
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_rag_warning_keyword_reduces_confidence():
     """RAG advice containing WARNING keyword should reduce confidence by 2 (floor 1)."""
-    from analyzer.ai_analyzer import process_validated_signal, set_bus, reset_capture_state
+    from analyzer.ai_analyzer import (
+        process_validated_signal,
+        set_bus,
+        reset_capture_state,
+    )
     import sys
-    from unittest.mock import MagicMock, AsyncMock
+    from unittest.mock import AsyncMock
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -215,12 +247,13 @@ async def test_rag_warning_keyword_reduces_confidence():
             return_value="WARNING: Trend is weakening. CHỜ THÊM XÁC NHẬN before entry."
         )
 
-        with patch("analyzer.ai_analyzer.config") as mock_config, \
-             patch("analyzer.ai_analyzer.database") as mock_db, \
-             patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory, \
-             patch("analyzer.ai_analyzer.vision_module") as mock_vision, \
-             patch.dict(sys.modules, {"rag": mock_rag_mod}):
-
+        with (
+            patch("analyzer.ai_analyzer.config") as mock_config,
+            patch("analyzer.ai_analyzer.database") as mock_db,
+            patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory,
+            patch("analyzer.ai_analyzer.vision_module") as mock_vision,
+            patch.dict(sys.modules, {"rag": mock_rag_mod}),
+        ):
             mock_config.MCP_ENABLED = True
             mock_config.RAG_ENABLED = True
             mock_config.RAG_TOP_K = 3
@@ -231,13 +264,19 @@ async def test_rag_warning_keyword_reduces_confidence():
 
             mock_screenshot_path = Path(__file__).parent / "rag_test_screenshot.png"
             mock_screenshot_path.touch()
-            mock_mcp.capture_screenshot = AsyncMock(return_value=str(mock_screenshot_path))
+            mock_mcp.capture_screenshot = AsyncMock(
+                return_value=str(mock_screenshot_path)
+            )
             mock_mcp_factory.return_value = mock_mcp
 
             # Vision returns confidence=7
-            mock_vision.analyze_chart_vision = AsyncMock(return_value={
-                "analysis": "Decent setup", "confidence": 7, "error": None,
-            })
+            mock_vision.analyze_chart_vision = AsyncMock(
+                return_value={
+                    "analysis": "Decent setup",
+                    "confidence": 7,
+                    "error": None,
+                }
+            )
 
             mock_db.insert_brief = AsyncMock(return_value=1)
 
@@ -251,6 +290,7 @@ async def test_rag_warning_keyword_reduces_confidence():
             mock_screenshot_path.unlink(missing_ok=True)
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         reset_capture_state()
 
@@ -259,10 +299,15 @@ async def test_rag_warning_keyword_reduces_confidence():
 # SL/TP REGEX EXTRACTION
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_sl_tp_extracted_from_analysis_text():
     """When event.sl/tp are empty, SL/TP should be regex-extracted from analysis text."""
-    from analyzer.ai_analyzer import process_validated_signal, set_bus, reset_capture_state
+    from analyzer.ai_analyzer import (
+        process_validated_signal,
+        set_bus,
+        reset_capture_state,
+    )
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -274,11 +319,12 @@ async def test_sl_tp_extracted_from_analysis_text():
         analysis_events.append(event)
 
     try:
-        with patch("analyzer.ai_analyzer.config") as mock_config, \
-             patch("analyzer.ai_analyzer.database") as mock_db, \
-             patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory, \
-             patch("analyzer.ai_analyzer.vision_module") as mock_vision:
-
+        with (
+            patch("analyzer.ai_analyzer.config") as mock_config,
+            patch("analyzer.ai_analyzer.database") as mock_db,
+            patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory,
+            patch("analyzer.ai_analyzer.vision_module") as mock_vision,
+        ):
             mock_config.MCP_ENABLED = True
             mock_config.RAG_ENABLED = False
             mock_config.SENTIMENT_ENABLED = False
@@ -288,19 +334,25 @@ async def test_sl_tp_extracted_from_analysis_text():
 
             mock_screenshot_path = Path(__file__).parent / "sltp_test.png"
             mock_screenshot_path.touch()
-            mock_mcp.capture_screenshot = AsyncMock(return_value=str(mock_screenshot_path))
+            mock_mcp.capture_screenshot = AsyncMock(
+                return_value=str(mock_screenshot_path)
+            )
             mock_mcp_factory.return_value = mock_mcp
 
-            mock_vision.analyze_chart_vision = AsyncMock(return_value={
-                "analysis": "Entry confirmed. Stop Loss: 65,000. Take Profit: 74,000. Score 8/10.",
-                "confidence": 8,
-                "error": None,
-            })
+            mock_vision.analyze_chart_vision = AsyncMock(
+                return_value={
+                    "analysis": "Entry confirmed. Stop Loss: 65,000. Take Profit: 74,000. Score 8/10.",
+                    "confidence": 8,
+                    "error": None,
+                }
+            )
 
             mock_db.insert_brief = AsyncMock(return_value=1)
 
             # sl and tp are empty in the event
-            event = SignalValidated(signal_id=23, symbol="BTCUSDT", action="buy", sl="", tp="")
+            event = SignalValidated(
+                signal_id=23, symbol="BTCUSDT", action="buy", sl="", tp=""
+            )
             await process_validated_signal(event)
 
             assert len(analysis_events) == 1
@@ -311,6 +363,7 @@ async def test_sl_tp_extracted_from_analysis_text():
             mock_screenshot_path.unlink(missing_ok=True)
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         reset_capture_state()
 
@@ -318,7 +371,11 @@ async def test_sl_tp_extracted_from_analysis_text():
 @pytest.mark.asyncio
 async def test_sl_tp_from_event_take_priority():
     """When event.sl/tp are set, they should NOT be overridden by regex."""
-    from analyzer.ai_analyzer import process_validated_signal, set_bus, reset_capture_state
+    from analyzer.ai_analyzer import (
+        process_validated_signal,
+        set_bus,
+        reset_capture_state,
+    )
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -330,11 +387,12 @@ async def test_sl_tp_from_event_take_priority():
         analysis_events.append(event)
 
     try:
-        with patch("analyzer.ai_analyzer.config") as mock_config, \
-             patch("analyzer.ai_analyzer.database") as mock_db, \
-             patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory, \
-             patch("analyzer.ai_analyzer.vision_module") as mock_vision:
-
+        with (
+            patch("analyzer.ai_analyzer.config") as mock_config,
+            patch("analyzer.ai_analyzer.database") as mock_db,
+            patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory,
+            patch("analyzer.ai_analyzer.vision_module") as mock_vision,
+        ):
             mock_config.MCP_ENABLED = True
             mock_config.RAG_ENABLED = False
             mock_config.SENTIMENT_ENABLED = False
@@ -344,21 +402,24 @@ async def test_sl_tp_from_event_take_priority():
 
             mock_screenshot_path = Path(__file__).parent / "sltp_priority_test.png"
             mock_screenshot_path.touch()
-            mock_mcp.capture_screenshot = AsyncMock(return_value=str(mock_screenshot_path))
+            mock_mcp.capture_screenshot = AsyncMock(
+                return_value=str(mock_screenshot_path)
+            )
             mock_mcp_factory.return_value = mock_mcp
 
-            mock_vision.analyze_chart_vision = AsyncMock(return_value={
-                "analysis": "Stop Loss: 60,000. Take Profit: 80,000.",
-                "confidence": 8,
-                "error": None,
-            })
+            mock_vision.analyze_chart_vision = AsyncMock(
+                return_value={
+                    "analysis": "Stop Loss: 60,000. Take Profit: 80,000.",
+                    "confidence": 8,
+                    "error": None,
+                }
+            )
 
             mock_db.insert_brief = AsyncMock(return_value=1)
 
             # sl and tp already provided in event
             event = SignalValidated(
-                signal_id=24, symbol="BTCUSDT", action="buy",
-                sl="66000", tp="73000"
+                signal_id=24, symbol="BTCUSDT", action="buy", sl="66000", tp="73000"
             )
             await process_validated_signal(event)
 
@@ -369,6 +430,7 @@ async def test_sl_tp_from_event_take_priority():
             mock_screenshot_path.unlink(missing_ok=True)
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         reset_capture_state()
 
@@ -377,19 +439,27 @@ async def test_sl_tp_from_event_take_priority():
 # CONFIDENCE THRESHOLD LOGIC
 # ═══════════════════════════════════════════════════════════════
 
-@pytest.mark.parametrize("confidence,should_trade,interactive", [
-    (10, True, False),
-    (8,  True, False),
-    (7,  False, True),
-    (5,  False, True),
-    (4,  False, False),
-    (1,  False, False),
-    (0,  False, False),
-])
+
+@pytest.mark.parametrize(
+    "confidence,should_trade,interactive",
+    [
+        (10, True, False),
+        (8, True, False),
+        (7, False, True),
+        (5, False, True),
+        (4, False, False),
+        (1, False, False),
+        (0, False, False),
+    ],
+)
 @pytest.mark.asyncio
 async def test_confidence_threshold_flags(confidence, should_trade, interactive):
     """Verify should_trade and interactive_required based on confidence thresholds."""
-    from analyzer.ai_analyzer import process_validated_signal, set_bus, reset_capture_state
+    from analyzer.ai_analyzer import (
+        process_validated_signal,
+        set_bus,
+        reset_capture_state,
+    )
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -401,11 +471,12 @@ async def test_confidence_threshold_flags(confidence, should_trade, interactive)
         analysis_events.append(event)
 
     try:
-        with patch("analyzer.ai_analyzer.config") as mock_config, \
-             patch("analyzer.ai_analyzer.database") as mock_db, \
-             patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory, \
-             patch("analyzer.ai_analyzer.vision_module") as mock_vision:
-
+        with (
+            patch("analyzer.ai_analyzer.config") as mock_config,
+            patch("analyzer.ai_analyzer.database") as mock_db,
+            patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory,
+            patch("analyzer.ai_analyzer.vision_module") as mock_vision,
+        ):
             mock_config.MCP_ENABLED = True
             mock_config.RAG_ENABLED = False
             mock_config.SENTIMENT_ENABLED = False
@@ -413,18 +484,28 @@ async def test_confidence_threshold_flags(confidence, should_trade, interactive)
             mock_mcp = AsyncMock()
             mock_mcp.health_check = AsyncMock(return_value={"connected": True})
 
-            mock_screenshot_path = Path(__file__).parent / f"thresh_test_{confidence}.png"
+            mock_screenshot_path = (
+                Path(__file__).parent / f"thresh_test_{confidence}.png"
+            )
             mock_screenshot_path.touch()
-            mock_mcp.capture_screenshot = AsyncMock(return_value=str(mock_screenshot_path))
+            mock_mcp.capture_screenshot = AsyncMock(
+                return_value=str(mock_screenshot_path)
+            )
             mock_mcp_factory.return_value = mock_mcp
 
-            mock_vision.analyze_chart_vision = AsyncMock(return_value={
-                "analysis": "Test.", "confidence": confidence, "error": None,
-            })
+            mock_vision.analyze_chart_vision = AsyncMock(
+                return_value={
+                    "analysis": "Test.",
+                    "confidence": confidence,
+                    "error": None,
+                }
+            )
 
             mock_db.insert_brief = AsyncMock(return_value=1)
 
-            event = SignalValidated(signal_id=50 + confidence, symbol="BTCUSDT", action="buy")
+            event = SignalValidated(
+                signal_id=50 + confidence, symbol="BTCUSDT", action="buy"
+            )
             await process_validated_signal(event)
 
             assert analysis_events[0].should_trade is should_trade
@@ -433,6 +514,7 @@ async def test_confidence_threshold_flags(confidence, should_trade, interactive)
             mock_screenshot_path.unlink(missing_ok=True)
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         reset_capture_state()
 
@@ -440,6 +522,7 @@ async def test_confidence_threshold_flags(confidence, should_trade, interactive)
 # ═══════════════════════════════════════════════════════════════
 # RESET CAPTURE STATE
 # ═══════════════════════════════════════════════════════════════
+
 
 def test_reset_capture_state_clears_last_capture_time():
     """reset_capture_state() should clear LAST_CAPTURE_TIME completely."""

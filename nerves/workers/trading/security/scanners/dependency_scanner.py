@@ -30,7 +30,15 @@ def scan_requirements(target_dir: Path) -> List[Finding]:
     # Try pip-audit first (best results)
     try:
         result = subprocess.run(
-            ["pip-audit", "-r", str(req_file), "--format", "json", "--progress-spinner", "off"],
+            [
+                "pip-audit",
+                "-r",
+                str(req_file),
+                "--format",
+                "json",
+                "--progress-spinner",
+                "off",
+            ],
             capture_output=True,
             text=True,
             timeout=60,
@@ -61,21 +69,23 @@ def _parse_pip_audit_output(output: str, req_path: str) -> List[Finding]:
                 if "critical" in vuln.get("description", "").lower():
                     severity = Severity.CRITICAL
 
-                findings.append(Finding(
-                    rule_id="DEP-001",
-                    title=f"Known vulnerability in {dep['name']} {dep.get('version', '?')}",
-                    severity=severity,
-                    file=req_path,
-                    line=1,
-                    description=(
-                        f"{vuln.get('id', 'Unknown CVE')}: {vuln.get('description', 'No description')}"
-                    ),
-                    evidence=f"{dep['name']}=={dep.get('version', '?')} → fix: {vuln.get('fix_versions', ['?'])}",
-                    scanner=SCANNER_NAME,
-                    confidence=0.95,
-                    remediation=f"Upgrade {dep['name']} to {vuln.get('fix_versions', ['latest'])}",
-                    cwe="CWE-1104",  # Use of Unmaintained Third Party Components
-                ))
+                findings.append(
+                    Finding(
+                        rule_id="DEP-001",
+                        title=f"Known vulnerability in {dep['name']} {dep.get('version', '?')}",
+                        severity=severity,
+                        file=req_path,
+                        line=1,
+                        description=(
+                            f"{vuln.get('id', 'Unknown CVE')}: {vuln.get('description', 'No description')}"
+                        ),
+                        evidence=f"{dep['name']}=={dep.get('version', '?')} → fix: {vuln.get('fix_versions', ['?'])}",
+                        scanner=SCANNER_NAME,
+                        confidence=0.95,
+                        remediation=f"Upgrade {dep['name']} to {vuln.get('fix_versions', ['latest'])}",
+                        cwe="CWE-1104",  # Use of Unmaintained Third Party Components
+                    )
+                )
     except (json.JSONDecodeError, KeyError):
         pass
     return findings
@@ -96,26 +106,28 @@ def _check_version_pinning(req_file: Path) -> List[Finding]:
             continue
         # Check if version is pinned (has ==)
         if "==" not in line and ">=" not in line:
-            pkg_name = re.split(r'[<>=!]', line)[0].strip()
+            pkg_name = re.split(r"[<>=!]", line)[0].strip()
             if pkg_name:
                 unpinned.append((i, pkg_name))
 
     if unpinned:
-        findings.append(Finding(
-            rule_id="DEP-002",
-            title=f"{len(unpinned)} unpinned dependencies in requirements.txt",
-            severity=Severity.LOW,
-            file=str(req_file),
-            line=unpinned[0][0],
-            description=(
-                "Unpinned dependencies can introduce breaking changes or "
-                "supply-chain attacks via version hijacking."
-            ),
-            evidence=f"Unpinned: {', '.join(p for _, p in unpinned[:5])}",
-            scanner=SCANNER_NAME,
-            confidence=0.8,
-            remediation="Pin all dependencies: pip freeze > requirements.txt",
-            cwe="CWE-1104",
-        ))
+        findings.append(
+            Finding(
+                rule_id="DEP-002",
+                title=f"{len(unpinned)} unpinned dependencies in requirements.txt",
+                severity=Severity.LOW,
+                file=str(req_file),
+                line=unpinned[0][0],
+                description=(
+                    "Unpinned dependencies can introduce breaking changes or "
+                    "supply-chain attacks via version hijacking."
+                ),
+                evidence=f"Unpinned: {', '.join(p for _, p in unpinned[:5])}",
+                scanner=SCANNER_NAME,
+                confidence=0.8,
+                remediation="Pin all dependencies: pip freeze > requirements.txt",
+                cwe="CWE-1104",
+            )
+        )
 
     return findings

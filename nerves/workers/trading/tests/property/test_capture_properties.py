@@ -11,6 +11,7 @@ Properties tested:
   P9: State cache — invalidation after change
   P10: Metrics — counters never decrease
 """
+
 import asyncio
 import time
 import sys
@@ -18,7 +19,7 @@ import pathlib
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from hypothesis import given, settings, assume
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent.parent))
@@ -29,6 +30,7 @@ from core.events import SignalValidated, CaptureTriggered
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────────
+
 
 def _make_mock_client():
     """Create a PythonCaptureClient with mocked HTTP calls."""
@@ -45,12 +47,14 @@ def _make_mock_client():
 # ── Symbol Strategy ──────────────────────────────────────────────────────────────
 
 symbol_strategy = st.text(
-    min_size=1, max_size=20,
+    min_size=1,
+    max_size=20,
     alphabet=st.sampled_from("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
 )
 
 hook_name_strategy = st.text(
-    min_size=0, max_size=30,
+    min_size=0,
+    max_size=30,
     alphabet=st.sampled_from("abcdefghijklmnopqrstuvwxyz_0123456789 \t\n"),
 )
 
@@ -58,6 +62,7 @@ hook_name_strategy = st.text(
 # ═══════════════════════════════════════════════════════════════
 # P3: Batch Result Count === Input Count
 # ═══════════════════════════════════════════════════════════════
+
 
 @given(
     n=st.integers(min_value=0, max_value=20),
@@ -68,15 +73,14 @@ def test_p3_batch_result_count_matches_input(n):
     client = _make_mock_client()
     symbols = [{"symbol": f"SYM{i}", "timeframe": "D"} for i in range(n)]
 
-    results = asyncio.run(
-        client.batch_run(symbols)
-    )
+    results = asyncio.run(client.batch_run(symbols))
     assert len(results) == n, f"Expected {n} results, got {len(results)}"
 
 
 # ═══════════════════════════════════════════════════════════════
 # P5: Symbol Fidelity
 # ═══════════════════════════════════════════════════════════════
+
 
 @given(symbol=symbol_strategy)
 @settings(max_examples=100, deadline=None)
@@ -86,15 +90,13 @@ def test_p5_symbol_fidelity_on_signal(symbol):
     dispatcher = HookDispatcher(client)
 
     async def run():
-        with patch('capture_hooks.bus') as mock_bus:
+        with patch("capture_hooks.bus") as mock_bus:
             mock_bus.emit_background = AsyncMock()
             event = SignalValidated(symbol=symbol, signal_id=1, action="buy")
             await dispatcher.on_signal(event)
 
     asyncio.run(run())
-    client.capture_screenshot.assert_called_once_with(
-        symbol=symbol, timeframe="D"
-    )
+    client.capture_screenshot.assert_called_once_with(symbol=symbol, timeframe="D")
 
 
 @given(symbol=symbol_strategy)
@@ -105,19 +107,18 @@ def test_p5_symbol_fidelity_on_command(symbol):
     dispatcher = HookDispatcher(client)
 
     async def run():
-        with patch('capture_hooks.bus') as mock_bus:
+        with patch("capture_hooks.bus") as mock_bus:
             mock_bus.emit_background = AsyncMock()
             await dispatcher.on_command(symbol)
 
     asyncio.run(run())
-    client.capture_screenshot.assert_called_once_with(
-        symbol=symbol, timeframe="D"
-    )
+    client.capture_screenshot.assert_called_once_with(symbol=symbol, timeframe="D")
 
 
 # ═══════════════════════════════════════════════════════════════
 # P6: Hook Parsing — Trimmed Non-Empty List
 # ═══════════════════════════════════════════════════════════════
+
 
 @given(
     hooks=st.lists(hook_name_strategy, min_size=0, max_size=10),
@@ -138,9 +139,12 @@ def test_p6_hook_parsing_trims_and_filters(hooks):
 # P7: Cooldown Enforcement — Monotonic Block
 # ═══════════════════════════════════════════════════════════════
 
+
 @given(
     cooldown=st.integers(min_value=1, max_value=300),
-    elapsed=st.floats(min_value=0.0, max_value=600.0, allow_nan=False, allow_infinity=False),
+    elapsed=st.floats(
+        min_value=0.0, max_value=600.0, allow_nan=False, allow_infinity=False
+    ),
 )
 @settings(max_examples=100, deadline=None)
 def test_p7_cooldown_monotonic(cooldown, elapsed):
@@ -154,9 +158,13 @@ def test_p7_cooldown_monotonic(cooldown, elapsed):
     result = dispatcher.is_cooled_down("TEST")
 
     if elapsed < cooldown:
-        assert result is False, f"Expected blocked (elapsed={elapsed} < cooldown={cooldown})"
+        assert result is False, (
+            f"Expected blocked (elapsed={elapsed} < cooldown={cooldown})"
+        )
     else:
-        assert result is True, f"Expected allowed (elapsed={elapsed} >= cooldown={cooldown})"
+        assert result is True, (
+            f"Expected allowed (elapsed={elapsed} >= cooldown={cooldown})"
+        )
 
 
 @given(
@@ -174,12 +182,15 @@ def test_p7_cooldown_is_per_symbol(symbols):
 
     assert dispatcher.is_cooled_down(symbols[0]) is False
     for sym in symbols[1:]:
-        assert dispatcher.is_cooled_down(sym) is True, f"Symbol {sym} incorrectly blocked"
+        assert dispatcher.is_cooled_down(sym) is True, (
+            f"Symbol {sym} incorrectly blocked"
+        )
 
 
 # ═══════════════════════════════════════════════════════════════
 # P8 + P9: State Cache (imported from Node.js, tested via CaptureRequest)
 # ═══════════════════════════════════════════════════════════════
+
 
 def test_p8_capture_request_defaults():
     """CaptureRequest defaults should be sensible."""
@@ -207,10 +218,12 @@ def test_p8_capture_request_immutable(symbol, timeframe):
 # P10: Metrics Monotonicity (Python CaptureResult)
 # ═══════════════════════════════════════════════════════════════
 
+
 @given(
     latencies=st.lists(
         st.floats(min_value=0.1, max_value=5000.0, allow_nan=False),
-        min_size=1, max_size=20,
+        min_size=1,
+        max_size=20,
     ),
 )
 @settings(max_examples=50, deadline=None)
@@ -226,6 +239,7 @@ def test_p10_capture_result_method_always_set(latencies):
 # ═══════════════════════════════════════════════════════════════
 # CaptureTriggered EVENT PROPERTIES
 # ═══════════════════════════════════════════════════════════════
+
 
 @given(
     symbol=symbol_strategy,

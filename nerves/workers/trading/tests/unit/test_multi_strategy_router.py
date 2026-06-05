@@ -10,6 +10,7 @@ Tests:
   - _algorithmic_analysis: Minervini SEPA (original, unchanged)
   - Integration: Smoke test payload gets >= 60% confidence via A.007 route
 """
+
 import pytest
 import sys
 from pathlib import Path
@@ -29,6 +30,7 @@ def worker():
 # ═══════════════════════════════════════════════════════════════
 # _detect_strategy_group
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestDetectStrategyGroup:
     """Verify signal routing classification."""
@@ -58,11 +60,15 @@ class TestDetectStrategyGroup:
         assert worker._detect_strategy_group(signal) == "SuperTrend"
 
     def test_indicator_source(self, worker):
-        signal = {"payload": {"source": "indicator", "indicator_name": "MIS(A7-01B.V3)"}}
+        signal = {
+            "payload": {"source": "indicator", "indicator_name": "MIS(A7-01B.V3)"}
+        }
         assert worker._detect_strategy_group(signal).startswith("Indicator")
 
     def test_indicator_source_with_name(self, worker):
-        signal = {"payload": {"source": "indicator", "indicator_name": "MIS(A7-01B.V3)"}}
+        signal = {
+            "payload": {"source": "indicator", "indicator_name": "MIS(A7-01B.V3)"}
+        }
         result = worker._detect_strategy_group(signal)
         assert "MIS(A7-01B.V3)" in result
 
@@ -77,6 +83,7 @@ class TestDetectStrategyGroup:
     def test_string_payload_handled(self, worker):
         """Payload might arrive as JSON string — should be parsed."""
         import json
+
         signal = {"payload": json.dumps({"signal": "A007+MIS_LONG"})}
         assert worker._detect_strategy_group(signal) == "A.007 (MA Crossover + ADX)"
 
@@ -85,22 +92,39 @@ class TestDetectStrategyGroup:
 # _route_algorithmic_analysis
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestRouteAlgorithmicAnalysis:
     """Verify routing dispatches to correct algo method."""
 
     def test_routes_a007(self, worker):
-        signal = {"signal": "V1_A007MIS_AUTO", "action": "buy", "price": "62647", "payload": {"interval": "5"}}
+        signal = {
+            "signal": "V1_A007MIS_AUTO",
+            "action": "buy",
+            "price": "62647",
+            "payload": {"interval": "5"},
+        }
         advice, conf = worker._route_algorithmic_analysis(signal)
         assert "A.007" in advice
         assert conf >= 75  # 3/4 or 4/4 checks pass
 
     def test_routes_supertrend(self, worker):
-        signal = {"signal": "ST_FLIP_BULL", "action": "buy", "price": "62647", "payload": {}}
+        signal = {
+            "signal": "ST_FLIP_BULL",
+            "action": "buy",
+            "price": "62647",
+            "payload": {},
+        }
         advice, conf = worker._route_algorithmic_analysis(signal)
         assert "SUPERTREND" in advice
 
     def test_routes_indicator(self, worker):
-        signal = {"payload": {"source": "indicator", "indicator_name": "MIS V3", "confidence_score": 85}}
+        signal = {
+            "payload": {
+                "source": "indicator",
+                "indicator_name": "MIS V3",
+                "confidence_score": 85,
+            }
+        }
         advice, conf = worker._route_algorithmic_analysis(signal)
         assert "INDICATOR PASSTHROUGH" in advice
         assert conf == 85
@@ -115,6 +139,7 @@ class TestRouteAlgorithmicAnalysis:
 # _algo_a007
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestAlgoA007:
     """A.007 sanity check — verifies payload integrity, not trading criteria."""
 
@@ -126,7 +151,7 @@ class TestAlgoA007:
             "payload": {
                 "interval": "5",
                 "position_size": "0.01",
-            }
+            },
         }
         advice, conf = worker._algo_a007(signal)
         assert conf == 100
@@ -134,11 +159,7 @@ class TestAlgoA007:
 
     def test_minimal_payload_75pct(self, worker):
         """Payload with action + price + interval (no position_size) = 4/4 (position_size defaults)."""
-        signal = {
-            "action": "buy",
-            "price": "62647",
-            "payload": {"interval": "5"}
-        }
+        signal = {"action": "buy", "price": "62647", "payload": {"interval": "5"}}
         advice, conf = worker._algo_a007(signal)
         assert conf >= 75
         assert "PASS" in advice
@@ -153,7 +174,7 @@ class TestAlgoA007:
             "payload": {
                 "interval": "5",
                 "signal": "SMOKE_TEST_V2",
-            }
+            },
         }
         advice, conf = worker._algo_a007(signal)
         # action=buy ✅, price=62647 ✅, interval=5 ✅, no position_size → default ✅
@@ -176,6 +197,7 @@ class TestAlgoA007:
 # _algo_supertrend
 # ═══════════════════════════════════════════════════════════════
 
+
 class TestAlgoSupertrend:
     """SuperTrend sanity check."""
 
@@ -187,7 +209,7 @@ class TestAlgoSupertrend:
             "payload": {
                 "confidence_score": 85,
                 "metadata": {"sl": "62000", "tp": "63500"},
-            }
+            },
         }
         advice, conf = worker._algo_supertrend(signal)
         assert conf == 100
@@ -204,6 +226,7 @@ class TestAlgoSupertrend:
 # ═══════════════════════════════════════════════════════════════
 # _algo_indicator_passthrough
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestAlgoIndicatorPassthrough:
     """Indicator passthrough — uses source confidence, no trade criteria."""
@@ -235,7 +258,10 @@ class TestAlgoIndicatorPassthrough:
 
     def test_handles_string_payload(self, worker):
         import json
-        signal = {"payload": json.dumps({"indicator_name": "Test", "confidence_score": 70})}
+
+        signal = {
+            "payload": json.dumps({"indicator_name": "Test", "confidence_score": 70})
+        }
         advice, conf = worker._algo_indicator_passthrough(signal)
         assert conf == 70
         assert "Test" in advice
@@ -244,6 +270,7 @@ class TestAlgoIndicatorPassthrough:
 # ═══════════════════════════════════════════════════════════════
 # Integration: End-to-end algorithmic analysis
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestIntegrationAlgorithmic:
     """End-to-end: signal → route → analyze → verdict."""
@@ -286,6 +313,7 @@ class TestIntegrationAlgorithmic:
 # ═══════════════════════════════════════════════════════════════
 # Production-realistic payloads (VBS consume_signals format)
 # ═══════════════════════════════════════════════════════════════
+
 
 class TestProductionPayloads:
     """Test with exact VBS consume_signals() response dicts.
@@ -391,7 +419,12 @@ class TestProductionPayloads:
                 "indicator_name": "MIS(A7-01B.V3)",
                 "signal_type": "momentum",
                 "confidence_score": 85,
-                "conditions_met": ["EMA20>50>200", "RSI>50", "MACD_CROSS_UP", "VOL>AVG"],
+                "conditions_met": [
+                    "EMA20>50>200",
+                    "RSI>50",
+                    "MACD_CROSS_UP",
+                    "VOL>AVG",
+                ],
                 "metadata": {
                     "rsi": 62.5,
                     "macd": 45.2,
@@ -448,4 +481,3 @@ class TestProductionPayloads:
         }
         group = worker._detect_strategy_group(signal)
         assert group == "A.007 (MA Crossover + ADX)"
-

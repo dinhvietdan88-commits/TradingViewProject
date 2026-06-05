@@ -59,11 +59,11 @@ def generate_weex_signature_v3(api_secret, timestamp, method, request_path, quer
     if query_params:
         sorted_keys = sorted(query_params.keys())
         query_str = "&".join(f"{k}={query_params[k]}" for k in sorted_keys)
-        
+
     full_path = request_path
     if query_str:
         full_path = f"{request_path}?{query_str}"
-        
+
     message = f"{timestamp}{method.upper()}{full_path}{body}"
     signature = hmac.new(
         api_secret.encode('utf-8'),
@@ -79,11 +79,11 @@ if __name__ == "__main__":
     method = "GET"
     path = "/api/v3/spot/order"
     params = {"orderId": "992831", "symbol": "BTCUSDT"}
-    
+
     # Generate signature with sorted parameters for V3
     sig_v3 = generate_weex_signature_v3(secret, ts, method, path, params)
     print("V3 Signature:", sig_v3)
-    
+
     # Matching V2 equivalent with pre-formatted path
     v2_path = f"{path}?orderId=992831&symbol=BTCUSDT"
     sig_v2 = generate_weex_signature_v2(secret, ts, method, v2_path)

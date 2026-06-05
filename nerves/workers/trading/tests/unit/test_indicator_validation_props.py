@@ -8,18 +8,21 @@ Property 9:  indicator dedup independent from strategy dedup
 Property 10: same (symbol, indicator_name, signal_type) within 60s → duplicate_signal rejection
 Property 11: signal_type=info bypasses timeframe validation
 """
+
 import time
-import pytest
 from hypothesis import given, settings, assume
 from hypothesis import strategies as st
 
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+import sys
+import os
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
 # ── Property 7: signal_type validation ───────────────────────────────────────
 
 VALID_SIGNAL_TYPES = {"entry", "exit", "info"}
+
 
 @given(signal_type=st.text(min_size=1, max_size=20))
 @settings(max_examples=100)
@@ -35,6 +38,7 @@ def test_prop7_invalid_signal_type_detected(signal_type):
 
 # ── Property 8: confidence_score clamped to [0, 100] ─────────────────────────
 
+
 def _clamp_confidence(v) -> int:
     try:
         return max(0, min(100, int(v)))
@@ -42,10 +46,12 @@ def _clamp_confidence(v) -> int:
         return 0
 
 
-@given(raw=st.one_of(
-    st.integers(min_value=-1000, max_value=1000),
-    st.floats(min_value=-1000, max_value=1000, allow_nan=False),
-))
+@given(
+    raw=st.one_of(
+        st.integers(min_value=-1000, max_value=1000),
+        st.floats(min_value=-1000, max_value=1000, allow_nan=False),
+    )
+)
 @settings(max_examples=200)
 def test_prop8_confidence_clamped(raw):
     """
@@ -57,6 +63,7 @@ def test_prop8_confidence_clamped(raw):
 
 
 # ── Property 9: Indicator dedup independent from strategy dedup ───────────────
+
 
 def test_prop9_indicator_dedup_uses_separate_keys():
     """
@@ -71,6 +78,7 @@ def test_prop9_indicator_dedup_uses_separate_keys():
 
 
 # ── Property 10: Same indicator key within TTL → duplicate ───────────────────
+
 
 @given(
     symbol=st.text(min_size=1, max_size=10).map(str.upper),
@@ -104,7 +112,21 @@ def test_prop10_same_key_within_ttl_is_duplicate(symbol, indicator_name, signal_
 
 # ── Property 11: info signal bypasses timeframe validation ────────────────────
 
-VALID_INTERVALS = {"1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w", "60", "240", "d", "w"}
+VALID_INTERVALS = {
+    "1m",
+    "5m",
+    "15m",
+    "30m",
+    "1h",
+    "4h",
+    "1d",
+    "1w",
+    "60",
+    "240",
+    "d",
+    "w",
+}
+
 
 @given(interval=st.text(min_size=1, max_size=10))
 @settings(max_examples=100)

@@ -1,6 +1,7 @@
-﻿"""
+"""
 Integration tests: GET /tv_health_check + Dashboard routes
 """
+
 import pytest
 
 

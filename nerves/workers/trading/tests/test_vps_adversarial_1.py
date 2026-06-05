@@ -6,12 +6,19 @@ Focuses on extreme ATR values, missing keys, network failures, and timeout behav
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
-import aiohttp
 from aiohttp import ClientResponseError, ClientTimeout
 
 import config
 
-def _make_vbs_signal(queue_id=1, symbol="BTCUSDT", action="buy", price=100.0, atr=None, atr_in_payload=True):
+
+def _make_vbs_signal(
+    queue_id=1,
+    symbol="BTCUSDT",
+    action="buy",
+    price=100.0,
+    atr=None,
+    atr_in_payload=True,
+):
     """Create a sample VBS signal dict with optional ATR."""
     payload = {
         "symbol": symbol,
@@ -42,6 +49,7 @@ def _make_vbs_signal(queue_id=1, symbol="BTCUSDT", action="buy", price=100.0, at
 
 class FakeResponse:
     """Fake aiohttp response for mocking session.get/post."""
+
     def __init__(self, status=200, json_data=None, text_data=""):
         self.status = status
         self._json_data = json_data or {}
@@ -64,6 +72,7 @@ class FakeResponse:
 
 
 # ── Extreme ATR Value Tests ──────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_calculate_sl_tp_extreme_atr():
@@ -155,7 +164,9 @@ async def test_calculate_position_size_extreme_atr():
         # Case 4: ATR is extremely large (e.g. 1000000) -> Should fall back to percentage-based STOP_LOSS_PCT = 0.08
         signal_huge = _make_vbs_signal(atr=1000000.0)
         qty = worker._calculate_position_size(price, "buy", signal=signal_huge)
-        expected_qty = (config.MAX_QUOTE_QTY * config.RISK_PER_TRADE) / (price * config.STOP_LOSS_PCT)
+        expected_qty = (config.MAX_QUOTE_QTY * config.RISK_PER_TRADE) / (
+            price * config.STOP_LOSS_PCT
+        )
         assert qty == expected_qty
 
     finally:
@@ -165,6 +176,7 @@ async def test_calculate_position_size_extreme_atr():
 
 
 # ── Missing or Invalid ATR Key / Value Tests ─────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_missing_or_invalid_atr():
@@ -176,11 +188,13 @@ async def test_missing_or_invalid_atr():
 
     # Case 1: ATR key completely missing
     signal_no_atr = _make_vbs_signal(atr=None)
-    del signal_no_atr["payload"]["exchange"] # just random change, but verify key not in payload at all
+    del signal_no_atr["payload"][
+        "exchange"
+    ]  # just random change, but verify key not in payload at all
     # verify no crash and correct SL/TP
     sl, tp = worker._calculate_sl_tp(price, "buy", signal=signal_no_atr)
     assert sl == price * (1 - config.STOP_LOSS_PCT)
-    
+
     # Case 2: ATR is None explicitly
     signal_none_atr = _make_vbs_signal(atr=None)
     signal_none_atr["payload"]["atr"] = None
@@ -212,6 +226,7 @@ async def test_missing_or_invalid_atr():
 
 # ── Consumer Network Failure and Timeout Tests ───────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_consumer_session_attribute_bug():
     """Verify that calling get_session on a fresh VpsSignalConsumer initializes session successfully and does not raise AttributeError."""
@@ -231,7 +246,9 @@ async def test_consumer_pull_signals_http_error():
     from workers.vps_consumer import VpsSignalConsumer
 
     consumer = VpsSignalConsumer()
-    consumer._session = None  # Workaround for the production attribute bug to test pull_signals
+    consumer._session = (
+        None  # Workaround for the production attribute bug to test pull_signals
+    )
 
     # Mock response to return 500
     mock_resp = FakeResponse(status=500, text_data="Internal Server Error")
@@ -241,7 +258,7 @@ async def test_consumer_pull_signals_http_error():
 
     with pytest.raises(ClientResponseError) as exc_info:
         await consumer.pull_signals()
-    
+
     assert exc_info.value.status == 500
     await consumer.close()
 
@@ -252,11 +269,15 @@ async def test_consumer_pull_signals_timeout():
     from workers.vps_consumer import VpsSignalConsumer
 
     consumer = VpsSignalConsumer()
-    consumer._session = None  # Workaround for the production attribute bug to test pull_signals
+    consumer._session = (
+        None  # Workaround for the production attribute bug to test pull_signals
+    )
 
     # Mock get to raise asyncio.TimeoutError
     mock_session = MagicMock()
-    mock_session.get = MagicMock(side_effect=asyncio.TimeoutError("Connection timed out"))
+    mock_session.get = MagicMock(
+        side_effect=asyncio.TimeoutError("Connection timed out")
+    )
     consumer.get_session = AsyncMock(return_value=mock_session)
 
     with pytest.raises(asyncio.TimeoutError):
@@ -278,11 +299,14 @@ async def test_consumer_poll_loop_recovers():
     from workers.vps_consumer import VpsSignalConsumer
 
     consumer = VpsSignalConsumer()
-    consumer._session = None  # Workaround for the production attribute bug to test poll_loop
-    
+    consumer._session = (
+        None  # Workaround for the production attribute bug to test poll_loop
+    )
+
     # We will trigger the loop. The first call to pull_signals raises RuntimeError.
     # The second call is CancelledError to break the loop.
     call_count = 0
+
     async def mock_pull_signals(limit=5):
         nonlocal call_count
         call_count += 1
@@ -296,7 +320,7 @@ async def test_consumer_poll_loop_recovers():
     # Mock asyncio.sleep to check it is called with a backoff value
     with patch("asyncio.sleep", new_callable=AsyncMock) as mock_sleep:
         await consumer.poll_loop()
-        
+
         # Verify it slept with an exponential backoff value (5-8s range due to jitter)
         assert mock_sleep.call_count >= 1
         sleep_val = mock_sleep.call_args_list[0][0][0]
@@ -305,4 +329,3 @@ async def test_consumer_poll_loop_recovers():
         assert call_count == 2
 
     await consumer.close()
-

@@ -25,16 +25,32 @@ DANGEROUS_CALLS = {
     "eval": ("Dangerous eval() call", Severity.CRITICAL, "CWE-95"),
     "exec": ("Dangerous exec() call", Severity.CRITICAL, "CWE-95"),
     "compile": ("Potential code injection via compile()", Severity.HIGH, "CWE-95"),
-    "__import__": ("Dynamic import — potential code injection", Severity.MEDIUM, "CWE-502"),
+    "__import__": (
+        "Dynamic import — potential code injection",
+        Severity.MEDIUM,
+        "CWE-502",
+    ),
 }
 
 # Dangerous module.function patterns
 DANGEROUS_ATTR_CALLS = {
-    ("pickle", "loads"): ("Deserialization of untrusted data", Severity.HIGH, "CWE-502"),
+    ("pickle", "loads"): (
+        "Deserialization of untrusted data",
+        Severity.HIGH,
+        "CWE-502",
+    ),
     ("pickle", "load"): ("Deserialization of untrusted data", Severity.HIGH, "CWE-502"),
     ("yaml", "load"): ("Unsafe YAML load (use safe_load)", Severity.MEDIUM, "CWE-502"),
-    ("subprocess", "call"): ("Subprocess call — check for shell injection", Severity.MEDIUM, "CWE-78"),
-    ("subprocess", "Popen"): ("Subprocess Popen — check for shell injection", Severity.MEDIUM, "CWE-78"),
+    ("subprocess", "call"): (
+        "Subprocess call — check for shell injection",
+        Severity.MEDIUM,
+        "CWE-78",
+    ),
+    ("subprocess", "Popen"): (
+        "Subprocess Popen — check for shell injection",
+        Severity.MEDIUM,
+        "CWE-78",
+    ),
     ("os", "system"): ("OS command execution", Severity.HIGH, "CWE-78"),
     ("os", "popen"): ("OS command execution", Severity.HIGH, "CWE-78"),
 }
@@ -51,56 +67,72 @@ class _DangerousCallVisitor(ast.NodeVisitor):
         # Direct calls: eval(), exec()
         if isinstance(node.func, ast.Name) and node.func.id in DANGEROUS_CALLS:
             title, severity, cwe = DANGEROUS_CALLS[node.func.id]
-            self.findings.append(Finding(
-                rule_id="STA-001",
-                title=title,
-                severity=severity,
-                file=self.filepath,
-                line=node.lineno,
-                description=f"Call to {node.func.id}() detected. This can execute arbitrary code.",
-                evidence=f"{node.func.id}(...) at line {node.lineno}",
-                scanner=SCANNER_NAME,
-                confidence=0.9,
-                remediation=f"Remove {node.func.id}() or use a safe alternative.",
-                cwe=cwe,
-            ))
-
-        # Attribute calls: pickle.loads(), os.system()
-        if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
-            key = (node.func.value.id, node.func.attr)
-            if key in DANGEROUS_ATTR_CALLS:
-                title, severity, cwe = DANGEROUS_ATTR_CALLS[key]
-                self.findings.append(Finding(
-                    rule_id="STA-002",
+            self.findings.append(
+                Finding(
+                    rule_id="STA-001",
                     title=title,
                     severity=severity,
                     file=self.filepath,
                     line=node.lineno,
-                    description=f"Call to {key[0]}.{key[1]}() detected.",
-                    evidence=f"{key[0]}.{key[1]}(...) at line {node.lineno}",
+                    description=f"Call to {node.func.id}() detected. This can execute arbitrary code.",
+                    evidence=f"{node.func.id}(...) at line {node.lineno}",
                     scanner=SCANNER_NAME,
-                    confidence=0.85,
-                    remediation=f"Use a safe alternative to {key[0]}.{key[1]}().",
+                    confidence=0.9,
+                    remediation=f"Remove {node.func.id}() or use a safe alternative.",
                     cwe=cwe,
-                ))
+                )
+            )
 
-        # subprocess with shell=True
-        if isinstance(node.func, ast.Attribute) and node.func.attr in ("call", "Popen", "run"):
-            for kw in node.keywords:
-                if kw.arg == "shell" and isinstance(kw.value, ast.Constant) and kw.value.value is True:
-                    self.findings.append(Finding(
-                        rule_id="STA-003",
-                        title="Subprocess with shell=True",
-                        severity=Severity.HIGH,
+        # Attribute calls: pickle.loads(), os.system()
+        if isinstance(node.func, ast.Attribute) and isinstance(
+            node.func.value, ast.Name
+        ):
+            key = (node.func.value.id, node.func.attr)
+            if key in DANGEROUS_ATTR_CALLS:
+                title, severity, cwe = DANGEROUS_ATTR_CALLS[key]
+                self.findings.append(
+                    Finding(
+                        rule_id="STA-002",
+                        title=title,
+                        severity=severity,
                         file=self.filepath,
                         line=node.lineno,
-                        description="shell=True enables shell injection if arguments are user-controlled.",
-                        evidence=f"subprocess.{node.func.attr}(..., shell=True)",
+                        description=f"Call to {key[0]}.{key[1]}() detected.",
+                        evidence=f"{key[0]}.{key[1]}(...) at line {node.lineno}",
                         scanner=SCANNER_NAME,
-                        confidence=0.9,
-                        remediation="Use shell=False and pass arguments as a list.",
-                        cwe="CWE-78",
-                    ))
+                        confidence=0.85,
+                        remediation=f"Use a safe alternative to {key[0]}.{key[1]}().",
+                        cwe=cwe,
+                    )
+                )
+
+        # subprocess with shell=True
+        if isinstance(node.func, ast.Attribute) and node.func.attr in (
+            "call",
+            "Popen",
+            "run",
+        ):
+            for kw in node.keywords:
+                if (
+                    kw.arg == "shell"
+                    and isinstance(kw.value, ast.Constant)
+                    and kw.value.value is True
+                ):
+                    self.findings.append(
+                        Finding(
+                            rule_id="STA-003",
+                            title="Subprocess with shell=True",
+                            severity=Severity.HIGH,
+                            file=self.filepath,
+                            line=node.lineno,
+                            description="shell=True enables shell injection if arguments are user-controlled.",
+                            evidence=f"subprocess.{node.func.attr}(..., shell=True)",
+                            scanner=SCANNER_NAME,
+                            confidence=0.9,
+                            remediation="Use shell=False and pass arguments as a list.",
+                            cwe="CWE-78",
+                        )
+                    )
 
         self.generic_visit(node)
 
@@ -113,6 +145,7 @@ def scan_file(filepath: Path) -> List[Finding]:
     ast.NodeVisitor.visit() to exhaust Python's call stack (~1000 frames).
     """
     import logging
+
     _log = logging.getLogger(__name__)
 
     findings = []
@@ -190,19 +223,21 @@ def _check_debug_mode(filepath: Path, lines: list) -> List[Finding]:
     findings = []
     for i, line in enumerate(lines, 1):
         if re.search(r'DEBUG\s*=\s*(True|"true"|1)', line, re.IGNORECASE):
-            findings.append(Finding(
-                rule_id="STA-004",
-                title="Debug mode potentially enabled",
-                severity=Severity.MEDIUM,
-                file=str(filepath),
-                line=i,
-                description="DEBUG is set to a truthy value. Ensure this is from env var, not hardcoded.",
-                evidence=line.strip(),
-                scanner=SCANNER_NAME,
-                confidence=0.5,
-                remediation="Ensure DEBUG is loaded from environment and defaults to False.",
-                cwe="CWE-489",
-            ))
+            findings.append(
+                Finding(
+                    rule_id="STA-004",
+                    title="Debug mode potentially enabled",
+                    severity=Severity.MEDIUM,
+                    file=str(filepath),
+                    line=i,
+                    description="DEBUG is set to a truthy value. Ensure this is from env var, not hardcoded.",
+                    evidence=line.strip(),
+                    scanner=SCANNER_NAME,
+                    confidence=0.5,
+                    remediation="Ensure DEBUG is loaded from environment and defaults to False.",
+                    cwe="CWE-489",
+                )
+            )
     return findings
 
 
@@ -220,17 +255,19 @@ def _check_hardcoded_secrets(filepath: Path, lines: list) -> List[Finding]:
             # Skip env var loading patterns
             if "os.getenv" in line or "os.environ" in line:
                 continue
-            findings.append(Finding(
-                rule_id="STA-005",
-                title="Potential hardcoded secret",
-                severity=Severity.CRITICAL,
-                file=str(filepath),
-                line=i,
-                description="A string that looks like an API key or secret is hardcoded in source.",
-                evidence=line.strip()[:80] + "...",
-                scanner=SCANNER_NAME,
-                confidence=0.7,
-                remediation="Move secrets to .env file and load via os.getenv().",
-                cwe="CWE-798",
-            ))
+            findings.append(
+                Finding(
+                    rule_id="STA-005",
+                    title="Potential hardcoded secret",
+                    severity=Severity.CRITICAL,
+                    file=str(filepath),
+                    line=i,
+                    description="A string that looks like an API key or secret is hardcoded in source.",
+                    evidence=line.strip()[:80] + "...",
+                    scanner=SCANNER_NAME,
+                    confidence=0.7,
+                    remediation="Move secrets to .env file and load via os.getenv().",
+                    cwe="CWE-798",
+                )
+            )
     return findings

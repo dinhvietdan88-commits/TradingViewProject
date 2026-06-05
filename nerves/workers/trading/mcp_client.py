@@ -3,6 +3,7 @@ P6 — MCP Client
 Wrapper gọi TradingView MCP CLI (tradingview-mcp) qua subprocess.
 TradingView Desktop phải đang chạy với --remote-debugging-port=9222
 """
+
 import json
 import asyncio
 import base64
@@ -73,9 +74,11 @@ class MCPClient:
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                     cwd=str(_MCP_DIR),
-                    env={**os.environ, "TV_CDP_PORT": str(self.cdp_port)}
+                    env={**os.environ, "TV_CDP_PORT": str(self.cdp_port)},
                 )
-                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(), timeout=timeout
+                )
 
                 if proc.returncode != 0:
                     err = stderr.decode("utf-8", errors="replace").strip()
@@ -113,12 +116,14 @@ class MCPClient:
         """Check if TradingView Desktop is connected via CDP."""
         try:
             result = await self._run("status", timeout=5)
-            self._connected = bool(result.get("cdp_connected") or result.get("connected"))
+            self._connected = bool(
+                result.get("cdp_connected") or result.get("connected")
+            )
             return {
                 "connected": self._connected,
                 "cdp_port": self.cdp_port,
                 "mcp_cli_found": _MCP_CLI.exists(),
-                "detail": result
+                "detail": result,
             }
         except Exception as e:
             self._connected = False
@@ -126,7 +131,7 @@ class MCPClient:
                 "connected": False,
                 "cdp_port": self.cdp_port,
                 "mcp_cli_found": _MCP_CLI.exists(),
-                "error": str(e)
+                "error": str(e),
             }
 
     # ── Market Data ───────────────────────────────────────────────────────────
@@ -225,27 +230,34 @@ class MCPClient:
         """
         try:
             from PIL import Image
+
             img = Image.open(img_path)
             w, h = img.size
 
             # TradingView layout crop offsets (% based for resolution-independence)
-            top    = int(h * 0.07)   # ~60px on 1080p — toolbar
-            left   = int(w * 0.045)  # ~60px — symbol sidebar
-            right  = int(w * 0.21)   # ~280px — right panel (watchlist/indicators)
-            bottom = int(h * 0.04)   # ~30px — bottom bar
+            top = int(h * 0.07)  # ~60px on 1080p — toolbar
+            left = int(w * 0.045)  # ~60px — symbol sidebar
+            right = int(w * 0.21)  # ~280px — right panel (watchlist/indicators)
+            bottom = int(h * 0.04)  # ~30px — bottom bar
 
             box = (left, top, w - right, h - bottom)
             cropped = img.crop(box)
 
             # Upscale for sharpness (2x) if image is small
             if cropped.width < 800:
-                cropped = cropped.resize((cropped.width * 2, cropped.height * 2), Image.LANCZOS)
+                cropped = cropped.resize(
+                    (cropped.width * 2, cropped.height * 2), Image.LANCZOS
+                )
 
             cropped.save(save_path, format="PNG", optimize=False)
-            logger.info(f"Cropped chart: {img.size} -> {cropped.size} saved to {save_path.name}")
+            logger.info(
+                f"Cropped chart: {img.size} -> {cropped.size} saved to {save_path.name}"
+            )
             return True
         except ImportError:
-            logger.warning("Pillow not available — using full screenshot (install: pip install Pillow)")
+            logger.warning(
+                "Pillow not available — using full screenshot (install: pip install Pillow)"
+            )
             return False
         except Exception as e:
             logger.warning(f"Crop failed: {e}")
@@ -258,23 +270,33 @@ class MCPClient:
         """
         import aiohttp
         import json
-        
+
         try:
             async with aiohttp.ClientSession() as session:
                 # 1. Discover the TradingView page CDP websocket URL
-                async with session.get(f"http://127.0.0.1:{self.cdp_port}/json", timeout=3) as resp:
+                async with session.get(
+                    f"http://127.0.0.1:{self.cdp_port}/json", timeout=3
+                ) as resp:
                     pages = await resp.json()
-                
+
                 # Prioritize TradingView page, otherwise take first available
-                page = next((p for p in pages if p.get("type") == "page" and "TradingView" in p.get("title", "")), None)
+                page = next(
+                    (
+                        p
+                        for p in pages
+                        if p.get("type") == "page"
+                        and "TradingView" in p.get("title", "")
+                    ),
+                    None,
+                )
                 if not page:
                     page = next((p for p in pages if p.get("type") == "page"), None)
-                    
+
                 if not page or "webSocketDebuggerUrl" not in page:
                     return None, None
-                    
+
                 ws_url = page["webSocketDebuggerUrl"]
-                
+
                 # 2. Connect via WebSocket to issue Runtime.evaluate
                 async with session.ws_connect(ws_url, timeout=3) as ws:
                     js_expr = """
@@ -285,7 +307,7 @@ class MCPClient:
                                 return { symbol: chart.symbol(), timeframe: chart.resolution() };
                             }
                         } catch (e) {}
-                        
+
                         try {
                             // DOM fallback parsing for TradingView Desktop
                             const symNode = document.querySelector('.js-widget-title, .title-3sKkivG, [data-name="legend-source-title"]');
@@ -298,27 +320,30 @@ class MCPClient:
                         }
                     })()
                     """
-                    
+
                     req_id = 1001
-                    await ws.send_json({
-                        "id": req_id,
-                        "method": "Runtime.evaluate",
-                        "params": {
-                            "expression": js_expr,
-                            "returnByValue": True
+                    await ws.send_json(
+                        {
+                            "id": req_id,
+                            "method": "Runtime.evaluate",
+                            "params": {"expression": js_expr, "returnByValue": True},
                         }
-                    })
-                    
+                    )
+
                     async for msg in ws:
                         if msg.type == aiohttp.WSMsgType.TEXT:
                             data = json.loads(msg.data)
                             if data.get("id") == req_id:
-                                res = data.get("result", {}).get("result", {}).get("value", {})
+                                res = (
+                                    data.get("result", {})
+                                    .get("result", {})
+                                    .get("value", {})
+                                )
                                 return res.get("symbol"), res.get("timeframe")
-                                
+
         except Exception as e:
             logger.warning(f"CDP resolve active chart failed: {e}")
-            
+
         return None, None
 
     async def capture_screenshot(
@@ -353,8 +378,9 @@ class MCPClient:
             # Try fast local/daemon capture first
             try:
                 from capture_client import get_capture_client
+
                 client = get_capture_client()
-                
+
                 res = await client.capture_screenshot(
                     symbol=target_symbol,
                     timeframe=target_timeframe,
@@ -362,13 +388,17 @@ class MCPClient:
                     crop=crop,
                     save_path=save_path,
                     drawings=drawings,
-                    strategy_table=strategy_table
+                    strategy_table=strategy_table,
                 )
                 if res.success and res.file_path:
                     return Path(res.file_path)
-                logger.warning(f"Fast capture client returned success=False ({res.error}), falling back to legacy subprocess...")
+                logger.warning(
+                    f"Fast capture client returned success=False ({res.error}), falling back to legacy subprocess..."
+                )
             except Exception as e:
-                logger.warning(f"Fast capture client failed: {e}. Falling back to legacy subprocess...")
+                logger.warning(
+                    f"Fast capture client failed: {e}. Falling back to legacy subprocess..."
+                )
 
             try:
                 if not active_only:
@@ -385,8 +415,13 @@ class MCPClient:
 
                 if save_path is None:
                     import re
-                    safe_symbol = re.sub(r'[^A-Za-z0-9_\-]', '', symbol)
-                    save_path = Path(__file__).parent / "screenshots" / f"{safe_symbol}_{timeframe}.png"
+
+                    safe_symbol = re.sub(r"[^A-Za-z0-9_\-]", "", symbol)
+                    save_path = (
+                        Path(__file__).parent
+                        / "screenshots"
+                        / f"{safe_symbol}_{timeframe}.png"
+                    )
                 save_path.parent.mkdir(parents=True, exist_ok=True)
 
                 raw_path: Optional[Path] = None
@@ -408,9 +443,11 @@ class MCPClient:
                         if not cropped:
                             # Fallback: just copy raw as-is
                             import shutil
+
                             shutil.copy2(raw_path, save_path)
                     else:
                         import shutil
+
                         shutil.copy2(raw_path, save_path)
 
                     # Clean up temp raw file
@@ -448,7 +485,7 @@ class MCPClient:
                     # Switch symbol & timeframe
                     await self._run("symbol", sym)
                     await self._run("timeframe", timeframe)
-                    
+
                     # Sleep slightly to let the chart load and indicators update
                     await asyncio.sleep(0.5)
 
@@ -457,13 +494,15 @@ class MCPClient:
                     studies = await self._get_study_values_unlocked()
                     ohlcv = await self._get_ohlcv_summary_unlocked()
 
-                results.append({
-                    "symbol": sym,
-                    "quote": quote,
-                    "studies": studies,
-                    "ohlcv_summary": ohlcv,
-                    "error": None
-                })
+                results.append(
+                    {
+                        "symbol": sym,
+                        "quote": quote,
+                        "studies": studies,
+                        "ohlcv_summary": ohlcv,
+                        "error": None,
+                    }
+                )
             except Exception as e:
                 logger.warning(f"batch_run error for {sym}: {e}")
                 results.append({"symbol": sym, "error": str(e)})

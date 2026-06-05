@@ -42,9 +42,11 @@ log = logging.getLogger("agy-bridge")
 
 # ── Circuit Breaker ──────────────────────────────────────────────
 
+
 @dataclass
 class CircuitBreaker:
     """Simple circuit breaker for agy CLI calls."""
+
     failure_threshold: int = 3
     recovery_timeout_sec: int = 120
     _failure_count: int = field(default=0, init=False)
@@ -93,6 +95,7 @@ class CircuitBreaker:
 
 # ── CLI Health Tracker (Adaptive Strategy Gate) ──────────────────
 
+
 @dataclass
 class CliHealthTracker:
     """Tracks CLI latency and failure rate to decide strategy.
@@ -108,13 +111,16 @@ class CliHealthTracker:
 
     SCAR-007b: Only burn 2x tokens when CLI is actually struggling.
     """
-    window_size: int = 10            # rolling window of recent calls
-    latency_threshold_ms: float = 18000.0   # 18s = CLI is sluggish
-    failure_rate_threshold: float = 0.4     # 40% failure rate
-    consecutive_fail_trigger: int = 2       # 2 consecutive fails → parallel
+
+    window_size: int = 10  # rolling window of recent calls
+    latency_threshold_ms: float = 18000.0  # 18s = CLI is sluggish
+    failure_rate_threshold: float = 0.4  # 40% failure rate
+    consecutive_fail_trigger: int = 2  # 2 consecutive fails → parallel
 
     _latencies: list = field(default_factory=list, init=False)
-    _outcomes: list = field(default_factory=list, init=False)  # True=success, False=fail
+    _outcomes: list = field(
+        default_factory=list, init=False
+    )  # True=success, False=fail
     _consecutive_failures: int = field(default=0, init=False)
 
     def record(self, success: bool, latency_ms: float = 0.0):
@@ -128,9 +134,9 @@ class CliHealthTracker:
 
         # Trim to window
         if len(self._outcomes) > self.window_size:
-            self._outcomes = self._outcomes[-self.window_size:]
+            self._outcomes = self._outcomes[-self.window_size :]
         if len(self._latencies) > self.window_size:
-            self._latencies = self._latencies[-self.window_size:]
+            self._latencies = self._latencies[-self.window_size :]
 
     @property
     def is_degraded(self) -> bool:
@@ -163,10 +169,11 @@ class CliHealthTracker:
 
     @property
     def info(self) -> dict:
-        avg_lat = (sum(self._latencies) / len(self._latencies)) if self._latencies else 0
+        avg_lat = (
+            (sum(self._latencies) / len(self._latencies)) if self._latencies else 0
+        )
         fail_rate = (
-            self._outcomes.count(False) / len(self._outcomes)
-            if self._outcomes else 0
+            self._outcomes.count(False) / len(self._outcomes) if self._outcomes else 0
         )
         return {
             "strategy": self.strategy,
@@ -236,7 +243,6 @@ def _detect_pty_mode() -> str:
 
 import hashlib
 import re
-import tempfile
 
 # ── Response Cache ───────────────────────────────────────────────
 
@@ -258,7 +264,9 @@ def _get_cached(prompt: str) -> Optional[dict]:
             cached_result = dict(result)
             cached_result["provider"] = f"{result['provider']}+cache"
             cached_result["cache_hit"] = True
-            log.info(f"Cache HIT ({key[:8]}…): {result['provider']}, age={time.time()-ts:.0f}s")
+            log.info(
+                f"Cache HIT ({key[:8]}…): {result['provider']}, age={time.time() - ts:.0f}s"
+            )
             return cached_result
         else:
             del _response_cache[key]
@@ -278,11 +286,12 @@ def _put_cache(prompt: str, result: dict):
 
 def _clean_output(text: str) -> str:
     """Remove ANSI escape codes and carriage returns."""
-    text = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', text)
-    return text.replace('\r', '').strip()
+    text = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", text)
+    return text.replace("\r", "").strip()
 
 
 # ── Provider: agy CLI ────────────────────────────────────────────
+
 
 async def _run_cli(prompt: str, timeout_sec: int) -> dict:
     """Execute via agy CLI binary with stdin pipe (no shell).
@@ -315,7 +324,8 @@ async def _run_cli(prompt: str, timeout_sec: int) -> dict:
         args = [
             AGY_PATH,
             "--print",
-            "--print-timeout", f"{timeout_sec}s",
+            "--print-timeout",
+            f"{timeout_sec}s",
             "--sandbox",
         ]
         proc = await asyncio.create_subprocess_exec(
@@ -358,6 +368,7 @@ async def _run_cli(prompt: str, timeout_sec: int) -> dict:
 
 # ── Provider: google-genai SDK ───────────────────────────────────
 
+
 async def _run_sdk(prompt: str, model: str) -> dict:
     """Execute via google-genai SDK directly.
 
@@ -385,12 +396,15 @@ async def _run_sdk(prompt: str, model: str) -> dict:
             advice = None
             if response.candidates:
                 for part in response.candidates[0].content.parts:
-                    if hasattr(part, 'text') and part.text:
+                    if hasattr(part, "text") and part.text:
                         advice = (advice or "") + part.text
         latency_ms = (time.time() - start) * 1000
 
         if not advice or len(advice.strip()) < 10:
-            return {"success": False, "error": f"SDK empty response (len={len(advice) if advice else 0})"}
+            return {
+                "success": False,
+                "error": f"SDK empty response (len={len(advice) if advice else 0})",
+            }
 
         return {
             "success": True,
@@ -414,8 +428,10 @@ async def _run_sdk(prompt: str, model: str) -> dict:
 #   CLI healthy  → sequential (1x tokens, ~0 extra latency)
 #   CLI degraded → parallel race (2x tokens, saves ~8s on failover)
 
-async def _run_sequential(prompt: str, model: str, timeout_sec: int,
-                           has_cli: bool, has_sdk: bool) -> dict:
+
+async def _run_sequential(
+    prompt: str, model: str, timeout_sec: int, has_cli: bool, has_sdk: bool
+) -> dict:
     """Sequential: CLI first → SDK only if CLI fails."""
     cli_result = None
 
@@ -447,19 +463,22 @@ async def _run_sequential(prompt: str, model: str, timeout_sec: int,
         sdk_result = {"success": False, "error": f"SDK exception: {e}"}
 
     if sdk_result.get("success"):
-        cli_err = cli_result.get('error', 'N/A')[:60] if cli_result else "no CLI"
-        log.info(f"[sequential] SDK fallback OK ({sdk_result['latency_ms']:.0f}ms) — CLI: {cli_err}")
+        cli_err = cli_result.get("error", "N/A")[:60] if cli_result else "no CLI"
+        log.info(
+            f"[sequential] SDK fallback OK ({sdk_result['latency_ms']:.0f}ms) — CLI: {cli_err}"
+        )
         return sdk_result
 
-    cli_err = cli_result.get('error', '?')[:80] if cli_result else "no binary"
+    cli_err = cli_result.get("error", "?")[:80] if cli_result else "no binary"
     return {
         "success": False,
-        "error": f"All failed: CLI={cli_err}; SDK={sdk_result.get('error','?')[:80]}",
+        "error": f"All failed: CLI={cli_err}; SDK={sdk_result.get('error', '?')[:80]}",
     }
 
 
-async def _run_parallel(prompt: str, model: str, timeout_sec: int,
-                         has_cli: bool, has_sdk: bool) -> dict:
+async def _run_parallel(
+    prompt: str, model: str, timeout_sec: int, has_cli: bool, has_sdk: bool
+) -> dict:
     """Parallel race: both fire simultaneously, first success wins.
     Used only when CLI is degraded (high latency / failures)."""
 
@@ -474,7 +493,8 @@ async def _run_parallel(prompt: str, model: str, timeout_sec: int,
 
     # Wait for first completion
     done, pending = await asyncio.wait(
-        tasks.values(), return_when=asyncio.FIRST_COMPLETED,
+        tasks.values(),
+        return_when=asyncio.FIRST_COMPLETED,
     )
 
     # Check if any completed task succeeded
@@ -541,7 +561,7 @@ async def _run_parallel(prompt: str, model: str, timeout_sec: int,
     for name, task in tasks.items():
         if task.done():
             r = task.result()
-            errors.append(f"{name}={r.get('error','?')[:60]}")
+            errors.append(f"{name}={r.get('error', '?')[:60]}")
     return {"success": False, "error": f"All failed: {'; '.join(errors)}"}
 
 
@@ -563,7 +583,10 @@ async def _run_agy(prompt: str, model: str, timeout_sec: int) -> dict:
     has_sdk = bool(os.environ.get("GEMINI_API_KEY"))  # SDK only uses GEMINI_API_KEY
 
     if not has_cli and not has_sdk:
-        return {"success": False, "error": "No agy binary and no GEMINI_API_KEY available"}
+        return {
+            "success": False,
+            "error": "No agy binary and no GEMINI_API_KEY available",
+        }
 
     # ── Adaptive strategy gate ───────────────────────────────────
     strategy = cli_health.strategy if (has_cli and has_sdk) else "sequential"
@@ -640,6 +663,7 @@ async def analyze(req: AnalyzeRequest, authorization: str = Header(default="")):
     # ── Auth gate ──
     if AGY_BRIDGE_SECRET:
         import hmac
+
         token = authorization.removeprefix("Bearer ").strip()
         if not token or not hmac.compare_digest(token, AGY_BRIDGE_SECRET):
             raise HTTPException(
@@ -669,10 +693,13 @@ async def analyze(req: AnalyzeRequest, authorization: str = Header(default="")):
     except Exception as exc:
         log.error(f"_run_agy raised exception: {exc}")
         import traceback
+
         traceback.print_exc()
         raise HTTPException(status_code=500, detail={"error": str(exc)})
 
-    log.info(f"_run_agy result: success={result.get('success')}, provider={result.get('provider', 'N/A')}")
+    log.info(
+        f"_run_agy result: success={result.get('success')}, provider={result.get('provider', 'N/A')}"
+    )
 
     if result.get("success"):
         cb.record_success()
@@ -718,6 +745,7 @@ def _require_admin_auth(authorization: str):
     """Shared auth check for all /admin/* endpoints."""
     if AGY_BRIDGE_SECRET:
         import hmac
+
         token = authorization.removeprefix("Bearer ").strip()
         if not token or not hmac.compare_digest(token, AGY_BRIDGE_SECRET):
             raise HTTPException(
@@ -728,11 +756,12 @@ def _require_admin_auth(authorization: str):
 
 class VerifyResponse(BaseModel):
     """Structured verification result."""
+
     vector_count: int = -1
-    status: str = "unknown"          # ok | re-ingested | empty | error
+    status: str = "unknown"  # ok | re-ingested | empty | error
     action_taken: str = "check-only"
     rag_initialized: bool = False
-    source: str = "analyzer"         # "analyzer" | "health" | "direct"
+    source: str = "analyzer"  # "analyzer" | "health" | "direct"
     latency_ms: float = 0.0
     error: str = ""
 
@@ -740,7 +769,7 @@ class VerifyResponse(BaseModel):
 @app.post("/admin/verify", response_model=VerifyResponse)
 async def admin_verify(
     authorization: str = Header(default=""),
-    opt_admin: bool = False,         # query param: use opt fallback (direct docker exec)
+    opt_admin: bool = False,  # query param: use opt fallback (direct docker exec)
 ):
     """Delegate RAG verification to the analyzer container.
 
@@ -817,14 +846,16 @@ async def admin_verify(
     #   GET :8001/api/v2/collections/{name}/count → vector count
     #
     # This gives the same information as docker exec without ANY privilege escalation.
-    log.info("[admin/verify] opt_admin=true — probing ChromaDB :8001 directly (no docker exec)...")
+    log.info(
+        "[admin/verify] opt_admin=true — probing ChromaDB :8001 directly (no docker exec)..."
+    )
     result.source = "chromadb_direct"
 
     import urllib.request as _req
     import json as _json
 
     CHROMA_URL = os.environ.get("CHROMA_URL", "http://localhost:8001")
-    COLLECTION  = "minervini_knowledge"
+    COLLECTION = "minervini_knowledge"
 
     try:
         # Step 1: heartbeat — is ChromaDB reachable?
@@ -855,7 +886,6 @@ async def admin_verify(
         f"vectors={result.vector_count} ({result.latency_ms:.0f}ms)"
     )
     return result
-
 
 
 @app.get("/admin/verify/quick")
@@ -891,6 +921,7 @@ async def admin_verify_quick(authorization: str = Header(default="")):
 
 # ── Startup ──────────────────────────────────────────────────────
 
+
 @app.on_event("startup")
 async def startup():
     global AGY_PATH, PTY_MODE
@@ -924,6 +955,7 @@ async def startup():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         app,
         host=BIND_HOST,

@@ -46,9 +46,7 @@ async def staging_client():
             resp = await client.get("/health")
             resp.raise_for_status()
         except (httpx.ConnectError, httpx.ConnectTimeout, httpx.HTTPStatusError) as exc:
-            pytest.skip(
-                f"Staging server not reachable at {SMOKE_BASE_URL}: {exc}"
-            )
+            pytest.skip(f"Staging server not reachable at {SMOKE_BASE_URL}: {exc}")
         yield client
 
 

@@ -13,13 +13,14 @@ Design invariants:
 - Context state is ONLY mutated through ContextManager; interface layers are read-only consumers.
 - Single response type: all paths produce AnalysisResponse (no CliResult).
 """
+
 from __future__ import annotations
 
 import importlib.util
 import logging
 import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
 
 import config
@@ -37,6 +38,7 @@ ANTHROPIC_AVAILABLE = importlib.util.find_spec("anthropic") is not None
 @dataclass
 class AnalysisRequest:
     """Input to ClaudeService for any analysis."""
+
     query: str
     symbol: str = ""
     action: str = ""
@@ -49,8 +51,9 @@ class AnalysisRequest:
 @dataclass
 class AnalysisResponse:
     """Output from ClaudeService (single response type for all paths)."""
+
     text: str
-    confidence: int = 5          # 1-10 scale
+    confidence: int = 5  # 1-10 scale
     source: str = "anthropic_api"  # "anthropic_api" | "none"
     duration_seconds: float = 0.0
     context_tokens_used: int = 0
@@ -62,7 +65,8 @@ class AnalysisResponse:
 @dataclass
 class ContextEntry:
     """Single conversation turn in per-symbol history."""
-    role: str             # "user" | "assistant"
+
+    role: str  # "user" | "assistant"
     content: str
     timestamp: float
     estimated_tokens: int
@@ -107,15 +111,22 @@ class ContextManager:
         max_context_tokens: int = 0,
     ):
         self._contexts: dict[str, list[ContextEntry]] = {}
-        self._context_depth: int = context_depth or getattr(config, "CLAUDE_CONTEXT_DEPTH", 5)
-        self._max_context_tokens: int = max_context_tokens or getattr(config, "CLAUDE_MAX_CONTEXT_TOKENS", 50_000)
+        self._context_depth: int = context_depth or getattr(
+            config, "CLAUDE_CONTEXT_DEPTH", 5
+        )
+        self._max_context_tokens: int = max_context_tokens or getattr(
+            config, "CLAUDE_MAX_CONTEXT_TOKENS", 50_000
+        )
         self._system_prompt: str = _SEPA_SYSTEM_PROMPT_TEMPLATE
 
     async def load_system_prompt(self) -> None:
         """Enrich system prompt with top RAG chunks. Called at startup."""
         try:
             import rag
-            chunks = rag.query_knowledge("SEPA Trend Template VCP pivot breakout", n_results=2)
+
+            chunks = rag.query_knowledge(
+                "SEPA Trend Template VCP pivot breakout", n_results=2
+            )
             if chunks:
                 extra = "\n\n---\n".join(c["content"][:600] for c in chunks)
                 self._system_prompt = (
@@ -123,7 +134,9 @@ class ContextManager:
                     + "\n\n## Tham khảo từ Minervini Knowledge Base:\n"
                     + extra
                 )
-                log.info(f"ContextManager: system prompt enriched with {len(chunks)} RAG chunks")
+                log.info(
+                    f"ContextManager: system prompt enriched with {len(chunks)} RAG chunks"
+                )
         except Exception as exc:
             log.warning(f"ContextManager: RAG enrichment skipped: {exc}")
 
@@ -146,18 +159,22 @@ class ContextManager:
         if key not in self._contexts:
             self._contexts[key] = []
 
-        self._contexts[key].append(ContextEntry(
-            role="user",
-            content=query,
-            timestamp=time.monotonic(),
-            estimated_tokens=self._estimate_tokens(query),
-        ))
-        self._contexts[key].append(ContextEntry(
-            role="assistant",
-            content=response,
-            timestamp=time.monotonic(),
-            estimated_tokens=self._estimate_tokens(response),
-        ))
+        self._contexts[key].append(
+            ContextEntry(
+                role="user",
+                content=query,
+                timestamp=time.monotonic(),
+                estimated_tokens=self._estimate_tokens(query),
+            )
+        )
+        self._contexts[key].append(
+            ContextEntry(
+                role="assistant",
+                content=response,
+                timestamp=time.monotonic(),
+                estimated_tokens=self._estimate_tokens(response),
+            )
+        )
         self._prune(key)
 
     def reset(self, symbol: str = "") -> None:
@@ -185,9 +202,7 @@ class ContextManager:
         stats["total_symbols"] = len(self._contexts)
         stats["total_turns"] = sum(len(v) for v in self._contexts.values())
         stats["total_estimated_tokens"] = sum(
-            e.estimated_tokens
-            for entries in self._contexts.values()
-            for e in entries
+            e.estimated_tokens for entries in self._contexts.values() for e in entries
         )
         return stats
 
@@ -211,7 +226,10 @@ class ContextManager:
             entries.pop(0)
 
         # Token budget pruning
-        while entries and sum(e.estimated_tokens for e in entries) > self._max_context_tokens:
+        while (
+            entries
+            and sum(e.estimated_tokens for e in entries) > self._max_context_tokens
+        ):
             entries.pop(0)
 
         self._contexts[symbol] = entries
@@ -293,11 +311,13 @@ class ClaudeService:
 
     async def query(self, query: str, symbol: str = "") -> AnalysisResponse:
         """Simplified entry for ad-hoc queries without full trading context."""
-        return await self.analyze(AnalysisRequest(
-            query=query,
-            symbol=symbol,
-            include_rag_context=False,
-        ))
+        return await self.analyze(
+            AnalysisRequest(
+                query=query,
+                symbol=symbol,
+                include_rag_context=False,
+            )
+        )
 
     def reset_context(self, symbol: str = "") -> None:
         """Delegate to ContextManager.reset(). Property 10 guarantee."""
@@ -317,11 +337,12 @@ class ClaudeService:
         if request.include_rag_context:
             try:
                 import rag
+
                 query_hint = f"{request.action} {request.symbol} {request.query}"
                 chunks = rag.query_knowledge(query_hint.strip(), n_results=2)
                 if chunks:
                     rag_text = "\n\n---\n".join(
-                        f"[{c['metadata'].get('topic','chunk')} | score={c['relevance_score']:.2%}]\n"
+                        f"[{c['metadata'].get('topic', 'chunk')} | score={c['relevance_score']:.2%}]\n"
                         + c["content"][:600]
                         for c in chunks
                     )
@@ -348,7 +369,9 @@ class ClaudeService:
 
         # Conversation history for this symbol
         depth = getattr(self._ctx, "_context_depth", 5)
-        history = self._ctx.get_history(request.symbol or "__global__", max_turns=depth * 2)
+        history = self._ctx.get_history(
+            request.symbol or "__global__", max_turns=depth * 2
+        )
         if history:
             hist_lines = []
             for entry in history:

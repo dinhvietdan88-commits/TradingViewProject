@@ -42,7 +42,7 @@ import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import httpx
 
@@ -56,22 +56,27 @@ def _now_vn_str() -> str:
     """Current time in UTC+7 for display."""
     return datetime.now(VN_TZ).strftime("%H:%M:%S %d/%m")
 
+
 # ── Configuration ──────────────────────────────────────────────────────────────
 ALERT_AFTER_FAILURES = int(os.getenv("LIVENESS_ALERT_AFTER_FAILURES", "2"))
-OFFLINE_THRESHOLD    = int(os.getenv("LIVENESS_OFFLINE_THRESHOLD", "3"))
-RECOVERY_NOTIFY      = True
-CHECK_TIMEOUT_SEC    = 10.0
-AGY_BRIDGE_HEALTH_URL = os.getenv("AGY_BRIDGE_HEALTH_URL", "http://localhost:9100/health")
+OFFLINE_THRESHOLD = int(os.getenv("LIVENESS_OFFLINE_THRESHOLD", "3"))
+RECOVERY_NOTIFY = True
+CHECK_TIMEOUT_SEC = 10.0
+AGY_BRIDGE_HEALTH_URL = os.getenv(
+    "AGY_BRIDGE_HEALTH_URL", "http://localhost:9100/health"
+)
 
 
 # ── V4: agy-bridge health state tracker ─────────────────────────────────
 
+
 @dataclass
 class BridgeState:
     """Track agy-bridge health for transition-based alerting."""
+
     is_reachable: bool = True
-    cb_state: str = "CLOSED"        # CLOSED | OPEN | HALF_OPEN
-    strategy: str = "sequential"    # sequential | parallel
+    cb_state: str = "CLOSED"  # CLOSED | OPEN | HALF_OPEN
+    strategy: str = "sequential"  # sequential | parallel
     alerted_down: bool = False
     alerted_cb_open: bool = False
     alerted_degraded: bool = False
@@ -84,18 +89,20 @@ _bridge_state = BridgeState()
 
 # ── Server health tracker ──────────────────────────────────────────────────────
 
+
 @dataclass
 class ServerHealth:
     """Track health state of a single server endpoint."""
-    name:                  str
-    url:                   str
-    consecutive_failures:  int   = 0
-    last_success:          float = 0.0
-    last_check:            float = 0.0
-    is_healthy:            bool  = True
-    is_offline:            bool  = False   # V3: True = skip checks entirely
-    last_error:            str   = ""
-    alerted_down:          bool  = False   # V3: True = already sent DOWN alert
+
+    name: str
+    url: str
+    consecutive_failures: int = 0
+    last_success: float = 0.0
+    last_check: float = 0.0
+    is_healthy: bool = True
+    is_offline: bool = False  # V3: True = skip checks entirely
+    last_error: str = ""
+    alerted_down: bool = False  # V3: True = already sent DOWN alert
 
 
 # Dynamic server list — read from env so Tailscale IPs can be configured
@@ -128,6 +135,7 @@ def _get_servers() -> List[ServerHealth]:
 
 
 # ── V3: Server Announce (called by Server B on startup) ────────────────────────
+
 
 def announce_server_online(server_name: str) -> dict:
     """Mark a server as ONLINE again. Called via POST /api/server-announce.
@@ -181,6 +189,7 @@ def get_server_status() -> List[dict]:
 
 # ── Main check function ────────────────────────────────────────────────────────
 
+
 async def run_liveness_check() -> None:
     """Check /health on all configured servers + agy-bridge.
 
@@ -207,14 +216,14 @@ async def run_liveness_check() -> None:
 
                 if resp.status_code == 200 and data.get("status") in ("healthy", "ok"):
                     was_unhealthy = not server.is_healthy
-                    server.is_healthy            = True
-                    server.consecutive_failures  = 0
-                    server.last_success          = time.time()
-                    server.last_error            = ""
-                    server.alerted_down          = False
+                    server.is_healthy = True
+                    server.consecutive_failures = 0
+                    server.last_success = time.time()
+                    server.last_error = ""
+                    server.alerted_down = False
 
-                    uptime    = data.get("uptime_seconds", "?")
-                    pending   = data.get("pending_count", "?")
+                    uptime = data.get("uptime_seconds", "?")
+                    pending = data.get("pending_count", "?")
                     log.info(
                         f"✅ {server.name} healthy "
                         f"(uptime={uptime}s, pending={pending})"
@@ -224,15 +233,13 @@ async def run_liveness_check() -> None:
                         await _send_recovery_alert(server, data)
                 else:
                     await _handle_failure(
-                        server, f"Degraded response: {data.get('status','?')}"
+                        server, f"Degraded response: {data.get('status', '?')}"
                     )
 
             except httpx.ConnectError as exc:
                 await _handle_failure(server, f"Connection refused ({exc})")
             except httpx.ReadTimeout:
-                await _handle_failure(
-                    server, f"Read timeout (>{CHECK_TIMEOUT_SEC}s)"
-                )
+                await _handle_failure(server, f"Read timeout (>{CHECK_TIMEOUT_SEC}s)")
             except Exception as exc:
                 await _handle_failure(server, str(exc)[:200])
 
@@ -245,8 +252,7 @@ async def _handle_failure(server: ServerHealth, error: str) -> None:
     server.is_healthy = False
     server.last_error = error
     log.warning(
-        f"❌ {server.name} FAILED "
-        f"(attempt #{server.consecutive_failures}): {error}"
+        f"❌ {server.name} FAILED (attempt #{server.consecutive_failures}): {error}"
     )
 
     # V3: 3-strike offline logic
@@ -285,6 +291,7 @@ async def _send_down_alert(server: ServerHealth, error: str) -> None:
     )
     try:
         from notifier import notify_all
+
         await notify_all(msg)
     except Exception as exc:
         log.error(f"[LivenessMonitor] Failed to send down alert: {exc}")
@@ -308,6 +315,7 @@ async def _send_offline_alert(server: ServerHealth, error: str) -> None:
     )
     try:
         from notifier import notify_all
+
         await notify_all(msg)
     except Exception as exc:
         log.error(f"[LivenessMonitor] Failed to send offline alert: {exc}")
@@ -324,12 +332,14 @@ async def _send_recovery_alert(server: ServerHealth, health_data: dict) -> None:
     )
     try:
         from notifier import notify_all
+
         await notify_all(msg)
     except Exception as exc:
         log.error(f"[LivenessMonitor] Failed to send recovery alert: {exc}")
 
 
 # ── V4: agy-bridge monitoring ────────────────────────────────────────────
+
 
 async def _check_agy_bridge(client: httpx.AsyncClient) -> None:
     """Check agy-bridge /health and alert on state transitions.
@@ -443,7 +453,9 @@ async def _check_agy_bridge(client: httpx.AsyncClient) -> None:
                     "⚠️ AI analysis pipeline offline! "
                     "Fallback to in-container Gemini SDK (if available)."
                 )
-        log.warning(f"❌ [agy-bridge] unreachable (attempt #{bs.consecutive_failures}): {exc}")
+        log.warning(
+            f"❌ [agy-bridge] unreachable (attempt #{bs.consecutive_failures}): {exc}"
+        )
 
     except Exception as exc:
         log.error(f"[agy-bridge] unexpected error: {exc}")
@@ -453,6 +465,7 @@ async def _send_bridge_alert(msg: str) -> None:
     """Send agy-bridge alert via Telegram/Discord."""
     try:
         from notifier import notify_all
+
         await notify_all(msg)
     except Exception as exc:
         log.error(f"[LivenessMonitor] Failed to send bridge alert: {exc}")

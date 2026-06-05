@@ -295,7 +295,7 @@ jobs:
             PULL_OUTPUT=$(git pull origin main 2>&1)
             echo "$PULL_OUTPUT"
             NEW_SHA=$(git rev-parse HEAD)
-            
+
             # Nếu code không đổi → skip rebuild, health check only
             if [ "$OLD_SHA" = "$NEW_SHA" ]; then
               echo "📎 No new commits — skipping rebuild"
@@ -305,11 +305,11 @@ jobs:
               fi
               echo "⚠️ No changes but service unhealthy — rebuilding..."
             fi
-            
+
             # Đánh dấu đã deploy (cho rollback logic)
             echo "DEPLOYED" > /tmp/.deploy_state
             docker compose -f deploy/docker-compose.server-a.yml up -d --build
-            
+
             echo "🔍 Testing Gateway Health..."
             for i in {1..10}; do
               if curl -sf http://localhost:5000/health > /dev/null; then
@@ -406,7 +406,7 @@ jobs:
             PULL_OUTPUT=$(git pull origin main 2>&1)
             echo "$PULL_OUTPUT"
             NEW_SHA=$(git rev-parse HEAD)
-            
+
             # Nếu code không đổi → skip rebuild
             if [ "$OLD_SHA" = "$NEW_SHA" ]; then
               echo "📎 No new commits — skipping rebuild"
@@ -417,11 +417,11 @@ jobs:
               echo "⚠️ No changes and no running service — soft-pass"
               exit 0
             fi
-            
+
             if [ -f deploy/docker-compose.server-c.yml ]; then
               docker compose -f deploy/docker-compose.server-c.yml up -d --build
             fi
-            
+
             echo "🔍 Testing Server C Health..."
             for i in {1..10}; do
               if curl -sf http://localhost:5000/health > /dev/null 2>&1; then
@@ -515,16 +515,16 @@ jobs:
           ssh Administrator@${{ secrets.SERVER_B_IP }} << 'EOF'
             $ErrorActionPreference = "Stop"
             cd C:\opt\trading-bot
-            
+
             $OldSha = (git rev-parse HEAD).Trim()
             $OldSha | Out-File -FilePath .rollback_sha -Encoding utf8
-            
+
             git fetch origin
             git checkout main
             git pull origin main
-            
+
             $NewSha = (git rev-parse HEAD).Trim()
-            
+
             # Nếu code không đổi → skip rebuild
             if ($OldSha -eq $NewSha) {
               Write-Output "📎 No new commits — skipping rebuild"
@@ -538,9 +538,9 @@ jobs:
                 Write-Output "⚠️ No changes but service unavailable — rebuilding..."
               }
             }
-            
+
             docker compose -f deploy/docker-compose.server-b.yml up -d --build
-            
+
             echo "🔍 Testing Execution Server Health..."
             for ($i=1; $i -le 10; $i++) {
               try {
@@ -630,7 +630,7 @@ Hãy cấu hình các biến bảo mật sau trong mục **Settings > Secrets an
 
 Hệ thống được trang bị 2 lớp bảo vệ rollback:
 
-1. **Auto-Rollback (Tự động):** 
+1. **Auto-Rollback (Tự động):**
    Tích hợp trực tiếp trong file YAML của GitHub Actions. Khi lệnh Deploy hoặc bước Health Check của bất kỳ server nào trả về mã lỗi (`exit 1`), job Deploy sẽ bị hủy lập tức và trigger job `Rollback Server X` tương ứng. Job này sẽ tìm file `.rollback_sha` để checkout ngược về commit an toàn cũ và build lại container.
 2. **Manual Rollback (Bằng tay - Một dòng lệnh):**
    Nếu hệ thống không lỗi cứng (vẫn qua Health Check) nhưng sếp phát hiện bot trade sai logic hoặc có lỗi nghiệp vụ ẩn, sếp có thể chạy rollback trực tiếp từ máy của mình bằng một dòng lệnh SSH qua Tailscale:

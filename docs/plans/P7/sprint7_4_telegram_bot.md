@@ -7,7 +7,7 @@
 
 ## Mục tiêu
 
-Chuyển Telegram từ **push-only** (server gửi thông báo một chiều) sang **interactive bot** 
+Chuyển Telegram từ **push-only** (server gửi thông báo một chiều) sang **interactive bot**
 với commands, cho phép trader tương tác trực tiếp từ Telegram.
 
 ---

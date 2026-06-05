@@ -4,8 +4,12 @@ import re
 from unittest.mock import patch
 
 # Add scripts directory to sys.path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../scripts')))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../scripts')))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../scripts"))
+)
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../scripts"))
+)
 
 import verify_provisioning
 
@@ -22,14 +26,14 @@ def test_natural_sort_key():
         ("11.1.10", "ten"),
         ("11.1.2", "two"),
         ("11.2.1", "one_sec_two"),
-        ("11.1.1", "one")
+        ("11.1.1", "one"),
     ]
     sorted_items = sorted(items, key=verify_provisioning.natural_sort_key)
     expected = [
         ("11.1.1", "one"),
         ("11.1.2", "two"),
         ("11.1.10", "ten"),
-        ("11.2.1", "one_sec_two")
+        ("11.2.1", "one_sec_two"),
     ]
     assert sorted_items == expected
 
@@ -43,20 +47,41 @@ def test_is_ssh_connection_failure():
     assert verify_provisioning.is_ssh_connection_failure(-3, "", "") is True
 
     # Standard connection strings in stderr
-    assert verify_provisioning.is_ssh_connection_failure(1, "", "Permission denied (publickey).") is True
-    assert verify_provisioning.is_ssh_connection_failure(1, "", "Connection timed out") is True
-    assert verify_provisioning.is_ssh_connection_failure(1, "", "ssh: connect to host 1.2.3.4 port 22: Connection refused") is True
+    assert (
+        verify_provisioning.is_ssh_connection_failure(
+            1, "", "Permission denied (publickey)."
+        )
+        is True
+    )
+    assert (
+        verify_provisioning.is_ssh_connection_failure(1, "", "Connection timed out")
+        is True
+    )
+    assert (
+        verify_provisioning.is_ssh_connection_failure(
+            1, "", "ssh: connect to host 1.2.3.4 port 22: Connection refused"
+        )
+        is True
+    )
 
     # Exit code 0 should not be a connection failure even if some warning occurs
     assert verify_provisioning.is_ssh_connection_failure(0, "some output", "") is False
 
     # Command successfully executed but printed a permission error (e.g. file permissions)
     # This should NOT be detected as an SSH connection failure.
-    assert verify_provisioning.is_ssh_connection_failure(1, "", "bash: /opt/trading-bot/.env: Permission denied") is False
-    assert verify_provisioning.is_ssh_connection_failure(126, "", "Permission denied") is False
+    assert (
+        verify_provisioning.is_ssh_connection_failure(
+            1, "", "bash: /opt/trading-bot/.env: Permission denied"
+        )
+        is False
+    )
+    assert (
+        verify_provisioning.is_ssh_connection_failure(126, "", "Permission denied")
+        is False
+    )
 
 
-@patch('verify_provisioning.run_ssh_command')
+@patch("verify_provisioning.run_ssh_command")
 def test_ssh_conn_fallback_success(mock_run):
     """Verify that SSHConn falls back to botuser when root connection fails and fallback succeeds."""
     conn = verify_provisioning.SSHConn("Server A", "1.2.3.4", "root", "key.pem")
@@ -65,7 +90,7 @@ def test_ssh_conn_fallback_success(mock_run):
     # Second call (botuser) succeeds.
     mock_run.side_effect = [
         (255, "", "Permission denied (publickey)."),  # Primary (root) fails
-        (0, "success_output", "")                      # Fallback (botuser) succeeds
+        (0, "success_output", ""),  # Fallback (botuser) succeeds
     ]
 
     code, out, err = conn.run("ls -la")
@@ -79,7 +104,7 @@ def test_ssh_conn_fallback_success(mock_run):
     mock_run.assert_any_call("1.2.3.4", "botuser", "key.pem", "ls -la")
 
 
-@patch('verify_provisioning.run_ssh_command')
+@patch("verify_provisioning.run_ssh_command")
 def test_ssh_conn_fallback_failure(mock_run):
     """Verify that SSHConn does not mutate user and caches failure when fallback also fails connection."""
     conn = verify_provisioning.SSHConn("Server A", "1.2.3.4", "root", "key.pem")
@@ -88,7 +113,7 @@ def test_ssh_conn_fallback_failure(mock_run):
     # Second call (botuser) also fails.
     mock_run.side_effect = [
         (255, "", "Permission denied (publickey)."),  # Primary (root) fails
-        (255, "", "Connection timed out")              # Fallback (botuser) fails
+        (255, "", "Connection timed out"),  # Fallback (botuser) fails
     ]
 
     code, out, err = conn.run("ls -la")
@@ -99,7 +124,7 @@ def test_ssh_conn_fallback_failure(mock_run):
     assert mock_run.call_count == 2
 
 
-@patch('verify_provisioning.run_ssh_command')
+@patch("verify_provisioning.run_ssh_command")
 def test_ssh_conn_caching_and_fail_fast(mock_run):
     """Verify that connection failure is cached and subsequent run calls fail fast."""
     conn = verify_provisioning.SSHConn("Server A", "1.2.3.4", "root", "key.pem")
@@ -129,7 +154,10 @@ def test_auto_tick_logic():
             stripped = line.strip()
             if "### 11.1" in stripped:
                 current_section = "11.1"
-            elif stripped.startswith("## ") or (stripped.startswith("### ") and not any(sec in stripped for sec in ["11.1"])):
+            elif stripped.startswith("## ") or (
+                stripped.startswith("### ")
+                and not any(sec in stripped for sec in ["11.1"])
+            ):
                 current_section = None
 
             if current_section and line.startswith("|"):
@@ -153,7 +181,7 @@ def test_auto_tick_logic():
         "| 1 | Debian 12 Minimal đã cài | ☐ |",
         "| 2 | apt update && apt upgrade | ☑ |",  # Previously ticked but now failed
         "| 3 | User botuser | ☐ |",
-        "| 4 | Non-existent check | ☑ |"        # Previously ticked but not in current run results
+        "| 4 | Non-existent check | ☑ |",  # Previously ticked but not in current run results
     ]
 
     updated_lines = simulate_ticking(markdown_content, results)

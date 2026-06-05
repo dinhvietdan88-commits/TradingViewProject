@@ -71,11 +71,11 @@ if tpMode == "Trailing Stop" and signalDir == 1 and not longCondition
     newTrail = high - atrVal * trailMul
     if newTrail > nz(trailStop, 0.0)
         trailStop := newTrail // Chỉ dịch chuyển lên, không bao giờ dịch chuyển xuống
-    
+
     // Cập nhật lại vị trí đường và nhãn cam trên chart
     line.set_y1(trailLine, trailStop)
     line.set_y2(trailLine, trailStop)
-    
+
     // Điều chỉnh vùng hộp dự báo (Reward Box) co giãn theo trailStop
     box.set_top(rewardBox, trailStop)
 ```

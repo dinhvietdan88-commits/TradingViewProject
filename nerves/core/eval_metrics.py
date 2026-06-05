@@ -22,17 +22,15 @@ References:
 
 import re
 from collections import Counter
-from typing import Optional
 
 
 # ---------------------------------------------------------------------------
 # Metric 1: Tool Trajectory Score
 # ---------------------------------------------------------------------------
 
+
 def tool_trajectory_score(
-    expected: list[str],
-    actual: list[str],
-    match_type: str = "IN_ORDER"
+    expected: list[str], actual: list[str], match_type: str = "IN_ORDER"
 ) -> float:
     """
     Score tool usage trajectory against expected sequence.
@@ -80,18 +78,21 @@ def tool_trajectory_score(
         return matches / len(expected)
 
     else:
-        raise ValueError(f"Unknown match_type: {match_type}. Use EXACT, IN_ORDER, or ANY_ORDER")
+        raise ValueError(
+            f"Unknown match_type: {match_type}. Use EXACT, IN_ORDER, or ANY_ORDER"
+        )
 
 
 # ---------------------------------------------------------------------------
 # Metric 2: Response Quality Score (ROUGE-1)
 # ---------------------------------------------------------------------------
 
+
 def _tokenize(text: str) -> list[str]:
     """Simple whitespace + punctuation tokenizer."""
     text = text.lower().strip()
     # Split on whitespace and remove empty tokens
-    tokens = re.findall(r'\b\w+\b', text)
+    tokens = re.findall(r"\b\w+\b", text)
     return tokens
 
 
@@ -148,10 +149,9 @@ def response_quality_score(reference: str, candidate: str) -> float:
 # Metric 3: Scar Regression Check
 # ---------------------------------------------------------------------------
 
+
 def scar_regression_check(
-    scar_patterns: list[dict],
-    test_output: str,
-    test_logs: str = ""
+    scar_patterns: list[dict], test_output: str, test_logs: str = ""
 ) -> dict:
     """
     Check if known scars have regressed.
@@ -201,20 +201,24 @@ def scar_regression_check(
         try:
             if re.search(pattern, combined_output, re.IGNORECASE):
                 regressions.append(scar_id)
-                details.append({
+                details.append(
+                    {
+                        "scar_id": scar_id,
+                        "pattern": pattern,
+                        "description": description,
+                        "status": "REGRESSED",
+                    }
+                )
+        except re.error:
+            # Invalid regex pattern — skip but log
+            details.append(
+                {
                     "scar_id": scar_id,
                     "pattern": pattern,
                     "description": description,
-                    "status": "REGRESSED"
-                })
-        except re.error:
-            # Invalid regex pattern — skip but log
-            details.append({
-                "scar_id": scar_id,
-                "pattern": pattern,
-                "description": description,
-                "status": "PATTERN_ERROR"
-            })
+                    "status": "PATTERN_ERROR",
+                }
+            )
 
     total = len(scar_patterns)
     passed_count = total - len(regressions)
@@ -224,13 +228,14 @@ def scar_regression_check(
         "passed": len(regressions) == 0,
         "score": round(score, 4),
         "regressions": regressions,
-        "details": details
+        "details": details,
     }
 
 
 # ---------------------------------------------------------------------------
 # Composite Evaluation
 # ---------------------------------------------------------------------------
+
 
 def evaluate_agent_run(
     expected_trajectory: list[str] = None,
@@ -239,7 +244,7 @@ def evaluate_agent_run(
     actual_response: str = None,
     scar_patterns: list[dict] = None,
     test_output: str = "",
-    thresholds: dict = None
+    thresholds: dict = None,
 ) -> dict:
     """
     Run all evaluation metrics and compare against thresholds.
@@ -263,7 +268,7 @@ def evaluate_agent_run(
         thresholds = {
             "tool_trajectory_avg_score": 0.8,
             "response_quality_score": 0.7,
-            "scar_regression_pass": 1.0
+            "scar_regression_pass": 1.0,
         }
 
     results = {}
@@ -271,13 +276,15 @@ def evaluate_agent_run(
 
     # Metric 1: Tool Trajectory
     if expected_trajectory is not None and actual_trajectory is not None:
-        score = tool_trajectory_score(expected_trajectory, actual_trajectory, "IN_ORDER")
+        score = tool_trajectory_score(
+            expected_trajectory, actual_trajectory, "IN_ORDER"
+        )
         threshold = thresholds.get("tool_trajectory_avg_score", 0.8)
         passed = score >= threshold
         results["tool_trajectory"] = {
             "score": score,
             "threshold": threshold,
-            "passed": passed
+            "passed": passed,
         }
         if not passed:
             all_passed = False
@@ -290,7 +297,7 @@ def evaluate_agent_run(
         results["response_quality"] = {
             "score": score,
             "threshold": threshold,
-            "passed": passed
+            "passed": passed,
         }
         if not passed:
             all_passed = False
@@ -304,7 +311,7 @@ def evaluate_agent_run(
             "score": scar_result["score"],
             "threshold": threshold,
             "passed": scar_result["passed"],
-            "regressions": scar_result["regressions"]
+            "regressions": scar_result["regressions"],
         }
         if not passed:
             all_passed = False
@@ -312,5 +319,5 @@ def evaluate_agent_run(
     return {
         "overall_passed": all_passed,
         "metrics": results,
-        "timestamp": __import__("time").time()
+        "timestamp": __import__("time").time(),
     }

@@ -7,6 +7,7 @@ Priority: System ENV > .env file > qdrant_config.json (legacy fallback)
 
 Usage: import core_env_loader as env_loader; env_loader.load()
 """
+
 import os
 from pathlib import Path
 
@@ -16,6 +17,7 @@ ENV_SEARCH_PATHS = [
     Path(__file__).resolve().parent.parent.parent / ".env",
     Path(__file__).resolve().parent.parent.parent / "memory" / ".env",
 ]
+
 
 def _parse_env_file(path: Path) -> dict:
     """Parse a .env file. Handles BOM, comments, quoted values."""
@@ -33,6 +35,7 @@ def _parse_env_file(path: Path) -> dict:
         return env
     except Exception:
         return {}
+
 
 def load(verbose: bool = False) -> dict:
     """
@@ -53,9 +56,14 @@ def load(verbose: bool = False) -> dict:
 
     # 2. Map known keys into os.environ (only if not already set)
     KEY_MAP = {
-        "GEMINI_API_KEY": ["GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENCLAW_AUTH_GOOGLE_GEMINI_CLI_TOKEN",
-                           "MR_PESI_OPENCLAW_GOOGLE_MAIN_TOKEN", "OPENCLAW_GOOGLE_MAIN_TOKEN",
-                           "OPENCLAW_GOOGLE_FARM_PESI"],
+        "GEMINI_API_KEY": [
+            "GEMINI_API_KEY",
+            "GOOGLE_API_KEY",
+            "OPENCLAW_AUTH_GOOGLE_GEMINI_CLI_TOKEN",
+            "MR_PESI_OPENCLAW_GOOGLE_MAIN_TOKEN",
+            "OPENCLAW_GOOGLE_MAIN_TOKEN",
+            "OPENCLAW_GOOGLE_FARM_PESI",
+        ],
         "OPENAI_API_KEY": ["OPENAI_API_KEY", "OPENCLAW_OPENAI_API_KEY"],
         "OPENROUTER_API_KEY": ["OPENROUTER_API_KEY"],
         "ANGATI_EDGE_ID": ["ANGATI_EDGE_ID", "EDGE_NODE_ID"],
@@ -74,7 +82,10 @@ def load(verbose: bool = False) -> dict:
 
     # 3. Legacy fallback: qdrant_config.json
     import json
-    cfg_path = Path(__file__).resolve().parent.parent.parent / "memory" / "qdrant_config.json"
+
+    cfg_path = (
+        Path(__file__).resolve().parent.parent.parent / "memory" / "qdrant_config.json"
+    )
     if cfg_path.exists():
         try:
             cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
@@ -88,7 +99,9 @@ def load(verbose: bool = False) -> dict:
 
     # 4. Phase 12 (Hard Right): Force Colab A100 Tunnel logic
     # If the orchestrator has a running Colab vLLM, redirect all `openai/` tools there.
-    tunnel_path = Path(__file__).resolve().parent.parent.parent / "memory" / "cf_tunnel.url"
+    tunnel_path = (
+        Path(__file__).resolve().parent.parent.parent / "memory" / "cf_tunnel.url"
+    )
     if tunnel_path.exists():
         try:
             cf_url = tunnel_path.read_text(encoding="utf-8").strip()
@@ -107,5 +120,6 @@ def load(verbose: bool = False) -> dict:
 if __name__ == "__main__":
     result = load(verbose=True)
     import json
+
     # Show what was loaded (key names only, NOT values)
     print(json.dumps({k: v for k, v in result.items()}, indent=2))

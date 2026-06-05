@@ -8,12 +8,18 @@ Design Invariant DI-2:
 REQ 5: ATR-based SL/TP computation
 REQ 6: Informational signals notify only, no trade trigger
 """
+
 import logging
-from typing import Tuple, Optional
+from typing import Tuple
 
 import notifier as _notifier
 from core.event_bus import bus
-from core.events import IndicatorSignalValidated, SignalValidated, SignalRejected, IndicatorSignalRejected
+from core.events import (
+    IndicatorSignalValidated,
+    SignalValidated,
+    SignalRejected,
+    IndicatorSignalRejected,
+)
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +49,9 @@ def _compute_sl_tp(price: float, metadata: dict) -> Tuple[str, str]:
                 tp = price + (atr * 3)
                 return f"{sl:.6f}", f"{tp:.6f}"
     except (ValueError, TypeError) as e:
-        log.warning(f"SignalEnricher: atr_value parse error — using percentage defaults ({e})")
+        log.warning(
+            f"SignalEnricher: atr_value parse error — using percentage defaults ({e})"
+        )
 
     # Default: 5% / 10%
     sl = price * 0.95
@@ -51,25 +59,51 @@ def _compute_sl_tp(price: float, metadata: dict) -> Tuple[str, str]:
     return f"{sl:.6f}", f"{tp:.6f}"
 
 
-async def _validate_vision_and_route(event: IndicatorSignalValidated, action: str, sl: str, tp: str) -> None:
+async def _validate_vision_and_route(
+    event: IndicatorSignalValidated, action: str, sl: str, tp: str
+) -> None:
     """Run screenshot capture + Vision-AI check in a background task."""
     try:
         from mcp_client import get_mcp_client
+
         mcp = get_mcp_client()
 
-        drawings = [{"price": event.price, "label": f"Entry ({event.price:.2f})", "color": "#26a69a"}]
+        drawings = [
+            {
+                "price": event.price,
+                "label": f"Entry ({event.price:.2f})",
+                "color": "#26a69a",
+            }
+        ]
         try:
-            drawings.append({"price": float(sl), "label": f"SL ({float(sl):.2f})", "color": "#ef5350"})
-            drawings.append({"price": float(tp), "label": f"TP ({float(tp):.2f})", "color": "#2962ff"})
+            drawings.append(
+                {
+                    "price": float(sl),
+                    "label": f"SL ({float(sl):.2f})",
+                    "color": "#ef5350",
+                }
+            )
+            drawings.append(
+                {
+                    "price": float(tp),
+                    "label": f"TP ({float(tp):.2f})",
+                    "color": "#2962ff",
+                }
+            )
         except (ValueError, TypeError):
             pass
 
         import re
         from pathlib import Path
         from datetime import datetime
+
         ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_symbol = re.sub(r'[^A-Za-z0-9_\-]', '', event.symbol)
-        save_path = Path(__file__).parent.parent / "screenshots" / f"indicator_{safe_symbol}_{ts_str}.png"
+        safe_symbol = re.sub(r"[^A-Za-z0-9_\-]", "", event.symbol)
+        save_path = (
+            Path(__file__).parent.parent
+            / "screenshots"
+            / f"indicator_{safe_symbol}_{ts_str}.png"
+        )
 
         screenshot_path = await mcp.capture_screenshot(
             symbol=event.symbol,
@@ -86,8 +120,11 @@ async def _validate_vision_and_route(event: IndicatorSignalValidated, action: st
 
     try:
         import vision as vision_module
+
         vision_result = await vision_module.analyze_chart_vision(
-            image_path=Path(screenshot_path) if screenshot_path else Path("nonexistent.png"),
+            image_path=Path(screenshot_path)
+            if screenshot_path
+            else Path("nonexistent.png"),
             symbol=event.symbol,
             scan_result=event.metadata,
         )
@@ -100,28 +137,34 @@ async def _validate_vision_and_route(event: IndicatorSignalValidated, action: st
 
     # Reject if visual confidence < 7.0
     if confidence < 7:
-        log.warning(f"Vision Enricher: Signal rejected due to low visual confidence ({confidence}/10 < 7.0)")
-        await _bus.emit(IndicatorSignalRejected(
-            signal_id=event.signal_id,
-            symbol=event.symbol,
-            indicator_name=event.indicator_name,
-            signal_type=event.signal_type,
-            reason=f"low_visual_confidence_{confidence}",
-            exchange=event.exchange,
-        ))
+        log.warning(
+            f"Vision Enricher: Signal rejected due to low visual confidence ({confidence}/10 < 7.0)"
+        )
+        await _bus.emit(
+            IndicatorSignalRejected(
+                signal_id=event.signal_id,
+                symbol=event.symbol,
+                indicator_name=event.indicator_name,
+                signal_type=event.signal_type,
+                reason=f"low_visual_confidence_{confidence}",
+                exchange=event.exchange,
+            )
+        )
     else:
         # Check market regime before routing (Part of Component 2)
         # We will route the validated signal to SignalValidated event
-        await _bus.emit(SignalValidated(
-            signal_id=event.signal_id,
-            symbol=event.symbol,
-            action=action,
-            price=event.price,
-            quote_qty=10.0,
-            sl=sl,
-            tp=tp,
-            exchange=event.exchange,
-        ))
+        await _bus.emit(
+            SignalValidated(
+                signal_id=event.signal_id,
+                symbol=event.symbol,
+                action=action,
+                price=event.price,
+                quote_qty=10.0,
+                sl=sl,
+                tp=tp,
+                exchange=event.exchange,
+            )
+        )
 
 
 @bus.on(IndicatorSignalValidated)
@@ -142,13 +185,15 @@ async def enrich_indicator_signal(event: IndicatorSignalValidated) -> None:
                 f"SignalEnricher: Cannot compute SL/TP — price is None "
                 f"(indicator={event.indicator_name}, signal_id={event.signal_id})"
             )
-            await _bus.emit(SignalRejected(
-                signal_id=event.signal_id,
-                symbol=event.symbol,
-                action=action,
-                reason="enrichment_failed",
-                exchange=event.exchange,
-            ))
+            await _bus.emit(
+                SignalRejected(
+                    signal_id=event.signal_id,
+                    symbol=event.symbol,
+                    action=action,
+                    reason="enrichment_failed",
+                    exchange=event.exchange,
+                )
+            )
             return
 
         metadata = event.metadata or {}
@@ -157,23 +202,28 @@ async def enrich_indicator_signal(event: IndicatorSignalValidated) -> None:
         if event.signal_type == "entry":
             # Asynchronous background task for vision AI check
             import asyncio
+
             asyncio.create_task(_validate_vision_and_route(event, action, sl, tp))
         else:
             # exit signal directly routes to execute
-            await _bus.emit(SignalValidated(
-                signal_id=event.signal_id,
-                symbol=event.symbol,
-                action=action,
-                price=event.price,
-                quote_qty=10.0,
-                sl=sl,
-                tp=tp,
-                exchange=event.exchange,
-            ))
+            await _bus.emit(
+                SignalValidated(
+                    signal_id=event.signal_id,
+                    symbol=event.symbol,
+                    action=action,
+                    price=event.price,
+                    quote_qty=10.0,
+                    sl=sl,
+                    tp=tp,
+                    exchange=event.exchange,
+                )
+            )
 
     else:
         # REQ 6.1-6.3: info → notify directly (no AIAnalyzer / no screenshot capture)
-        conditions_str = ", ".join(event.conditions_met) if event.conditions_met else "Không có"
+        conditions_str = (
+            ", ".join(event.conditions_met) if event.conditions_met else "Không có"
+        )
         priority_prefix = "🔴 **KHẨN CẤP** — " if event.confidence_score > 80 else ""
 
         msg = (
@@ -192,4 +242,6 @@ async def enrich_indicator_signal(event: IndicatorSignalValidated) -> None:
         try:
             await _notifier.notify_all(msg)
         except Exception as e:
-            log.error(f"SignalEnricher: Telegram notify failed for info signal #{event.signal_id}: {e}")
+            log.error(
+                f"SignalEnricher: Telegram notify failed for info signal #{event.signal_id}: {e}"
+            )

@@ -8,6 +8,7 @@ tv_cdp_webhook.py -- TradingView Desktop CDP Connection and Webhook Automation
 4. Falls back gracefully to default values if extraction fails.
 5. Builds and sends a validated webhook payload to the FastAPI server.
 """
+
 import os
 import sys
 import time
@@ -34,7 +35,7 @@ from mcp_client import get_mcp_client  # noqa: E402
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)s  %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger("tv_cdp_webhook")
 
@@ -60,7 +61,7 @@ def find_tradingview_exe() -> str:
     std_paths = [
         os.path.expandvars(r"%LOCALAPPDATA%\TradingView\TradingView.exe"),
         os.path.expandvars(r"%PROGRAMFILES%\TradingView\TradingView.exe"),
-        os.path.expandvars(r"%PROGRAMFILES(X86)%\TradingView\TradingView.exe")
+        os.path.expandvars(r"%PROGRAMFILES(X86)%\TradingView\TradingView.exe"),
     ]
     for path in std_paths:
         if os.path.exists(path):
@@ -80,7 +81,9 @@ def find_tradingview_exe() -> str:
                         install_dir = parts[1].strip()
                         path = os.path.join(install_dir, "TradingView.exe")
                         if os.path.exists(path):
-                            logger.info(f"TradingView.exe found via AppxPackage at: {path}")
+                            logger.info(
+                                f"TradingView.exe found via AppxPackage at: {path}"
+                            )
                             return path
     except Exception as e:
         logger.warning(f"Error querying MSIX package: {e}")
@@ -94,11 +97,14 @@ def launch_tradingview(exe_path: str):
     try:
         # Launch without Admin rights using safe alternative
         from subprocess import Popen
+
         Popen(
             [exe_path, f"--remote-debugging-port={CDP_PORT}"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+            if sys.platform == "win32"
+            else 0,
         )
     except Exception as e:
         logger.error(f"Failed to launch TradingView: {e}")
@@ -125,7 +131,9 @@ async def extract_chart_data():
     # Initialize health check to verify connections
     health = await client.health_check()
     if not health.get("connected"):
-        raise RuntimeError(f"MCP health check failed: {health.get('error', 'Not connected')}")
+        raise RuntimeError(
+            f"MCP health check failed: {health.get('error', 'Not connected')}"
+        )
 
     # Extract symbol
     logger.info("Querying active symbol...")
@@ -154,7 +162,7 @@ async def extract_chart_data():
     # Extract studies (SMA50, SMA150, SMA200, ATR14)
     logger.info(f"Extracting indicator studies for {symbol} on {interval} chart...")
     study_vals = await client.get_study_values(symbol, interval)
-    
+
     # Assign retrieved values or default to fallback constants if they are None
     sma50 = study_vals.sma50 if study_vals.sma50 is not None else 67000.0
     sma150 = study_vals.sma150 if study_vals.sma150 is not None else 66000.0
@@ -173,23 +181,37 @@ async def main():
             if not wait_for_cdp(20):
                 logger.warning("CDP did not start. Falling back to default data.")
         else:
-            logger.warning("TradingView executable not found. Falling back to default data.")
+            logger.warning(
+                "TradingView executable not found. Falling back to default data."
+            )
 
     # 2. Extract Data
     symbol, interval, price = "BTCUSDT", "1h", 68000.0
     sma50, sma150, sma200, atr14 = 67000.0, 66000.0, 65000.0, 150.0
-    
+
     extracted = False
     if is_cdp_active():
         try:
-            symbol, interval, price, sma50, sma150, sma200, atr14 = await extract_chart_data()
+            (
+                symbol,
+                interval,
+                price,
+                sma50,
+                sma150,
+                sma200,
+                atr14,
+            ) = await extract_chart_data()
             extracted = True
             logger.info("Chart data successfully extracted via CDP.")
         except Exception as e:
-            logger.warning(f"Failed to extract chart data via CDP: {e}. Using fallback values.")
+            logger.warning(
+                f"Failed to extract chart data via CDP: {e}. Using fallback values."
+            )
 
     if not extracted:
-        logger.info(f"Using Fallback Data: symbol={symbol}, interval={interval}, price={price}")
+        logger.info(
+            f"Using Fallback Data: symbol={symbol}, interval={interval}, price={price}"
+        )
 
     # 3. Build webhook payload matching TradingViewAlertPayload
     secret = config.WEBHOOK_SECRET
@@ -208,22 +230,26 @@ async def main():
             "sma50": sma50,
             "sma150": sma150,
             "sma200": sma200,
-            "atr14": atr14
-        }
+            "atr14": atr14,
+        },
     }
 
     # 4. POST the payload to /webhook
     url = f"http://localhost:{port}/webhook"
     logger.info(f"Posting webhook payload to {url}...")
-    
+
     try:
         response = requests.post(url, json=payload, timeout=10)
         logger.info(f"Response status: {response.status_code}")
         logger.info(f"Response body: {response.text}")
-        
-        assert response.status_code in (200, 202), f"Expected status 200/202, got {response.status_code}"
+
+        assert response.status_code in (200, 202), (
+            f"Expected status 200/202, got {response.status_code}"
+        )
         res_data = response.json()
-        assert res_data.get("received") is True, f"Expected 'received': True in response, got: {res_data}"
+        assert res_data.get("received") is True, (
+            f"Expected 'received': True in response, got: {res_data}"
+        )
         logger.info("Webhook signal successfully processed and verified!")
     except Exception as e:
         logger.error(f"Webhook post failed: {e}")

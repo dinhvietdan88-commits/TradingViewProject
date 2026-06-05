@@ -2,13 +2,20 @@
 Unit tests: test_vision.py
 Tests for AI prompt formatting, algorithmic context building, and response parsing.
 """
-import pytest
-from vision import _build_algo_context, _parse_confidence, _parse_patterns, format_vision_telegram
+
+from vision import (
+    _build_algo_context,
+    _parse_confidence,
+    _parse_patterns,
+    format_vision_telegram,
+)
+
 
 def test_build_algo_context_empty():
     """Should return fallback string when no scanner data is provided."""
     assert _build_algo_context(None) == "Không có dữ liệu scanner."
     assert _build_algo_context({}) == "Không có dữ liệu scanner."
+
 
 def test_build_algo_context_with_data():
     """Should correctly format quantitative scan results into the prompt context."""
@@ -18,7 +25,7 @@ def test_build_algo_context_with_data():
         "trend_template_stage": "Stage 2",
         "vcp_detected": True,
         "volume_ratio": 1.5,
-        "pivot_level": 68500.0
+        "pivot_level": 68500.0,
     }
     context = _build_algo_context(scan_result)
     assert "- Price: 68,000.50" in context
@@ -27,6 +34,7 @@ def test_build_algo_context_with_data():
     assert "- VCP (algorithmic): ✅ Detected" in context
     assert "- Volume ratio: 150% of avg" in context
     assert "- Pivot estimate: 68,500.00" in context
+
 
 def test_parse_confidence():
     """Should parse the confidence score effectively from free-form AI text."""
@@ -37,6 +45,7 @@ def test_parse_confidence():
     assert _parse_confidence("I give it a 6/10 because it looks okay.") == 6
     assert _parse_confidence("No score mentioned here.") == 5  # Default fallback
 
+
 def test_parse_patterns():
     """Should detect specific known trading patterns inside AI generated text."""
     text = "I see a Cup with Handle and some Volatility Contraction here in Stage 2."
@@ -45,19 +54,21 @@ def test_parse_patterns():
     assert "Volatility Contraction" in patterns
     assert "Stage 2" in patterns
 
+
 def test_format_vision_telegram_success():
     """Should correctly format the final Telegram alert message."""
     vision_result = {
         "analysis": "This is a great chart.",
         "combined_score": "8.5/10",
         "verdict": "🟢 STRONG BUY SETUP",
-        "patterns": ["VCP", "Stage 2"]
+        "patterns": ["VCP", "Stage 2"],
     }
     msg = format_vision_telegram(vision_result)
     assert "This is a great chart." in msg
     assert "Combined Score: *8.5/10*" in msg
     assert "Verdict: *🟢 STRONG BUY SETUP*" in msg
     assert "Patterns: VCP, Stage 2" in msg
+
 
 def test_format_vision_telegram_error():
     """Should format the error message properly when API calls fail."""
@@ -72,18 +83,18 @@ def test_encode_image_compression(tmp_path):
     from PIL import Image
     import base64
     import io
-    
+
     # Create a dummy large image (e.g. 2000x2000 px)
     img_path = tmp_path / "large_chart.png"
     img = Image.new("RGB", (2000, 2000), color="blue")
     img.save(img_path)
-    
+
     base64_str, mime_type = _encode_image(img_path, max_width=1024)
-    
+
     # Assertions
     assert base64_str is not None
     assert mime_type == "image/webp"
-    
+
     # Decode image to verify size
     decoded_img = Image.open(io.BytesIO(base64.b64decode(base64_str)))
     assert decoded_img.width == 1024

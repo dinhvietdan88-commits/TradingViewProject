@@ -19,12 +19,14 @@ KI_FILES = [
     "weex_websocket_channels.md",
     "weex_rate_limits_weights.md",
     "weex_market_data_announcements.md",
-    "weex_sandbox_guide.md"
+    "weex_sandbox_guide.md",
 ]
+
 
 def log(msg, log_lines):
     print(msg)
     log_lines.append(msg)
+
 
 class MCPClient:
     def __init__(self, cmd, env, log_lines, name="mcp-client", use_shell=False):
@@ -45,17 +47,12 @@ class MCPClient:
             env=self.env,
             text=True,
             bufsize=1,
-            shell=self.use_shell
+            shell=self.use_shell,
         )
         return self.proc
 
     def send_request(self, req_id, method, params):
-        msg = {
-            "jsonrpc": "2.0",
-            "id": req_id,
-            "method": method,
-            "params": params
-        }
+        msg = {"jsonrpc": "2.0", "id": req_id, "method": method, "params": params}
         raw_msg = json.dumps(msg) + "\n"
         self.proc.stdin.write(raw_msg)
         self.proc.stdin.flush()
@@ -98,6 +95,7 @@ class MCPClient:
                 pass
             log(f"[{self.name}] Process terminated.", self.log_lines)
 
+
 def run_mcp_ingestion():
     log_lines = []
     log("=== STARTING WEEX KNOWLEDGE BASE INGESTION ===", log_lines)
@@ -128,24 +126,26 @@ def run_mcp_ingestion():
     env_l1 = os.environ.copy()
     env_l1["ANGATI_AGENTS_ROOT"] = WORK_DIR
     client_l1 = MCPClient([ANGATI_EXE, "mcp"], env_l1, log_lines, name="L1-Brain")
-    
+
     try:
         client_l1.start()
-        
+
         # Initialize
         init_res = client_l1.send_request(
-            1, 
-            "initialize", 
+            1,
+            "initialize",
             {
-                "protocolVersion": "2024-11-05", 
-                "capabilities": {}, 
-                "clientInfo": {"name": "weex-l1-ingestor", "version": "1.0"}
-            }
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "weex-l1-ingestor", "version": "1.0"},
+            },
         )
         log(f"[L1-Brain] Initialized: {json.dumps(init_res)[:200]}...", log_lines)
 
         # initialized notification
-        client_l1.proc.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n")
+        client_l1.proc.stdin.write(
+            json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n"
+        )
         client_l1.proc.stdin.flush()
 
         # Store each file
@@ -158,44 +158,47 @@ def run_mcp_ingestion():
                 "tools/call",
                 {
                     "name": "memory_store",
-                    "arguments": {
-                        "category": "knowledge",
-                        "text": content
-                    }
-                }
+                    "arguments": {"category": "knowledge", "text": content},
+                },
             )
-            log(f"[L1-Brain] Store response: {json.dumps(store_res)[:200]}...", log_lines)
-            
+            log(
+                f"[L1-Brain] Store response: {json.dumps(store_res)[:200]}...",
+                log_lines,
+            )
+
             # Check for success
             if "result" in store_res and "content" in store_res["result"]:
                 for item in store_res["result"]["content"]:
-                    if item.get("type") == "text" and ("stored" in item.get("text", "") or "success" in item.get("text", "").lower()):
+                    if item.get("type") == "text" and (
+                        "stored" in item.get("text", "")
+                        or "success" in item.get("text", "").lower()
+                    ):
                         stores_succeeded += 1
                         break
             req_id += 1
 
-        log(f"[L1-Brain] Stored {stores_succeeded} / {len(ki_contents)} files successfully.", log_lines)
+        log(
+            f"[L1-Brain] Stored {stores_succeeded} / {len(ki_contents)} files successfully.",
+            log_lines,
+        )
 
         # Recall query for "Weex"
         log("[L1-Brain] Recalling 'Weex'...", log_lines)
         recall_res = client_l1.send_request(
             req_id,
             "tools/call",
-            {
-                "name": "memory_recall",
-                "arguments": {
-                    "query": "Weex",
-                    "limit": 5
-                }
-            }
+            {"name": "memory_recall", "arguments": {"query": "Weex", "limit": 5}},
         )
         log(f"[L1-Brain] Recall response: {json.dumps(recall_res)[:400]}...", log_lines)
-        
+
         # Check recall output
         found_l1 = False
         if "result" in recall_res and "content" in recall_res["result"]:
             for item in recall_res["result"]["content"]:
-                if item.get("type") == "text" and ("Weex" in item.get("text", "") or "weex" in item.get("text", "").lower()):
+                if item.get("type") == "text" and (
+                    "Weex" in item.get("text", "")
+                    or "weex" in item.get("text", "").lower()
+                ):
                     found_l1 = True
                     break
         elif "error" in recall_res:
@@ -205,25 +208,37 @@ def run_mcp_ingestion():
 
         # Fallback to direct SQLite search if recall didn't succeed
         if not found_l1:
-            log("[L1-Brain] Recall failed or returned decryption/verification error, initiating direct SQLite verification fallback...", log_lines)
+            log(
+                "[L1-Brain] Recall failed or returned decryption/verification error, initiating direct SQLite verification fallback...",
+                log_lines,
+            )
             import sqlite3
+
             db_paths = [
                 os.path.join(WORK_DIR, "memory", "V3_brain.db"),
                 r"C:\Users\pesil\EAIS\memory\V3_brain.db",
-                r"C:\Users\pesil\AppData\Local\go-build\memory\V3_brain.db"
+                r"C:\Users\pesil\AppData\Local\go-build\memory\V3_brain.db",
             ]
             for db_p in db_paths:
                 if os.path.exists(db_p):
                     try:
                         conn = sqlite3.connect(db_p)
                         c = conn.cursor()
-                        c.execute("SELECT COUNT(*) FROM memories WHERE content LIKE '%weex%' OR metadata LIKE '%weex%' OR summary LIKE '%weex%'")
+                        c.execute(
+                            "SELECT COUNT(*) FROM memories WHERE content LIKE '%weex%' OR metadata LIKE '%weex%' OR summary LIKE '%weex%'"
+                        )
                         count = c.fetchone()[0]
-                        log(f"[L1-Brain SQLite] Path: {db_p}, Found {count} memories matching 'weex'", log_lines)
+                        log(
+                            f"[L1-Brain SQLite] Path: {db_p}, Found {count} memories matching 'weex'",
+                            log_lines,
+                        )
                         if count > 0:
                             found_l1 = True
                     except Exception as sqle:
-                        log(f"[L1-Brain SQLite Error] Path: {db_p}, error: {sqle}", log_lines)
+                        log(
+                            f"[L1-Brain SQLite Error] Path: {db_p}, error: {sqle}",
+                            log_lines,
+                        )
 
         # We consider L1 successful if all files were stored successfully OR we verified their existence in sqlite
         if (stores_succeeded == len(ki_contents)) or found_l1:
@@ -243,26 +258,34 @@ def run_mcp_ingestion():
     env_graph["MEMORY_FILE_PATH"] = graph_db_path
     os.makedirs(os.path.dirname(graph_db_path), exist_ok=True)
 
-    npx_args = ["npx.cmd", "-y", "@modelcontextprotocol/server-memory"] if os.name == 'nt' else ["npx", "-y", "@modelcontextprotocol/server-memory"]
-    client_graph = MCPClient(npx_args, env_graph, log_lines, name="Graph-Brain", use_shell=(os.name == 'nt'))
+    npx_args = (
+        ["npx.cmd", "-y", "@modelcontextprotocol/server-memory"]
+        if os.name == "nt"
+        else ["npx", "-y", "@modelcontextprotocol/server-memory"]
+    )
+    client_graph = MCPClient(
+        npx_args, env_graph, log_lines, name="Graph-Brain", use_shell=(os.name == "nt")
+    )
 
     try:
         client_graph.start()
-        
+
         # Initialize
         init_res = client_graph.send_request(
-            1, 
-            "initialize", 
+            1,
+            "initialize",
             {
-                "protocolVersion": "2024-11-05", 
-                "capabilities": {}, 
-                "clientInfo": {"name": "weex-graph-ingestor", "version": "1.0"}
-            }
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "weex-graph-ingestor", "version": "1.0"},
+            },
         )
         log(f"[Graph-Brain] Initialized: {json.dumps(init_res)[:200]}...", log_lines)
 
         # initialized notification
-        client_graph.proc.stdin.write(json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n")
+        client_graph.proc.stdin.write(
+            json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}) + "\n"
+        )
         client_graph.proc.stdin.flush()
 
         # Call create_entities
@@ -273,109 +296,139 @@ def run_mcp_ingestion():
                 "entityType": "Exchange",
                 "observations": [
                     "WEEX cryptocurrency exchange offering Spot, USDT-Margin, and Coin-Margin futures trading, copy trading, and websocket streams."
-                ]
+                ],
             },
             {
                 "name": "V2 Signature Rule",
                 "entityType": "Authentication",
                 "observations": [
                     "WEEX V2 signature protocol where query parameters are formatted inline as part of the request path."
-                ]
+                ],
             },
             {
                 "name": "V3 Signature Rule",
                 "entityType": "Authentication",
                 "observations": [
                     "WEEX V3 signature protocol which decouples the path and query string, separating them with '?'."
-                ]
+                ],
             },
             {
                 "name": "Spot V1 & V3 Endpoints",
                 "entityType": "API_Category",
                 "observations": [
                     "WEEX Spot trading REST API endpoints including order placement, batch placement, cancellation, details, and trade history."
-                ]
+                ],
             },
             {
                 "name": "USDT-M Futures Endpoints",
                 "entityType": "API_Category",
                 "observations": [
                     "USDT-Margin contract endpoints with symbol suffix _UMCBL, supporting order placement, OCO exits, and position info."
-                ]
+                ],
             },
             {
                 "name": "Coin-M Futures Endpoints",
                 "entityType": "API_Category",
                 "observations": [
                     "Coin-Margin contract endpoints with symbol suffix _DMCBL, settling in underlying base assets."
-                ]
+                ],
             },
             {
                 "name": "Copy Trading Endpoints",
                 "entityType": "API_Category",
                 "observations": [
                     "Copy and social trading API endpoints for traders (current/history orders) and followers (settings/positions/traders)."
-                ]
+                ],
             },
             {
                 "name": "WebSocket Channels",
                 "entityType": "WebSocket",
                 "observations": [
                     "Real-time updates via public and private WebSocket subscription channels including tickers, orderbook depth, trades, orders, and position updates."
-                ]
-            }
+                ],
+            },
         ]
         log("[Graph-Brain] Creating entities...", log_lines)
         entity_res = client_graph.send_request(
             req_id,
             "tools/call",
-            {
-                "name": "create_entities",
-                "arguments": {
-                    "entities": entities
-                }
-            }
+            {"name": "create_entities", "arguments": {"entities": entities}},
         )
-        log(f"[Graph-Brain] Create entities response: {json.dumps(entity_res)[:200]}...", log_lines)
+        log(
+            f"[Graph-Brain] Create entities response: {json.dumps(entity_res)[:200]}...",
+            log_lines,
+        )
         req_id += 1
 
         # Call create_relations
         relations = [
-            {"from": "WEEX Exchange", "to": "Spot V1 & V3 Endpoints", "relationType": "supports"},
-            {"from": "WEEX Exchange", "to": "USDT-M Futures Endpoints", "relationType": "supports"},
-            {"from": "WEEX Exchange", "to": "Coin-M Futures Endpoints", "relationType": "supports"},
-            {"from": "WEEX Exchange", "to": "Copy Trading Endpoints", "relationType": "supports"},
-            {"from": "WEEX Exchange", "to": "WebSocket Channels", "relationType": "supports"},
-            {"from": "Spot V1 & V3 Endpoints", "to": "V3 Signature Rule", "relationType": "secured_by"},
-            {"from": "USDT-M Futures Endpoints", "to": "V2 Signature Rule", "relationType": "secured_by"},
-            {"from": "Coin-M Futures Endpoints", "to": "V2 Signature Rule", "relationType": "secured_by"},
-            {"from": "WebSocket Channels", "to": "V3 Signature Rule", "relationType": "authenticates_with"}
+            {
+                "from": "WEEX Exchange",
+                "to": "Spot V1 & V3 Endpoints",
+                "relationType": "supports",
+            },
+            {
+                "from": "WEEX Exchange",
+                "to": "USDT-M Futures Endpoints",
+                "relationType": "supports",
+            },
+            {
+                "from": "WEEX Exchange",
+                "to": "Coin-M Futures Endpoints",
+                "relationType": "supports",
+            },
+            {
+                "from": "WEEX Exchange",
+                "to": "Copy Trading Endpoints",
+                "relationType": "supports",
+            },
+            {
+                "from": "WEEX Exchange",
+                "to": "WebSocket Channels",
+                "relationType": "supports",
+            },
+            {
+                "from": "Spot V1 & V3 Endpoints",
+                "to": "V3 Signature Rule",
+                "relationType": "secured_by",
+            },
+            {
+                "from": "USDT-M Futures Endpoints",
+                "to": "V2 Signature Rule",
+                "relationType": "secured_by",
+            },
+            {
+                "from": "Coin-M Futures Endpoints",
+                "to": "V2 Signature Rule",
+                "relationType": "secured_by",
+            },
+            {
+                "from": "WebSocket Channels",
+                "to": "V3 Signature Rule",
+                "relationType": "authenticates_with",
+            },
         ]
         log("[Graph-Brain] Creating relations...", log_lines)
         relation_res = client_graph.send_request(
             req_id,
             "tools/call",
-            {
-                "name": "create_relations",
-                "arguments": {
-                    "relations": relations
-                }
-            }
+            {"name": "create_relations", "arguments": {"relations": relations}},
         )
-        log(f"[Graph-Brain] Create relations response: {json.dumps(relation_res)[:200]}...", log_lines)
+        log(
+            f"[Graph-Brain] Create relations response: {json.dumps(relation_res)[:200]}...",
+            log_lines,
+        )
         req_id += 1
 
         # Verification: Read graph and verify nodes/relations exist
         log("[Graph-Brain] Reading graph for verification...", log_lines)
         graph_res = client_graph.send_request(
-            req_id,
-            "tools/call",
-            {
-                "name": "read_graph",
-                "arguments": {}
-            }
+            req_id, "tools/call", {"name": "read_graph", "arguments": {}}
         )
-        log(f"[Graph-Brain] Read graph response: {json.dumps(graph_res)[:400]}...", log_lines)
+        log(
+            f"[Graph-Brain] Read graph response: {json.dumps(graph_res)[:400]}...",
+            log_lines,
+        )
 
         found_graph_weex = False
         found_graph_usdt = False
@@ -386,7 +439,11 @@ def run_mcp_ingestion():
                     text_val = item.get("text", "")
                     if "WEEX" in text_val or "weex" in text_val.lower():
                         found_graph_weex = True
-                    if "USDT-M" in text_val or "usdt-m" in text_val.lower() or "USDT-Margin" in text_val:
+                    if (
+                        "USDT-M" in text_val
+                        or "usdt-m" in text_val.lower()
+                        or "USDT-Margin" in text_val
+                    ):
                         found_graph_usdt = True
 
         # Fallback to direct file parsing of the JSON graph if read_graph response format is direct JSON
@@ -410,9 +467,16 @@ def run_mcp_ingestion():
                                 for o in obs:
                                     if "WEEX" in o or "weex" in o.lower():
                                         found_graph_weex = True
-                                    if "USDT-M" in o or "usdt-m" in o.lower() or "USDT-Margin" in o:
+                                    if (
+                                        "USDT-M" in o
+                                        or "usdt-m" in o.lower()
+                                        or "USDT-Margin" in o
+                                    ):
                                         found_graph_usdt = True
-                    log("[Graph-Brain] Successfully loaded local graph NDJSON file directly.", log_lines)
+                    log(
+                        "[Graph-Brain] Successfully loaded local graph NDJSON file directly.",
+                        log_lines,
+                    )
                 except Exception as ex:
                     log(f"[Graph-Brain] Direct file parse exception: {ex}", log_lines)
 
@@ -420,7 +484,10 @@ def run_mcp_ingestion():
             log("[Graph-Brain] Graph Verification SUCCESS", log_lines)
             success_graph = True
         else:
-            log(f"[Graph-Brain] Graph Verification FAILED (found_weex={found_graph_weex}, found_usdt={found_graph_usdt})", log_lines)
+            log(
+                f"[Graph-Brain] Graph Verification FAILED (found_weex={found_graph_weex}, found_usdt={found_graph_usdt})",
+                log_lines,
+            )
 
     except Exception as e:
         log(f"[Graph-Brain] Exception: {e}", log_lines)
@@ -437,6 +504,7 @@ def run_mcp_ingestion():
     log(f"Log written to {LOG_FILE}", log_lines)
 
     return success_l1 and success_graph
+
 
 if __name__ == "__main__":
     run_mcp_ingestion()

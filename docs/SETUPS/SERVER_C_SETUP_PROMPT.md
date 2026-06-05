@@ -386,7 +386,7 @@ docker compose -f deploy/docker-compose.server-c.yml up -d
 # Kiểm tra containers
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 # → chromadb      Up    127.0.0.1:8000->8000/tcp
-# → analyzer      Up    
+# → analyzer      Up  
 ```
 
 ---

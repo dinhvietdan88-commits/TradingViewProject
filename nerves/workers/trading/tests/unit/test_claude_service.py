@@ -14,14 +14,21 @@ Tests cover:
   - ContextManager: get_stats() field accuracy
   - ClaudeService._parse_confidence() regex patterns
 """
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from claude_cli.sdk_client import SdkClient
-from claude_cli.service import ClaudeService, ContextManager, AnalysisRequest, AnalysisResponse, ContextEntry
+from claude_cli.service import (
+    ClaudeService,
+    ContextManager,
+    AnalysisRequest,
+    AnalysisResponse,
+)
 
 
 # ── fixtures ────────────────────────────────────────────────────────────────────
+
 
 def _make_sdk(
     available: bool = True,
@@ -32,19 +39,23 @@ def _make_sdk(
     sdk = MagicMock(spec=SdkClient)
     sdk.available = available
     if error:
-        sdk.invoke = AsyncMock(return_value=AnalysisResponse(
-            text=f"⚠️ {error}",
-            confidence=0,
-            source="none",
-            error=error,
-        ))
+        sdk.invoke = AsyncMock(
+            return_value=AnalysisResponse(
+                text=f"⚠️ {error}",
+                confidence=0,
+                source="none",
+                error=error,
+            )
+        )
     else:
-        sdk.invoke = AsyncMock(return_value=AnalysisResponse(
-            text=response_text,
-            confidence=5,  # default; service will re-parse
-            source="anthropic_api",
-            duration_seconds=0.1,
-        ))
+        sdk.invoke = AsyncMock(
+            return_value=AnalysisResponse(
+                text=response_text,
+                confidence=5,  # default; service will re-parse
+                source="anthropic_api",
+                duration_seconds=0.1,
+            )
+        )
     return sdk
 
 
@@ -57,11 +68,14 @@ def _make_service(sdk=None, depth: int = 3, max_tokens: int = 1000) -> ClaudeSer
     return svc
 
 
-def _req(query: str = "analyse AAPL", symbol: str = "AAPL", include_rag: bool = False) -> AnalysisRequest:
+def _req(
+    query: str = "analyse AAPL", symbol: str = "AAPL", include_rag: bool = False
+) -> AnalysisRequest:
     return AnalysisRequest(query=query, symbol=symbol, include_rag_context=include_rag)
 
 
 # ── analyze: success ────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_analyze_sdk_success_returns_source_api():
@@ -85,6 +99,7 @@ async def test_analyze_sdk_success_updates_context():
 
 # ── analyze: error ──────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_analyze_sdk_error_returns_error_response():
     sdk = _make_sdk(error="Rate limit exceeded")
@@ -105,6 +120,7 @@ async def test_analyze_sdk_unavailable_returns_error():
 
 
 # ── context management ──────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_context_depth_pruning_fifo():
@@ -149,6 +165,7 @@ def test_reset_context_global():
 
 # ── get_context_stats ───────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_get_context_stats_fields():
     svc = _make_service()
@@ -163,20 +180,25 @@ async def test_get_context_stats_fields():
 
 # ── _parse_confidence ───────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize("text,expected", [
-    ("[Confidence: 8/10]", 8),
-    ("Confidence: 3/10", 3),
-    ("độ tin cậy: 9", 9),
-    ("some text 7/10 more text", 7),
-    ("no confidence here", 5),   # default
-    ("[Confidence: 11/10]", 10), # capped at 10
-    ("[Confidence: 0/10]", 1),   # floor at 1
-])
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("[Confidence: 8/10]", 8),
+        ("Confidence: 3/10", 3),
+        ("độ tin cậy: 9", 9),
+        ("some text 7/10 more text", 7),
+        ("no confidence here", 5),  # default
+        ("[Confidence: 11/10]", 10),  # capped at 10
+        ("[Confidence: 0/10]", 1),  # floor at 1
+    ],
+)
 def test_parse_confidence(text, expected):
     assert ClaudeService._parse_confidence(text) == expected
 
 
 # ── _assemble_prompt ────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_assemble_prompt_contains_query():

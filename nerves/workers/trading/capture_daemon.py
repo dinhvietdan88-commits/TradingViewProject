@@ -4,6 +4,7 @@ Starts, stops, monitors, and auto-restarts the CaptureDaemon Node.js process.
 
 Design ref: design.md § "DaemonLifecycleManager"
 """
+
 import asyncio
 import logging
 import time
@@ -36,8 +37,8 @@ class DaemonLifecycleManager:
         port: Optional[int] = None,
         host: Optional[str] = None,
         max_restarts: int = 3,
-        restart_window_sec: int = 300,    # 5 minutes
-        health_poll_interval: int = 10,   # seconds
+        restart_window_sec: int = 300,  # 5 minutes
+        health_poll_interval: int = 10,  # seconds
     ):
         self._node_path = node_path or config.MCP_NODE_PATH or "node"
         self._port = port or config.CAPTURE_DAEMON_PORT
@@ -70,7 +71,7 @@ class DaemonLifecycleManager:
                 f"CaptureDaemon entry not found at {_DAEMON_ENTRY} — "
                 "capture features disabled. Run: cd tradingview-mcp && npm install"
             )
-            self._stopping = True   # prevent health monitor from looping
+            self._stopping = True  # prevent health monitor from looping
             return
 
         self._stopping = False
@@ -94,7 +95,9 @@ class DaemonLifecycleManager:
                 env=env,
             )
         except FileNotFoundError:
-            logger.error(f"Node.js not found at '{self._node_path}'. Cannot start daemon.")
+            logger.error(
+                f"Node.js not found at '{self._node_path}'. Cannot start daemon."
+            )
             return
         except Exception as e:
             logger.error(f"Failed to start daemon process: {e}")
@@ -163,8 +166,7 @@ class DaemonLifecycleManager:
         now = time.monotonic()
         # Prune old restart times outside the window
         self._restart_times = [
-            t for t in self._restart_times
-            if (now - t) < self._restart_window_sec
+            t for t in self._restart_times if (now - t) < self._restart_window_sec
         ]
 
         if len(self._restart_times) >= self._max_restarts:
@@ -195,6 +197,7 @@ class DaemonLifecycleManager:
         """Ping the daemon /health endpoint. Returns True if healthy."""
         try:
             import aiohttp
+
             async with aiohttp.ClientSession() as session:
                 async with session.get(
                     f"http://{self._host}:{self._port}/health",

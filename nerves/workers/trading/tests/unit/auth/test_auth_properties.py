@@ -54,6 +54,7 @@ from auth.service import AuthService
 
 # ── Test Helpers ─────────────────────────────────────────────────────────
 
+
 def _make_config(
     secret_key="a" * 32,
     allowed_users=None,
@@ -88,9 +89,14 @@ skipif_no_hypothesis = pytest.mark.skipif(
 # P1: Code generation uniqueness & format
 # ═══════════════════════════════════════════════════════════════
 
+
 @skipif_no_hypothesis
 @given(st.integers(min_value=1, max_value=10**12))
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
+@settings(
+    max_examples=100,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+    deadline=None,
+)
 def test_p1_code_generation_unique_format(telegram_id):
     """P1: Generated codes must be 32-char hex and unique per call."""
     svc = _make_service(allowed_users=[telegram_id])
@@ -112,9 +118,14 @@ def test_p1_code_generation_unique_format(telegram_id):
 # P2: Valid code exchange → valid session
 # ═══════════════════════════════════════════════════════════════
 
+
 @skipif_no_hypothesis
 @given(st.integers(min_value=1, max_value=10**12))
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
+@settings(
+    max_examples=100,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+    deadline=None,
+)
 def test_p2_valid_exchange(telegram_id):
     """P2: A valid, unexpired, unused code for an allowed user produces a session."""
     svc = _make_service(allowed_users=[telegram_id])
@@ -139,9 +150,14 @@ def test_p2_valid_exchange(telegram_id):
 # P3: Expired code → CodeExpiredError
 # ═══════════════════════════════════════════════════════════════
 
+
 @skipif_no_hypothesis
 @given(st.integers(min_value=1, max_value=10**12))
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
+@settings(
+    max_examples=100,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+    deadline=None,
+)
 def test_p3_expired_code(telegram_id):
     """P3: An expired code must raise CodeExpiredError (before authorization check)."""
     svc = _make_service(allowed_users=[telegram_id])
@@ -164,9 +180,14 @@ def test_p3_expired_code(telegram_id):
 # P4: Used code → CodeUsedError
 # ═══════════════════════════════════════════════════════════════
 
+
 @skipif_no_hypothesis
 @given(st.integers(min_value=1, max_value=10**12))
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
+@settings(
+    max_examples=100,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+    deadline=None,
+)
 def test_p4_used_code(telegram_id):
     """P4: A used code must raise CodeUsedError."""
     svc = _make_service(allowed_users=[telegram_id])
@@ -189,12 +210,17 @@ def test_p4_used_code(telegram_id):
 # P5: Unauthorized user → UserNotAllowedError (LAST)
 # ═══════════════════════════════════════════════════════════════
 
+
 @skipif_no_hypothesis
 @given(
     st.integers(min_value=1, max_value=10**12),
     st.integers(min_value=10**12 + 1, max_value=10**13),
 )
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
+@settings(
+    max_examples=100,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+    deadline=None,
+)
 def test_p5_unauthorized_user(allowed_id, unauthorized_id):
     """P5: Unauthorized user raises UserNotAllowedError."""
     assume(allowed_id != unauthorized_id)
@@ -218,9 +244,14 @@ def test_p5_unauthorized_user(allowed_id, unauthorized_id):
 # P6: Validation ordering — technical before authorization
 # ═══════════════════════════════════════════════════════════════
 
+
 @skipif_no_hypothesis
 @given(st.integers(min_value=1, max_value=10**12))
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
+@settings(
+    max_examples=100,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+    deadline=None,
+)
 def test_p6_validation_ordering(unauthorized_id):
     """P6: Expired code for unauthorized user → CodeExpiredError (NOT UserNotAllowedError)."""
     svc = _make_service(allowed_users=[99999])  # Different user
@@ -244,12 +275,17 @@ def test_p6_validation_ordering(unauthorized_id):
 # P7: Session token round-trip
 # ═══════════════════════════════════════════════════════════════
 
+
 @skipif_no_hypothesis
 @given(
     st.integers(min_value=1, max_value=10**12),
     st.text(min_size=3, max_size=20, alphabet="abcdefghijklmnopqrstuvwxyz_0123456789"),
 )
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
+@settings(
+    max_examples=100,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+    deadline=None,
+)
 def test_p7_token_roundtrip(telegram_id, username):
     """P7: create_session_token → verify_session_token preserves all fields."""
     svc = _make_service(allowed_users=[telegram_id])
@@ -277,9 +313,14 @@ def test_p7_token_roundtrip(telegram_id, username):
 # P8: Tampered token → TokenInvalidError
 # ═══════════════════════════════════════════════════════════════
 
+
 @skipif_no_hypothesis
 @given(st.integers(min_value=1, max_value=10**12))
-@settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
+@settings(
+    max_examples=100,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+    deadline=None,
+)
 def test_p8_tampered_token(telegram_id):
     """P8: Any modification to token must cause TokenInvalidError."""
     svc = _make_service(allowed_users=[telegram_id])
@@ -304,6 +345,7 @@ def test_p8_tampered_token(telegram_id):
 # P9: Expired session token → TokenExpiredError
 # ═══════════════════════════════════════════════════════════════
 
+
 def test_p9_expired_session_token():
     """P9: Token past its expires_at raises TokenExpiredError."""
     svc = _make_service()
@@ -326,6 +368,7 @@ def test_p9_expired_session_token():
 # ═══════════════════════════════════════════════════════════════
 # P10: 7-day absolute lifetime enforcement
 # ═══════════════════════════════════════════════════════════════
+
 
 def test_p10_absolute_lifetime():
     """P10: Session older than 7 days raises SessionMaxLifetimeError."""
@@ -351,6 +394,7 @@ def test_p10_absolute_lifetime():
 # P11: Session refresh preserves created_at
 # ═══════════════════════════════════════════════════════════════
 
+
 def test_p11_refresh_preserves_created_at():
     """P11: Refresh must keep original created_at for absolute lifetime tracking."""
     svc = _make_service()
@@ -373,6 +417,7 @@ def test_p11_refresh_preserves_created_at():
 # P12: Never-expire sessions don't need refresh
 # ═══════════════════════════════════════════════════════════════
 
+
 def test_p12_never_expire_no_refresh():
     """P12: Never-expire sessions return False for should_refresh."""
     svc = _make_service(session_expiry=0)
@@ -394,6 +439,7 @@ def test_p12_never_expire_no_refresh():
 # P13: Bearer token constant-time comparison
 # ═══════════════════════════════════════════════════════════════
 
+
 def test_p13_bearer_token_verification():
     """P13: Bearer token must match DASHBOARD_TOKEN via constant-time compare."""
     with patch("config.DASHBOARD_TOKEN", "correct-token-value"):
@@ -411,6 +457,7 @@ def test_p13_bearer_empty_dashboard_token():
 # ═══════════════════════════════════════════════════════════════
 # P14: Config fallback for invalid SESSION_EXPIRY_HOURS
 # ═══════════════════════════════════════════════════════════════
+
 
 def test_p14_invalid_session_expiry_fallback():
     """P14: Invalid SESSION_EXPIRY_HOURS → default to 24."""

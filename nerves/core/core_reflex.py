@@ -21,13 +21,14 @@ Usage:
   python angati_reflex.py --task "description of what you are about to do"
   python angati_reflex.py --task "..." --spaces angati eais
 """
+
 import sys
 
 # Configure sys.stdout and sys.stderr to ignore encoding errors (SCAR-019)
-if sys.stdout.encoding != 'utf-8':
+if sys.stdout.encoding != "utf-8":
     try:
-        sys.stdout.reconfigure(encoding='utf-8', errors='ignore')
-        sys.stderr.reconfigure(encoding='utf-8', errors='ignore')
+        sys.stdout.reconfigure(encoding="utf-8", errors="ignore")
+        sys.stderr.reconfigure(encoding="utf-8", errors="ignore")
     except Exception:
         pass
 
@@ -45,34 +46,56 @@ except ImportError:
 # ── Knowledge Space Definitions ───────────────────────────────────────────
 KNOWLEDGE_SPACES = {
     "angati": {
-        "types":       ["constraint", "angati_rule", "scar"],
-        "label":       "ANGATI SYSTEM",
-        "enforce":     True,   # Always injected as hard constraint
+        "types": ["constraint", "angati_rule", "scar"],
+        "label": "ANGATI SYSTEM",
+        "enforce": True,  # Always injected as hard constraint
         "description": "Core Angati orchestrator rules — always enforced",
     },
     "eais": {
-        "types":       ["eais_lesson", "eais_pattern"],
-        "label":       "EAIS LESSON",
-        "enforce":     True,   # Enforced for EAIS-related tasks
+        "types": ["eais_lesson", "eais_pattern"],
+        "label": "EAIS LESSON",
+        "enforce": True,  # Enforced for EAIS-related tasks
         "description": "EAIS operational lessons from conversation history",
     },
     "reference": {
-        "types":       ["architecture", "reference"],
-        "label":       "REFERENCE",
-        "enforce":     False,  # Context only, never a hard constraint
+        "types": ["architecture", "reference"],
+        "label": "REFERENCE",
+        "enforce": False,  # Context only, never a hard constraint
         "description": "External architectural patterns (Claude Code etc.)",
     },
 }
 
 # ── Task Space Detection ───────────────────────────────────────────────────
 EAIS_KEYWORDS = [
-    "eais", "backend", "worker", "boot", "scar", "tool", "codex",
-    "orchestrat", "watchdog", "auto_learn", "reflex", "qdrant",
-    "celery", "fastapi", "redis", "colab", "vllm", "traefik",
+    "eais",
+    "backend",
+    "worker",
+    "boot",
+    "scar",
+    "tool",
+    "codex",
+    "orchestrat",
+    "watchdog",
+    "auto_learn",
+    "reflex",
+    "qdrant",
+    "celery",
+    "fastapi",
+    "redis",
+    "colab",
+    "vllm",
+    "traefik",
 ]
 REFERENCE_KEYWORDS = [
-    "design", "architect", "pattern", "fork", "subagent", "claude code",
-    "research", "principle", "framework",
+    "design",
+    "architect",
+    "pattern",
+    "fork",
+    "subagent",
+    "claude code",
+    "research",
+    "principle",
+    "framework",
 ]
 
 
@@ -99,9 +122,12 @@ def _query_space(instruction: str, space_name: str) -> list[dict]:
         results = scar_memory.consult(instruction, top_k=3)
         # Filter to types relevant to this space
         filtered = [
-            r for r in results
+            r
+            for r in results
             if r.get("type", "scar") in space["types"]
-            or (space_name == "angati" and not r.get("type"))  # Legacy untyped scars → angati
+            or (
+                space_name == "angati" and not r.get("type")
+            )  # Legacy untyped scars → angati
         ]
         return filtered
     except Exception:
@@ -139,8 +165,8 @@ def run_reflex(instruction: str, requested_spaces: list[str] | None = None) -> s
     # ── Layer 2: Multi-Space Scar Lookup ─────────────────────────────────
     active_spaces = requested_spaces or _detect_spaces(instruction)
 
-    hard_constraints = []   # enforce=True, committed=True
-    advisories = []         # enforce=False OR committed=False
+    hard_constraints = []  # enforce=True, committed=True
+    advisories = []  # enforce=False OR committed=False
 
     for space_name in active_spaces:
         space = KNOWLEDGE_SPACES[space_name]
@@ -184,11 +210,18 @@ def run_reflex(instruction: str, requested_spaces: list[str] | None = None) -> s
 # ── CLI ───────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Angati Reflex — Cognitive Firewall")
-    parser.add_argument("--task",   required=True, help="Task instruction to check")
-    parser.add_argument("--spaces", nargs="*", choices=["angati", "eais", "reference"],
-                        help="Override space detection (default: auto)")
-    parser.add_argument("--json",   action="store_true", help="Output raw JSON hits instead")
+    parser.add_argument("--task", required=True, help="Task instruction to check")
+    parser.add_argument(
+        "--spaces",
+        nargs="*",
+        choices=["angati", "eais", "reference"],
+        help="Override space detection (default: auto)",
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="Output raw JSON hits instead"
+    )
     args = parser.parse_args()
 
     if args.json:

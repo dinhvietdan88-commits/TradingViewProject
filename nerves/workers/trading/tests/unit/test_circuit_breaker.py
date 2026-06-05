@@ -7,6 +7,7 @@ from core.events import TradeApproved, TradeFailed, TradeExecuted
 import database
 import config
 
+
 @pytest.mark.asyncio
 async def test_database_risk_settings_and_logs():
     """Verify database helpers for risk settings and circuit breaker logs."""
@@ -28,7 +29,7 @@ async def test_database_risk_settings_and_logs():
         max_quote_qty=200.0,
         slippage_limit=0.01,
         safe_mode=0,
-        state="CLOSED"
+        state="CLOSED",
     )
 
     settings = await database.get_risk_settings("test_ex")
@@ -49,13 +50,15 @@ async def test_database_risk_settings_and_logs():
         prev_state="CLOSED",
         new_state="OPEN",
         trigger_reason="Daily loss test",
-        current_metrics={"dailyLoss": 20.0}
+        current_metrics={"dailyLoss": 20.0},
     )
 
     # Fetch logs to verify insertion
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        async with db.execute("SELECT * FROM circuit_breaker_logs WHERE exchange = 'test_ex'") as cursor:
+        async with db.execute(
+            "SELECT * FROM circuit_breaker_logs WHERE exchange = 'test_ex'"
+        ) as cursor:
             row = await cursor.fetchone()
             assert row is not None
             assert row["exchange"] == "test_ex"
@@ -87,7 +90,7 @@ async def test_trade_engine_blocked_by_open_circuit_breaker():
         "exchange": "weex",
         "state": "OPEN",
         "daily_loss_cap": 10.0,
-        "drawdown_cap": 5.0
+        "drawdown_cap": 5.0,
     }
 
     mock_client = AsyncMock()
@@ -101,12 +104,13 @@ async def test_trade_engine_blocked_by_open_circuit_breaker():
         quote_qty="50.0",
         sl="66000.0",
         tp="72000.0",
-        exchange="weex"
+        exchange="weex",
     )
 
-    with patch("exchanges.router.get_router") as mock_get_router, \
-         patch("engine.trade_engine.database") as mock_db:
-
+    with (
+        patch("exchanges.router.get_router") as mock_get_router,
+        patch("engine.trade_engine.database") as mock_db,
+    ):
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = mock_client
         mock_get_router.return_value = mock_router
@@ -140,7 +144,7 @@ async def test_trade_engine_auto_trips_circuit_breaker():
         "exchange": "weex",
         "state": "CLOSED",
         "daily_loss_cap": 10.0,
-        "drawdown_cap": 5.0
+        "drawdown_cap": 5.0,
     }
 
     mock_client = AsyncMock()
@@ -154,12 +158,13 @@ async def test_trade_engine_auto_trips_circuit_breaker():
         quote_qty="50.0",
         sl="66000.0",
         tp="72000.0",
-        exchange="weex"
+        exchange="weex",
     )
 
-    with patch("exchanges.router.get_router") as mock_get_router, \
-         patch("engine.trade_engine.database") as mock_db:
-
+    with (
+        patch("exchanges.router.get_router") as mock_get_router,
+        patch("engine.trade_engine.database") as mock_db,
+    ):
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = mock_client
         mock_get_router.return_value = mock_router
@@ -201,7 +206,7 @@ async def test_trade_engine_half_open_halves_position_size():
         "exchange": "weex",
         "state": "HALF-OPEN",
         "daily_loss_cap": 10.0,
-        "drawdown_cap": 5.0
+        "drawdown_cap": 5.0,
     }
 
     mock_client = AsyncMock()
@@ -216,12 +221,13 @@ async def test_trade_engine_half_open_halves_position_size():
         quote_qty="50.0",
         sl="66000.0",
         tp="72000.0",
-        exchange="weex"
+        exchange="weex",
     )
 
-    with patch("exchanges.router.get_router") as mock_get_router, \
-         patch("engine.trade_engine.database") as mock_db:
-
+    with (
+        patch("exchanges.router.get_router") as mock_get_router,
+        patch("engine.trade_engine.database") as mock_db,
+    ):
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = mock_client
         mock_get_router.return_value = mock_router
@@ -261,7 +267,7 @@ async def test_trade_engine_tripping_event_emitted():
         "exchange": "weex",
         "state": "CLOSED",
         "daily_loss_cap": 10.0,
-        "drawdown_cap": 5.0
+        "drawdown_cap": 5.0,
     }
 
     mock_client = AsyncMock()
@@ -275,12 +281,13 @@ async def test_trade_engine_tripping_event_emitted():
         quote_qty="50.0",
         sl="66000.0",
         tp="72000.0",
-        exchange="weex"
+        exchange="weex",
     )
 
-    with patch("exchanges.router.get_router") as mock_get_router, \
-         patch("engine.trade_engine.database") as mock_db:
-
+    with (
+        patch("exchanges.router.get_router") as mock_get_router,
+        patch("engine.trade_engine.database") as mock_db,
+    ):
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = mock_client
         mock_get_router.return_value = mock_router
@@ -323,7 +330,7 @@ async def test_trade_engine_respects_bypass_setting():
         "exchange": "weex",
         "state": "CLOSED",
         "daily_loss_cap": 10.0,
-        "drawdown_cap": 5.0
+        "drawdown_cap": 5.0,
     }
 
     mock_client = AsyncMock()
@@ -338,21 +345,24 @@ async def test_trade_engine_respects_bypass_setting():
         quote_qty="50.0",
         sl="66000.0",
         tp="72000.0",
-        exchange="weex"
+        exchange="weex",
     )
 
     # Active bypass until 30 minutes in the future
     future_bypass = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
 
-    with patch("exchanges.router.get_router") as mock_get_router, \
-         patch("engine.trade_engine.database") as mock_db:
-
+    with (
+        patch("exchanges.router.get_router") as mock_get_router,
+        patch("engine.trade_engine.database") as mock_db,
+    ):
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = mock_client
         mock_get_router.return_value = mock_router
 
         mock_db.get_risk_settings = AsyncMock(return_value=mock_settings)
-        mock_db.get_daily_loss = AsyncMock(return_value=12.50)  # Exceeds cap but bypassed
+        mock_db.get_daily_loss = AsyncMock(
+            return_value=12.50
+        )  # Exceeds cap but bypassed
         mock_db.get_rolling_drawdown = AsyncMock(return_value=1.0)
         mock_db.update_circuit_breaker_state = AsyncMock()
         mock_db.log_circuit_breaker = AsyncMock()
@@ -368,4 +378,3 @@ async def test_trade_engine_respects_bypass_setting():
         # Assert trade successfully executed
         assert len(executed_events) == 1
         mock_client.execute_smart_order.assert_called_once()
-

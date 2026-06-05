@@ -20,7 +20,6 @@ V2 Changes vs V1:
   - Failover      : LOCAL_EXECUTE_URL → SERVER_B_EXECUTE_URL (unchanged from V1).
 """
 
-
 import asyncio
 import logging
 import os
@@ -31,6 +30,7 @@ from typing import Dict, Any, List, Optional, Tuple
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import config
@@ -45,10 +45,13 @@ from workers.liveness_monitor import _get_servers
 
 app = FastAPI(title="Server C Health Server")
 
+
 @app.on_event("startup")
 async def startup_event():
     import rag
+
     await rag.init_vector_db()
+
 
 @app.get("/health")
 async def get_health():
@@ -69,6 +72,7 @@ async def get_health():
     disk_usage_pct = 0.0
     try:
         import shutil
+
         total, used, free = shutil.disk_usage("/")
         disk_usage_pct = round((used / total) * 100, 1)
     except Exception as e:
@@ -79,8 +83,13 @@ async def get_health():
     ntp_clock_drift_detail = {}
     try:
         from workers.ntp_monitor import last_drift_results
+
         ntp_clock_drift_detail = last_drift_results
-        drifts = [v["drift_ms"] for v in last_drift_results.values() if v.get("drift_ms") is not None]
+        drifts = [
+            v["drift_ms"]
+            for v in last_drift_results.values()
+            if v.get("drift_ms") is not None
+        ]
         if drifts:
             ntp_clock_drift_ms = float(max(drifts))
     except Exception as e:
@@ -98,6 +107,7 @@ async def get_health():
     rag_status = "unknown"
     try:
         import rag as _rag
+
         if _rag._collection is not None:
             rag_vector_count = _rag._collection.count()
             rag_status = "ok" if rag_vector_count > 0 else "empty"
@@ -191,10 +201,12 @@ async def rag_verify():
 
 # ── V3: Server Announce (Smart Offline) ────────────────────────────────────────
 
+
 @app.post("/api/server-announce")
 async def server_announce(request: Request):
     """Server B calls this when it starts up to resume health monitoring."""
     from workers.liveness_monitor import announce_server_online
+
     body = await request.json()
     server_name = body.get("server", "")
     if not server_name:
@@ -203,6 +215,7 @@ async def server_announce(request: Request):
     if result.get("status") == "ok":
         try:
             from notifier import notify_all
+
             await notify_all(
                 f"🟢 <b>SERVER ONLINE</b>\n\n"
                 f"Server: <b>{result['server']}</b>\n"
@@ -217,13 +230,14 @@ async def server_announce(request: Request):
 async def server_status():
     """Get current health monitoring status of all servers."""
     from workers.liveness_monitor import get_server_status
+
     return {"servers": get_server_status()}
 
 
 @app.get("/metrics")
 async def get_metrics(request: Request):
     accept_header = request.headers.get("accept", "")
-    
+
     # Check liveness status
     la_val = 0.0
     lb_val = 0.0
@@ -236,26 +250,32 @@ async def get_metrics(request: Request):
                 lb_val = 1.0 if s.is_healthy else 0.0
     except Exception as e:
         log.warning(f"Error reading liveness status for metrics: {e}")
-        
+
     # Disk usage
     disk_usage_pct = 0.0
     try:
         import shutil
+
         total, used, free = shutil.disk_usage("/")
         disk_usage_pct = round((used / total) * 100, 1)
     except Exception as e:
         log.warning(f"Error checking disk usage for metrics: {e}")
-        
+
     # NTP drift
     max_drift = 0.0
     try:
         from workers.ntp_monitor import last_drift_results
-        drifts = [v["drift_ms"] for v in last_drift_results.values() if v.get("drift_ms") is not None]
+
+        drifts = [
+            v["drift_ms"]
+            for v in last_drift_results.values()
+            if v.get("drift_ms") is not None
+        ]
         if drifts:
             max_drift = float(max(drifts))
     except Exception as e:
         log.warning(f"Error checking NTP drift for metrics: {e}")
-        
+
     # Circuit state
     cb_val = 0.0
     try:
@@ -264,11 +284,11 @@ async def get_metrics(request: Request):
             cb_val = 0.0
         elif cb_state_str == "half_open":
             cb_val = 0.5
-        else: # open
+        else:  # open
             cb_val = 1.0
     except Exception as e:
         log.warning(f"Error checking circuit state for metrics: {e}")
-        
+
     successes = 0
     failures = 0
     fallbacks = 0
@@ -278,7 +298,7 @@ async def get_metrics(request: Request):
         fallbacks = llm_breaker.total_fallbacks
     except Exception as e:
         log.warning(f"Error checking breaker counters for metrics: {e}")
-        
+
     metrics_data = {
         "liveness_status_server_a": la_val,
         "liveness_status_server_b": lb_val,
@@ -287,12 +307,12 @@ async def get_metrics(request: Request):
         "circuit_breaker_state": cb_val,
         "llm_breaker_successes_total": float(successes),
         "llm_breaker_failures_total": float(failures),
-        "llm_breaker_fallbacks_total": float(fallbacks)
+        "llm_breaker_fallbacks_total": float(fallbacks),
     }
-    
+
     if "application/json" in accept_header:
         return metrics_data
-        
+
     # Return Prometheus formatted gauge text
     lines = [
         "# HELP liveness_status_server_a Liveness status of Server A (1.0 = healthy, 0.0 = unhealthy)",
@@ -318,7 +338,7 @@ async def get_metrics(request: Request):
         f"llm_breaker_failures_total {failures}",
         "# HELP llm_breaker_fallbacks_total Total LLM circuit breaker fallbacks",
         "# TYPE llm_breaker_fallbacks_total counter",
-        f"llm_breaker_fallbacks_total {fallbacks}"
+        f"llm_breaker_fallbacks_total {fallbacks}",
     ]
     return Response(content="\n".join(lines) + "\n", media_type="text/plain")
 
@@ -329,6 +349,7 @@ log = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────────────────────
 # Worker
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class VpsAnalyzerWorker:
     """AI Analyzer Worker for SERVER C (V2 Hardened).
@@ -344,10 +365,10 @@ class VpsAnalyzerWorker:
       4. ACK processed signals back to SERVER A
     """
 
-    LONG_POLL_TIMEOUT    = int(os.getenv("LONG_POLL_TIMEOUT_SEC", "30"))  # seconds
-    HTTP_TIMEOUT_MARGIN  = 5   # extra seconds for HTTP layer beyond long-poll hold
-    ALGO_MIN_SCORE       = int(os.getenv("LLM_ALGORITHMIC_MIN_SCORE", "3"))  # /5
-    BACKOFF_ON_ERROR_SEC = 5   # sleep after unexpected poll errors
+    LONG_POLL_TIMEOUT = int(os.getenv("LONG_POLL_TIMEOUT_SEC", "30"))  # seconds
+    HTTP_TIMEOUT_MARGIN = 5  # extra seconds for HTTP layer beyond long-poll hold
+    ALGO_MIN_SCORE = int(os.getenv("LLM_ALGORITHMIC_MIN_SCORE", "3"))  # /5
+    BACKOFF_ON_ERROR_SEC = 5  # sleep after unexpected poll errors
 
     def __init__(self):
         self._session: Optional[aiohttp.ClientSession] = None
@@ -421,9 +442,7 @@ class VpsAnalyzerWorker:
                         f"(waited {waited}s)"
                     )
                 else:
-                    log.debug(
-                        f"[VpsAnalyzer] Long-poll: empty (timeout={waited}s)"
-                    )
+                    log.debug(f"[VpsAnalyzer] Long-poll: empty (timeout={waited}s)")
                 return signals
         except aiohttp.ServerDisconnectedError:
             log.warning("[VpsAnalyzer] Long-poll: server disconnected (reconnect)")
@@ -443,7 +462,9 @@ class VpsAnalyzerWorker:
         Runs until cancelled.
         """
         # Logging configuration based on environment variable LOG_JSON_FORMAT
-        json_format = os.getenv("LOG_JSON_FORMAT", "false").lower() == "true" or getattr(config, "LOG_JSON_FORMAT", False)
+        json_format = os.getenv(
+            "LOG_JSON_FORMAT", "false"
+        ).lower() == "true" or getattr(config, "LOG_JSON_FORMAT", False)
         setup_logging(json_format=json_format)
 
         log.info(
@@ -456,7 +477,9 @@ class VpsAnalyzerWorker:
         try:
             db_ok = await rag.init_vector_db()
             if db_ok:
-                log.info("[VpsAnalyzer] RAG vector database initialized and seeded successfully.")
+                log.info(
+                    "[VpsAnalyzer] RAG vector database initialized and seeded successfully."
+                )
             else:
                 log.error("[VpsAnalyzer] RAG vector database failed to initialize.")
         except Exception as exc:
@@ -465,6 +488,7 @@ class VpsAnalyzerWorker:
         # Wire up circuit-breaker Telegram alerts once notifier is importable
         try:
             from notifier import send_telegram_alert
+
             llm_breaker.alert_hook = send_telegram_alert
         except Exception as exc:
             log.warning(f"[VpsAnalyzer] Could not wire circuit-breaker alert: {exc}")
@@ -472,6 +496,7 @@ class VpsAnalyzerWorker:
         # Start APScheduler jobs
         try:
             from scheduler import start_scheduler
+
             start_scheduler()
             log.info("[VpsAnalyzer] APScheduler started.")
         except Exception as exc:
@@ -479,6 +504,7 @@ class VpsAnalyzerWorker:
 
         # Start uvicorn health server in background
         import uvicorn
+
         config_uv = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
         server = uvicorn.Server(config_uv)
         server_task = asyncio.create_task(server.serve())
@@ -486,6 +512,7 @@ class VpsAnalyzerWorker:
 
         # Setup graceful shutdown signal handling
         import signal
+
         self._shutdown_event = asyncio.Event()
         loop = asyncio.get_running_loop()
 
@@ -519,12 +546,11 @@ class VpsAnalyzerWorker:
                 # we run it as a task and await it along with the shutdown event.
                 poll_task = asyncio.create_task(self.poll_and_analyze())
                 shutdown_task = asyncio.create_task(self._shutdown_event.wait())
-                
+
                 done, pending = await asyncio.wait(
-                    {poll_task, shutdown_task},
-                    return_when=asyncio.FIRST_COMPLETED
+                    {poll_task, shutdown_task}, return_when=asyncio.FIRST_COMPLETED
                 )
-                
+
                 # Cancel whichever task didn't finish first
                 for t in pending:
                     t.cancel()
@@ -532,16 +558,18 @@ class VpsAnalyzerWorker:
                         await t
                     except asyncio.CancelledError:
                         pass
-                
+
                 if self._shutdown_event.is_set():
                     break
-                    
+
                 if poll_task in done:
                     analyzed_list = poll_task.result()
-                    
+
                     async def process_analyzed(analyzed: Dict[str, Any]):
                         queue_id = analyzed.get("queue_id")
-                        dry_run = os.getenv("ANALYZER_DRY_RUN", "false").lower() == "true"
+                        dry_run = (
+                            os.getenv("ANALYZER_DRY_RUN", "false").lower() == "true"
+                        )
                         try:
                             # ── Send AI analysis to Telegram ──────────────
                             await self._notify_analysis_telegram(analyzed)
@@ -555,11 +583,15 @@ class VpsAnalyzerWorker:
                                     )
                                     await self._ack_signal(queue_id, "dry_run")
                                 else:
-                                    fwd = await self.forward_to_server_b(analyzed["trade_payload"])
+                                    fwd = await self.forward_to_server_b(
+                                        analyzed["trade_payload"]
+                                    )
                                     if fwd.get("success"):
                                         await self._ack_signal(queue_id, "executed")
                                     else:
-                                        err = fwd.get("error", "Server B execution failed")
+                                        err = fwd.get(
+                                            "error", "Server B execution failed"
+                                        )
                                         await self._ack_signal(queue_id, "failed", err)
                             else:
                                 reason = analyzed.get("reason", "")
@@ -568,7 +600,9 @@ class VpsAnalyzerWorker:
                                 else:
                                     await self._ack_signal(queue_id, "rejected")
                         except Exception as exc:
-                            log.exception(f"[VpsAnalyzer] Error processing #{queue_id}: {exc}")
+                            log.exception(
+                                f"[VpsAnalyzer] Error processing #{queue_id}: {exc}"
+                            )
                             await self._ack_signal(queue_id, "failed", str(exc)[:200])
 
                     if analyzed_list:
@@ -581,7 +615,11 @@ class VpsAnalyzerWorker:
                         # Log any individual failures without crashing the loop
                         for i, result in enumerate(results):
                             if isinstance(result, Exception):
-                                qid = analyzed_list[i].get("queue_id", "?") if i < len(analyzed_list) else "?"
+                                qid = (
+                                    analyzed_list[i].get("queue_id", "?")
+                                    if i < len(analyzed_list)
+                                    else "?"
+                                )
                                 log.error(
                                     f"[VpsAnalyzer] process_analyzed #{qid} failed: {result}"
                                 )
@@ -595,16 +633,17 @@ class VpsAnalyzerWorker:
 
         print("[DEBUG] Starting graceful shutdown cleanup...", flush=True)
         log.info("[VpsAnalyzer] Starting graceful shutdown cleanup...")
-        
+
         # Stop scheduler
         try:
             from scheduler import stop_scheduler
+
             print("[DEBUG] Stopping scheduler...", flush=True)
             stop_scheduler()
             print("[DEBUG] Scheduler stopped.", flush=True)
         except Exception as e:
             log.warning(f"[VpsAnalyzer] Error stopping scheduler: {e}")
-            
+
         # Stop uvicorn server task
         print("[DEBUG] Setting server.should_exit = True...", flush=True)
         server.should_exit = True
@@ -618,17 +657,17 @@ class VpsAnalyzerWorker:
             print("[DEBUG] Caught CancelledError for server_task.", flush=True)
             pass
         log.info("[VpsAnalyzer] Health server stopped.")
-        
+
         # Close ClientSession
         print("[DEBUG] Closing ClientSession...", flush=True)
         await self.close()
         print("[DEBUG] ClientSession closed.", flush=True)
-        
+
         # Flush logs
         print("[DEBUG] Shutting down logging...", flush=True)
         logging.shutdown()
         print("[DEBUG] Logging shut down.", flush=True)
-        
+
         log.info("[VpsAnalyzer] Shutdown complete.")
         print("[DEBUG] Shutdown complete.", flush=True)
 
@@ -658,10 +697,10 @@ class VpsAnalyzerWorker:
                 "analysis_mode": str,    # "ai" | "algorithmic"
             }
         """
-        symbol   = signal.get("symbol", "")
-        action   = signal.get("action", "")
-        price    = signal.get("price")
-        payload  = signal.get("payload", {})
+        symbol = signal.get("symbol", "")
+        action = signal.get("action", "")
+        price = signal.get("price")
+        payload = signal.get("payload", {})
         queue_id = signal.get("queue_id")
 
         log.info(f"[VpsAnalyzer] Analysing #{queue_id}: {symbol} {action} @ {price}")
@@ -679,8 +718,8 @@ class VpsAnalyzerWorker:
                 "analysis_mode": "validation",
             }
 
-        advice      = ""
-        ai_conf     = 0
+        advice = ""
+        ai_conf = 0
         analysis_mode = "ai"
 
         # ── AI Mode (primary) ─────────────────────────────────────────────────
@@ -692,38 +731,52 @@ class VpsAnalyzerWorker:
                 from utils.pattern_overlay import detect_all_patterns
 
                 # Fetch daily OHLCV candles (limit to 365 to calculate SMA200 and 52-week High/Low)
-                ohlcv = await get_capture_client().fetch_ohlcv(symbol, timeframe="D", limit=365)
+                ohlcv = await get_capture_client().fetch_ohlcv(
+                    symbol, timeframe="D", limit=365
+                )
                 if ohlcv and len(ohlcv) >= 10:
                     closes = [c[4] for c in ohlcv]
                     highs = [c[2] for c in ohlcv]
                     lows = [c[3] for c in ohlcv]
-                    
+
                     latest_close = closes[-1]
                     sma50 = sum(closes[-50:]) / 50 if len(closes) >= 50 else None
                     sma150 = sum(closes[-150:]) / 150 if len(closes) >= 150 else None
                     sma200 = sum(closes[-200:]) / 200 if len(closes) >= 200 else None
-                    
+
                     # SMA200 slope (trend) over past 20 days
-                    sma200_20_ago = sum(closes[-220:-20]) / 200 if len(closes) >= 220 else None
-                    sma200_slope = (sma200 - sma200_20_ago) if (sma200 is not None and sma200_20_ago is not None) else None
-                    
+                    sma200_20_ago = (
+                        sum(closes[-220:-20]) / 200 if len(closes) >= 220 else None
+                    )
+                    sma200_slope = (
+                        (sma200 - sma200_20_ago)
+                        if (sma200 is not None and sma200_20_ago is not None)
+                        else None
+                    )
+
                     high_52w = max(highs[-365:]) if len(highs) >= 365 else max(highs)
                     low_52w = min(lows[-365:]) if len(lows) >= 365 else min(lows)
-                    
+
                     # Calculate rs_ratio relative to BTC benchmark (or default to 1.01)
                     rs_ratio = 1.01
-                    btc_symbol = "BTCUSDT_UMCBL" if symbol.endswith("_UMCBL") else "BTCUSDT"
+                    btc_symbol = (
+                        "BTCUSDT_UMCBL" if symbol.endswith("_UMCBL") else "BTCUSDT"
+                    )
                     if symbol != btc_symbol:
                         try:
-                            btc_ohlcv = await get_capture_client().fetch_ohlcv(btc_symbol, timeframe="D", limit=365)
+                            btc_ohlcv = await get_capture_client().fetch_ohlcv(
+                                btc_symbol, timeframe="D", limit=365
+                            )
                             if btc_ohlcv and len(btc_ohlcv) >= 50 and len(closes) >= 50:
                                 symbol_perf = closes[-1] / closes[-50]
                                 btc_closes = [c[4] for c in btc_ohlcv]
                                 btc_perf = btc_closes[-1] / btc_closes[-50]
                                 rs_ratio = symbol_perf / btc_perf
                         except Exception as e:
-                            log.warning(f"[VpsAnalyzer] Could not fetch/calculate RS ratio vs benchmark: {e}")
-                    
+                            log.warning(
+                                f"[VpsAnalyzer] Could not fetch/calculate RS ratio vs benchmark: {e}"
+                            )
+
                     tt_res = score_trend_template(
                         price=latest_close,
                         sma50=sma50,
@@ -732,17 +785,17 @@ class VpsAnalyzerWorker:
                         high_52w=high_52w,
                         low_52w=low_52w,
                         sma200_slope=sma200_slope,
-                        rs_ratio=rs_ratio
+                        rs_ratio=rs_ratio,
                     )
-                    
+
                     payload["trend_stats"] = {
                         "score": tt_res.score,
                         "stage": tt_res.stage,
                         "macro_regime": tt_res.macro_regime,
                         "summary": tt_res.summary,
-                        "criteria": tt_res.criteria
+                        "criteria": tt_res.criteria,
                     }
-                    
+
                     patterns = detect_all_patterns(ohlcv)
                     if patterns.vcp.detected:
                         payload["vcp_stats"] = {
@@ -753,25 +806,31 @@ class VpsAnalyzerWorker:
                                     "high": c.pivot_high_price,
                                     "low": c.trough_price,
                                     "depth_pct": c.depth_pct,
-                                    "duration_bars": c.duration_bars
+                                    "duration_bars": c.duration_bars,
                                 }
                                 for c in patterns.vcp.contractions
                             ],
                             "pivot_line": patterns.vcp.pivot_line_price,
-                            "quality_score": patterns.vcp.quality_score
+                            "quality_score": patterns.vcp.quality_score,
                         }
                     else:
                         payload["vcp_stats"] = {"detected": False}
                 else:
-                    payload["trend_stats"] = {"error": "Insufficient OHLCV data to calculate Trend Template"}
+                    payload["trend_stats"] = {
+                        "error": "Insufficient OHLCV data to calculate Trend Template"
+                    }
                     payload["vcp_stats"] = {"detected": False}
             except Exception as exc:
-                log.warning(f"[VpsAnalyzer] Gracefully handled pattern detection error for {symbol}: {exc}")
-                payload["trend_stats"] = {"error": f"Pattern detection exception: {exc}"}
+                log.warning(
+                    f"[VpsAnalyzer] Gracefully handled pattern detection error for {symbol}: {exc}"
+                )
+                payload["trend_stats"] = {
+                    "error": f"Pattern detection exception: {exc}"
+                }
                 payload["vcp_stats"] = {"detected": False}
 
             try:
-                rag_query  = rag.build_rag_query(symbol, action, payload)
+                rag_query = rag.build_rag_query(symbol, action, payload)
                 rag_chunks = rag.query_knowledge(rag_query, n_results=config.RAG_TOP_K)
 
                 advice = await asyncio.wait_for(
@@ -806,9 +865,7 @@ class VpsAnalyzerWorker:
                 analysis_mode = "algorithmic"
         else:
             analysis_mode = "algorithmic"
-            log.info(
-                f"[VpsAnalyzer] ⚡ Circuit OPEN → Algorithmic for #{queue_id}"
-            )
+            log.info(f"[VpsAnalyzer] ⚡ Circuit OPEN → Algorithmic for #{queue_id}")
 
         # ── Algorithmic Fallback (Multi-Strategy Router) ─────────────────────
         if analysis_mode == "algorithmic":
@@ -836,7 +893,7 @@ class VpsAnalyzerWorker:
                     "reason": f"RAG error: {advice[:100]}",
                     "analysis_mode": analysis_mode,
                 }
-            
+
             # Hard reject if AI confidence is too low (< 30)
             if ai_conf < 30:
                 return {
@@ -844,24 +901,40 @@ class VpsAnalyzerWorker:
                     "reason": f"Hard Reject: AI confidence too low ({ai_conf} < 30)",
                     "analysis_mode": analysis_mode,
                 }
-            
+
             # 1. Prefix-based checks (high priority)
             starts_with_reject = False
-            for kw in ["rejected", "wait", "avoid", "không nên", "không mua", "chờ thêm", "⚠️"]:
+            for kw in [
+                "rejected",
+                "wait",
+                "avoid",
+                "không nên",
+                "không mua",
+                "chờ thêm",
+                "⚠️",
+            ]:
                 if advice_lower.startswith(kw):
                     starts_with_reject = True
                     break
-                    
+
             starts_with_approve = False
             for kw in ["approved", "mua", "buy", "bán", "sell", "mạnh", "strong"]:
                 if advice_lower.startswith(kw):
                     starts_with_approve = True
                     break
-            
+
             # 2. Substring/word boundary checking
-            rejected_kw = ["⚠️", "chờ thêm", "không nên", "không mua", "rejected", "wait", "avoid"]
+            rejected_kw = [
+                "⚠️",
+                "chờ thêm",
+                "không nên",
+                "không mua",
+                "rejected",
+                "wait",
+                "avoid",
+            ]
             approved_kw = ["mua", "buy", "bán", "sell", "mạnh", "strong", "approved"]
-            
+
             def has_keyword(text, kw):
                 if kw == "⚠️":
                     return kw in text
@@ -871,13 +944,19 @@ class VpsAnalyzerWorker:
                 else:
                     return kw in text
 
-            is_rejected = starts_with_reject or any(has_keyword(advice_lower, kw) for kw in rejected_kw)
-            is_approved = starts_with_approve or any(has_keyword(advice_lower, kw) for kw in approved_kw)
-            
+            is_rejected = starts_with_reject or any(
+                has_keyword(advice_lower, kw) for kw in rejected_kw
+            )
+            is_approved = starts_with_approve or any(
+                has_keyword(advice_lower, kw) for kw in approved_kw
+            )
+
             if is_rejected or not is_approved:
                 return {
                     "approved": False,
-                    "reason": "AI analysis rejected signal" if is_rejected else "AI analysis did not approve signal",
+                    "reason": "AI analysis rejected signal"
+                    if is_rejected
+                    else "AI analysis did not approve signal",
                     "analysis_mode": analysis_mode,
                     "symbol": symbol,
                     "action": action,
@@ -885,7 +964,7 @@ class VpsAnalyzerWorker:
                 }
 
         # ── Position sizing ────────────────────────────────────────────────────
-        qty              = self._calculate_position_size(price_val, action, signal=signal)
+        qty = self._calculate_position_size(price_val, action, signal=signal)
         sl_price, tp_price = self._calculate_sl_tp(price_val, action, signal=signal)
 
         # ── Programmatic Guardrails ───────────────────────────────────────────
@@ -915,18 +994,18 @@ class VpsAnalyzerWorker:
                 }
 
         trade_payload = {
-            "symbol":          symbol,
-            "action":          action,
-            "price":           price_val,
-            "qty":             qty,
-            "sl":              sl_price,
-            "tp":              tp_price,
-            "analysis":        advice,
-            "ai_confidence":   ai_conf,
-            "analysis_mode":   analysis_mode,
-            "risk_per_trade":  config.RISK_PER_TRADE,
-            "stop_loss_pct":   config.STOP_LOSS_PCT,
-            "exchange":        payload.get("exchange", config.DEFAULT_EXCHANGE),
+            "symbol": symbol,
+            "action": action,
+            "price": price_val,
+            "qty": qty,
+            "sl": sl_price,
+            "tp": tp_price,
+            "analysis": advice,
+            "ai_confidence": ai_conf,
+            "analysis_mode": analysis_mode,
+            "risk_per_trade": config.RISK_PER_TRADE,
+            "stop_loss_pct": config.STOP_LOSS_PCT,
+            "exchange": payload.get("exchange", config.DEFAULT_EXCHANGE),
             "hold_for_approval": (50 <= ai_conf <= 79),
         }
 
@@ -968,7 +1047,9 @@ class VpsAnalyzerWorker:
                 try:
                     price_val = float(str(price).replace(",", ""))
                     if price_val > 0:
-                        drawings.append({"price": price_val, "label": "Entry", "color": "#26a69a"})
+                        drawings.append(
+                            {"price": price_val, "label": "Entry", "color": "#26a69a"}
+                        )
                 except (ValueError, TypeError):
                     pass
 
@@ -978,7 +1059,9 @@ class VpsAnalyzerWorker:
                 try:
                     sl_val = float(str(sl).replace(",", ""))
                     if sl_val > 0:
-                        drawings.append({"price": sl_val, "label": "SL", "color": "#ef5350"})
+                        drawings.append(
+                            {"price": sl_val, "label": "SL", "color": "#ef5350"}
+                        )
                 except (ValueError, TypeError):
                     pass
 
@@ -987,21 +1070,23 @@ class VpsAnalyzerWorker:
                 try:
                     tp_val = float(str(tp_price).replace(",", ""))
                     if tp_val > 0:
-                        drawings.append({"price": tp_val, "label": "TP", "color": "#2962ff"})
+                        drawings.append(
+                            {"price": tp_val, "label": "TP", "color": "#2962ff"}
+                        )
                 except (ValueError, TypeError):
                     pass
 
             # Build strategy table from payload/trend_stats/vcp_stats
             strategy_table = None
             rows = []
-            
+
             trend_stats = payload.get("trend_stats") or {}
             vcp_stats = payload.get("vcp_stats") or {}
 
             tt_score = trend_stats.get("score")
             if tt_score is not None:
                 rows.append(("TT Score", f"{tt_score}/8"))
-            
+
             tt_stage = trend_stats.get("stage")
             if tt_stage:
                 rows.append(("Stage", str(tt_stage)))
@@ -1035,10 +1120,14 @@ class VpsAnalyzerWorker:
             )
 
             if result.success and result.file_path:
-                log.info(f"[VpsAnalyzer] 📊 Chart rendered for {symbol} → {result.file_path}")
+                log.info(
+                    f"[VpsAnalyzer] 📊 Chart rendered for {symbol} → {result.file_path}"
+                )
                 return result.file_path
             else:
-                log.warning(f"[VpsAnalyzer] Chart render failed for {symbol}: {result.error}")
+                log.warning(
+                    f"[VpsAnalyzer] Chart render failed for {symbol}: {result.error}"
+                )
         except Exception as exc:
             log.warning(f"[VpsAnalyzer] Chart rendering skipped for {symbol}: {exc}")
 
@@ -1070,6 +1159,7 @@ class VpsAnalyzerWorker:
         provider_detail = None
         if analysis:
             import re as _re
+
             match = _re.search(r"\[Provider: (.*?)\]$", analysis)
             if match:
                 provider_detail = match.group(1)
@@ -1109,7 +1199,9 @@ class VpsAnalyzerWorker:
             f"{mode_icon} <b>AI Core Analysis #{queue_id}</b>",
             f"{'━' * 28}",
             "",
-            f"📌 <b>{symbol}</b> | <code>{action.upper()}</code> @ <code>{price:,.2f}</code>" if price >= 1 else f"📌 <b>{symbol}</b> | <code>{action.upper()}</code> @ <code>{price:.6f}</code>",
+            f"📌 <b>{symbol}</b> | <code>{action.upper()}</code> @ <code>{price:,.2f}</code>"
+            if price >= 1
+            else f"📌 <b>{symbol}</b> | <code>{action.upper()}</code> @ <code>{price:.6f}</code>",
             f"🎯 Confidence: <b>{conf}%</b>  |  Client: <b>{mode_label}</b>",
             f"📋 Status: <b>{status}</b>",
         ]
@@ -1119,29 +1211,37 @@ class VpsAnalyzerWorker:
             sl = tp.get("sl", 0)
             tp_price = tp.get("tp", 0)
             risk = tp.get("risk_per_trade", 0)
-            lines.extend([
-                "",
-                "💰 <b>Position:</b>",
-                f"   • Qty: <code>{qty}</code>",
-                f"   • SL: <code>{sl:,.2f}</code>  |  TP: <code>{tp_price:,.2f}</code>" if sl >= 1 else f"   • SL: <code>{sl:.6f}</code>  |  TP: <code>{tp_price:.6f}</code>",
-                f"   • Risk/Trade: <code>{risk:.1%}</code>",
-            ])
+            lines.extend(
+                [
+                    "",
+                    "💰 <b>Position:</b>",
+                    f"   • Qty: <code>{qty}</code>",
+                    f"   • SL: <code>{sl:,.2f}</code>  |  TP: <code>{tp_price:,.2f}</code>"
+                    if sl >= 1
+                    else f"   • SL: <code>{sl:.6f}</code>  |  TP: <code>{tp_price:.6f}</code>",
+                    f"   • Risk/Trade: <code>{risk:.1%}</code>",
+                ]
+            )
 
         if not approved and reason:
-            lines.extend([
-                "",
-                f"📝 <b>Reason:</b> {reason[:200]}",
-            ])
+            lines.extend(
+                [
+                    "",
+                    f"📝 <b>Reason:</b> {reason[:200]}",
+                ]
+            )
 
         # AI advice excerpt (max 300 chars)
         if analysis:
             excerpt = analysis[:300].replace("\n", " ")
             if len(analysis) > 300:
                 excerpt += "…"
-            lines.extend([
-                "",
-                f"💬 <b>AI:</b> {excerpt}",
-            ])
+            lines.extend(
+                [
+                    "",
+                    f"💬 <b>AI:</b> {excerpt}",
+                ]
+            )
 
         lines.append(f"\n{'━' * 28}")
 
@@ -1151,12 +1251,18 @@ class VpsAnalyzerWorker:
             chart_path = await self._render_chart_for_signal(analyzed)
             if chart_path:
                 await asyncio.to_thread(send_telegram_photo, chart_path, message)
-                log.info(f"[VpsAnalyzer] Telegram photo notification sent for #{queue_id}")
+                log.info(
+                    f"[VpsAnalyzer] Telegram photo notification sent for #{queue_id}"
+                )
             else:
                 await send_telegram_alert(message)
-                log.info(f"[VpsAnalyzer] Telegram text notification sent for #{queue_id}")
+                log.info(
+                    f"[VpsAnalyzer] Telegram text notification sent for #{queue_id}"
+                )
         except Exception as e:
-            log.warning(f"[VpsAnalyzer] Telegram notification failed for #{queue_id}: {e}")
+            log.warning(
+                f"[VpsAnalyzer] Telegram notification failed for #{queue_id}: {e}"
+            )
 
     # ── Algorithmic analysis (Minervini SEPA) ─────────────────────────────────
 
@@ -1167,15 +1273,15 @@ class VpsAnalyzerWorker:
             (advice_text, confidence_0_to_100)
         """
         payload = signal.get("payload", {})
-        action  = signal.get("action", "")
-        price   = float(signal.get("price") or 0)
+        action = signal.get("action", "")
+        price = float(signal.get("price") or 0)
 
         checks: List[str] = []
         score = 0
         total = 5
 
         # 1. Volume surge (>150% of average = Breakout confirmation)
-        volume     = float(payload.get("volume", 0) or 0)
+        volume = float(payload.get("volume", 0) or 0)
         volume_avg = float(payload.get("volume_avg", 0) or 0)
         if volume_avg > 0 and volume > volume_avg * 1.5:
             checks.append("✅ Volume >150% trung bình (Breakout confirmation)")
@@ -1247,25 +1353,20 @@ class VpsAnalyzerWorker:
         payload = signal.get("payload", {})
         if isinstance(payload, str):
             import json as _json
+
             try:
                 payload = _json.loads(payload)
             except Exception:
                 payload = {}
 
         signal_name = str(
-            signal.get("signal", "")
-            or payload.get("signal", "")
-            or ""
+            signal.get("signal", "") or payload.get("signal", "") or ""
         ).upper()
         source = str(
-            signal.get("source", "")
-            or payload.get("source", "")
-            or ""
+            signal.get("source", "") or payload.get("source", "") or ""
         ).lower()
         indicator_name = str(
-            payload.get("indicator_name", "")
-            or payload.get("indicator", "")
-            or ""
+            payload.get("indicator_name", "") or payload.get("indicator", "") or ""
         ).upper()
 
         # Group A: A.007 (MA Crossover + ADX Regime)
@@ -1273,7 +1374,9 @@ class VpsAnalyzerWorker:
             return "A.007 (MA Crossover + ADX)"
 
         # Group C: SuperTrend
-        if any(k in signal_name for k in ["SUPERTREND", "ST_FLIP", "ST_BULL", "ST_BEAR"]):
+        if any(
+            k in signal_name for k in ["SUPERTREND", "ST_FLIP", "ST_BULL", "ST_BEAR"]
+        ):
             return "SuperTrend"
         if "SUPERTREND" in indicator_name:
             return "SuperTrend"
@@ -1287,9 +1390,7 @@ class VpsAnalyzerWorker:
         # Group E: Default = Minervini SEPA
         return "Minervini SEPA"
 
-    def _route_algorithmic_analysis(
-        self, signal: Dict[str, Any]
-    ) -> Tuple[str, int]:
+    def _route_algorithmic_analysis(self, signal: Dict[str, Any]) -> Tuple[str, int]:
         """Route to the correct algorithmic criteria based on signal source.
 
         V3 Multi-Strategy Router: Instead of always applying 5 Minervini
@@ -1324,6 +1425,7 @@ class VpsAnalyzerWorker:
         payload = signal.get("payload", {})
         if isinstance(payload, str):
             import json as _json
+
             try:
                 payload = _json.loads(payload)
             except Exception:
@@ -1331,11 +1433,7 @@ class VpsAnalyzerWorker:
 
         action = signal.get("action", "") or payload.get("action", "")
         price = float(signal.get("price") or payload.get("price") or 0)
-        interval = str(
-            signal.get("interval", "")
-            or payload.get("interval", "")
-            or ""
-        )
+        interval = str(signal.get("interval", "") or payload.get("interval", "") or "")
         position_size = payload.get("position_size", payload.get("quoteQty"))
 
         checks: List[str] = []
@@ -1399,6 +1497,7 @@ class VpsAnalyzerWorker:
         payload = signal.get("payload", {})
         if isinstance(payload, str):
             import json as _json
+
             try:
                 payload = _json.loads(payload)
             except Exception:
@@ -1409,6 +1508,7 @@ class VpsAnalyzerWorker:
         metadata = payload.get("metadata", {})
         if isinstance(metadata, str):
             import json as _json
+
             try:
                 metadata = _json.loads(metadata)
             except Exception:
@@ -1479,9 +1579,7 @@ class VpsAnalyzerWorker:
         )
         return advice, confidence
 
-    def _algo_indicator_passthrough(
-        self, signal: Dict[str, Any]
-    ) -> Tuple[str, int]:
+    def _algo_indicator_passthrough(self, signal: Dict[str, Any]) -> Tuple[str, int]:
         """Indicator signals: pass-through with source confidence.
 
         Indicator alerts (source='indicator') are monitor-only signals that
@@ -1495,15 +1593,14 @@ class VpsAnalyzerWorker:
         payload = signal.get("payload", {})
         if isinstance(payload, str):
             import json as _json
+
             try:
                 payload = _json.loads(payload)
             except Exception:
                 payload = {}
 
         indicator_name = (
-            payload.get("indicator_name")
-            or payload.get("indicator")
-            or "unknown"
+            payload.get("indicator_name") or payload.get("indicator") or "unknown"
         )
         conf = payload.get("confidence_score")
         try:
@@ -1529,13 +1626,15 @@ class VpsAnalyzerWorker:
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
-    def _calculate_position_size(self, price: float, action: str, signal: Optional[Dict[str, Any]] = None) -> float:
+    def _calculate_position_size(
+        self, price: float, action: str, signal: Optional[Dict[str, Any]] = None
+    ) -> float:
         """Minervini SEPA risk-based position sizing."""
         if price <= 0:
             return 0.0
-        portfolio  = float(getattr(config, "MAX_QUOTE_QTY",  1000))
-        risk_pct   = float(getattr(config, "RISK_PER_TRADE",  0.02))
-        
+        portfolio = float(getattr(config, "MAX_QUOTE_QTY", 1000))
+        risk_pct = float(getattr(config, "RISK_PER_TRADE", 0.02))
+
         atr = None
         if isinstance(signal, dict):
             payload = signal.get("payload", {})
@@ -1543,7 +1642,7 @@ class VpsAnalyzerWorker:
                 atr = payload.get("atr_value") or payload.get("atr")
             if atr is None:
                 atr = signal.get("atr_value") or signal.get("atr")
-                
+
         try:
             atr_val = float(atr) if atr is not None else 0.0
         except (ValueError, TypeError):
@@ -1563,18 +1662,20 @@ class VpsAnalyzerWorker:
         if use_atr:
             sl_pct = (2 * atr_val) / price
         else:
-            sl_pct = float(getattr(config, "STOP_LOSS_PCT",   0.08))
+            sl_pct = float(getattr(config, "STOP_LOSS_PCT", 0.08))
 
         risk_amount = portfolio * risk_pct
         qty = risk_amount / (price * sl_pct) if sl_pct > 0 else 0.0
-        
+
         # Cap total quote value
         quote_value = qty * price
         if quote_value > portfolio:
             qty = portfolio / price
         return round(qty, 8)
 
-    def _calculate_sl_tp(self, price: float, action: str, signal: Optional[Dict[str, Any]] = None) -> Tuple[float, float]:
+    def _calculate_sl_tp(
+        self, price: float, action: str, signal: Optional[Dict[str, Any]] = None
+    ) -> Tuple[float, float]:
         """Compute SL and TP based on ATR if present, otherwise configured percentages."""
         atr = None
         if isinstance(signal, dict):
@@ -1583,7 +1684,7 @@ class VpsAnalyzerWorker:
                 atr = payload.get("atr_value") or payload.get("atr")
             if atr is None:
                 atr = signal.get("atr_value") or signal.get("atr")
-                
+
         try:
             atr_val = float(atr) if atr is not None else 0.0
         except (ValueError, TypeError):
@@ -1596,17 +1697,17 @@ class VpsAnalyzerWorker:
             else:
                 sl = round(price + (2 * atr_val), 8)
                 tp = round(price - (5 * atr_val), 8)
-            
+
             if sl > 0 and tp > 0:
                 return sl, tp
-            
+
             log.warning(
                 f"[VpsAnalyzer] ATR-based SL ({sl}) or TP ({tp}) is non-positive. "
                 f"Falling back to percentage-based calculation."
             )
 
-        sl_pct = float(getattr(config, "STOP_LOSS_PCT",    0.08))
-        tp_pct = float(getattr(config, "TAKE_PROFIT_PCT",  0.20))
+        sl_pct = float(getattr(config, "STOP_LOSS_PCT", 0.08))
+        tp_pct = float(getattr(config, "TAKE_PROFIT_PCT", 0.20))
         if action.lower() in ("buy", "long"):
             sl = round(price * (1 - sl_pct), 8)
             tp = round(price * (1 + tp_pct), 8)
@@ -1628,7 +1729,9 @@ class VpsAnalyzerWorker:
 
     # ── Forward to execution ──────────────────────────────────────────────────
 
-    async def forward_to_server_b(self, trade_payload: Dict[str, Any]) -> Dict[str, Any]:
+    async def forward_to_server_b(
+        self, trade_payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Forward approved trade payload: Local first, then SERVER B fallback.
 
         Args:
@@ -1649,7 +1752,10 @@ class VpsAnalyzerWorker:
                 session = await self.get_session()
                 timeout = aiohttp.ClientTimeout(connect=5, total=10)
                 async with session.post(
-                    local_url, json=trade_payload, headers=local_headers, timeout=timeout
+                    local_url,
+                    json=trade_payload,
+                    headers=local_headers,
+                    timeout=timeout,
                 ) as resp:
                     body = await resp.json()
                     if resp.status == 200:
@@ -1658,8 +1764,10 @@ class VpsAnalyzerWorker:
                             f"{trade_payload['symbol']} {trade_payload['action']}"
                         )
                         return {
-                            "success": True, "status": resp.status,
-                            "data": body, "executed_on": "local",
+                            "success": True,
+                            "status": resp.status,
+                            "data": body,
+                            "executed_on": "local",
                         }
                     log.warning(
                         f"[VpsAnalyzer] LOCAL rejected trade "
@@ -1671,6 +1779,7 @@ class VpsAnalyzerWorker:
                 )
                 try:
                     from notifier import send_telegram_alert
+
                     await send_telegram_alert(
                         f"⚠️ <b>Local Windows Offline</b>\n"
                         f"Lỗi: <code>{str(exc)[:150]}</code>\n"
@@ -1689,7 +1798,9 @@ class VpsAnalyzerWorker:
         try:
             session = await self.get_session()
             timeout = aiohttp.ClientTimeout(connect=5, total=10)
-            async with session.post(url, json=trade_payload, headers=headers, timeout=timeout) as resp:
+            async with session.post(
+                url, json=trade_payload, headers=headers, timeout=timeout
+            ) as resp:
                 body = await resp.json()
                 if resp.status == 200:
                     log.info(
@@ -1697,14 +1808,17 @@ class VpsAnalyzerWorker:
                         f"{trade_payload['symbol']} {trade_payload['action']}"
                     )
                     return {
-                        "success": True, "status": resp.status,
-                        "data": body, "executed_on": "server_b",
+                        "success": True,
+                        "status": resp.status,
+                        "data": body,
+                        "executed_on": "server_b",
                     }
                 log.error(
                     f"[VpsAnalyzer] Server B rejected (HTTP {resp.status}): {body}"
                 )
                 return {
-                    "success": False, "status": resp.status,
+                    "success": False,
+                    "status": resp.status,
                     "error": body.get("detail", str(body)),
                 }
         except aiohttp.ContentTypeError:
@@ -1716,7 +1830,9 @@ class VpsAnalyzerWorker:
 
     # ── ACK ───────────────────────────────────────────────────────────────────
 
-    async def _ack_signal(self, queue_id: int, status: str, error_msg: str = "") -> bool:
+    async def _ack_signal(
+        self, queue_id: int, status: str, error_msg: str = ""
+    ) -> bool:
         """ACK a processed signal back to SERVER A's VBS.
 
         Args:
@@ -1732,15 +1848,21 @@ class VpsAnalyzerWorker:
             "X-Buffer-Secret": config.VPS_BUFFER_SECRET,
             "Content-Type": "application/json",
         }
-        body = {"acks": [{"queue_id": queue_id, "status": status, "error_msg": error_msg}]}
+        body = {
+            "acks": [{"queue_id": queue_id, "status": status, "error_msg": error_msg}]
+        }
         try:
             session = await self.get_session()
-            async with session.post(url, json=body, headers=headers, timeout=10) as resp:
+            async with session.post(
+                url, json=body, headers=headers, timeout=10
+            ) as resp:
                 if resp.status == 200:
                     log.info(f"[VpsAnalyzer] ACK #{queue_id} → {status}")
                     return True
                 text = await resp.text()
-                log.error(f"[VpsAnalyzer] ACK #{queue_id} failed (HTTP {resp.status}): {text[:200]}")
+                log.error(
+                    f"[VpsAnalyzer] ACK #{queue_id} failed (HTTP {resp.status}): {text[:200]}"
+                )
                 return False
         except Exception as exc:
             log.error(f"[VpsAnalyzer] ACK #{queue_id} connection error: {exc}")
@@ -1773,10 +1895,11 @@ class VpsAnalyzerWorker:
                 # Check if _analyze_signal is mocked or overwritten
                 is_original = (
                     hasattr(self._analyze_signal, "__func__")
-                    and self._analyze_signal.__func__ is VpsAnalyzerWorker._analyze_signal
+                    and self._analyze_signal.__func__
+                    is VpsAnalyzerWorker._analyze_signal
                 )
                 is_mocked = not is_original
-                
+
                 if not is_mocked:
                     v2_res = await self._analyze_signal_v2(signal)
                 else:
@@ -1785,13 +1908,20 @@ class VpsAnalyzerWorker:
                 # Call _analyze_signal (for compatibility / side effects if mocked)
                 # Fix #54 Bug 2: Use .get() to avoid KeyError when signal is rejected
                 # (rejected results have approved=False and no 'trade_payload' key)
-                analyzed = await self._analyze_signal(signal) if is_mocked else (v2_res.get("trade_payload") if v2_res.get("approved") else None)
+                analyzed = (
+                    await self._analyze_signal(signal)
+                    if is_mocked
+                    else (
+                        v2_res.get("trade_payload") if v2_res.get("approved") else None
+                    )
+                )
 
                 # Extract payload safely
                 payload = signal.get("payload", {})
                 if isinstance(payload, str):
                     try:
                         import json as _json
+
                         payload = _json.loads(payload)
                     except Exception:
                         payload = {}
@@ -1805,7 +1935,7 @@ class VpsAnalyzerWorker:
                         strategy_name = self._detect_strategy_group(signal)
                         reason = f"RAG analysis rejected signal — does not meet {strategy_name} criteria"
                         mode = "algorithmic" if not llm_breaker.is_available() else "ai"
-                    
+
                     return {
                         "queue_id": queue_id,
                         "approved": False,
@@ -1813,7 +1943,9 @@ class VpsAnalyzerWorker:
                         "symbol": signal.get("symbol", "?"),
                         "action": signal.get("action", "?"),
                         "price": signal.get("price", 0),
-                        "exchange": payload.get("exchange") or signal.get("exchange") or getattr(config, "DEFAULT_EXCHANGE", "BINANCE"),
+                        "exchange": payload.get("exchange")
+                        or signal.get("exchange")
+                        or getattr(config, "DEFAULT_EXCHANGE", "BINANCE"),
                         "analysis_mode": mode,
                         "payload": payload,
                     }
@@ -1824,17 +1956,25 @@ class VpsAnalyzerWorker:
                             "queue_id": queue_id,
                             "approved": True,
                             "trade_payload": analyzed["trade_payload"],
-                            "analysis_mode": analyzed.get("analysis_mode") or analyzed["trade_payload"].get("analysis_mode", "ai"),
+                            "analysis_mode": analyzed.get("analysis_mode")
+                            or analyzed["trade_payload"].get("analysis_mode", "ai"),
                         }
                     else:
                         return {
                             "queue_id": queue_id,
                             "approved": False,
-                            "reason": analyzed.get("reason", "Analysis rejected signal"),
-                            "symbol": analyzed.get("symbol") or signal.get("symbol", "?"),
-                            "action": analyzed.get("action") or signal.get("action", "?"),
+                            "reason": analyzed.get(
+                                "reason", "Analysis rejected signal"
+                            ),
+                            "symbol": analyzed.get("symbol")
+                            or signal.get("symbol", "?"),
+                            "action": analyzed.get("action")
+                            or signal.get("action", "?"),
                             "price": analyzed.get("price") or signal.get("price", 0),
-                            "exchange": analyzed.get("exchange") or payload.get("exchange") or signal.get("exchange") or getattr(config, "DEFAULT_EXCHANGE", "BINANCE"),
+                            "exchange": analyzed.get("exchange")
+                            or payload.get("exchange")
+                            or signal.get("exchange")
+                            or getattr(config, "DEFAULT_EXCHANGE", "BINANCE"),
                             "analysis_mode": analyzed.get("analysis_mode", "ai"),
                             "payload": analyzed.get("payload") or payload,
                         }
@@ -1848,7 +1988,9 @@ class VpsAnalyzerWorker:
                     }
 
             except Exception as exc:
-                log.exception(f"[VpsAnalyzer] Error in poll_and_analyze #{queue_id}: {exc}")
+                log.exception(
+                    f"[VpsAnalyzer] Error in poll_and_analyze #{queue_id}: {exc}"
+                )
                 return {
                     "queue_id": queue_id,
                     "approved": False,
@@ -1856,8 +1998,12 @@ class VpsAnalyzerWorker:
                     "symbol": signal.get("symbol", "?"),
                     "action": signal.get("action", "?"),
                     "price": signal.get("price", 0),
-                    "exchange": signal.get("payload", {}).get("exchange") or signal.get("exchange") or getattr(config, "DEFAULT_EXCHANGE", "BINANCE"),
-                    "analysis_mode": "algorithmic" if not llm_breaker.is_available() else "ai",
+                    "exchange": signal.get("payload", {}).get("exchange")
+                    or signal.get("exchange")
+                    or getattr(config, "DEFAULT_EXCHANGE", "BINANCE"),
+                    "analysis_mode": "algorithmic"
+                    if not llm_breaker.is_available()
+                    else "ai",
                     "payload": signal.get("payload", {}),
                 }
 
@@ -1866,9 +2012,10 @@ class VpsAnalyzerWorker:
 
 
 if __name__ == "__main__":
-    json_format = os.getenv("LOG_JSON_FORMAT", "false").lower() == "true" or getattr(config, "LOG_JSON_FORMAT", False)
+    json_format = os.getenv("LOG_JSON_FORMAT", "false").lower() == "true" or getattr(
+        config, "LOG_JSON_FORMAT", False
+    )
     setup_logging(json_format=json_format)
     # Trigger deployment and check Server C clean state
     worker = VpsAnalyzerWorker()
     asyncio.run(worker.run())
-

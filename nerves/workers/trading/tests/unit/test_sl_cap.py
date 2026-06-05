@@ -10,6 +10,7 @@ Test strategy: mock the full execute_trade() pipeline and assert:
   - sl_price beyond BTC's 8% cap is clamped to exactly 8% from entry (SELL)
   - sl_price within the cap passes through unchanged
 """
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import dataclass, field
@@ -40,15 +41,19 @@ class MockOrderResult:
     dry_run: bool = True
     side: str = "BUY"
     symbol: str = "BTCUSDT"
-    entry_order: Dict[str, Any] = field(default_factory=lambda: {
-        "orderId": "LIMIT-SL-CAP-TEST",
-        "status": "FILLED",
-        "executedQty": "1.0",
-        "cummulativeQuoteQty": "100.00",
-    })
-    oco_order: Optional[Dict[str, Any]] = field(default_factory=lambda: {
-        "orderListId": "OCO-SL-CAP-TEST",
-    })
+    entry_order: Dict[str, Any] = field(
+        default_factory=lambda: {
+            "orderId": "LIMIT-SL-CAP-TEST",
+            "status": "FILLED",
+            "executedQty": "1.0",
+            "cummulativeQuoteQty": "100.00",
+        }
+    )
+    oco_order: Optional[Dict[str, Any]] = field(
+        default_factory=lambda: {
+            "orderListId": "OCO-SL-CAP-TEST",
+        }
+    )
     risk: Optional[MockRiskParams] = field(default_factory=MockRiskParams)
     error: Optional[str] = None
 
@@ -69,10 +74,12 @@ def _make_mock_conn_and_cursor(action="buy"):
     mock_cursor = AsyncMock()
     mock_cursor.__aenter__ = AsyncMock(return_value=mock_cursor)
     mock_cursor.__aexit__ = AsyncMock(return_value=None)
-    mock_cursor.fetchone = AsyncMock(return_value={
-        "action": action,
-        "payload": f'{{"action": "{action}"}}',
-    })
+    mock_cursor.fetchone = AsyncMock(
+        return_value={
+            "action": action,
+            "payload": f'{{"action": "{action}"}}',
+        }
+    )
     mock_conn = AsyncMock()
     mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
     mock_conn.__aexit__ = AsyncMock(return_value=None)
@@ -81,6 +88,7 @@ def _make_mock_conn_and_cursor(action="buy"):
 
 
 # ── BUY SL Cap Test ───────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_sl_cap_enforced_buy():
@@ -96,17 +104,24 @@ async def test_sl_cap_enforced_buy():
 
     adapter = _make_adapter(ticker=100.0)
     event = TradeApproved(
-        signal_id=901, symbol="BTCUSDT", action="buy",
-        price=100.0, quote_qty=50.0, sl="85",  # 15% away — beyond 8% cap
-        tp="120", approved_by="AI", analysis_text="SL cap test BUY",
+        signal_id=901,
+        symbol="BTCUSDT",
+        action="buy",
+        price=100.0,
+        quote_qty=50.0,
+        sl="85",  # 15% away — beyond 8% cap
+        tp="120",
+        approved_by="AI",
+        analysis_text="SL cap test BUY",
     )
 
     mock_conn, _ = _make_mock_conn_and_cursor("buy")
 
-    with patch("exchanges.router.get_router") as mock_get_router, \
-         patch("engine.trade_engine.database") as mock_db, \
-         patch("aiosqlite.connect", return_value=mock_conn):
-
+    with (
+        patch("exchanges.router.get_router") as mock_get_router,
+        patch("engine.trade_engine.database") as mock_db,
+        patch("aiosqlite.connect", return_value=mock_conn),
+    ):
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = adapter
         mock_get_router.return_value = mock_router
@@ -114,7 +129,9 @@ async def test_sl_cap_enforced_buy():
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
         mock_db.get_setting = AsyncMock(
-            side_effect=lambda key, default: "false" if key == "safe_mode_active" else default
+            side_effect=lambda key, default: "false"
+            if key == "safe_mode_active"
+            else default
         )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=901)
@@ -132,10 +149,12 @@ async def test_sl_cap_enforced_buy():
         )
 
     from core.event_bus import bus as default_bus
+
     set_bus(default_bus)
 
 
 # ── SELL SL Cap Test ──────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_sl_cap_enforced_sell():
@@ -151,17 +170,24 @@ async def test_sl_cap_enforced_sell():
 
     adapter = _make_adapter(ticker=100.0)
     event = TradeApproved(
-        signal_id=902, symbol="BTCUSDT", action="sell",
-        price=100.0, quote_qty=50.0, sl="120",  # 20% away — beyond 8% cap
-        tp="80", approved_by="AI", analysis_text="SL cap test SELL",
+        signal_id=902,
+        symbol="BTCUSDT",
+        action="sell",
+        price=100.0,
+        quote_qty=50.0,
+        sl="120",  # 20% away — beyond 8% cap
+        tp="80",
+        approved_by="AI",
+        analysis_text="SL cap test SELL",
     )
 
     mock_conn, _ = _make_mock_conn_and_cursor("sell")
 
-    with patch("exchanges.router.get_router") as mock_get_router, \
-         patch("engine.trade_engine.database") as mock_db, \
-         patch("aiosqlite.connect", return_value=mock_conn):
-
+    with (
+        patch("exchanges.router.get_router") as mock_get_router,
+        patch("engine.trade_engine.database") as mock_db,
+        patch("aiosqlite.connect", return_value=mock_conn),
+    ):
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = adapter
         mock_get_router.return_value = mock_router
@@ -169,7 +195,9 @@ async def test_sl_cap_enforced_sell():
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
         mock_db.get_setting = AsyncMock(
-            side_effect=lambda key, default: "false" if key == "safe_mode_active" else default
+            side_effect=lambda key, default: "false"
+            if key == "safe_mode_active"
+            else default
         )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=902)
@@ -186,10 +214,12 @@ async def test_sl_cap_enforced_sell():
         )
 
     from core.event_bus import bus as default_bus
+
     set_bus(default_bus)
 
 
 # ── SL Within Cap — Unchanged ─────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_sl_within_cap_unchanged():
@@ -205,17 +235,24 @@ async def test_sl_within_cap_unchanged():
 
     adapter = _make_adapter(ticker=100.0)
     event = TradeApproved(
-        signal_id=903, symbol="BTCUSDT", action="buy",
-        price=100.0, quote_qty=50.0, sl="95",  # 5% away — within 8% cap
-        tp="115", approved_by="AI", analysis_text="SL within cap test",
+        signal_id=903,
+        symbol="BTCUSDT",
+        action="buy",
+        price=100.0,
+        quote_qty=50.0,
+        sl="95",  # 5% away — within 8% cap
+        tp="115",
+        approved_by="AI",
+        analysis_text="SL within cap test",
     )
 
     mock_conn, _ = _make_mock_conn_and_cursor("buy")
 
-    with patch("exchanges.router.get_router") as mock_get_router, \
-         patch("engine.trade_engine.database") as mock_db, \
-         patch("aiosqlite.connect", return_value=mock_conn):
-
+    with (
+        patch("exchanges.router.get_router") as mock_get_router,
+        patch("engine.trade_engine.database") as mock_db,
+        patch("aiosqlite.connect", return_value=mock_conn),
+    ):
         mock_router = MagicMock()
         mock_router.resolve_exchange.return_value = adapter
         mock_get_router.return_value = mock_router
@@ -223,7 +260,9 @@ async def test_sl_within_cap_unchanged():
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
         mock_db.get_setting = AsyncMock(
-            side_effect=lambda key, default: "false" if key == "safe_mode_active" else default
+            side_effect=lambda key, default: "false"
+            if key == "safe_mode_active"
+            else default
         )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=903)
@@ -239,4 +278,5 @@ async def test_sl_within_cap_unchanged():
         )
 
     from core.event_bus import bus as default_bus
+
     set_bus(default_bus)

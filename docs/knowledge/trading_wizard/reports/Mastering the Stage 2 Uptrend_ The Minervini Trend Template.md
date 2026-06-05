@@ -44,4 +44,3 @@ To achieve superperformance, discipline is more important than the rules themsel
 *   **Identify the Catalyst:**  Conduct detective work to find the driver—be it  **FDA approval, a new multi-million dollar contract, or a new visionary CEO.**  
 *   **Wait for the VCP:**  Confirm the progressive reduction in price volatility from the left side of the base to the right.  
 *   **Execute at the Pivot:**  Buy only when the price breaks the pivot point on high volume.**The Absolute Cost of Success**  Success in the market requires sacrifice and a "risk-first" mentality. You must prioritize your strategy over your ego. As Mark Minervini emphasizes, the difference between interest and commitment is the  **will not to give up.**  Knowledge can be acquired, but the professional-grade discipline to follow these rules is what creates a market wizard.
-

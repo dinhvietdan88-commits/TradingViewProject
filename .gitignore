@@ -76,3 +76,7 @@ angati.exe
 *.exe
 *.bin
 *.whl
+
+# sec-02 Security gate local files
+.codeql/
+.secrets.baseline

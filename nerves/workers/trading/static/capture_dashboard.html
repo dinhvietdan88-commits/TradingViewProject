@@ -70,7 +70,7 @@
             <div id="imageContainer">
                 <span style="color: #999;">Image will appear here</span>
             </div>
-            
+
             <h3 style="margin-top: 20px; font-size: 14px;">Raw Response</h3>
             <pre id="jsonResponse">// Response JSON</pre>
         </div>
@@ -83,10 +83,10 @@
             try {
                 const res = await fetch(`${BASE_URL}/health`);
                 const data = await res.json();
-                
+
                 document.getElementById('statusBadge').className = 'status online';
                 document.getElementById('statusBadge').textContent = 'ONLINE';
-                
+
                 document.getElementById('healthMetrics').innerHTML = `
                     <li>Status: <b>${data.status}</b></li>
                     <li>Uptime: ${Math.round(data.metrics?.uptime_ms / 1000 || 0)}s</li>
@@ -94,7 +94,7 @@
                     <li>P95 Latency: <b>${data.metrics?.p95_latency_ms || 0}ms</b></li>
                     <li>Cached State: ${data.state?.symbol || 'None'} (${data.state?.timeframe || 'None'})</li>
                 `;
-                
+
                 document.getElementById('jsonResponse').textContent = JSON.stringify(data, null, 2);
             } catch (err) {
                 document.getElementById('statusBadge').className = 'status offline';
@@ -109,7 +109,7 @@
             const btn = document.getElementById('captureBtn');
             const loader = document.getElementById('loader');
             const imgContainer = document.getElementById('imageContainer');
-            
+
             btn.disabled = true;
             loader.style.display = 'block';
             imgContainer.innerHTML = '';
@@ -124,22 +124,22 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ symbol, timeframe })
                 });
-                
+
                 const data = await res.json();
                 const latency = Date.now() - startTime;
-                
+
                 document.getElementById('jsonResponse').textContent = JSON.stringify(data, null, 2);
-                
+
                 if (data.success && data.file_path) {
-                    // Extract filename from the absolute path to fetch statically if needed, 
-                    // OR if the daemon returns the raw image, we'd render it. 
+                    // Extract filename from the absolute path to fetch statically if needed,
+                    // OR if the daemon returns the raw image, we'd render it.
                     // Since it returns a file path, we'll show a message.
                     imgContainer.innerHTML = `<div style="text-align: center; padding: 20px;">
                         <h3 style="color: green;">✅ Capture Success!</h3>
                         <p>Saved to: <code>${data.file_path}</code></p>
                         <p style="font-size: 12px; color: #666;">Note: Local browser cannot load absolute OS paths directly due to security restrictions.</p>
                     </div>`;
-                    
+
                     document.getElementById('captureStats').textContent = `Lat: ${latency}ms | Size: ${Math.round((data.size_bytes||0)/1024)}KB | Cached: ${data.cache_hit ? 'Yes' : 'No'}`;
                 } else {
                     imgContainer.innerHTML = `<span style="color: red;">Capture Failed: ${data.error || 'Unknown error'}</span>`;

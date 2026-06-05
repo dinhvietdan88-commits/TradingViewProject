@@ -5,7 +5,7 @@
 ### 1. Pytest Hang on Startup (Module Graph Initialization)
 * **Symptom:** Running `pytest` or `pytest -v tests/` hangs indefinitely right after collecting test items, specifically blocking before the first test (`test_auth.py` or `test_webhook.py`).
 * **Root Cause:** The `vision.py` module was doing top-level global imports of `vertexai` and `google.generativeai`. During the FastAPI `lifespan` initialization inside `ASGITransport(app=app)`, these libraries attempted to perform blocking HTTP I/O (like checking GCP credentials or metadata) which caused the asyncio event loop in `pytest_asyncio` to deadlock.
-* **Resolution:** Refactored `vision.py` to use lazy (inner) imports. The `vertexai`, `anthropic`, and `google.generativeai` libraries are now only imported and initialized inside the `analyze_chart_vision` function body. 
+* **Resolution:** Refactored `vision.py` to use lazy (inner) imports. The `vertexai`, `anthropic`, and `google.generativeai` libraries are now only imported and initialized inside the `analyze_chart_vision` function body.
 * **Status:** FIXED.
 
 ### 2. End-to-End Test 401 Unauthorized Errors

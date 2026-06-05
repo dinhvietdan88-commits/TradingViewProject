@@ -4,6 +4,7 @@ import sys
 
 # Load environment variables
 from dotenv import load_dotenv
+
 load_dotenv()
 
 # Add the server directory to python path
@@ -11,20 +12,22 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from vision import analyze_chart_vision
 
+
 async def main():
     screenshot_path = r"C:\Users\pesil\working\mj_trading\TradingViewProject\tradingview-mcp\screenshots\tv_undefined_2026-05-12T03-28-20-091Z.png"
-    
+
     # Fake signal data
     signal_data = {
         "symbol": "BTCUSDT",
         "action": "alert",
         "price": "Current",
         "timeframe": "4h",
-        "strategy": "A.007 + MIS v1/v2 Combined"
+        "strategy": "A.007 + MIS v1/v2 Combined",
     }
-    
+
     # Override the default prompt for this specific deep behavioral analysis request
     import vision
+
     vision.VISION_USER_PROMPT = """
 Sếp đang mở chart BTCUSDT khung 4H. Trên chart đang chạy 2 strategy:
 - "A.007 + MIS v1 Combined (Auto Paper Trading)"
@@ -42,9 +45,11 @@ HÃY ĐÓNG VAI LÀ CHUYÊN GIA TÂM LÝ GIAO DỊCH VÀ PHÂN TÍCH KỸ THUẬ
     print("Sending screenshot to Gemini Vision for deep behavioral analysis...")
     analysis = await analyze_chart_vision(screenshot_path, signal_data)
     import json
+
     with open("analysis_result.md", "w", encoding="utf-8") as f:
         f.write(json.dumps(analysis, indent=4, ensure_ascii=False))
     print("Analysis saved to analysis_result.md")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -7,7 +7,7 @@
   <meta name="description" content="Visualizer for TradingView Indicator Alerts and ATR-based Risk Management">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
+
   <style>
     :root {
       --bg-dark: #070a13;
@@ -584,10 +584,10 @@
 
   <!-- DASHBOARD GRID -->
   <div class="dashboard-grid">
-    
+
     <!-- LEFT COLUMN: INPUTS & PRESETS -->
     <div class="glass-card" style="gap: 20px;">
-      
+
       <div>
         <div class="card-title">📝 Parse Indicator Metadata</div>
         <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">
@@ -664,14 +664,14 @@
 
     <!-- RIGHT COLUMN: INTERACTIVE VISUALIZER -->
     <div class="visualizer-workspace">
-      
+
       <!-- INTERACTIVE SVG CHART -->
       <div class="glass-card" style="padding: 16px;">
         <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
           <span>📊 Interactive Setup Diagram</span>
           <span id="stateBadge" class="state-badge short">Short Setup</span>
         </div>
-        
+
         <div class="chart-panel">
           <svg class="visual-canvas" id="svgCanvas" viewBox="0 0 800 480" preserveAspectRatio="none">
             <!-- Grid Lines -->
@@ -680,36 +680,36 @@
             <line x1="0" y1="240" x2="800" y2="240" class="grid-line" />
             <line x1="0" y1="320" x2="800" y2="320" class="grid-line" />
             <line x1="0" y1="400" x2="800" y2="400" class="grid-line" />
-            
+
             <!-- Stop Loss Zone -->
             <rect id="slZone" x="50" y="80" width="600" height="80" class="zone-rect sl-zone" />
-            
+
             <!-- Take Profit Zone -->
             <rect id="tpZone" x="50" y="240" width="600" height="160" class="zone-rect tp-zone" />
-            
+
             <!-- Level Lines -->
             <line id="slLine" x1="50" y1="160" x2="650" y2="160" class="level-line sl-line" />
             <line id="entryLine" x1="50" y1="240" x2="650" y2="240" class="level-line entry-line" />
             <line id="tpLine" x1="50" y1="400" x2="650" y2="400" class="level-line tp-line" />
-            
+
             <!-- Ruler & Brackets -->
             <path id="slBracket" d="M 680,160 L 690,160 L 690,240 L 680,240" stroke="#f87171" stroke-width="1.5" fill="none" />
             <path id="tpBracket" d="M 680,240 L 690,240 L 690,400 L 680,400" stroke="#34d399" stroke-width="1.5" fill="none" />
-            
+
             <!-- Labels -->
             <text id="lblSlPrice" x="60" y="145" class="price-text sl">$72,896.35</text>
             <text x="60" y="125" class="level-label sl">STOP LOSS (Vùng cắt lỗ)</text>
-            
+
             <text id="lblEntryPrice" x="60" y="225" class="price-text">$72,704.49</text>
             <text x="60" y="205" class="level-label" style="fill: #ffffff;">ENTRY (Điểm vào lệnh)</text>
-            
+
             <text id="lblTpPrice" x="60" y="385" class="price-text tp">$72,032.98</text>
             <text x="60" y="365" class="level-label tp">TAKE PROFIT (Vùng chốt lời)</text>
-            
+
             <!-- Bracket Labels -->
             <text id="lblSlDiff" x="705" y="200" class="price-text sl" style="alignment-baseline: middle;">-191.86 (-0.26%)</text>
             <text id="lblSlRDescription" x="705" y="215" class="level-label" style="font-size: 0.65rem;">1.0 R (Rủi ro)</text>
-            
+
             <text id="lblTpDiff" x="705" y="320" class="price-text tp" style="alignment-baseline: middle;">+671.51 (+0.92%)</text>
             <text id="lblTpRDescription" x="705" y="335" class="level-label" style="font-size: 0.65rem;">3.5 R (Lợi nhuận)</text>
           </svg>
@@ -718,11 +718,11 @@
 
       <!-- MATHEMATICAL BREAKDOWN -->
       <div class="glass-card math-card">
-        
+
         <!-- CALCULATION BOX -->
         <div class="math-box">
           <div class="math-title">⚙️ Risk metrics breakdown</div>
-          
+
           <div class="params-display-grid">
             <div class="param-pill">
               <span class="param-lbl">Vol (ATR)</span>
@@ -741,7 +741,7 @@
               <span class="param-val" id="pSlPct" style="color: var(--red);">0.26%</span>
             </div>
           </div>
-          
+
           <div class="param-pill" style="grid-column: span 2; margin-top: 4px;">
             <span class="param-lbl">Real-time Risk-to-Reward Ratio</span>
             <span class="param-val" style="color: var(--amber); display: flex; align-items: center; gap: 8px;">
@@ -754,7 +754,7 @@
         <!-- FORMULA BOX -->
         <div class="math-box">
           <div class="math-title">🧠 ATR Risk Engine Math</div>
-          
+
           <div class="math-step">
             <span class="math-formula">
               Risk (1R) = ATR (<span class="highlight" id="fAtr">95.93</span>) &times; Multiplier (<span class="highlight" id="fMul">2.0</span>) = <span class="highlight" id="fRisk">191.86</span>
@@ -883,12 +883,12 @@
           .replace(/None/g, 'null');
 
         const parsed = JSON.parse(cleanText);
-        
+
         // Sync values to UI
         if (parsed.direction) {
           document.getElementById('direction').value = parsed.direction.toLowerCase();
         }
-        
+
         if (parsed.atr_value) {
           document.getElementById('atrValue').value = parseFloat(parsed.atr_value);
         }
@@ -909,7 +909,7 @@
         }
 
         updateCalculation();
-        
+
         // Alert user
         alert("✅ Metadata parsed and applied successfully!");
       } catch (e) {
@@ -933,7 +933,7 @@
       // Computations
       const risk = atrValue * slMultiplier;
       const reward = risk * rrrRatio;
-      
+
       let slPrice = 0;
       let tpPrice = 0;
 
@@ -979,16 +979,16 @@
       if (direction === 'short') {
         document.getElementById('fSlFormula').innerHTML = `Stop Loss = Price + Risk = ${entryPrice.toFixed(2)} + ${risk.toFixed(2)} = <span class="val-sl">${slPrice.toFixed(2)}</span>`;
         document.getElementById('fSlDesc').textContent = 'Với vị thế SHORT, Stop Loss được đặt CAO hơn Giá vào lệnh để bảo vệ nguồn vốn.';
-        
+
         document.getElementById('fTpFormula').innerHTML = `Take Profit = Price - Reward = ${entryPrice.toFixed(2)} - ${reward.toFixed(2)} = <span class="val-tp">${tpPrice.toFixed(2)}</span>`;
         document.getElementById('fTpDesc').textContent = 'Với vị thế SHORT, Take Profit được đặt DƯỚI Giá vào lệnh.';
-        
+
         document.getElementById('stateBadge').textContent = 'Short Setup';
         document.getElementById('stateBadge').className = 'state-badge short';
       } else {
         document.getElementById('fSlFormula').innerHTML = `Stop Loss = Price - Risk = ${entryPrice.toFixed(2)} - ${risk.toFixed(2)} = <span class="val-sl">${slPrice.toFixed(2)}</span>`;
         document.getElementById('fSlDesc').textContent = 'Với vị thế LONG, Stop Loss được đặt THẤP hơn Giá vào lệnh để giới hạn thua lỗ.';
-        
+
         document.getElementById('fTpFormula').innerHTML = `Take Profit = Price + Reward = ${entryPrice.toFixed(2)} + ${reward.toFixed(2)} = <span class="val-tp">${tpPrice.toFixed(2)}</span>`;
         document.getElementById('fTpDesc').textContent = 'Với vị thế LONG, Take Profit được đặt TRÊN Giá vào lệnh.';
 
@@ -1002,19 +1002,19 @@
 
     function updateSvgCanvas(direction, entry, sl, tp, risk, reward, slPct, tpPct) {
       const svg = document.getElementById('svgCanvas');
-      
+
       // We will map values to Y coordinates in our 800x480 SVG.
       // Entry is always at Y = 240 (middle).
       // We scale the height of the risk and reward zones proportionally.
       const entryY = 240;
-      
+
       // Calculate a scale factor: we want the total span (risk + reward) to occupy about 280 pixels
       const totalSpanVal = risk + reward;
       const totalSpanPx = 280;
       const pxPerVal = totalSpanPx / totalSpanVal;
 
       let slY, tpY;
-      
+
       if (direction === 'short') {
         // Short: SL is higher, so it goes UP in Y space (lower pixel value)
         slY = entryY - (risk * pxPerVal);
@@ -1034,7 +1034,7 @@
       // Update Lines
       document.getElementById('entryLine').setAttribute('y1', entryY);
       document.getElementById('entryLine').setAttribute('y2', entryY);
-      
+
       document.getElementById('slLine').setAttribute('y1', slY);
       document.getElementById('slLine').setAttribute('y2', slY);
 
@@ -1049,7 +1049,7 @@
         // SL zone is between slY and entryY
         slZone.setAttribute('y', slY);
         slZone.setAttribute('height', entryY - slY);
-        
+
         // TP zone is between entryY and tpY
         tpZone.setAttribute('y', entryY);
         tpZone.setAttribute('height', tpY - entryY);
@@ -1057,7 +1057,7 @@
         // SL zone is between entryY and slY
         slZone.setAttribute('y', entryY);
         slZone.setAttribute('height', slY - entryY);
-        
+
         // TP zone is between tpY and entryY
         tpZone.setAttribute('y', tpY);
         tpZone.setAttribute('height', entryY - tpY);
@@ -1072,7 +1072,7 @@
 
       // Update Text labels
       document.getElementById('lblEntryPrice').textContent = '$' + entry.toLocaleString(undefined, {minimumFractionDigits: 2});
-      
+
       document.getElementById('lblSlPrice').textContent = '$' + sl.toLocaleString(undefined, {minimumFractionDigits: 2});
       document.getElementById('lblSlPrice').setAttribute('y', slY - 15);
       document.getElementById('lblSlPrice').previousElementSibling.setAttribute('y', slY - 35); // label

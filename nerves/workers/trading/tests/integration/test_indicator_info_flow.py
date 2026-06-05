@@ -9,6 +9,7 @@ Scenario: info signal must:
   4. NOT emit AlertTriggered (no screenshot / AIAnalyzer)
   5. NOT emit SignalValidated (no trade execution)
 """
+
 import pytest
 from unittest.mock import AsyncMock, patch
 
@@ -27,7 +28,11 @@ def info_bus():
     """Isolated EventBus wired for the info signal test."""
     bus = EventBus()
 
-    from processor.signal_processor import process_indicator_signal, set_bus as sp_set_bus, _indicator_dedup_cache
+    from processor.signal_processor import (
+        process_indicator_signal,
+        set_bus as sp_set_bus,
+        _indicator_dedup_cache,
+    )
     from processor.signal_enricher import enrich_indicator_signal, set_bus as se_set_bus
 
     sp_set_bus(bus)
@@ -40,6 +45,7 @@ def info_bus():
     yield bus
 
     from core.event_bus import bus as default_bus
+
     sp_set_bus(default_bus)
     se_set_bus(default_bus)
     _indicator_dedup_cache.clear()
@@ -68,19 +74,21 @@ async def test_info_signal_no_trade_execution(info_bus):
         info_validated_events.append(event)
 
     with patch("notifier.notify_all", new_callable=AsyncMock) as mock_notify:
-        await info_bus.emit(IndicatorSignalReceived(
-            signal_id=5001,
-            symbol="ETHUSDT",
-            indicator_name="RSI Oversold",
-            signal_type="info",
-            confidence_score=70,
-            conditions_met=("RSI < 30", "Price below MA50"),
-            metadata={"rsi": "28", "ma50": "3200"},
-            interval="4h",
-            price=3150.0,
-            source_ip="127.0.0.1",
-            exchange="binance",
-        ))
+        await info_bus.emit(
+            IndicatorSignalReceived(
+                signal_id=5001,
+                symbol="ETHUSDT",
+                indicator_name="RSI Oversold",
+                signal_type="info",
+                confidence_score=70,
+                conditions_met=("RSI < 30", "Price below MA50"),
+                metadata={"rsi": "28", "ma50": "3200"},
+                interval="4h",
+                price=3150.0,
+                source_ip="127.0.0.1",
+                exchange="binance",
+            )
+        )
 
     # Must propagate through: Received → Validated
     assert len(info_validated_events) == 1
@@ -102,19 +110,21 @@ async def test_info_signal_high_priority_notification(info_bus):
     Info signals with confidence > 80 must trigger high-priority (KHẨN CẤP) notification.
     """
     with patch("notifier.notify_all", new_callable=AsyncMock) as mock_notify:
-        await info_bus.emit(IndicatorSignalReceived(
-            signal_id=5002,
-            symbol="BTCUSDT",
-            indicator_name="SuperTrend Reversal",
-            signal_type="info",
-            confidence_score=92,  # > 80 → high priority
-            conditions_met=("Price below ST", "Volume spike"),
-            metadata={},
-            interval="1h",
-            price=68000.0,
-            source_ip="127.0.0.1",
-            exchange="binance",
-        ))
+        await info_bus.emit(
+            IndicatorSignalReceived(
+                signal_id=5002,
+                symbol="BTCUSDT",
+                indicator_name="SuperTrend Reversal",
+                signal_type="info",
+                confidence_score=92,  # > 80 → high priority
+                conditions_met=("Price below ST", "Volume spike"),
+                metadata={},
+                interval="1h",
+                price=68000.0,
+                source_ip="127.0.0.1",
+                exchange="binance",
+            )
+        )
 
     mock_notify.assert_called_once()
     msg = mock_notify.call_args[0][0]
@@ -137,19 +147,21 @@ async def test_info_signal_low_confidence_rejected(info_bus):
     async def on_validated(event):
         validated.append(event)
 
-    await info_bus.emit(IndicatorSignalReceived(
-        signal_id=5003,
-        symbol="SOLUSDT",
-        indicator_name="MACD Cross",
-        signal_type="info",
-        confidence_score=30,  # < 50
-        conditions_met=(),
-        metadata={},
-        interval="1d",
-        price=160.0,
-        source_ip="127.0.0.1",
-        exchange="binance",
-    ))
+    await info_bus.emit(
+        IndicatorSignalReceived(
+            signal_id=5003,
+            symbol="SOLUSDT",
+            indicator_name="MACD Cross",
+            signal_type="info",
+            confidence_score=30,  # < 50
+            conditions_met=(),
+            metadata={},
+            interval="1d",
+            price=160.0,
+            source_ip="127.0.0.1",
+            exchange="binance",
+        )
+    )
 
     assert len(rejected) == 1
     assert rejected[0].reason == "low_confidence"

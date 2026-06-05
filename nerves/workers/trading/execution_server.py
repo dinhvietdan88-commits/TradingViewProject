@@ -7,6 +7,7 @@ and returns results.
 
 Runs on Tailscale VPN only (not exposed to WAN).
 """
+
 import hmac
 import logging
 import sys
@@ -30,18 +31,23 @@ async def lifespan(app: FastAPI):
     """Initialize database and exchange registry on startup."""
     await database.init_db()
     from exchanges.registry import init_registry
+
     init_registry()
     from exchanges.health_monitor import start_health_monitor
+
     start_health_monitor()
     if config.TELEGRAM_BOT_ENABLED:
         import telegram_bot
+
         telegram_bot.start_bot()
     log.info("Execution Server started. Listening for trade commands.")
     yield
     if config.TELEGRAM_BOT_ENABLED:
         import telegram_bot
+
         telegram_bot.stop_bot()
     from exchanges.health_monitor import stop_health_monitor
+
     stop_health_monitor()
     log.info("Execution Server shutting down.")
 
@@ -79,7 +85,9 @@ async def execute_trade(request: Request):
     price = body.get("price")
 
     if not symbol or not action:
-        raise HTTPException(status_code=400, detail="Missing required fields: symbol, action")
+        raise HTTPException(
+            status_code=400, detail="Missing required fields: symbol, action"
+        )
 
     # Extract trade parameters safely
     def safe_float(val, default=None):
@@ -107,9 +115,16 @@ async def execute_trade(request: Request):
 
     try:
         import asyncio
+
         # Import and use TradeEngine's event-based execution
         from core.event_bus import EventBus
-        from core.events import TradeApproved, TradeExecuted, TradeFailed, AnalysisComplete, TradeApprovalTimeout
+        from core.events import (
+            TradeApproved,
+            TradeExecuted,
+            TradeFailed,
+            AnalysisComplete,
+            TradeApprovalTimeout,
+        )
         import hub.notification_hub as notification_hub
         import telegram_bot
         from utils.telegram_templates import render_template
@@ -152,7 +167,7 @@ async def execute_trade(request: Request):
             payload=body,
         )
 
-        has_confidence = ("ai_confidence" in body or "confidence" in body)
+        has_confidence = "ai_confidence" in body or "confidence" in body
         confidence_val = body.get("ai_confidence")
         if confidence_val is None:
             confidence_val = body.get("confidence")
@@ -170,8 +185,8 @@ async def execute_trade(request: Request):
                     content={
                         "success": False,
                         "status": "auto_rejected",
-                        "error": f"Auto-rejected: confidence score {confidence} is below minimum threshold 50"
-                    }
+                        "error": f"Auto-rejected: confidence score {confidence} is below minimum threshold 50",
+                    },
                 )
 
         hold_for_approval = body.get("hold_for_approval")
@@ -200,25 +215,29 @@ async def execute_trade(request: Request):
             # 3. Render message template
             symbol_val = symbol
             action_val = action.upper()
-            price_val = f"{price:,.2f}" if price and isinstance(price, (int, float)) else (price or "Market")
-            
+            price_val = (
+                f"{price:,.2f}"
+                if price and isinstance(price, (int, float))
+                else (price or "Market")
+            )
+
             vcp_status = "N/A"
             tt_score = "N/A"
             stage_val = "N/A"
             volume_ratio = "N/A"
             timeframe = "1D"
-            
+
             if "trend_template_score" in body:
                 tt_score = str(body["trend_template_score"])
             elif "tt_score" in body:
                 tt_score = str(body["tt_score"])
-                
+
             if "vcp_status" in body:
                 vcp_status = body["vcp_status"]
-                
+
             if "volume_ratio" in body:
                 volume_ratio = str(body["volume_ratio"])
-                
+
             if "timeframe" in body:
                 timeframe = body["timeframe"]
             elif "interval" in body:
@@ -252,7 +271,7 @@ async def execute_trade(request: Request):
                 stop_loss=sl_val,
                 sl_pct=sl_pct,
                 take_profit=tp_val,
-                tp_pct=tp_pct
+                tp_pct=tp_pct,
             )
 
             # Send interactive trade approval message
@@ -266,26 +285,32 @@ async def execute_trade(request: Request):
                     for chat_id, message_id in sent_pairs:
                         timeout_mgr.track_message(signal_id, chat_id, message_id)
 
-            return JSONResponse({
-                "success": True,
-                "status": "pending_approval",
-                "signal_id": signal_id,
-            })
+            return JSONResponse(
+                {
+                    "success": True,
+                    "status": "pending_approval",
+                    "signal_id": signal_id,
+                }
+            )
 
         else:
             if config.TELEGRAM_BOT_ENABLED:
+
                 @exec_bus.on(TradeExecuted)
                 async def forward_executed(event: TradeExecuted):
                     from core.event_bus import bus as _default_bus
+
                     await _default_bus.emit(event)
 
                 @exec_bus.on(TradeFailed)
                 async def forward_failed(event: TradeFailed):
                     from core.event_bus import bus as _default_bus
+
                     await _default_bus.emit(event)
 
             # Import trade engine and override its bus
             from engine import trade_engine
+
             original_bus = trade_engine.get_bus()
             trade_engine.set_bus(exec_bus)
 
@@ -313,6 +338,7 @@ async def execute_trade(request: Request):
             # Send Telegram notification
             try:
                 from notifier import notify_all
+
                 msg = (
                     f"✅ **Pipeline Trade Executed on {config.EXECUTION_TARGET_NAME}**\n"
                     f"- Symbol: `{symbol}`\n"
@@ -325,28 +351,29 @@ async def execute_trade(request: Request):
             except Exception as e:
                 log.warning(f"Telegram notification failed: {e}")
 
-            return JSONResponse({
-                "success": True,
-                "order_id": result_holder.get("order_id"),
-                "fill_price": result_holder.get("fill_price"),
-                "status": result_holder.get("status"),
-                "executed_qty": result_holder.get("executed_qty"),
-            })
+            return JSONResponse(
+                {
+                    "success": True,
+                    "order_id": result_holder.get("order_id"),
+                    "fill_price": result_holder.get("fill_price"),
+                    "status": result_holder.get("status"),
+                    "executed_qty": result_holder.get("executed_qty"),
+                }
+            )
         else:
             return JSONResponse(
                 status_code=500,
                 content={
                     "success": False,
                     "error": result_holder.get("error", "Trade execution failed"),
-                }
+                },
             )
     except HTTPException:
         raise
     except Exception as e:
         log.exception(f"Execute trade error: {e}")
         return JSONResponse(
-            status_code=500,
-            content={"success": False, "error": str(e)}
+            status_code=500, content={"success": False, "error": str(e)}
         )
 
 

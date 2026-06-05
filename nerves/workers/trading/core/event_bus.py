@@ -21,6 +21,7 @@ Usage:
     # Emit event
     await bus.emit(SignalReceived(signal_id=42, symbol="BTCUSDT"))
 """
+
 import asyncio
 import logging
 from typing import Dict, List, Callable, Awaitable, Type
@@ -62,9 +63,11 @@ class EventBus:
             async def handle(event):
                 ...
         """
+
         def decorator(handler: EventHandler) -> EventHandler:
             self.subscribe(event_type, handler)
             return handler
+
         return decorator
 
     def subscribe(self, event_type: Type[Event], handler: EventHandler) -> None:
@@ -87,10 +90,14 @@ class EventBus:
         self._metrics["events_emitted"] += 1
 
         if not handlers:
-            log.debug(f"EventBus: No handlers for {event_type.__name__} ({event.event_id})")
+            log.debug(
+                f"EventBus: No handlers for {event_type.__name__} ({event.event_id})"
+            )
             return
 
-        log.info(f"EventBus: Emitting {event_type.__name__} ({event.event_id}) → {len(handlers)} handler(s)")
+        log.info(
+            f"EventBus: Emitting {event_type.__name__} ({event.event_id}) → {len(handlers)} handler(s)"
+        )
 
         for handler in handlers:
             try:

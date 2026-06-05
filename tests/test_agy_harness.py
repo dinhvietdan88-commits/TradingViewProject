@@ -12,9 +12,7 @@ Tests cover:
   - Context manager protocol
 """
 
-import asyncio
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -24,9 +22,7 @@ import os
 
 sys.path.insert(
     0,
-    os.path.join(
-        os.path.dirname(__file__), "..", "nerves", "workers", "trading"
-    ),
+    os.path.join(os.path.dirname(__file__), "..", "nerves", "workers", "trading"),
 )
 
 from agy_harness import AgyHarness, AgyResponse
@@ -102,7 +98,12 @@ class TestAgyHarness:
         )
 
         mock_session = AsyncMock()
-        mock_session.post = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_resp), __aexit__=AsyncMock(return_value=False)))
+        mock_session.post = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_resp),
+                __aexit__=AsyncMock(return_value=False),
+            )
+        )
         mock_session.closed = False
 
         harness._session = mock_session
@@ -130,7 +131,12 @@ class TestAgyHarness:
         )
 
         mock_session = AsyncMock()
-        mock_session.post = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_resp), __aexit__=AsyncMock(return_value=False)))
+        mock_session.post = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_resp),
+                __aexit__=AsyncMock(return_value=False),
+            )
+        )
         mock_session.closed = False
 
         harness._session = mock_session
@@ -148,7 +154,12 @@ class TestAgyHarness:
         mock_resp.text = AsyncMock(return_value='{"error": "agy circuit breaker OPEN"}')
 
         mock_session = AsyncMock()
-        mock_session.post = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_resp), __aexit__=AsyncMock(return_value=False)))
+        mock_session.post = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_resp),
+                __aexit__=AsyncMock(return_value=False),
+            )
+        )
         mock_session.closed = False
 
         harness._session = mock_session
@@ -169,7 +180,12 @@ class TestAgyHarness:
         mock_resp.text = AsyncMock(return_value='{"error": "agy exit 1"}')
 
         mock_session = AsyncMock()
-        mock_session.post = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_resp), __aexit__=AsyncMock(return_value=False)))
+        mock_session.post = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_resp),
+                __aexit__=AsyncMock(return_value=False),
+            )
+        )
         mock_session.closed = False
 
         harness._session = mock_session

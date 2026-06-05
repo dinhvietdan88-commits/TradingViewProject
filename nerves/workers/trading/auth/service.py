@@ -257,9 +257,7 @@ class AuthService:
             days=self.config.max_session_lifetime_days
         )
         if now > max_lifetime:
-            raise SessionMaxLifetimeError(
-                "Session has exceeded 7-day maximum lifetime"
-            )
+            raise SessionMaxLifetimeError("Session has exceeded 7-day maximum lifetime")
 
         return SessionData(
             session_id=payload["sid"],
@@ -368,9 +366,7 @@ class AuthService:
 
         # Build data-check-string (alphabetical, excluding hash)
         check_data = "\n".join(
-            f"{k}={data[k]}"
-            for k in sorted(data.keys())
-            if k != "hash"
+            f"{k}={data[k]}" for k in sorted(data.keys()) if k != "hash"
         )
 
         # Step 1: HMAC verification (TECHNICAL)

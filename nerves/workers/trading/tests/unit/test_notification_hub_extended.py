@@ -11,13 +11,19 @@ Tests verify (gaps from original test_notification_hub.py):
 - PositionClosed P&L notification: positive PNL uses 🟢, negative uses 🔴.
 - PENDING_TRADES state: get/remove helpers work correctly.
 """
+
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
 from core.event_bus import EventBus
 from core.events import (
-    SignalRejected, AnalysisComplete, TradeApproved,
-    TradeExecuted, TradeFailed, PositionClosed, TradeApprovalTimeout,
+    SignalRejected,
+    AnalysisComplete,
+    TradeApproved,
+    TradeExecuted,
+    TradeFailed,
+    PositionClosed,
+    TradeApprovalTimeout,
 )
 
 
@@ -25,7 +31,10 @@ from core.events import (
 # HELPERS
 # ═══════════════════════════════════════════════════════════════
 
-def _make_analysis_event(confidence: int, signal_id: int = 100, **kwargs) -> AnalysisComplete:
+
+def _make_analysis_event(
+    confidence: int, signal_id: int = 100, **kwargs
+) -> AnalysisComplete:
     defaults = dict(
         signal_id=signal_id,
         symbol="BTCUSDT",
@@ -51,6 +60,7 @@ def _make_analysis_event(confidence: int, signal_id: int = 100, **kwargs) -> Ana
 # CONFIDENCE GATE: AUTO-APPROVE (>= 8)
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_high_confidence_auto_approves_trade():
     """Confidence >= 8 → emit TradeApproved immediately without human interaction."""
@@ -68,7 +78,9 @@ async def test_high_confidence_auto_approves_trade():
         with patch("hub.notification_hub.notifier") as mock_notifier:
             mock_notifier.notify_all = AsyncMock()
 
-            await process_analysis_complete(_make_analysis_event(confidence=8, signal_id=200))
+            await process_analysis_complete(
+                _make_analysis_event(confidence=8, signal_id=200)
+            )
 
             assert len(approved_events) == 1
             evt = approved_events[0]
@@ -81,6 +93,7 @@ async def test_high_confidence_auto_approves_trade():
             assert "AUTO-APPROVE" in msg or "auto" in msg.lower()
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -100,10 +113,13 @@ async def test_max_confidence_auto_approves():
     try:
         with patch("hub.notification_hub.notifier") as mock_notifier:
             mock_notifier.notify_all = AsyncMock()
-            await process_analysis_complete(_make_analysis_event(confidence=10, signal_id=201))
+            await process_analysis_complete(
+                _make_analysis_event(confidence=10, signal_id=201)
+            )
             assert len(approved_events) == 1
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -111,13 +127,19 @@ async def test_max_confidence_auto_approves():
 # CONFIDENCE GATE: HUMAN GATE (5-7)
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_medium_confidence_stores_pending_trade():
     """Confidence 5-7 → trade stored in PENDING_TRADES for interactive approval."""
     import sys
     from hub.notification_hub import (
-        process_analysis_complete, set_bus, get_pending_trade, remove_pending_trade, PENDING_TRADES
+        process_analysis_complete,
+        set_bus,
+        get_pending_trade,
+        remove_pending_trade,
+        PENDING_TRADES,
     )
+
     PENDING_TRADES.clear()
 
     test_bus = EventBus()
@@ -130,15 +152,20 @@ async def test_medium_confidence_stores_pending_trade():
 
     try:
         mock_bot = MagicMock()
-        mock_bot.send_interactive_trade_approval = AsyncMock(return_value=[(12345, 67890)])
+        mock_bot.send_interactive_trade_approval = AsyncMock(
+            return_value=[(12345, 67890)]
+        )
         mock_bot.get_approval_timeout_mgr = MagicMock(return_value=None)
 
-        with patch("hub.notification_hub.notifier") as mock_notifier, \
-             patch.dict(sys.modules, {"telegram_bot": mock_bot}):
-
+        with (
+            patch("hub.notification_hub.notifier") as mock_notifier,
+            patch.dict(sys.modules, {"telegram_bot": mock_bot}),
+        ):
             mock_notifier.notify_all = AsyncMock()
 
-            await process_analysis_complete(_make_analysis_event(confidence=6, signal_id=300))
+            await process_analysis_complete(
+                _make_analysis_event(confidence=6, signal_id=300)
+            )
 
             # No auto-approve should have fired
             assert len(approved_events) == 0
@@ -151,6 +178,7 @@ async def test_medium_confidence_stores_pending_trade():
         remove_pending_trade(300)
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         PENDING_TRADES.clear()
 
@@ -159,9 +187,8 @@ async def test_medium_confidence_stores_pending_trade():
 async def test_human_gate_fallback_when_bot_not_running():
     """When interactive bot fails (returns no pairs), notifier.notify_all fallback is used."""
     import sys
-    from hub.notification_hub import (
-        process_analysis_complete, set_bus, PENDING_TRADES
-    )
+    from hub.notification_hub import process_analysis_complete, set_bus, PENDING_TRADES
+
     PENDING_TRADES.clear()
 
     test_bus = EventBus()
@@ -173,17 +200,21 @@ async def test_human_gate_fallback_when_bot_not_running():
         mock_bot.send_interactive_trade_approval = AsyncMock(return_value=[])
         mock_bot.get_approval_timeout_mgr = MagicMock(return_value=None)
 
-        with patch("hub.notification_hub.notifier") as mock_notifier, \
-             patch.dict(sys.modules, {"telegram_bot": mock_bot}):
-
+        with (
+            patch("hub.notification_hub.notifier") as mock_notifier,
+            patch.dict(sys.modules, {"telegram_bot": mock_bot}),
+        ):
             mock_notifier.notify_all = AsyncMock()
 
-            await process_analysis_complete(_make_analysis_event(confidence=5, signal_id=301))
+            await process_analysis_complete(
+                _make_analysis_event(confidence=5, signal_id=301)
+            )
 
             # Fallback notify_all should have been called
             mock_notifier.notify_all.assert_awaited()
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         PENDING_TRADES.clear()
 
@@ -192,10 +223,17 @@ async def test_human_gate_fallback_when_bot_not_running():
 # CONFIDENCE GATE: AUTO-REJECT (< 5)
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_low_confidence_auto_rejects():
     """Confidence < 5 → notification sent but NO TradeApproved emitted."""
-    from hub.notification_hub import process_analysis_complete, set_bus, PENDING_TRADES, notify_signal_rejected
+    from hub.notification_hub import (
+        process_analysis_complete,
+        set_bus,
+        PENDING_TRADES,
+        notify_signal_rejected,
+    )
+
     PENDING_TRADES.clear()
 
     test_bus = EventBus()
@@ -209,11 +247,15 @@ async def test_low_confidence_auto_rejects():
         approved_events.append(event)
 
     try:
-        with patch("hub.notification_hub.notifier") as mock_notifier, \
-             patch("hub.notification_hub._get_vbs_metadata", AsyncMock(return_value={})):
+        with (
+            patch("hub.notification_hub.notifier") as mock_notifier,
+            patch("hub.notification_hub._get_vbs_metadata", AsyncMock(return_value={})),
+        ):
             mock_notifier.notify_all = AsyncMock()
 
-            await process_analysis_complete(_make_analysis_event(confidence=3, signal_id=400))
+            await process_analysis_complete(
+                _make_analysis_event(confidence=3, signal_id=400)
+            )
 
             assert len(approved_events) == 0
             mock_notifier.notify_all.assert_awaited_once()
@@ -221,6 +263,7 @@ async def test_low_confidence_auto_rejects():
             assert "TỰ ĐỘNG TỪ CHỐI" in msg or "🔴" in msg
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         PENDING_TRADES.clear()
 
@@ -228,7 +271,13 @@ async def test_low_confidence_auto_rejects():
 @pytest.mark.asyncio
 async def test_zero_confidence_auto_rejects():
     """Confidence = 0 (edge case) should also auto-reject."""
-    from hub.notification_hub import process_analysis_complete, set_bus, PENDING_TRADES, notify_signal_rejected
+    from hub.notification_hub import (
+        process_analysis_complete,
+        set_bus,
+        PENDING_TRADES,
+        notify_signal_rejected,
+    )
+
     PENDING_TRADES.clear()
 
     test_bus = EventBus()
@@ -242,13 +291,18 @@ async def test_zero_confidence_auto_rejects():
         approved_events.append(event)
 
     try:
-        with patch("hub.notification_hub.notifier") as mock_notifier, \
-             patch("hub.notification_hub._get_vbs_metadata", AsyncMock(return_value={})):
+        with (
+            patch("hub.notification_hub.notifier") as mock_notifier,
+            patch("hub.notification_hub._get_vbs_metadata", AsyncMock(return_value={})),
+        ):
             mock_notifier.notify_all = AsyncMock()
-            await process_analysis_complete(_make_analysis_event(confidence=0, signal_id=401))
+            await process_analysis_complete(
+                _make_analysis_event(confidence=0, signal_id=401)
+            )
             assert len(approved_events) == 0
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         PENDING_TRADES.clear()
 
@@ -257,12 +311,17 @@ async def test_zero_confidence_auto_rejects():
 # APPROVAL TIMEOUT
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_approval_timeout_removes_pending_trade():
     """TradeApprovalTimeout should remove trade from PENDING_TRADES and notify."""
     from hub.notification_hub import (
-        handle_approval_timeout, set_bus, PENDING_TRADES, get_pending_trade
+        handle_approval_timeout,
+        set_bus,
+        PENDING_TRADES,
+        get_pending_trade,
     )
+
     PENDING_TRADES.clear()
 
     # Pre-seed a pending trade
@@ -289,6 +348,7 @@ async def test_approval_timeout_removes_pending_trade():
             assert "500" in msg or "⏰" in msg
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
         PENDING_TRADES.clear()
 
@@ -297,6 +357,7 @@ async def test_approval_timeout_removes_pending_trade():
 async def test_approval_timeout_noop_if_no_pending():
     """TradeApprovalTimeout for unknown signal_id should log debug but NOT notify."""
     from hub.notification_hub import handle_approval_timeout, set_bus, PENDING_TRADES
+
     PENDING_TRADES.clear()
 
     test_bus = EventBus()
@@ -313,12 +374,14 @@ async def test_approval_timeout_noop_if_no_pending():
             mock_notifier.notify_all.assert_not_awaited()
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
 # ═══════════════════════════════════════════════════════════════
 # TRADE EXECUTED NOTIFICATION
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_trade_executed_notification_includes_symbol_and_exchange():
@@ -356,6 +419,7 @@ async def test_trade_executed_notification_includes_symbol_and_exchange():
             assert "150.5" in msg
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -372,10 +436,17 @@ async def test_dry_run_trade_executed_labeled():
             mock_notifier.notify_all = AsyncMock()
 
             event = TradeExecuted(
-                signal_id=601, trade_id=2, symbol="BTCUSDT", side="BUY",
-                order_id="DRY-001", status="FILLED",
-                executed_qty=0.001, executed_price=68000.0, quote_qty=68.0,
-                order_type="DRY_RUN", exchange="binance",
+                signal_id=601,
+                trade_id=2,
+                symbol="BTCUSDT",
+                side="BUY",
+                order_id="DRY-001",
+                status="FILLED",
+                executed_qty=0.001,
+                executed_price=68000.0,
+                quote_qty=68.0,
+                order_type="DRY_RUN",
+                exchange="binance",
             )
             await notify_trade_executed(event)
 
@@ -383,12 +454,14 @@ async def test_dry_run_trade_executed_labeled():
             assert "DRY_RUN" in msg
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
 # ═══════════════════════════════════════════════════════════════
 # TRADE FAILED NOTIFICATION
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_trade_failed_notification_includes_error():
@@ -419,12 +492,14 @@ async def test_trade_failed_notification_includes_error():
             assert "ETHUSDT" in msg
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
 # ═══════════════════════════════════════════════════════════════
 # POSITION CLOSED P&L NOTIFICATION
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_position_closed_profit_uses_green_emoji():
@@ -439,10 +514,15 @@ async def test_position_closed_profit_uses_green_emoji():
             mock_notifier.notify_all = AsyncMock()
 
             event = PositionClosed(
-                symbol="BTCUSDT", side="BUY",
-                entry_price=68000.0, exit_price=72000.0,
-                quantity=0.001, pnl=4.0, pnl_pct=5.88,
-                exit_reason="TAKE_PROFIT", exchange="binance",
+                symbol="BTCUSDT",
+                side="BUY",
+                entry_price=68000.0,
+                exit_price=72000.0,
+                quantity=0.001,
+                pnl=4.0,
+                pnl_pct=5.88,
+                exit_reason="TAKE_PROFIT",
+                exchange="binance",
             )
             await notify_position_closed(event)
 
@@ -452,6 +532,7 @@ async def test_position_closed_profit_uses_green_emoji():
             assert "TAKE_PROFIT" in msg or "Chốt lời" in msg
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -468,10 +549,15 @@ async def test_position_closed_loss_uses_red_emoji():
             mock_notifier.notify_all = AsyncMock()
 
             event = PositionClosed(
-                symbol="ETHUSDT", side="BUY",
-                entry_price=3500.0, exit_price=3300.0,
-                quantity=0.01, pnl=-2.0, pnl_pct=-5.71,
-                exit_reason="STOP_LOSS", exchange="binance",
+                symbol="ETHUSDT",
+                side="BUY",
+                entry_price=3500.0,
+                exit_price=3300.0,
+                quantity=0.01,
+                pnl=-2.0,
+                pnl_pct=-5.71,
+                exit_reason="STOP_LOSS",
+                exchange="binance",
             )
             await notify_position_closed(event)
 
@@ -480,6 +566,7 @@ async def test_position_closed_loss_uses_red_emoji():
             assert "STOP_LOSS" in msg or "Cắt lỗ" in msg
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -487,16 +574,23 @@ async def test_position_closed_loss_uses_red_emoji():
 # PENDING TRADES STATE HELPERS
 # ═══════════════════════════════════════════════════════════════
 
+
 def test_get_pending_trade_returns_none_for_unknown():
     """get_pending_trade should return None for untracked signal IDs."""
     from hub.notification_hub import get_pending_trade, PENDING_TRADES
+
     PENDING_TRADES.clear()
     assert get_pending_trade(9999) is None
 
 
 def test_remove_pending_trade_returns_event_and_cleans_up():
     """remove_pending_trade should return the stored event and remove it from the dict."""
-    from hub.notification_hub import get_pending_trade, remove_pending_trade, PENDING_TRADES
+    from hub.notification_hub import (
+        get_pending_trade,
+        remove_pending_trade,
+        PENDING_TRADES,
+    )
+
     PENDING_TRADES.clear()
 
     dummy = _make_analysis_event(confidence=6, signal_id=800)
@@ -510,6 +604,7 @@ def test_remove_pending_trade_returns_event_and_cleans_up():
 def test_remove_pending_trade_noop_on_missing():
     """remove_pending_trade on missing signal_id should return None gracefully."""
     from hub.notification_hub import remove_pending_trade, PENDING_TRADES
+
     PENDING_TRADES.clear()
     result = remove_pending_trade(7777)
     assert result is None

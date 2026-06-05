@@ -8,14 +8,14 @@ Tài liệu này mô tả luồng kiến trúc (Architecture Flow) kết nối t
 flowchart TD
     TV[TradingView Alert] -->|Webhook JSON| API[FastAPI Server :5000]
     API -->|Triggers| AGENT[AI RAG Agent]
-    
+
     subgraph RAG System [Kho Kiến thức & AI]
         AGENT -->|1. Query: 'Rules for VCP'| VDB[(Chroma Vector DB)]
         VDB -->|2. Return Top Chunks| AGENT
         AGENT -->|3. Signal + Minervini Context| LLM[LLM GPT-4o / Gemini]
         LLM -->|4. Analysis Report| AGENT
     end
-    
+
     AGENT -->|5. Execute Action| NOTIFY[notifier.py]
     NOTIFY -->|Gửi Báo cáo| TG[Telegram / Discord]
 ```
@@ -27,14 +27,14 @@ Dưới đây là hình ảnh render trực quan của **Sơ đồ Luồng hoạ
 flowchart TD
     TV[TradingView Alert] -->|Webhook JSON| API[FastAPI Server :5000]
     API -->|Triggers| AGENT[AI RAG Agent]
-    
+
     subgraph RAG System [Kho Kiến thức & AI]
         AGENT -->|1. Query: 'Rules for VCP'| VDB[(Chroma Vector DB)]
         VDB -->|2. Return Top Chunks| AGENT
         AGENT -->|3. Signal + Minervini Context| LLM[LLM GPT-4o / Gemini]
         LLM -->|4. Analysis Report| AGENT
     end
-    
+
     AGENT -->|5. Execute Action| NOTIFY[notifier.py]
     NOTIFY -->|Gửi Báo cáo| TG[Telegram / Discord]
 ```
@@ -63,7 +63,7 @@ flowchart TD
 
 Để xây dựng kiến trúc này, thư mục `server/` sẽ cần được bổ sung 2 thành phần chính:
 
-*   **`build_vector_db.py` (Chạy 1 lần):** 
+*   **`build_vector_db.py` (Chạy 1 lần):**
     - Script dùng `LangChain` hoặc `LlamaIndex` để đọc thư mục `docs/knowledge/trading_wizard/chunks/`, embedding nội dung và lưu vào cơ sở dữ liệu `chroma_db/`.
 *   **`rag_agent.py` (Chạy Runtime):**
     - Script chứa Logic kết nối với Vector DB và gọi API của LLM.
@@ -77,10 +77,10 @@ import notifier
 @app.post("/webhook")
 async def receive_webhook(data: Request):
     signal = await data.json() # Ví dụ: {"symbol": "FPT", "signal": "VCP"}
-    
+
     # AI tự động quét Vector DB và phân tích
     analysis_report = await get_trading_advice(signal)
-    
+
     # Gửi kết quả phân tích chuyên sâu qua Telegram
     await notifier.send_telegram(analysis_report)
 ```

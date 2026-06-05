@@ -10,6 +10,7 @@ Tests verify:
 v6.0: TradeEngine no longer imports notifier — all notifications
       are delegated to NotificationHub via TradeExecuted/TradeFailed events.
 """
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import dataclass, field
@@ -22,6 +23,7 @@ from core.events import TradeApproved, TradeExecuted, TradeFailed
 # ═══════════════════════════════════════════════════════════════
 # MOCK FIXTURES
 # ═══════════════════════════════════════════════════════════════
+
 
 @dataclass
 class MockRiskParams:
@@ -44,15 +46,19 @@ class MockOrderResult:
     dry_run: bool = True
     side: str = "BUY"
     symbol: str = "BTCUSDT"
-    entry_order: Dict[str, Any] = field(default_factory=lambda: {
-        "orderId": "DRY-TEST-001",
-        "status": "FILLED",
-        "executedQty": "0.001",
-        "cummulativeQuoteQty": "68.00",
-    })
-    oco_order: Optional[Dict[str, Any]] = field(default_factory=lambda: {
-        "orderListId": "DRY-OCO-001",
-    })
+    entry_order: Dict[str, Any] = field(
+        default_factory=lambda: {
+            "orderId": "DRY-TEST-001",
+            "status": "FILLED",
+            "executedQty": "0.001",
+            "cummulativeQuoteQty": "68.00",
+        }
+    )
+    oco_order: Optional[Dict[str, Any]] = field(
+        default_factory=lambda: {
+            "orderListId": "DRY-OCO-001",
+        }
+    )
     risk: Optional[MockRiskParams] = field(default_factory=MockRiskParams)
     error: Optional[str] = None
 
@@ -70,6 +76,7 @@ def _make_mock_client(order_result=None):
 # TESTS
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_successful_trade_emits_executed():
     """A validated buy signal should execute and emit TradeExecuted."""
@@ -86,9 +93,10 @@ async def test_successful_trade_emits_executed():
     mock_client = _make_mock_client()
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = mock_client
             mock_get_router.return_value = mock_router
@@ -99,9 +107,15 @@ async def test_successful_trade_emits_executed():
 
             # v6.0: TradeEngine subscribes to TradeApproved, not SignalValidated
             event = TradeApproved(
-                signal_id=100, symbol="BTCUSDT", action="buy",
-                price=68000.0, quote_qty=50.0, sl="66000", tp="72000",
-                approved_by="AI (Auto-Green)", analysis_text="Strong setup",
+                signal_id=100,
+                symbol="BTCUSDT",
+                action="buy",
+                price=68000.0,
+                quote_qty=50.0,
+                sl="66000",
+                tp="72000",
+                approved_by="AI (Auto-Green)",
+                analysis_text="Strong setup",
             )
             await execute_trade(event)
 
@@ -118,6 +132,7 @@ async def test_successful_trade_emits_executed():
             assert executed_events[0].side == "BUY"
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -139,9 +154,10 @@ async def test_failed_trade_emits_failed():
     mock_client = _make_mock_client(fail_result)
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = mock_client
             mock_get_router.return_value = mock_router
@@ -150,9 +166,13 @@ async def test_failed_trade_emits_failed():
 
             # v6.0: TradeEngine subscribes to TradeApproved, not SignalValidated
             event = TradeApproved(
-                signal_id=101, symbol="ETHUSDT", action="buy",
-                price=3500.0, quote_qty=50.0,
-                approved_by="Human", analysis_text="",
+                signal_id=101,
+                symbol="ETHUSDT",
+                action="buy",
+                price=3500.0,
+                quote_qty=50.0,
+                approved_by="Human",
+                analysis_text="",
             )
             await execute_trade(event)
 
@@ -168,6 +188,7 @@ async def test_failed_trade_emits_failed():
             assert "Insufficient balance" in failed_events[0].error
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -191,9 +212,13 @@ async def test_non_trade_action_skipped():
     try:
         # v6.0: TradeApproved with alert action should be skipped
         event = TradeApproved(
-            signal_id=102, symbol="BTCUSDT", action="alert",
-            price=68000.0, quote_qty=50.0,
-            approved_by="AI", analysis_text="",
+            signal_id=102,
+            symbol="BTCUSDT",
+            action="alert",
+            price=68000.0,
+            quote_qty=50.0,
+            approved_by="AI",
+            analysis_text="",
         )
         await execute_trade(event)
 
@@ -201,6 +226,7 @@ async def test_non_trade_action_skipped():
         assert len(events_emitted) == 0
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -222,13 +248,14 @@ async def test_weex_daily_loss_cap_blocks_trade():
     mock_client.exchange_id = "weex"
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = mock_client
             mock_get_router.return_value = mock_router
-            
+
             # Setup database mocks
             mock_db.insert_trade = AsyncMock(return_value=3)
             mock_db.update_signal_status = AsyncMock()
@@ -237,10 +264,14 @@ async def test_weex_daily_loss_cap_blocks_trade():
             mock_db.get_daily_loss = AsyncMock(return_value=12.50)
 
             event = TradeApproved(
-                signal_id=103, symbol="BTCUSDT", action="buy",
-                price=68000.0, quote_qty=50.0,
-                approved_by="AI", analysis_text="",
-                exchange="weex"
+                signal_id=103,
+                symbol="BTCUSDT",
+                action="buy",
+                price=68000.0,
+                quote_qty=50.0,
+                approved_by="AI",
+                analysis_text="",
+                exchange="weex",
             )
             await execute_trade(event)
 
@@ -255,6 +286,7 @@ async def test_weex_daily_loss_cap_blocks_trade():
             assert "exceeds cap" in failed_events[0].error
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -276,13 +308,14 @@ async def test_weex_drawdown_limit_blocks_trade():
     mock_client.exchange_id = "weex"
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = mock_client
             mock_get_router.return_value = mock_router
-            
+
             # Setup database mocks
             mock_db.insert_trade = AsyncMock(return_value=4)
             mock_db.update_signal_status = AsyncMock()
@@ -291,10 +324,14 @@ async def test_weex_drawdown_limit_blocks_trade():
             mock_db.get_daily_loss = AsyncMock(return_value=0.0)
 
             event = TradeApproved(
-                signal_id=104, symbol="BTCUSDT", action="buy",
-                price=68000.0, quote_qty=50.0,
-                approved_by="AI", analysis_text="",
-                exchange="weex"
+                signal_id=104,
+                symbol="BTCUSDT",
+                action="buy",
+                price=68000.0,
+                quote_qty=50.0,
+                approved_by="AI",
+                analysis_text="",
+                exchange="weex",
             )
             await execute_trade(event)
 
@@ -308,6 +345,7 @@ async def test_weex_drawdown_limit_blocks_trade():
             assert "drawdown" in failed_events[0].error.lower()
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -328,38 +366,53 @@ async def test_weex_failed_execution_triggers_fallback():
     weex_client = AsyncMock()
     weex_client.exchange_name = "weex"
     weex_client.exchange_id = "weex"
-    weex_client.execute_smart_order = AsyncMock(return_value=MockOrderResult(success=False, error="Weex network Timeout"))
+    weex_client.execute_smart_order = AsyncMock(
+        return_value=MockOrderResult(success=False, error="Weex network Timeout")
+    )
 
     # Bybit fallback client succeeds
     bybit_client = AsyncMock()
     bybit_client.exchange_name = "bybit"
     bybit_client.exchange_id = "bybit"
-    bybit_client.execute_smart_order = AsyncMock(return_value=MockOrderResult(
-        success=True,
-        dry_run=True,
-        side="BUY",
-        symbol="BTCUSDT",
-        entry_order={"orderId": "FALLBACK-BYB-001", "status": "FILLED", "executedQty": "0.001", "cummulativeQuoteQty": "68.00"},
-        risk=MockRiskParams()
-    ))
+    bybit_client.execute_smart_order = AsyncMock(
+        return_value=MockOrderResult(
+            success=True,
+            dry_run=True,
+            side="BUY",
+            symbol="BTCUSDT",
+            entry_order={
+                "orderId": "FALLBACK-BYB-001",
+                "status": "FILLED",
+                "executedQty": "0.001",
+                "cummulativeQuoteQty": "68.00",
+            },
+            risk=MockRiskParams(),
+        )
+    )
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = weex_client
             # Setup fallback mapping
             mock_router._get_fallback.return_value = "bybit"
-            
+
             # Setup registry mocks to hold bybit
             mock_registry = MagicMock()
-            mock_registry.is_available.side_effect = lambda name: name in ["bybit", "weex"]
-            mock_registry.get_adapter.side_effect = lambda name: bybit_client if name == "bybit" else weex_client
+            mock_registry.is_available.side_effect = lambda name: name in [
+                "bybit",
+                "weex",
+            ]
+            mock_registry.get_adapter.side_effect = (
+                lambda name: bybit_client if name == "bybit" else weex_client
+            )
             mock_router._registry = mock_registry
-            
+
             mock_get_router.return_value = mock_router
-            
+
             mock_db.insert_trade = AsyncMock(return_value=5)
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
@@ -367,17 +420,21 @@ async def test_weex_failed_execution_triggers_fallback():
             mock_db.get_daily_loss = AsyncMock(return_value=0.0)
 
             event = TradeApproved(
-                signal_id=105, symbol="BTCUSDT", action="buy",
-                price=68000.0, quote_qty=50.0,
-                approved_by="AI", analysis_text="",
-                exchange="weex"
+                signal_id=105,
+                symbol="BTCUSDT",
+                action="buy",
+                price=68000.0,
+                quote_qty=50.0,
+                approved_by="AI",
+                analysis_text="",
+                exchange="weex",
             )
             await execute_trade(event)
 
             # Both Weex and Bybit smart orders should be called
             weex_client.execute_smart_order.assert_awaited_once()
             bybit_client.execute_smart_order.assert_awaited_once()
-            
+
             # DB insert should be called with bybit
             mock_db.insert_trade.assert_awaited_once()
             call_kwargs = mock_db.insert_trade.call_args
@@ -389,4 +446,5 @@ async def test_weex_failed_execution_triggers_fallback():
             assert executed_events[0].exchange == "bybit"
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)

@@ -114,27 +114,27 @@ var table statusTable = table.new(position.bottom_right, 2, 9, border_width=1)
 if show_table and barstate.islast
     table.cell(statusTable, 0, 0, "Tiêu chuẩn Trend Template", bgcolor=color.new(color.gray, 30), text_color=color.white)
     table.cell(statusTable, 1, 0, "Trạng thái", bgcolor=color.new(color.gray, 30), text_color=color.white)
-    
+
     table.cell(statusTable, 0, 1, "1. Giá > SMA 150 & 200")
     table.cell(statusTable, 1, 1, cond1 ? "ĐẠT" : "CHƯA", bgcolor=cond1 ? color.new(color.green, 70) : color.new(color.red, 70))
-    
+
     table.cell(statusTable, 0, 2, "2. SMA 150 > SMA 200")
     table.cell(statusTable, 1, 2, cond2 ? "ĐẠT" : "CHƯA", bgcolor=cond2 ? color.new(color.green, 70) : color.new(color.red, 70))
-    
+
     table.cell(statusTable, 0, 3, "3. SMA 200 dốc lên (20 phiên)")
     table.cell(statusTable, 1, 3, cond3 ? "ĐẠT" : "CHƯA", bgcolor=cond3 ? color.new(color.green, 70) : color.new(color.red, 70))
-    
+
     table.cell(statusTable, 0, 4, "4. SMA 50 > SMA 150 & 200")
     table.cell(statusTable, 1, 4, cond4 ? "ĐẠT" : "CHƯA", bgcolor=cond4 ? color.new(color.green, 70) : color.new(color.red, 70))
-    
+
     table.cell(statusTable, 0, 5, "5. Giá > SMA 50")
     table.cell(statusTable, 1, 5, cond5 ? "ĐẠT" : "CHƯA", bgcolor=cond5 ? color.new(color.green, 70) : color.new(color.red, 70))
-    
+
     table.cell(statusTable, 0, 6, "6. Giá cách đáy 52W > 30%")
     table.cell(statusTable, 1, 6, cond6 ? "ĐẠT" : "CHƯA", bgcolor=cond6 ? color.new(color.green, 70) : color.new(color.red, 70))
-    
+
     table.cell(statusTable, 0, 7, "7. Giá cách đỉnh 52W < 25%")
     table.cell(statusTable, 1, 7, cond7 ? "ĐẠT" : "CHƯA", bgcolor=cond7 ? color.new(color.green, 70) : color.new(color.red, 70))
-    
+
     table.cell(statusTable, 0, 8, "8. Cổ phiếu mạnh hơn Benchmark")
     table.cell(statusTable, 1, 8, cond8 ? "ĐẠT" : "CHƯA", bgcolor=cond8 ? color.new(color.green, 70) : color.new(color.red, 70))

@@ -4,9 +4,12 @@ Feature: tradingview-alert-indicator-signal
 
 Property 20: Shared rate limiting — indicator and strategy requests count against same 15/min limit.
 """
+
 import time
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+import sys
+import os
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from hypothesis import given, settings
 from hypothesis import strategies as st
@@ -30,6 +33,7 @@ def _check_rate_limit(cache: dict, source_ip: str) -> bool:
 
 
 # ── Property 20: Shared rate limit ───────────────────────────────────────────
+
 
 @given(
     n_indicator=st.integers(min_value=0, max_value=20),
@@ -58,4 +62,6 @@ def test_prop20_shared_rate_limit(n_indicator, n_strategy):
     assert allowed <= RATE_LIMIT, f"Too many allowed: {allowed} > {RATE_LIMIT}"
     assert allowed + blocked == total, "allowed + blocked must equal total requests"
     if total > RATE_LIMIT:
-        assert blocked == total - RATE_LIMIT, f"Expected {total - RATE_LIMIT} blocked, got {blocked}"
+        assert blocked == total - RATE_LIMIT, (
+            f"Expected {total - RATE_LIMIT} blocked, got {blocked}"
+        )

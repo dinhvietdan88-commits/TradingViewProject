@@ -9,9 +9,10 @@ Detects 3 Minervini/O'Neil patterns from OHLCV data:
 No external dependencies (no scipy). Uses simple N-bar pivot detection.
 Output: dataclasses consumed by chart_generator_mpl for overlay rendering.
 """
+
 import logging
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Union
+from typing import List, Tuple
 
 log = logging.getLogger(__name__)
 
@@ -20,27 +21,33 @@ log = logging.getLogger(__name__)
 # DATA MODELS
 # ═══════════════════════════════════════════════════════════════
 
+
 @dataclass
 class VCPContraction:
     """Single contraction wave in a VCP pattern."""
+
     pivot_high_idx: int
     pivot_high_price: float
     trough_idx: int
     trough_price: float
-    depth_pct: float          # (high - low) / high * 100
-    duration_bars: int        # candles in this contraction
+    depth_pct: float  # (high - low) / high * 100
+    duration_bars: int  # candles in this contraction
+
 
 @dataclass
 class VCPOverlay:
     """Complete VCP pattern with multiple contractions."""
+
     detected: bool
     contractions: List[VCPContraction] = field(default_factory=list)
-    pivot_line_price: float = 0.0   # Breakout level (highest pivot)
-    quality_score: float = 0.0      # 0-100
+    pivot_line_price: float = 0.0  # Breakout level (highest pivot)
+    quality_score: float = 0.0  # 0-100
+
 
 @dataclass
 class CupHandleOverlay:
     """Cup & Handle pattern."""
+
     detected: bool
     cup_start_idx: int = 0
     cup_bottom_idx: int = 0
@@ -50,21 +57,24 @@ class CupHandleOverlay:
     handle_depth_pct: float = 0.0
     neckline_price: float = 0.0
 
+
 @dataclass
 class DoubleBottomOverlay:
     """Double Bottom pattern."""
+
     detected: bool
     first_bottom_idx: int = 0
     first_bottom_price: float = 0.0
     second_bottom_idx: int = 0
     second_bottom_price: float = 0.0
-    neckline_price: float = 0.0     # High between the two bottoms
+    neckline_price: float = 0.0  # High between the two bottoms
     neckline_idx: int = 0
 
 
 # ═══════════════════════════════════════════════════════════════
 # PIVOT DETECTION — Pure Python (no scipy)
 # ═══════════════════════════════════════════════════════════════
+
 
 def find_pivot_highs(prices: List[float], window: int = 5) -> List[Tuple[int, float]]:
     """Find local pivot highs using N-bar window comparison.
@@ -142,6 +152,7 @@ def _extract_volumes(ohlcv: list) -> List[float]:
 # VCP DETECTION — Multi-Contraction Waves
 # ═══════════════════════════════════════════════════════════════
 
+
 def detect_vcp_contractions(
     ohlcv: list,
     pivot_window: int = 5,
@@ -189,7 +200,7 @@ def detect_vcp_contractions(
         # Find trough (lowest low) between these two pivot highs
         if ph_idx >= next_ph_idx:
             continue
-        segment_lows = lows[ph_idx:next_ph_idx + 1]
+        segment_lows = lows[ph_idx : next_ph_idx + 1]
         if not segment_lows:
             continue
 
@@ -203,21 +214,23 @@ def detect_vcp_contractions(
         depth_pct = ((ph_price - trough_price) / ph_price) * 100
         duration = next_ph_idx - ph_idx
 
-        contractions.append(VCPContraction(
-            pivot_high_idx=ph_idx,
-            pivot_high_price=ph_price,
-            trough_idx=trough_idx,
-            trough_price=trough_price,
-            depth_pct=round(depth_pct, 1),
-            duration_bars=duration,
-        ))
+        contractions.append(
+            VCPContraction(
+                pivot_high_idx=ph_idx,
+                pivot_high_price=ph_price,
+                trough_idx=trough_idx,
+                trough_price=trough_price,
+                depth_pct=round(depth_pct, 1),
+                duration_bars=duration,
+            )
+        )
 
     if len(contractions) < min_contractions:
         return VCPOverlay(detected=False)
 
     # Step 3: Validate decreasing depth
     # Only consider the last N contractions (most recent pattern)
-    recent = contractions[-min(len(contractions), 4):]
+    recent = contractions[-min(len(contractions), 4) :]
 
     # First contraction shouldn't be too deep
     if recent[0].depth_pct > max_depth_first_pct:
@@ -225,7 +238,9 @@ def detect_vcp_contractions(
 
     depths_decreasing = True
     for i in range(1, len(recent)):
-        if recent[i].depth_pct >= recent[i - 1].depth_pct * (1 - min_depth_decrease_ratio):
+        if recent[i].depth_pct >= recent[i - 1].depth_pct * (
+            1 - min_depth_decrease_ratio
+        ):
             depths_decreasing = False
             break
 
@@ -234,8 +249,11 @@ def detect_vcp_contractions(
 
     # Step 4: Quality scoring
     # Depth decrease score (40%)
-    depth_ratios = [recent[i].depth_pct / recent[i - 1].depth_pct
-                    for i in range(1, len(recent)) if recent[i - 1].depth_pct > 0]
+    depth_ratios = [
+        recent[i].depth_pct / recent[i - 1].depth_pct
+        for i in range(1, len(recent))
+        if recent[i - 1].depth_pct > 0
+    ]
     avg_depth_ratio = sum(depth_ratios) / len(depth_ratios) if depth_ratios else 1.0
     depth_score = max(0, min(100, (1 - avg_depth_ratio) * 100))
 
@@ -244,17 +262,21 @@ def detect_vcp_contractions(
     if volumes:
         vol_avgs = []
         for c in recent:
-            seg_vols = volumes[c.pivot_high_idx:c.trough_idx + 1]
+            seg_vols = volumes[c.pivot_high_idx : c.trough_idx + 1]
             if seg_vols:
                 vol_avgs.append(sum(seg_vols) / len(seg_vols))
         if len(vol_avgs) >= 2:
-            vol_decreasing = all(vol_avgs[i] < vol_avgs[i - 1] for i in range(1, len(vol_avgs)))
+            vol_decreasing = all(
+                vol_avgs[i] < vol_avgs[i - 1] for i in range(1, len(vol_avgs))
+            )
             vol_score = 80.0 if vol_decreasing else 30.0
 
     # Near 52w high score (20%)
     max_price = max(closes) if closes else 0
     current_price = closes[-1] if closes else 0
-    near_high_score = min(100, (current_price / max_price * 100)) if max_price > 0 else 0
+    near_high_score = (
+        min(100, (current_price / max_price * 100)) if max_price > 0 else 0
+    )
 
     quality = depth_score * 0.4 + vol_score * 0.4 + near_high_score * 0.2
 
@@ -272,6 +294,7 @@ def detect_vcp_contractions(
 # ═══════════════════════════════════════════════════════════════
 # CUP & HANDLE DETECTION
 # ═══════════════════════════════════════════════════════════════
+
 
 def detect_cup_handle(
     ohlcv: list,
@@ -318,8 +341,7 @@ def detect_cup_handle(
         return CupHandleOverlay(detected=False)
 
     cup_bottom_idx = mid_start + min(
-        range(mid_end - mid_start),
-        key=lambda i: segment[mid_start + i]
+        range(mid_end - mid_start), key=lambda i: segment[mid_start + i]
     )
     cup_bottom_price = segment[cup_bottom_idx]
 
@@ -349,7 +371,9 @@ def detect_cup_handle(
 
     handle_high = max(handle_segment)
     handle_low = min(handle_segment)
-    handle_depth = ((handle_high - handle_low) / handle_high * 100) if handle_high > 0 else 0
+    handle_depth = (
+        ((handle_high - handle_low) / handle_high * 100) if handle_high > 0 else 0
+    )
 
     if handle_depth > max_handle_depth_pct:
         return CupHandleOverlay(detected=False)
@@ -371,6 +395,7 @@ def detect_cup_handle(
 # ═══════════════════════════════════════════════════════════════
 # DOUBLE BOTTOM DETECTION
 # ═══════════════════════════════════════════════════════════════
+
 
 def detect_double_bottom(
     ohlcv: list,
@@ -415,7 +440,7 @@ def detect_double_bottom(
                 continue
 
             # Found matching pair — calculate neckline
-            between_highs = closes[first_idx:second_idx + 1]
+            between_highs = closes[first_idx : second_idx + 1]
             if not between_highs:
                 continue
 
@@ -440,16 +465,20 @@ def detect_double_bottom(
 # UNIFIED ENTRY POINT
 # ═══════════════════════════════════════════════════════════════
 
+
 @dataclass
 class PatternOverlayResult:
     """Combined result of all pattern detection."""
+
     vcp: VCPOverlay
     cup_handle: CupHandleOverlay
     double_bottom: DoubleBottomOverlay
 
     @property
     def any_detected(self) -> bool:
-        return self.vcp.detected or self.cup_handle.detected or self.double_bottom.detected
+        return (
+            self.vcp.detected or self.cup_handle.detected or self.double_bottom.detected
+        )
 
     @property
     def summary(self) -> str:
@@ -460,7 +489,7 @@ class PatternOverlayResult:
         if self.cup_handle.detected:
             parts.append(f"Cup&Handle (depth={self.cup_handle.cup_depth_pct:.0f}%)")
         if self.double_bottom.detected:
-            parts.append(f"Double Bottom")
+            parts.append("Double Bottom")
         return " | ".join(parts) if parts else "No pattern"
 
 

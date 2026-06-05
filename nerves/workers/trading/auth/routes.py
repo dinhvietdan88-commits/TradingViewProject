@@ -128,13 +128,23 @@ async def auth_callback(request: Request, code: str = Query(...)):
         return response
 
     except CodeInvalidError:
-        return _error_page("Mã đăng nhập không hợp lệ", "Code không tồn tại hoặc đã bị sai.", 401)
+        return _error_page(
+            "Mã đăng nhập không hợp lệ", "Code không tồn tại hoặc đã bị sai.", 401
+        )
     except CodeExpiredError:
         return _error_page("Mã đã hết hạn", "Vui lòng dùng /login để tạo mã mới.", 401)
     except CodeUsedError:
-        return _error_page("Mã đã được sử dụng", "Mỗi mã chỉ dùng được 1 lần. Dùng /login để tạo mã mới.", 401)
+        return _error_page(
+            "Mã đã được sử dụng",
+            "Mỗi mã chỉ dùng được 1 lần. Dùng /login để tạo mã mới.",
+            401,
+        )
     except UserNotAllowedError:
-        return _error_page("Truy cập bị từ chối", "Tài khoản của bạn không được phép truy cập Dashboard.", 403)
+        return _error_page(
+            "Truy cập bị từ chối",
+            "Tài khoản của bạn không được phép truy cập Dashboard.",
+            403,
+        )
     except Exception as e:
         log.error(f"Auth callback error: {e}", exc_info=True)
         return _error_page("Lỗi xác thực", f"Đã xảy ra lỗi: {e}", 500)
@@ -191,6 +201,7 @@ async def telegram_widget_callback(request: Request):
 
         # Store in DB
         import database as db
+
         db.store_auth_session(
             session_id=session.session_id,
             telegram_id=session.telegram_id,
@@ -201,15 +212,17 @@ async def telegram_widget_callback(request: Request):
 
         token = auth_service.create_session_token(session)
 
-        return JSONResponse(content={
-            "success": True,
-            "token": token,
-            "user": {
-                "telegram_id": user.telegram_id,
-                "username": user.username,
-                "display_name": user.display_name,
+        return JSONResponse(
+            content={
+                "success": True,
+                "token": token,
+                "user": {
+                    "telegram_id": user.telegram_id,
+                    "username": user.username,
+                    "display_name": user.display_name,
+                },
             }
-        })
+        )
 
     except WidgetHashInvalidError:
         return JSONResponse(status_code=401, content={"detail": "Invalid widget data"})
@@ -233,6 +246,7 @@ async def logout(request: Request):
         try:
             session = auth_service.verify_session_token(token)
             import database as db
+
             db.delete_auth_session(session.session_id)
             auth_service.invalidate_session(session.session_id)
         except Exception:

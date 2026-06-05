@@ -5,6 +5,7 @@ Simulates full frontend workflows driven by the dashboard JS interfaces.
 BUG-03 fix: Added DRY_RUN circuit-breaker test to validate the timeframe filter
 is exercised when Binance credentials are provided (dry-run mode).
 """
+
 import pytest
 import config
 
@@ -72,7 +73,7 @@ async def test_quick_order_dry_run_circuit_breaker(client):
             "action": "buy",
             "price": "68000",
             "quoteQty": 10,
-            "interval": "240",   # 4H — should be REJECTED by timeframe filter
+            "interval": "240",  # 4H — should be REJECTED by timeframe filter
             "source": "dashboard",
         }
         res = await client.post(
@@ -83,7 +84,9 @@ async def test_quick_order_dry_run_circuit_breaker(client):
         assert res.status_code == 200
         data = res.json()
         assert data["received"] is True
-        assert data["status"] == "dispatched"  # Phase 5: gateway uniformly returns dispatched
+        assert (
+            data["status"] == "dispatched"
+        )  # Phase 5: gateway uniformly returns dispatched
     finally:
         config.BINANCE_DRY_RUN = original_dry_run
 
@@ -103,7 +106,7 @@ async def test_quick_order_dry_run_valid_interval(client):
             "action": "buy",
             "price": "68000",
             "quoteQty": 10,
-            "interval": "60",   # 1H — should PASS
+            "interval": "60",  # 1H — should PASS
             "source": "dashboard",
         }
         res = await client.post(

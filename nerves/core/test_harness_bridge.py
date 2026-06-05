@@ -17,7 +17,6 @@ import sys
 import os
 import unittest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 # Ensure project root is in path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -78,7 +77,15 @@ class TestDataModels(unittest.TestCase):
         v = HarnessVerdict(
             mode="MDASH_FULL",
             verdict=Verdict.SOFT_GATED,
-            findings=[{"rule_id": "TVP-004", "severity": "medium", "file": "test.py", "line": 10, "title": "No rate limit"}],
+            findings=[
+                {
+                    "rule_id": "TVP-004",
+                    "severity": "medium",
+                    "file": "test.py",
+                    "line": 10,
+                    "title": "No rate limit",
+                }
+            ],
             gates=[],
         )
         report = v.to_report()
@@ -91,7 +98,10 @@ class TestDefaultSyntaxCheck(unittest.TestCase):
 
     def test_valid_python(self):
         import tempfile
-        with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False, encoding="utf-8") as f:
+
+        with tempfile.NamedTemporaryFile(
+            suffix=".py", mode="w", delete=False, encoding="utf-8"
+        ) as f:
             f.write("x = 1 + 2\nprint(x)\n")
             f.flush()
             failures = _default_syntax_check([f.name])
@@ -100,7 +110,10 @@ class TestDefaultSyntaxCheck(unittest.TestCase):
 
     def test_invalid_python(self):
         import tempfile
-        with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False, encoding="utf-8") as f:
+
+        with tempfile.NamedTemporaryFile(
+            suffix=".py", mode="w", delete=False, encoding="utf-8"
+        ) as f:
             f.write("def broken(\n")
             f.flush()
             failures = _default_syntax_check([f.name])
@@ -163,7 +176,9 @@ class TestScarGate(unittest.TestCase):
         self.assertEqual(result["regressions"], [])
 
     def test_scar_001_regression(self):
-        result = run_scar_gate("Error: CommandNotFoundException — angati is not recognized")
+        result = run_scar_gate(
+            "Error: CommandNotFoundException — angati is not recognized"
+        )
         self.assertFalse(result["passed"])
         self.assertIn("SCAR-001", result["regressions"])
 
@@ -174,7 +189,9 @@ class TestScarGate(unittest.TestCase):
         self.assertIn("SCAR-002", result["regressions"])
 
     def test_partial_regression(self):
-        result = run_scar_gate("CommandNotFoundException in output but no security import error")
+        result = run_scar_gate(
+            "CommandNotFoundException in output but no security import error"
+        )
         self.assertFalse(result["passed"])
         self.assertIn("SCAR-001", result["regressions"])
         self.assertNotIn("SCAR-002", result["regressions"])
@@ -182,9 +199,17 @@ class TestScarGate(unittest.TestCase):
         self.assertLess(result["score"], 1.0)
 
     def test_custom_config(self):
-        import tempfile, json
-        config = {"scar_patterns": [{"id": "SCAR-CUSTOM", "pattern": "MyCustomError", "description": "test"}]}
-        with tempfile.NamedTemporaryFile(suffix=".json", mode="w", delete=False, encoding="utf-8") as f:
+        import tempfile
+        import json
+
+        config = {
+            "scar_patterns": [
+                {"id": "SCAR-CUSTOM", "pattern": "MyCustomError", "description": "test"}
+            ]
+        }
+        with tempfile.NamedTemporaryFile(
+            suffix=".json", mode="w", delete=False, encoding="utf-8"
+        ) as f:
             json.dump(config, f)
             f.flush()
             result = run_scar_gate("MyCustomError occurred", config_path=f.name)
@@ -202,8 +227,18 @@ class TestAIDebate(unittest.TestCase):
         self.assertEqual(results, [])
 
     def test_graceful_degradation(self):
-        findings = [{"rule_id": "TVP-001", "severity": "critical", "file": "test.py", "line": 1,
-                      "title": "Unsafe", "description": "Bad", "evidence": "x", "cwe": None}]
+        findings = [
+            {
+                "rule_id": "TVP-001",
+                "severity": "critical",
+                "file": "test.py",
+                "line": 1,
+                "title": "Unsafe",
+                "description": "Bad",
+                "evidence": "x",
+                "cwe": None,
+            }
+        ]
         results = run_ai_debate(findings)
         # Without API key, should gracefully degrade to SKIPPED
         self.assertTrue(len(results) > 0)
@@ -212,14 +247,23 @@ class TestAIDebate(unittest.TestCase):
             self.assertIn(r["verdict"], ("SKIPPED", "NEEDS_REVIEW"))
 
     def test_parse_debate_confirmed(self):
-        self.assertEqual(_parse_debate_response("CONFIRMED — this is a real bug"), "CONFIRMED")
+        self.assertEqual(
+            _parse_debate_response("CONFIRMED — this is a real bug"), "CONFIRMED"
+        )
 
     def test_parse_debate_false_positive(self):
-        self.assertEqual(_parse_debate_response("FALSE_POSITIVE — not exploitable"), "FALSE_POSITIVE")
-        self.assertEqual(_parse_debate_response("This is a FALSE POSITIVE because..."), "FALSE_POSITIVE")
+        self.assertEqual(
+            _parse_debate_response("FALSE_POSITIVE — not exploitable"), "FALSE_POSITIVE"
+        )
+        self.assertEqual(
+            _parse_debate_response("This is a FALSE POSITIVE because..."),
+            "FALSE_POSITIVE",
+        )
 
     def test_parse_debate_needs_review(self):
-        self.assertEqual(_parse_debate_response("I'm not sure about this one"), "NEEDS_REVIEW")
+        self.assertEqual(
+            _parse_debate_response("I'm not sure about this one"), "NEEDS_REVIEW"
+        )
 
 
 class TestHarnessLight(unittest.TestCase):

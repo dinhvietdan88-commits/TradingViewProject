@@ -3,36 +3,36 @@
 
 ## Page 331
 
-This page intentionally left blank 
+This page intentionally left blank
 
 
 ## Page 332
 
 Acknowledgments
 Special thanks to the following people:
-Patricia Crisafulli for your valuable guidance and unconditional 
-patience. Loren Fleckenstein for your editorial advice, your friendship, and 
-your unwavering conﬁdence in my abilities over the years. Bob Weissman for 
-your dedication, loyalty, and most important your friendship. Mary Glenn 
-and her team at McGraw-Hill for total professionalism and integrity; thank 
-you for allowing me to write this book the way I envisioned. My literary 
-agent, Jeffery Krames (even though we yell at each other from time to time); 
+Patricia Crisafulli for your valuable guidance and unconditional
+patience. Loren Fleckenstein for your editorial advice, your friendship, and
+your unwavering conﬁdence in my abilities over the years. Bob Weissman for
+your dedication, loyalty, and most important your friendship. Mary Glenn
+and her team at McGraw-Hill for total professionalism and integrity; thank
+you for allowing me to write this book the way I envisioned. My literary
+agent, Jeffery Krames (even though we yell at each other from time to time);
 Jeffery is a great agent. David Ryan for taking the time out of his busy sched-
-ule to write a foreword, as well as being a great inspiration for me early in 
+ule to write a foreword, as well as being a great inspiration for me early in
 my career. Linda Ludy for your editorial suggestions, friendship, and sup-
-port. Patricia Wallenburg for doing a wonderful job with the book layout 
-and getting it in “under the wire”; thank you. Dennis Maggi who early in my 
-life exposed me to great classic books like Think and Grow Rich, The Power of 
-Positive Thinking, and many others that were instrumental in my growth in 
-business and in life. To all my friends and family who supported my efforts 
-over the years. 
+port. Patricia Wallenburg for doing a wonderful job with the book layout
+and getting it in “under the wire”; thank you. Dennis Maggi who early in my
+life exposed me to great classic books like Think and Grow Rich, The Power of
+Positive Thinking, and many others that were instrumental in my growth in
+business and in life. To all my friends and family who supported my efforts
+over the years.
 Thank you all.
 317
 
 
 ## Page 333
 
-This page intentionally left blank 
+This page intentionally left blank
 
 
 ## Page 334
@@ -43,16 +43,16 @@ Index
 
 ## Page 335
 
-This page intentionally left blank 
+This page intentionally left blank
 
 
 ## Page 336
 
 321
-10 Secrets for Success and Inner 
+10 Secrets for Success and Inner
 Peace (Dyer), 9
 3C pattern, 243–247
-acceleration, Code 33 situation, 
+acceleration, Code 33 situation,
 158–159
 accumulation, 70–72
 signs of, 217
@@ -63,9 +63,9 @@ age of company, 37
 AIG, 42, 47, 117
 Amazon, 167, 232, 261
 America Online, 101, 193
-American Power Conversion, 
+American Power Conversion,
 177–178
-American Superconductor, 223, 
+American Superconductor, 223,
 225
 Amgen, 76, 81, 128
 as a market leader, 175–176
@@ -73,15 +73,15 @@ in stage 1, 67
 in stage 2, 71
 in stage 3, 73
 in stage 4, 75
-transitioning from stage 1 to 
+transitioning from stage 1 to
 stage 2, 68–69, 70
 analysts, tuning out, 86–87
-“The Anatomy of a Stock Market 
+“The Anatomy of a Stock Market
 Winner” (Reinganum),  
 28–29
 annual earnings, 134–135
 anticipation, 120
-Apollo Group, 49–50, 62, 128, 
+Apollo Group, 49–50, 62, 128,
 134–135, 173
 net margins, 146
 Apple Computers, 98, 105–106,  
@@ -93,7 +93,7 @@ References to ﬁgures are in italics.
 
 ## Page 337
 
-322 
+322
 I N D E X
 averaging down, 305
 vs. scaling in, 307–308
@@ -107,7 +107,7 @@ Ben-David, Itzhak, 281
 Berger, William “Bill” M. B., 237
 Best Buy Co., 255
 Blockbuster, vs. Netﬂix, 102–104
-Body Central Corp., primary base, 
+Body Central Corp., primary base,
 264–266
 bottom picking, 68
 breakout years, 136
@@ -134,25 +134,25 @@ chart patterns, 30, 192
 deep correction patterns,  
 210–211
 pivot points, 223–226
-saucer-with-platform pattern, 
+saucer-with-platform pattern,
 242–243
 shakeouts, 213–216
 velocity pattern, 253
 charts, 190–191, 192–194
 contraction count, 198–200
-detecting overhead supply, 
+detecting overhead supply,
 204–206
-identifying consolidation 
+identifying consolidation
 periods, 196–197
-showing prevailing trends, 
+showing prevailing trends,
 195–196
 technical footprints, 201–203
 time compression, 211–213
-using as a ﬁlter to screen 
-investment candidates, 
+using as a ﬁlter to screen
+investment candidates,
 194–195
 using as a tool, 191–192
-volatility contraction pattern, 
+volatility contraction pattern,
 198
 cheap stock, 43
 cheat area, 245
@@ -167,7 +167,7 @@ Coca-Cola, 284
 
 ## Page 338
 
- 
+
 I N D E X  
 323
 cockroach effect, 121–122
@@ -178,7 +178,7 @@ company-issued guidance,
 150–152
 consistent success, 272–273
 consolidation, 66–70
-identifying consolidation 
+identifying consolidation
 periods, 196–197
 price spikes preceding, 222–223
 technical footprints, 201–203
@@ -187,14 +187,14 @@ contraction count, 198–200
 conventional wisdom, 22–23
 cookie cutter concept, 98–99
 considerations when investing  
-in cookie cutter model, 
+in cookie cutter model,
 99–100
 cost cutting, 143–145
 countertrend volatility, 248
 Craft Brewers Alliance Inc., 251
 Crocs, 51–52, 87–88, 90, 91,  
 129–130
-cup-and-handle pattern, 30, 198, 
+cup-and-handle pattern, 30, 198,
 242–243
 cyclical stocks, 107–108
 Davis, Ned, 64
@@ -205,13 +205,13 @@ declining stocks, 42–43
 market leaders, 183
 deep correction patterns, 210–211
 Dell, Michael, 13, 105–106
-Dell Computer Corporation, 13, 
+Dell Computer Corporation, 13,
 138
-build-to-order business model, 
+build-to-order business model,
 155–156
 demand, evidence of, 216–221
 Dendreon Corp, 168
-Dick’s Sporting Goods, 152, 214, 
+Dick’s Sporting Goods, 152, 214,
 218–219, 257
 primary base, 265
 differential disclosure, 158
@@ -236,21 +236,21 @@ supported by revenue, 132–133
 earnings estimates
 analysts’ revisions of, 124–125
 beating, 122–124
-earnings per share (EPS), 
+earnings per share (EPS),
 momentum, 125–126
 
 
 ## Page 339
 
-324 
+324
 I N D E X
 earnings quality, 141
 analyzing inventories, 153–154
 analyzing receivables, 156–157
 Code 33, 158–159
-company-issued guidance, 
+company-issued guidance,
 150–152
-comparing inventory with sales, 
+comparing inventory with sales,
 154–156
 cost cutting, 143–145
 differential disclosure, 158
@@ -258,22 +258,22 @@ long-term projections,
 152–153
 massaged numbers, 142
 measuring margins, 145–147
-nonoperating or nonrecurring 
+nonoperating or nonrecurring
 income, 141–142
 one-time charges, 142–143
 stock price reaction, 147–149
-write-downs and revenue 
+write-downs and revenue
 shifting, 143
 earnings surprise, 121, 148–149
 Eastman Kodak, 284
 eBay, 98
-efﬁcient market hypothesis, 
+efﬁcient market hypothesis,
 189–190
 ego, 16–17, 287, 290
 Elan PLC, 221, 235, 243
-EMH. See efﬁcient market 
+EMH. See efﬁcient market
 hypothesis
-emotional attachment to stocks, 
+emotional attachment to stocks,
 290
 Emulex, 170–171
 Encore Wire, 153–154
@@ -281,7 +281,7 @@ entry points, 33–34
 exit points, 34
 F5 Networks, 77, 133
 Facebook, 261, 262
-failure, building into the system, 
+failure, building into the system,
 300–301
 failure reset, 249–250
 fair disclosure, 123–124
@@ -291,16 +291,16 @@ collapse of, 117
 FLIR Systems, 167
 Foster Wheeler, 234
 FSI International, 198, 199
-fund managers, investing like, 
+fund managers, investing like,
 20–22
 fundamentally sound, vs. price-
 ready, 256–257
 fundamentals, 33
 annual earnings, 134–135
 anticipation, 120
-beating earnings estimates, 
+beating earnings estimates,
 122–124
-big earnings attracting 
+big earnings attracting
 attention, 125–127
 breakout years, 136
 checking the trend, 133–134
@@ -308,38 +308,38 @@ cockroach effect, 121–122
 earnings, 119–120
 earnings acceleration,  
 131–132
-earnings supported by revenue, 
+earnings supported by revenue,
 132–133
 earnings surprise, 121
-getting earnings on the table, 
+getting earnings on the table,
 127–131
 growth, 118–119
 
 
 ## Page 340
 
- 
+
 I N D E X  
 325
 revisions of estimates, 124–125
-spotting a turnaround situation, 
+spotting a turnaround situation,
 136–137
 surprise, 120, 121
-GARP. See growth at a reasonable 
+GARP. See growth at a reasonable
 price (GARP)
 General Motors, 117, 285
 goals, 23
 Google, 101–102, 245
-Green Mountain Coffee, Inc., 88, 
+Green Mountain Coffee, Inc., 88,
 128
 gross margins, 145
 group cycle dynamics, 113
 growth, 59, 118–119
-cycles, secular, 173–174 
+cycles, secular, 173–174
 high, 44–45
 scalable, 96–97
 See also PEG ratio
-growth at a reasonable price 
+growth at a reasonable price
 (GARP), 60
 habit, 17–18
 high growth, 44–45
@@ -351,7 +351,7 @@ Hirshleifer, David, 281
 Home Depot, 61, 62, 101, 128, 132
 deceleration, 139–140
 housing stocks, 184–185
-How to Trade in Stocks 
+How to Trade in Stocks
 (Livermore), 14, 30
 Human Genome Sciences, 168
 Humana, 168–169
@@ -359,11 +359,11 @@ hype, tuning out, 86–87
 Illumina Inc., 93, 94
 Impax Labs, 225
 indecisiveness, 24–25
-individual investors, vs. fund 
+individual investors, vs. fund
 managers, 20–22
 industry groups, 110–111
 group cycle dynamics, 113
-group leaders as indicators, 
+group leaders as indicators,
 113–114
 See also technical themes
 innovations, 112

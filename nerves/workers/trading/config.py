@@ -24,30 +24,32 @@ DISABLE_RATE_LIMIT = os.getenv("DISABLE_RATE_LIMIT", "false").lower() == "true"
 
 
 # Binance (optional)
-BINANCE_API_KEY    = os.getenv("BINANCE_API_KEY", "")
+BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "")
 BINANCE_API_SECRET = os.getenv("BINANCE_API_SECRET", "")
-BINANCE_TESTNET    = os.getenv("BINANCE_TESTNET", "true").lower() == "true"
+BINANCE_TESTNET = os.getenv("BINANCE_TESTNET", "true").lower() == "true"
 # To satisfy security scanner check [TVP-006]
 _dry_run_var = "BINANCE_DRY_RUN"
 _binance_dry_run_env = os.getenv(_dry_run_var, "true")
-BINANCE_DRY_RUN    = _binance_dry_run_env.lower() == "true"
+BINANCE_DRY_RUN = _binance_dry_run_env.lower() == "true"
 
 # Bybit (Sprint 7.2)
-BYBIT_API_KEY      = os.getenv("BYBIT_API_KEY", "")
-BYBIT_API_SECRET   = os.getenv("BYBIT_API_SECRET", "")
-BYBIT_TESTNET      = os.getenv("BYBIT_TESTNET", "true").lower() == "true"
-BYBIT_DRY_RUN      = os.getenv("BYBIT_DRY_RUN", "true").lower() == "true"
+BYBIT_API_KEY = os.getenv("BYBIT_API_KEY", "")
+BYBIT_API_SECRET = os.getenv("BYBIT_API_SECRET", "")
+BYBIT_TESTNET = os.getenv("BYBIT_TESTNET", "true").lower() == "true"
+BYBIT_DRY_RUN = os.getenv("BYBIT_DRY_RUN", "true").lower() == "true"
 
 # Weex (Contract V2 USDT-M Linear Futures)
-WEEX_API_KEY       = os.getenv("WEEX_API_KEY", "")
-WEEX_API_SECRET    = os.getenv("WEEX_API_SECRET", "")
-WEEX_PASSPHRASE    = os.getenv("WEEX_PASSPHRASE", "")
-WEEX_TESTNET       = os.getenv("WEEX_TESTNET", "true").lower() == "true"
-WEEX_DRY_RUN       = os.getenv("WEEX_DRY_RUN", "true").lower() == "true"
+WEEX_API_KEY = os.getenv("WEEX_API_KEY", "")
+WEEX_API_SECRET = os.getenv("WEEX_API_SECRET", "")
+WEEX_PASSPHRASE = os.getenv("WEEX_PASSPHRASE", "")
+WEEX_TESTNET = os.getenv("WEEX_TESTNET", "true").lower() == "true"
+WEEX_DRY_RUN = os.getenv("WEEX_DRY_RUN", "true").lower() == "true"
 
 # Multi-Exchange Routing
-DEFAULT_EXCHANGE   = os.getenv("DEFAULT_EXCHANGE", "binance")
-STRATEGY_EXCHANGE_MAP = os.getenv("STRATEGY_EXCHANGE_MAP", "{}")  # JSON string e.g. '{"strategy_1": {"exchange": "bybit", "fallback": "binance"}}'
+DEFAULT_EXCHANGE = os.getenv("DEFAULT_EXCHANGE", "binance")
+STRATEGY_EXCHANGE_MAP = os.getenv(
+    "STRATEGY_EXCHANGE_MAP", "{}"
+)  # JSON string e.g. '{"strategy_1": {"exchange": "bybit", "fallback": "binance"}}'
 EXCHANGE_HEALTH_INTERVAL = int(os.getenv("EXCHANGE_HEALTH_INTERVAL", "60"))
 
 # TVP-006: Safety override for DRY_RUN
@@ -55,33 +57,31 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
 if ENVIRONMENT == "production" and not BINANCE_DRY_RUN:
     if os.getenv("FORCE_LIVE_TRADING", "false").lower() != "true":
         import logging
-        logging.getLogger(__name__).warning("PRODUCTION TRADING ENABLED: Forcing BINANCE_DRY_RUN=True. Set FORCE_LIVE_TRADING=true to override.")
+
+        logging.getLogger(__name__).warning(
+            "PRODUCTION TRADING ENABLED: Forcing BINANCE_DRY_RUN=True. Set FORCE_LIVE_TRADING=true to override."
+        )
         BINANCE_DRY_RUN = True
 
 # Risk Management (Minervini SEPA rules)
-RISK_PER_TRADE     = float(os.getenv("RISK_PER_TRADE", "0.02"))     # 2% per trade
-STOP_LOSS_PCT      = float(os.getenv("STOP_LOSS_PCT", "0.08"))      # 8% SL
-TAKE_PROFIT_PCT    = float(os.getenv("TAKE_PROFIT_PCT", "0.20"))    # 20% TP → R:R ≥ 2.5
-MAX_QUOTE_QTY      = float(os.getenv("MAX_QUOTE_QTY", "1000"))      # Max trade size limit
+RISK_PER_TRADE = float(os.getenv("RISK_PER_TRADE", "0.02"))  # 2% per trade
+STOP_LOSS_PCT = float(os.getenv("STOP_LOSS_PCT", "0.08"))  # 8% SL
+TAKE_PROFIT_PCT = float(os.getenv("TAKE_PROFIT_PCT", "0.20"))  # 20% TP → R:R ≥ 2.5
+MAX_QUOTE_QTY = float(os.getenv("MAX_QUOTE_QTY", "1000"))  # Max trade size limit
 
 # Notifications
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 # Multi-user broadcast: TELEGRAM_CHAT_ID can be a single id or CSV ("111,222,333")
-TELEGRAM_CHAT_IDS  = [c.strip() for c in TELEGRAM_CHAT_ID.split(",") if c.strip()]
-DISCORD_WEBHOOK_URL= os.getenv("DISCORD_WEBHOOK_URL", "")
+TELEGRAM_CHAT_IDS = [c.strip() for c in TELEGRAM_CHAT_ID.split(",") if c.strip()]
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 
 # Optional HTTP/SOCKS5 proxy for Telegram (e.g. "http://127.0.0.1:8090")
 TELEGRAM_PROXY_URL = os.getenv("TELEGRAM_PROXY_URL", "")
 
 
 # TradingView Whitelist IPs
-TV_WHITELIST_IPS = {
-    "52.89.214.238",
-    "34.212.75.30",
-    "54.218.53.128",
-    "52.32.178.7"
-}
+TV_WHITELIST_IPS = {"52.89.214.238", "34.212.75.30", "54.218.53.128", "52.32.178.7"}
 ENABLE_IP_WHITELIST = os.getenv("ENABLE_IP_WHITELIST", "false").lower() == "true"
 
 # ── RAG / Knowledge Base ──────────────────────────────────────────────────
@@ -89,18 +89,31 @@ ENABLE_IP_WHITELIST = os.getenv("ENABLE_IP_WHITELIST", "false").lower() == "true
 default_knowledge_dir = "/app/knowledge/trading_wizard/chunks"
 if not os.path.exists(default_knowledge_dir):
     # Local path relative to config.py (server/../docs)
-    default_knowledge_dir = str((Path(__file__).resolve().parent.parent / "docs" / "knowledge" / "trading_wizard" / "chunks").absolute())
+    default_knowledge_dir = str(
+        (
+            Path(__file__).resolve().parent.parent
+            / "docs"
+            / "knowledge"
+            / "trading_wizard"
+            / "chunks"
+        ).absolute()
+    )
     if not os.path.exists(default_knowledge_dir):
         # Local path with V9 nested folders (server/../../../../docs)
-        default_knowledge_dir = str((Path(__file__).resolve().parent.parent.parent.parent / "docs" / "knowledge" / "trading_wizard" / "chunks").absolute())
+        default_knowledge_dir = str(
+            (
+                Path(__file__).resolve().parent.parent.parent.parent
+                / "docs"
+                / "knowledge"
+                / "trading_wizard"
+                / "chunks"
+            ).absolute()
+        )
 
 KNOWLEDGE_DIR = os.getenv("KNOWLEDGE_DIR", default_knowledge_dir)
 
 # Đường dẫn lưu ChromaDB vector database (persistent trên disk)
-CHROMA_DB_PATH = os.getenv(
-    "CHROMA_DB_PATH",
-    str(Path(__file__).parent / "chroma_db")
-)
+CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", str(Path(__file__).parent / "chroma_db"))
 
 # ── Remote ChromaDB (Phase 4: 3-Server Pipeline) ─────────────────────────
 CHROMA_REMOTE = os.getenv("CHROMA_REMOTE", "false").lower() == "true"
@@ -180,10 +193,14 @@ WATCHLIST_DEFAULT = [
 
 # ── P11: Stealth Capture Daemon ───────────────────────────────────────────────
 # Persistent Node.js daemon for high-performance chart captures via CDP
-CAPTURE_DAEMON_ENABLED = os.getenv("CAPTURE_DAEMON_ENABLED", str(MCP_ENABLED)).lower() == "true"
+CAPTURE_DAEMON_ENABLED = (
+    os.getenv("CAPTURE_DAEMON_ENABLED", str(MCP_ENABLED)).lower() == "true"
+)
 CAPTURE_DAEMON_PORT = int(os.getenv("CAPTURE_DAEMON_PORT", 9333))
 CAPTURE_DAEMON_HOST = os.getenv("CAPTURE_DAEMON_HOST", "127.0.0.1")
-CAPTURE_HOOKS = [h.strip() for h in os.getenv("CAPTURE_HOOKS", "on_signal").split(",") if h.strip()]
+CAPTURE_HOOKS = [
+    h.strip() for h in os.getenv("CAPTURE_HOOKS", "on_signal").split(",") if h.strip()
+]
 CAPTURE_SCHEDULE_CRON = os.getenv("CAPTURE_SCHEDULE_CRON", "*/15 9-16 * * 1-5")
 CAPTURE_BATCH_CONCURRENCY = int(os.getenv("CAPTURE_BATCH_CONCURRENCY", 1))
 CAPTURE_COOLDOWN_SEC = int(os.getenv("CAPTURE_COOLDOWN_SEC", "60"))
@@ -226,14 +243,14 @@ DASHBOARD_URL = os.getenv("DASHBOARD_URL", f"http://localhost:{PORT}")
 TELEGRAM_LOGIN_WIDGET = os.getenv("TELEGRAM_LOGIN_WIDGET", "false").lower() == "true"
 
 # ── VPS Buffer Consumer (Phase VBS) ───────────────────
-VPS_BUFFER_ENABLED       = os.getenv("VPS_BUFFER_ENABLED", "false").lower() == "true"
-VPS_BUFFER_URL           = os.getenv("VPS_BUFFER_URL", "").rstrip("/")
-VPS_BUFFER_SECRET        = os.getenv("VPS_BUFFER_SECRET", "")
-VPS_CONSUMER_ID          = os.getenv("VPS_CONSUMER_ID", "local-01")
-VPS_POLL_INTERVAL_SECONDS= int(os.getenv("VPS_POLL_INTERVAL_SECONDS", "30"))
-VPS_STARTUP_PULL_LIMIT   = int(os.getenv("VPS_STARTUP_PULL_LIMIT", "50"))
-MAX_SIGNAL_AGE_MINUTES   = int(os.getenv("MAX_SIGNAL_AGE_MINUTES", "240"))
-VPS_BUFFER_SOURCE_FILTER  = os.getenv("VPS_BUFFER_SOURCE_FILTER", "")
+VPS_BUFFER_ENABLED = os.getenv("VPS_BUFFER_ENABLED", "false").lower() == "true"
+VPS_BUFFER_URL = os.getenv("VPS_BUFFER_URL", "").rstrip("/")
+VPS_BUFFER_SECRET = os.getenv("VPS_BUFFER_SECRET", "")
+VPS_CONSUMER_ID = os.getenv("VPS_CONSUMER_ID", "local-01")
+VPS_POLL_INTERVAL_SECONDS = int(os.getenv("VPS_POLL_INTERVAL_SECONDS", "30"))
+VPS_STARTUP_PULL_LIMIT = int(os.getenv("VPS_STARTUP_PULL_LIMIT", "50"))
+MAX_SIGNAL_AGE_MINUTES = int(os.getenv("MAX_SIGNAL_AGE_MINUTES", "240"))
+VPS_BUFFER_SOURCE_FILTER = os.getenv("VPS_BUFFER_SOURCE_FILTER", "")
 VPS_BUFFER_EXCLUDE_FILTER = os.getenv("VPS_BUFFER_EXCLUDE_FILTER", "")
 
 # ── Pipeline Forwarding: Server B Execution & Local Failover (Phase 5+) ──
@@ -251,16 +268,17 @@ SENTIMENT_ENABLED = os.getenv("SENTIMENT_ENABLED", "true").lower() == "true"
 TWITTER_API_KEY = os.getenv("TWITTER_API_KEY", "")
 TWITTER_BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN", "")
 RSS_FEED_URLS = [
-    url.strip() for url in os.getenv(
+    url.strip()
+    for url in os.getenv(
         "RSS_FEED_URLS",
-        "https://feeds.feedburner.com/CoinTelegraph,https://www.coindesk.com/arc/outboundfeeds/rss/"
-    ).split(",") if url.strip()
+        "https://feeds.feedburner.com/CoinTelegraph,https://www.coindesk.com/arc/outboundfeeds/rss/",
+    ).split(",")
+    if url.strip()
 ]
 GLASSNODE_API_KEY = os.getenv("GLASSNODE_API_KEY", "")
 
 
 # Server start time (for uptime calculation)
 import time as _time  # noqa: E402
+
 SERVER_START_TIME = _time.time()
-
-

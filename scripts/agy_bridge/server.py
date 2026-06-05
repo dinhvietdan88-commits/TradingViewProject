@@ -61,6 +61,7 @@ logging.basicConfig(
 # Circuit Breaker — prevents thundering herd when agy is down
 # ════════════════════════════════════════════════════════════════
 
+
 class BridgeCircuitBreaker:
     """
     3-state circuit breaker for the agy subprocess.
@@ -144,6 +145,7 @@ app = FastAPI(
 
 # ── Request / Response Models ──────────────────────────────────
 
+
 class AnalyzeRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=50000)
     model: str = Field(default=DEFAULT_MODEL)
@@ -174,6 +176,7 @@ _start_time = time.time()
 
 
 # ── Endpoints ──────────────────────────────────────────────────
+
 
 @app.get("/health", response_model=HealthResponse)
 async def health():
@@ -296,10 +299,7 @@ async def analyze(req: AnalyzeRequest):
         # ── Gate 3: Response validation ──
         if proc.returncode == 0 and len(stdout_text) > 0:
             breaker.record_success()
-            log.info(
-                f"agy OK: {latency_ms:.0f}ms, "
-                f"stdout={len(stdout_text)} chars"
-            )
+            log.info(f"agy OK: {latency_ms:.0f}ms, stdout={len(stdout_text)} chars")
             return AnalyzeResponse(
                 advice=stdout_text,
                 model=req.model,
@@ -309,10 +309,7 @@ async def analyze(req: AnalyzeRequest):
                 stderr_preview=stderr_text[:200] if stderr_text else "",
             )
         else:
-            error_detail = (
-                f"exit_code={proc.returncode}, "
-                f"stderr={stderr_text[:300]}"
-            )
+            error_detail = f"exit_code={proc.returncode}, stderr={stderr_text[:300]}"
             breaker.record_failure(error_detail)
             log.warning(f"agy FAIL: {error_detail}")
             raise HTTPException(

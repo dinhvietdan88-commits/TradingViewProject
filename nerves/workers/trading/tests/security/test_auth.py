@@ -3,8 +3,8 @@ Security tests: test_auth.py
 Tests Webhook authentication (secret validation) and missing secrets.
 BUG-05 fix: test_dashboard_auth_unauthorized previously had no assertion.
 """
+
 import pytest
-import config
 
 
 @pytest.mark.asyncio
@@ -28,14 +28,18 @@ async def test_webhook_valid_secret_payload(client):
     """Webhook should accept requests with the correct secret in payload."""
     payload = {"symbol": "BTCUSDT", "side": "BUY", "secret": "test-secret"}
     response = await client.post("/webhook", json=payload)
-    assert response.status_code != 401  # May be 200 or 422 if payload is incomplete, but not 401
+    assert (
+        response.status_code != 401
+    )  # May be 200 or 422 if payload is incomplete, but not 401
 
 
 @pytest.mark.asyncio
 async def test_webhook_invalid_secret_header(client):
     """Webhook should reject requests with an invalid secret in headers."""
     headers = {"Authorization": "wrong-secret"}
-    response = await client.post("/webhook", json={"symbol": "BTCUSDT"}, headers=headers)
+    response = await client.post(
+        "/webhook", json={"symbol": "BTCUSDT"}, headers=headers
+    )
     assert response.status_code == 401
 
 

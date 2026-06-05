@@ -7,12 +7,13 @@ Property 4: Required field rejection (symbol, indicator_name)
 Property 5: Optional field defaults (signal_type, confidence_score)
 Property 6: Malformed conditions_met → empty tuple, no exception
 """
-import pytest
-from hypothesis import given, settings, assume
+
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 
 # ── Parsing helpers (mirror webhook.py logic) ─────────────────────────────────
+
 
 def _safe_parse_confidence(raw) -> int:
     try:
@@ -36,6 +37,7 @@ def _safe_parse_metadata(raw) -> dict:
 
 # ── Property 3: Round-trip field preservation ─────────────────────────────────
 
+
 @given(
     symbol=st.text(min_size=1, max_size=20),
     indicator_name=st.text(min_size=1, max_size=50),
@@ -44,7 +46,9 @@ def _safe_parse_metadata(raw) -> dict:
     conditions=st.lists(st.text(min_size=1, max_size=30), max_size=5),
 )
 @settings(max_examples=100)
-def test_prop3_round_trip_field_preservation(symbol, indicator_name, signal_type, confidence, conditions):
+def test_prop3_round_trip_field_preservation(
+    symbol, indicator_name, signal_type, confidence, conditions
+):
     """
     # Feature: tradingview-alert-indicator-signal, Property 3: Parsing round-trip
     All populated fields must be preserved through parsing.
@@ -68,6 +72,7 @@ def test_prop3_round_trip_field_preservation(symbol, indicator_name, signal_type
 
 # ── Property 4: Required field rejection ──────────────────────────────────────
 
+
 @given(
     missing_field=st.sampled_from(["symbol", "indicator_name"]),
     other_data=st.dictionaries(st.text(min_size=1), st.text(), max_size=5),
@@ -89,10 +94,13 @@ def test_prop4_required_field_missing_detected(missing_field, other_data):
 
     # The missing field should produce empty string
     missing_val = payload.get(missing_field, "")
-    assert not missing_val, f"Expected empty value for {missing_field}, got {missing_val!r}"
+    assert not missing_val, (
+        f"Expected empty value for {missing_field}, got {missing_val!r}"
+    )
 
 
 # ── Property 5: Optional field defaults ───────────────────────────────────────
+
 
 @given(extra=st.dictionaries(st.text(min_size=1), st.text(), max_size=3))
 @settings(max_examples=100)
@@ -115,13 +123,16 @@ def test_prop5_signal_type_default_info(extra):
 
 # ── Property 6: Malformed conditions_met → empty tuple ───────────────────────
 
-@given(malformed=st.one_of(
-    st.text(),
-    st.integers(),
-    st.floats(allow_nan=False),
-    st.none(),
-    st.booleans(),
-))
+
+@given(
+    malformed=st.one_of(
+        st.text(),
+        st.integers(),
+        st.floats(allow_nan=False),
+        st.none(),
+        st.booleans(),
+    )
+)
 @settings(max_examples=100)
 def test_prop6_malformed_conditions_met_empty_tuple(malformed):
     """

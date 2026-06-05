@@ -66,7 +66,9 @@ def _setup_poll_session(worker, json_data):
     vbs_response = FakeResponse(status=200, json_data=json_data)
     mock_session = MagicMock()
     mock_session.get = MagicMock(return_value=vbs_response)
-    mock_session.post = MagicMock(return_value=FakeResponse(status=200, json_data={"ok": True}))
+    mock_session.post = MagicMock(
+        return_value=FakeResponse(status=200, json_data={"ok": True})
+    )
     worker.get_session = AsyncMock(return_value=mock_session)
     return mock_session
 
@@ -78,7 +80,11 @@ def _rag_patches_approved():
         patch(
             "rag.query_knowledge",
             return_value=[
-                {"content": "Minervini SEPA rules...", "metadata": {"topic": "VCP"}, "relevance_score": 0.92}
+                {
+                    "content": "Minervini SEPA rules...",
+                    "metadata": {"topic": "VCP"},
+                    "relevance_score": 0.92,
+                }
             ],
         ),
         patch(
@@ -252,23 +258,32 @@ async def test_partial_failure_continues_processing():
     async def mock_forward(payload):
         """#1 succeeds, #2 fails, #3 succeeds."""
         if payload["symbol"] == "ETHUSDT":
-            return {"success": False, "status": 500, "error": "Exchange API timeout for ETHUSDT"}
-        return {"success": True, "status": 200, "data": {"order_id": f"ORD-{payload['symbol']}"}}
+            return {
+                "success": False,
+                "status": 500,
+                "error": "Exchange API timeout for ETHUSDT",
+            }
+        return {
+            "success": True,
+            "status": 200,
+            "data": {"order_id": f"ORD-{payload['symbol']}"},
+        }
 
     worker.poll_and_analyze = mock_poll
     worker.forward_to_server_b = mock_forward
     worker._ack_signal = AsyncMock(return_value=True)
     worker._notify_analysis_telegram = AsyncMock()
 
-    with patch("uvicorn.Config"), \
-         patch("uvicorn.Server") as mock_server:
+    with patch("uvicorn.Config"), patch("uvicorn.Server") as mock_server:
         mock_server.return_value.serve = AsyncMock()
         await worker.run()
 
     # All 3 signals should be ACK'd (none skipped)
     assert worker._ack_signal.call_count == 3
 
-    ack_map = {call.args[0]: call.args[1:] for call in worker._ack_signal.call_args_list}
+    ack_map = {
+        call.args[0]: call.args[1:] for call in worker._ack_signal.call_args_list
+    }
 
     # Signal #1: approved + forward success → ACK 'executed'
     assert ack_map[201] == ("executed",)

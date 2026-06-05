@@ -48,15 +48,17 @@ log = logging.getLogger(__name__)
 # State enum
 # ────────────────────────────────────────────────────────────────────────────
 
+
 class CircuitState(Enum):
-    CLOSED    = "closed"     # Normal — LLM traffic flows through
-    OPEN      = "open"       # Tripped — traffic blocked, fallback active
+    CLOSED = "closed"  # Normal — LLM traffic flows through
+    OPEN = "open"  # Tripped — traffic blocked, fallback active
     HALF_OPEN = "half_open"  # Recovery probe — one request allowed
 
 
 # ────────────────────────────────────────────────────────────────────────────
 # Circuit Breaker
 # ────────────────────────────────────────────────────────────────────────────
+
 
 @dataclass
 class LLMCircuitBreaker:
@@ -70,17 +72,17 @@ class LLMCircuitBreaker:
     """
 
     # ── Configuration ─────────────────────────────────────────────────────────
-    failure_threshold:    int   = int(os.getenv("LLM_FAILURE_THRESHOLD",    "3"))
+    failure_threshold: int = int(os.getenv("LLM_FAILURE_THRESHOLD", "3"))
     recovery_timeout_sec: float = float(os.getenv("LLM_RECOVERY_TIMEOUT_SEC", "60"))
-    call_timeout_sec:     float = float(os.getenv("LLM_CALL_TIMEOUT_SEC",     "2.0"))
+    call_timeout_sec: float = float(os.getenv("LLM_CALL_TIMEOUT_SEC", "2.0"))
 
     # ── Internal state ────────────────────────────────────────────────────────
-    state:             CircuitState = field(default=CircuitState.CLOSED, init=False)
-    failure_count:     int          = field(default=0,   init=False)
-    last_failure_time: float        = field(default=0.0, init=False)
-    total_successes:   int          = field(default=0,   init=False)
-    total_failures:    int          = field(default=0,   init=False)
-    total_fallbacks:   int          = field(default=0,   init=False)
+    state: CircuitState = field(default=CircuitState.CLOSED, init=False)
+    failure_count: int = field(default=0, init=False)
+    last_failure_time: float = field(default=0.0, init=False)
+    total_successes: int = field(default=0, init=False)
+    total_failures: int = field(default=0, init=False)
+    total_fallbacks: int = field(default=0, init=False)
 
     # Optional Telegram alert hook — set externally to avoid circular imports
     # Signature: async (message: str) -> None
@@ -163,13 +165,13 @@ class LLMCircuitBreaker:
     def status_dict(self) -> dict:
         """Structured status — useful for /health endpoints and monitoring."""
         return {
-            "circuit_state":     self.state.value,
-            "failure_count":     self.failure_count,
+            "circuit_state": self.state.value,
+            "failure_count": self.failure_count,
             "failure_threshold": self.failure_threshold,
-            "total_successes":   self.total_successes,
-            "total_failures":    self.total_failures,
-            "total_fallbacks":   self.total_fallbacks,
-            "call_timeout_sec":  self.call_timeout_sec,
+            "total_successes": self.total_successes,
+            "total_failures": self.total_failures,
+            "total_fallbacks": self.total_fallbacks,
+            "call_timeout_sec": self.call_timeout_sec,
             "recovery_timeout_sec": self.recovery_timeout_sec,
         }
 

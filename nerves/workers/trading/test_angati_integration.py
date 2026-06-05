@@ -11,13 +11,13 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-    
+
 # Reconfigure stdout/stderr encoding to prevent Windows cp1252 errors
-if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8', errors='ignore')
-if hasattr(sys.stderr, 'reconfigure'):
-    sys.stderr.reconfigure(encoding='utf-8', errors='ignore')
-    
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="ignore")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="ignore")
+
 # Add nerves/core to sys.path
 CORE_PATH = PROJECT_ROOT / "nerves" / "core"
 if str(CORE_PATH) not in sys.path:
@@ -26,26 +26,33 @@ if str(CORE_PATH) not in sys.path:
 import hook_service  # noqa: E402
 from ingest_helper import ingest_semantic_event_bg  # noqa: E402
 
+
 class TestAngatiIntegration(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # Configure env variables for testing isolation
         os.environ["ANGATI_AGENTS_ROOT"] = str(PROJECT_ROOT)
-        os.environ["ANGATI_BUS_BIND"] = "127.0.0.1:9109"  # Use a different port for testing
-        
+        os.environ["ANGATI_BUS_BIND"] = (
+            "127.0.0.1:9109"  # Use a different port for testing
+        )
+
         # Start local SRA Server on test port in a background thread
         cls.port = 9109
-        cls.server_address = ('127.0.0.1', cls.port)
-        
+        cls.server_address = ("127.0.0.1", cls.port)
+
         # Set AGENTS_ROOT in hook_service to test isolation
         hook_service.AGENTS_ROOT = PROJECT_ROOT
-        if hasattr(hook_service, 'scar_memory') and hook_service.scar_memory:
+        if hasattr(hook_service, "scar_memory") and hook_service.scar_memory:
             hook_service.scar_memory.AGENTS_ROOT = PROJECT_ROOT
-            
-        cls.httpd = hook_service.ThreadingHTTPServer(cls.server_address, hook_service.SRAHookHandler)
-        cls.server_thread = threading.Thread(target=cls.httpd.serve_forever, daemon=True)
+
+        cls.httpd = hook_service.ThreadingHTTPServer(
+            cls.server_address, hook_service.SRAHookHandler
+        )
+        cls.server_thread = threading.Thread(
+            target=cls.httpd.serve_forever, daemon=True
+        )
         cls.server_thread.start()
-        
+
         # Give the server a moment to start
         time.sleep(1.0)
 
@@ -70,30 +77,30 @@ class TestAngatiIntegration(unittest.TestCase):
     def test_event_ingestion(self):
         """Verify background semantic event ingestion writes to local database."""
         test_message = f"Test Integration Event - {int(time.time())}"
-        
+
         # Clear/initialize test db file
         db_path = PROJECT_ROOT / "memory" / "V3_brain.db"
-        
+
         # Call ingestion helper
         print(f"Ingesting: '{test_message}'")
         ingest_semantic_event_bg(test_message, category="test_run")
-        
+
         # Poll database to see if record is written
         found = False
         start_time = time.time()
-        
+
         while time.time() - start_time < 5.0:  # 5 seconds timeout
             time.sleep(0.5)
             if db_path.exists():
                 try:
                     conn = sqlite3.connect(str(db_path))
                     cursor = conn.cursor()
-                    
+
                     # Read table structures to find where memory is stored
                     # The V3 memory schema has a table named 'memories' or 'l1_cache'
                     cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
                     tables = [row[0] for row in cursor.fetchall()]
-                    
+
                     for table in tables:
                         try:
                             # Search for our test message in columns of this table
@@ -103,7 +110,9 @@ class TestAngatiIntegration(unittest.TestCase):
                                 row_str = str(row)
                                 if test_message in row_str:
                                     found = True
-                                    print(f"[OK] Ingestion verified in table '{table}': {row}")
+                                    print(
+                                        f"[OK] Ingestion verified in table '{table}': {row}"
+                                    )
                                     break
                         except Exception:
                             pass
@@ -114,8 +123,10 @@ class TestAngatiIntegration(unittest.TestCase):
                     print(f"Waiting for DB lock/file: {db_err}")
             if found:
                 break
-                
-        self.assertTrue(found, "Test message was not found in the local memory database.")
+
+        self.assertTrue(
+            found, "Test message was not found in the local memory database."
+        )
         print("[OK] Test 2: Background Semantic Ingestion verified!")
 
     def test_angati_version_mismatch_warning(self):
@@ -141,9 +152,11 @@ class TestAngatiIntegration(unittest.TestCase):
                 t = hook_service.check_angati_version_async()
                 if t:
                     t.join()
-            
+
             output = f.getvalue()
-            self.assertIn("WARNING: Local angati.exe version mismatch detected!", output)
+            self.assertIn(
+                "WARNING: Local angati.exe version mismatch detected!", output
+            )
         finally:
             os.environ.pop("ANGATI_LOCAL_EXE_PATH", None)
             os.environ.pop("ANGATI_BRAIN_EXE_PATH", None)
@@ -178,9 +191,11 @@ class TestAngatiIntegration(unittest.TestCase):
                 t = hook_service.check_angati_version_async()
                 if t:
                     t.join()
-            
+
             output = f.getvalue()
-            self.assertNotIn("WARNING: Local angati.exe version mismatch detected!", output)
+            self.assertNotIn(
+                "WARNING: Local angati.exe version mismatch detected!", output
+            )
         finally:
             os.environ.pop("ANGATI_LOCAL_EXE_PATH", None)
             os.environ.pop("ANGATI_BRAIN_EXE_PATH", None)
@@ -219,7 +234,7 @@ class TestAngatiIntegration(unittest.TestCase):
             f1.close()
             os.environ["ANGATI_LOCAL_EXE_PATH"] = f1.name
             os.environ["ANGATI_BRAIN_EXE_PATH"] = "non_existent_file_brain.exe"
-            
+
             f = StringIO()
             with redirect_stderr(f):
                 t = hook_service.check_angati_version_async()
@@ -234,6 +249,7 @@ class TestAngatiIntegration(unittest.TestCase):
                     os.unlink(f1.name)
             except Exception:
                 pass
+
 
 if __name__ == "__main__":
     unittest.main()

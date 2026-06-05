@@ -556,19 +556,19 @@ sequenceDiagram
     Note over C: Poll every 15s
     C->>A: GET /consume-long?timeout=30
     A-->>C: Signal #42 (PENDING → DISPATCHED)
-    
+
     C->>C: Check age < 4h (stale protection)
     C->>C: query_knowledge() → top-3 RAG chunks
-    
+
     alt Circuit Breaker CLOSED
         C->>C: generate_trading_advice() via LLM
         C->>C: llm_breaker.record_success()
     else Circuit Breaker OPEN
         C->>C: Algorithmic Mode (Minervini rules only)
     end
-    
+
     C->>C: Position Sizing (ATR-based)
-    
+
     alt confidence ≥ 80
         C->>B: POST /api/execute-trade (auto-execute)
         B->>EX: Place order
@@ -578,7 +578,7 @@ sequenceDiagram
     else confidence < 50
         C->>C: Auto-reject (skip)
     end
-    
+
     C->>A: POST /ack {queue_id: 42, status: "executed"}
 ```
 

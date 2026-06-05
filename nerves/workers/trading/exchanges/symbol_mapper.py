@@ -1,6 +1,7 @@
 from typing import Dict, Optional
 from .base import SymbolMappingError
 
+
 class SymbolMapper:
     """Translates canonical symbols to exchange-specific formats."""
 
@@ -34,8 +35,10 @@ class SymbolMapper:
                 return canonical
         return exchange_symbol
 
+
 # Singleton instance
 _mapper = SymbolMapper()
+
 
 def map_symbol(canonical: str, exchange_id: str) -> str:
     return _mapper.map_symbol(canonical, exchange_id)

@@ -24,7 +24,7 @@ SCAR-006: ANTIGRAVITY_API_KEY must be Tier 1 (pay-as-you-go) to avoid quota
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import aiohttp
@@ -174,8 +174,7 @@ class AgyHarness:
                         # ── Gate 3: Response Validation ──
                         if not advice or len(advice.strip()) < 10:
                             log.warning(
-                                f"agy-harness: Empty/short response "
-                                f"(len={len(advice)})"
+                                f"agy-harness: Empty/short response (len={len(advice)})"
                             )
                             return AgyResponse(
                                 advice="",
@@ -214,36 +213,26 @@ class AgyHarness:
                         # Timeout — may retry
                         body = await resp.text()
                         last_error = f"Timeout: {body[:200]}"
-                        log.warning(
-                            f"agy-harness attempt {attempt + 1}: {last_error}"
-                        )
+                        log.warning(f"agy-harness attempt {attempt + 1}: {last_error}")
 
                     else:
                         body = await resp.text()
                         last_error = f"HTTP {resp.status}: {body[:200]}"
-                        log.warning(
-                            f"agy-harness attempt {attempt + 1}: {last_error}"
-                        )
+                        log.warning(f"agy-harness attempt {attempt + 1}: {last_error}")
 
             except asyncio.TimeoutError:
                 last_error = f"Client timeout after {effective_timeout}s"
-                log.warning(
-                    f"agy-harness attempt {attempt + 1}: {last_error}"
-                )
+                log.warning(f"agy-harness attempt {attempt + 1}: {last_error}")
 
             except aiohttp.ClientConnectorError as exc:
                 last_error = f"Connection refused: {exc}"
-                log.warning(
-                    f"agy-harness attempt {attempt + 1}: {last_error}"
-                )
+                log.warning(f"agy-harness attempt {attempt + 1}: {last_error}")
                 # Bridge is down entirely — no point retrying fast
                 break
 
             except aiohttp.ClientError as exc:
                 last_error = str(exc)
-                log.warning(
-                    f"agy-harness attempt {attempt + 1}: {last_error}"
-                )
+                log.warning(f"agy-harness attempt {attempt + 1}: {last_error}")
 
             # Brief backoff before retry
             if attempt < self.max_retries:

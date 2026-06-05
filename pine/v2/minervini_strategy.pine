@@ -28,7 +28,7 @@ strategy(
 // INPUTS & SETTINGS
 // ================================================================================================= //
 grp_mode = "Strategy Mode"
-strat_mode = input.string("Daily Trend Follower (MTT v1.005-b)", title="Strategy Mode", 
+strat_mode = input.string("Daily Trend Follower (MTT v1.005-b)", title="Strategy Mode",
      options=["Daily Trend Follower (MTT v1.005-b)", "1H SEPA / Momentum (MIS v1.6)"], group=grp_mode,
      tooltip="Chọn chế độ vận hành: Daily Trend Follower (Daily EMA 20/50/100) hoặc 1H SEPA/Momentum (1H VCP breakout).")
 
@@ -44,7 +44,7 @@ slow_len_mtt = input.int(100, "Slow MA (MTT Mode)", minval=20, group=grp_ma)
 slow_len_mis = input.int(200, "Slow MA (MIS Mode)", minval=20, group=grp_ma)
 
 grp_rs = "Relative Strength (RS) Settings"
-rs_option = input.string("BTCUSD (Crypto)", title="Chọn Benchmark Market", 
+rs_option = input.string("BTCUSD (Crypto)", title="Chọn Benchmark Market",
      options=["SPY (Thị trường Mỹ)", "VNINDEX (Thị trường VN)", "BTCUSD (Crypto)"], group=grp_rs)
 disable_rs = input.bool(false, "Disable RS criterion", group=grp_rs,
      tooltip="Bỏ qua tiêu chí Relative Strength (ví dụ khi giao dịch trực tiếp benchmark).")
@@ -81,7 +81,7 @@ show_mas = input.bool(true, "Hiển thị các đường MA", group=grp_ui)
 // DATA CALCULATIONS
 // ================================================================================================= //
 // 1. Benchmark Selection
-string benchmark_ticker = "BTCUSD" 
+string benchmark_ticker = "BTCUSD"
 if rs_option == "SPY (Thị trường Mỹ)"
     benchmark_ticker := "SPY"
 else if rs_option == "VNINDEX (Thị trường VN)"
@@ -240,7 +240,7 @@ if (strat_mode == "1H SEPA / Momentum (MIS v1.6)") and strategy.position_size > 
     sl_trail = trail_high - atr * trail_atr_mul
     sl  = use_atr_trail ? math.max(sl_hard, sl_trail) : sl_hard
     tp  = avg + entry_atr * atr_tp_mul
-    
+
     if use_ma_trail and close < sma50
         strategy.close("MIS Long", comment="MA50 trail")
         alert_msg_sell = '{"secret": "' + webhook_secret + '", "action": "sell", "symbol": "' + syminfo.ticker + '", "price": ' + str.tostring(close) + ', "interval": "' + timeframe.period + '", "mode": "MIS"}'
@@ -265,7 +265,7 @@ p_s = plot(show_mas ? ms : na, color=color.red,    title="Slow MA", linewidth=2)
 fill(p_f, p_s, color=(strat_mode == "Daily Trend Follower (MTT v1.005-b)" and bull) ? color.new(color.green, 85) : na, title="Bull Stack Zone")
 
 // Vẽ đường Pivot Line (MIS Mode)
-plot((strat_mode == "1H SEPA / Momentum (MIS v1.6)" and vcp_recent_active) ? pivot_price : na, 
+plot((strat_mode == "1H SEPA / Momentum (MIS v1.6)" and vcp_recent_active) ? pivot_price : na,
      color=color.new(color.fuchsia, 30), style=plot.style_linebr, linewidth=2, title="VCP Pivot Line")
 
 // Vẽ các Marker kích hoạt
@@ -289,7 +289,7 @@ if show_table and barstate.islast
     if strat_mode == "Daily Trend Follower (MTT v1.005-b)"
         table.cell(statusTable, 0, 0, "Chỉ số MTT Daily", bgcolor=color.new(color.blue, 30), text_color=color.white)
         table.cell(statusTable, 1, 0, "Trạng thái", bgcolor=color.new(color.blue, 30), text_color=color.white)
-        
+
         table.cell(statusTable, 0, 1, "1. Fast MA > Med MA")
         table.cell(statusTable, 1, 1, mf > mm ? "ĐẠT" : "CHƯA", bgcolor=bg_ok(mf > mm))
         table.cell(statusTable, 0, 2, "2. Med MA > Slow MA")
@@ -301,7 +301,7 @@ if show_table and barstate.islast
     else
         table.cell(statusTable, 0, 0, "Tiêu chuẩn Trend Template (MIS)", bgcolor=color.new(color.gray, 30), text_color=color.white)
         table.cell(statusTable, 1, 0, "Trạng thái", bgcolor=color.new(color.gray, 30), text_color=color.white)
-        
+
         table.cell(statusTable, 0, 1, "1. Giá > SMA 150 & 200")
         table.cell(statusTable, 1, 1, mark(tt1), bgcolor=bg_ok(tt1))
         table.cell(statusTable, 0, 2, "2. SMA 150 > SMA 200")

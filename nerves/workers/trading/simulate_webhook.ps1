@@ -65,7 +65,7 @@ try {
 } catch {
     Write-Host "`n[-] LỖI KHI GỬI WEBHOOK:" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
-    
+
     if ($_.ErrorDetails.Message) {
         Write-Host "Chi tiết:" -ForegroundColor Red
         Write-Host $_.ErrorDetails.Message -ForegroundColor Red

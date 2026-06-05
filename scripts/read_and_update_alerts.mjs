@@ -34,7 +34,7 @@ async function main() {
       .then(d => JSON.stringify(d))
   `);
   const data = JSON.parse(raw);
-  
+
   if (data.s !== 'ok') { console.error('❌ API error:', data); await client.close(); return; }
 
   const alerts = data.r;

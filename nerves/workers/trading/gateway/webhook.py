@@ -19,6 +19,7 @@ Does NOT own:
 - Vision analysis (AIAnalyzer)
 - Notifications (NotificationHub)
 """
+
 import logging
 import time
 import secrets
@@ -38,6 +39,7 @@ router = APIRouter()
 
 # ── Rate Limiting State ──────────────────────────────────────────────────────
 _WEBHOOK_RATE_LIMITS: dict = {}
+
 
 # ═══ WEBHOOK ENDPOINT ═════════════════════════════════════════════════════════
 @router.post("/webhook")
@@ -74,7 +76,9 @@ async def webhook(request: Request):
     if not is_dashboard_user and not secrets.compare_digest(
         str(secret), str(config.WEBHOOK_SECRET)
     ):
-        log.warning(f"Unauthorized webhook attempt (secret mismatch): received={repr(secret)} expected={repr(config.WEBHOOK_SECRET)}")
+        log.warning(
+            f"Unauthorized webhook attempt (secret mismatch): received={repr(secret)} expected={repr(config.WEBHOOK_SECRET)}"
+        )
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     if not payload:
@@ -96,7 +100,11 @@ async def webhook(request: Request):
     ts = tv_alert.time or ""
     quote_qty = tv_alert.quoteQty
     interval = str(tv_alert.interval or "").strip().lower()
-    mode = (getattr(tv_alert, "mode", None) or payload.get("mode", "") or "").strip().upper()
+    mode = (
+        (getattr(tv_alert, "mode", None) or payload.get("mode", "") or "")
+        .strip()
+        .upper()
+    )
 
     sl_str = tv_alert.sl or ""
     tp_str = tv_alert.tp or ""
@@ -125,7 +133,7 @@ async def webhook(request: Request):
 
     # TVP-001 & TVP-002: Safe parsing and Max limits
     try:
-        price_float = float(str(price).replace(',', '')) if price else None
+        price_float = float(str(price).replace(",", "")) if price else None
     except (ValueError, TypeError):
         price_float = None
 
@@ -136,7 +144,9 @@ async def webhook(request: Request):
         quote_qty_val = 10.0
 
     source = payload.get("source", "")
-    indicator_name = payload.get("indicator_name", "") or payload.get("indicator", "") or ""
+    indicator_name = (
+        payload.get("indicator_name", "") or payload.get("indicator", "") or ""
+    )
     is_indicator = source == "indicator" or (
         indicator_name and action not in {"buy", "sell", "alert"}
     )
@@ -144,9 +154,13 @@ async def webhook(request: Request):
     # Guard before DB write (Prop 4): invalid indicator payloads must not persist
     if is_indicator:
         if not symbol:
-            raise HTTPException(status_code=400, detail="Missing required field: symbol")
+            raise HTTPException(
+                status_code=400, detail="Missing required field: symbol"
+            )
         if not indicator_name:
-            raise HTTPException(status_code=400, detail="Missing required field: indicator_name")
+            raise HTTPException(
+                status_code=400, detail="Missing required field: indicator_name"
+            )
 
     # Luu signal vao database
     signal_id = await database.insert_signal(
@@ -159,19 +173,21 @@ async def webhook(request: Request):
         mode=mode,
     )
 
-    log.info(f"ALERT #{signal_id}  action={action}  symbol={symbol}  price={price}  qty={quote_qty_val}  time={ts}")
+    log.info(
+        f"ALERT #{signal_id}  action={action}  symbol={symbol}  price={price}  qty={quote_qty_val}  time={ts}"
+    )
 
     # ── Angati Event-Driven Semantic Ingestion ────────────────────────────────
     try:
         from nerves.core.ingest_helper import ingest_semantic_event_bg
+
         ingest_semantic_event_bg(
             text=f"Signal Received: ID={signal_id}, Symbol={symbol}, Action={action}, "
-                 f"Price={price_float}, Qty={quote_qty_val}, Exchange={exchange}, Interval={interval}",
-            category="signal"
+            f"Price={price_float}, Qty={quote_qty_val}, Exchange={exchange}, Interval={interval}",
+            category="signal",
         )
     except Exception as sra_err:
         log.warning(f"SRA Ingestion warning: {sra_err}")
-
 
     # ── RAG Analysis (chuyển sang AIAnalyzer) ─────────────
     # WebhookGateway không gọi RAG đồng bộ để đảm bảo tốc độ phản hồi < 100ms
@@ -184,67 +200,75 @@ async def webhook(request: Request):
 
     if is_indicator:
         signal_type = payload.get("signal_type", "info")
-        
+
         try:
             conf_score = int(payload.get("confidence_score", 0))
         except (ValueError, TypeError):
             conf_score = 0
-            
+
         raw_conditions = payload.get("conditions_met", [])
         if isinstance(raw_conditions, list):
             conditions_met = tuple(str(c) for c in raw_conditions)
         else:
             conditions_met = ()
-            
+
         metadata = payload.get("metadata", {})
         if not isinstance(metadata, dict):
             metadata = {}
 
         # Persistence is handled by data.indicator_persistence (DI-1: parallel listener)
-        await _event_bus.emit_background(IndicatorSignalReceived(
-            signal_id=signal_id,
-            symbol=symbol,
-            indicator_name=indicator_name,
-            signal_type=signal_type,
-            interval=interval,
-            price=price_float,
-            conditions_met=conditions_met,
-            confidence_score=conf_score,
-            metadata=metadata,
-            source_ip=source_ip,
-            exchange=exchange,
-        ))
+        await _event_bus.emit_background(
+            IndicatorSignalReceived(
+                signal_id=signal_id,
+                symbol=symbol,
+                indicator_name=indicator_name,
+                signal_type=signal_type,
+                interval=interval,
+                price=price_float,
+                conditions_met=conditions_met,
+                confidence_score=conf_score,
+                metadata=metadata,
+                source_ip=source_ip,
+                exchange=exchange,
+            )
+        )
 
         # ── Push real-time SSE to all browser tabs ──────────────────────────
         try:
             import main as _main_mod
-            _main_mod.push_sse_event("new_signal", {
-                "signal_id":       signal_id,
-                "symbol":          symbol,
-                "indicator_name":  indicator_name,
-                "signal_type":     signal_type,
-                "price":           price_float,
-                "confidence_score": conf_score,
-                "exchange":        exchange,
-                "interval":        interval,
-            })
+
+            _main_mod.push_sse_event(
+                "new_signal",
+                {
+                    "signal_id": signal_id,
+                    "symbol": symbol,
+                    "indicator_name": indicator_name,
+                    "signal_type": signal_type,
+                    "price": price_float,
+                    "confidence_score": conf_score,
+                    "exchange": exchange,
+                    "interval": interval,
+                },
+            )
         except Exception as _sse_err:
             log.debug(f"SSE push skipped: {_sse_err}")
 
     else:
-        await _event_bus.emit_background(SignalReceived(
-            signal_id=signal_id,
-            symbol=symbol,
-            action=action,
-            price=price_float,
-            quote_qty=quote_qty_val,
-            interval=interval,
-            mode=mode,
-            sl=sl_str,
-            tp=tp_str,
-            source_ip=source_ip,
-            payload=payload,
-            exchange=payload.get("exchange", config.DEFAULT_EXCHANGE),
-        ))
+        await _event_bus.emit_background(
+            SignalReceived(
+                signal_id=signal_id,
+                symbol=symbol,
+                action=action,
+                price=price_float,
+                quote_qty=quote_qty_val,
+                interval=interval,
+                mode=mode,
+                sl=sl_str,
+                tp=tp_str,
+                source_ip=source_ip,
+                payload=payload,
+                exchange=payload.get("exchange", config.DEFAULT_EXCHANGE),
+            )
+        )
 
     return {"received": True, "signal_id": signal_id, "status": "dispatched"}

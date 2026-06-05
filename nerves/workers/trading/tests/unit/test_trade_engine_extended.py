@@ -10,6 +10,7 @@ Tests verify gaps from the original test_trade_engine.py:
 - execute_trade with missing quote_qty defaults gracefully.
 - exchange field is propagated in all emitted events.
 """
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import dataclass, field
@@ -22,6 +23,7 @@ from core.events import TradeApproved, TradeExecuted, TradeFailed
 # ═══════════════════════════════════════════════════════════════
 # MOCK FIXTURES
 # ═══════════════════════════════════════════════════════════════
+
 
 @dataclass
 class MockRiskParams:
@@ -44,15 +46,19 @@ class MockOrderResult:
     dry_run: bool = True
     side: str = "BUY"
     symbol: str = "BTCUSDT"
-    entry_order: Dict[str, Any] = field(default_factory=lambda: {
-        "orderId": "DRY-001",
-        "status": "FILLED",
-        "executedQty": "0.001",
-        "cummulativeQuoteQty": "68.00",
-    })
-    oco_order: Optional[Dict[str, Any]] = field(default_factory=lambda: {
-        "orderListId": "OCO-001",
-    })
+    entry_order: Dict[str, Any] = field(
+        default_factory=lambda: {
+            "orderId": "DRY-001",
+            "status": "FILLED",
+            "executedQty": "0.001",
+            "cummulativeQuoteQty": "68.00",
+        }
+    )
+    oco_order: Optional[Dict[str, Any]] = field(
+        default_factory=lambda: {
+            "orderListId": "OCO-001",
+        }
+    )
     risk: Optional[MockRiskParams] = field(default_factory=MockRiskParams)
     error: Optional[str] = None
 
@@ -87,6 +93,7 @@ def _make_event(**kwargs) -> TradeApproved:
 # SELL SIDE
 # ═══════════════════════════════════════════════════════════════
 
+
 @pytest.mark.asyncio
 async def test_sell_side_emits_trade_executed_with_sell_side():
     """A sell action should execute and emit TradeExecuted with side=SELL."""
@@ -104,9 +111,10 @@ async def test_sell_side_emits_trade_executed_with_sell_side():
     adapter = _make_adapter(sell_result, exchange_id="binance")
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = adapter
             mock_get_router.return_value = mock_router
@@ -115,19 +123,23 @@ async def test_sell_side_emits_trade_executed_with_sell_side():
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
 
-            await execute_trade(_make_event(action="sell", symbol="ETHUSDT", signal_id=110))
+            await execute_trade(
+                _make_event(action="sell", symbol="ETHUSDT", signal_id=110)
+            )
 
             assert len(executed_events) == 1
             assert executed_events[0].side == "SELL"
             assert executed_events[0].symbol == "ETHUSDT"
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
 # ═══════════════════════════════════════════════════════════════
 # EXCHANGE ROUTING FAILURE
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_exchange_routing_failure_emits_trade_failed():
@@ -143,11 +155,14 @@ async def test_exchange_routing_failure_emits_trade_failed():
         failed_events.append(event)
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
-            mock_router.resolve_exchange.side_effect = ValueError("No adapter for 'unknown_exchange'")
+            mock_router.resolve_exchange.side_effect = ValueError(
+                "No adapter for 'unknown_exchange'"
+            )
             mock_get_router.return_value = mock_router
 
             mock_db.insert_trade = AsyncMock(return_value=11)
@@ -156,15 +171,20 @@ async def test_exchange_routing_failure_emits_trade_failed():
             await execute_trade(_make_event(exchange="unknown_exchange", signal_id=120))
 
             assert len(failed_events) == 1
-            assert "routing" in failed_events[0].error.lower() or "No adapter" in failed_events[0].error
+            assert (
+                "routing" in failed_events[0].error.lower()
+                or "No adapter" in failed_events[0].error
+            )
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
 # ═══════════════════════════════════════════════════════════════
 # EXCHANGE FALLBACK LABEL
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_fallback_exchange_label_in_trade_executed():
@@ -184,9 +204,10 @@ async def test_fallback_exchange_label_in_trade_executed():
     adapter = _make_adapter(exchange_id="binance")
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = adapter
             mock_get_router.return_value = mock_router
@@ -202,12 +223,14 @@ async def test_fallback_exchange_label_in_trade_executed():
             assert "Fallback" in executed_events[0].telegram_message
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
 # ═══════════════════════════════════════════════════════════════
 # OCO ORDER ID WIRING
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_oco_order_id_passed_to_db():
@@ -224,9 +247,10 @@ async def test_oco_order_id_passed_to_db():
     adapter = _make_adapter()  # MockOrderResult has oco_order.orderListId="OCO-001"
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = adapter
             mock_get_router.return_value = mock_router
@@ -242,12 +266,14 @@ async def test_oco_order_id_passed_to_db():
             assert oco_call_args.get("take_profit_price") == pytest.approx(74000.0)
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
 # ═══════════════════════════════════════════════════════════════
 # SL/TP PASSED TO ADAPTER
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_sl_tp_prices_passed_to_execute_smart_order():
@@ -267,9 +293,10 @@ async def test_sl_tp_prices_passed_to_execute_smart_order():
     adapter.execute_smart_order = capture_execute
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = adapter
             mock_get_router.return_value = mock_router
@@ -278,19 +305,23 @@ async def test_sl_tp_prices_passed_to_execute_smart_order():
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
 
-            await execute_trade(_make_event(sl="65000", tp="74000", price=68000.0, signal_id=150))
+            await execute_trade(
+                _make_event(sl="65000", tp="74000", price=68000.0, signal_id=150)
+            )
 
             assert captured_order_args.get("sl_price") == pytest.approx(65000.0)
             assert captured_order_args.get("tp_price") == pytest.approx(74000.0)
             assert captured_order_args.get("entry_price") == pytest.approx(68000.0)
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
 # ═══════════════════════════════════════════════════════════════
 # EXCHANGE PROPAGATION IN EVENTS
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_trade_executed_carries_actual_exchange():
@@ -308,9 +339,10 @@ async def test_trade_executed_carries_actual_exchange():
     adapter = _make_adapter(exchange_id="okx")
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = adapter
             mock_get_router.return_value = mock_router
@@ -324,6 +356,7 @@ async def test_trade_executed_carries_actual_exchange():
             assert executed_events[0].exchange == "okx"
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -344,9 +377,10 @@ async def test_trade_failed_carries_requested_exchange():
     adapter = _make_adapter(fail_result, exchange_id="binance")
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = adapter
             mock_get_router.return_value = mock_router
@@ -361,12 +395,14 @@ async def test_trade_failed_carries_requested_exchange():
             assert failed_events[0].exchange == "bybit"
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
 # ═══════════════════════════════════════════════════════════════
 # PRICE EDGE CASES
 # ═══════════════════════════════════════════════════════════════
+
 
 @pytest.mark.asyncio
 async def test_comma_formatted_sl_tp_parsed_correctly():
@@ -386,9 +422,10 @@ async def test_comma_formatted_sl_tp_parsed_correctly():
     adapter.execute_smart_order = capture_execute
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = adapter
             mock_get_router.return_value = mock_router
@@ -397,12 +434,15 @@ async def test_comma_formatted_sl_tp_parsed_correctly():
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
 
-            await execute_trade(_make_event(sl="65,000", tp="74,000", price="68,000", signal_id=180))
+            await execute_trade(
+                _make_event(sl="65,000", tp="74,000", price="68,000", signal_id=180)
+            )
 
             assert captured_args["sl_price"] == pytest.approx(65000.0)
             assert captured_args["tp_price"] == pytest.approx(74000.0)
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -429,9 +469,10 @@ async def test_invalid_sl_tp_gracefully_becomes_none():
     adapter.execute_smart_order = capture_execute
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = adapter
             mock_get_router.return_value = mock_router
@@ -446,6 +487,7 @@ async def test_invalid_sl_tp_gracefully_becomes_none():
             assert captured_args["tp_price"] is None
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -466,9 +508,10 @@ async def test_invalid_entry_price_fails_trade_gracefully():
     adapter = _make_adapter()
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = adapter
             mock_get_router.return_value = mock_router
@@ -495,6 +538,7 @@ async def test_invalid_entry_price_fails_trade_gracefully():
             assert "Invalid entry price" in failed_events[2].error
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -516,9 +560,10 @@ async def test_negative_sl_tp_clamped_to_none():
     adapter.execute_smart_order = capture_execute
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = adapter
             mock_get_router.return_value = mock_router
@@ -527,12 +572,15 @@ async def test_negative_sl_tp_clamped_to_none():
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
 
-            await execute_trade(_make_event(sl="-10.0", tp="0.0", price=100.0, signal_id=210))
+            await execute_trade(
+                _make_event(sl="-10.0", tp="0.0", price=100.0, signal_id=210)
+            )
 
             assert captured_args["sl_price"] is None
             assert captured_args["tp_price"] is None
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -554,9 +602,10 @@ async def test_negative_or_zero_qty_clamped_to_none():
     adapter.execute_smart_order = capture_execute
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = adapter
             mock_get_router.return_value = mock_router
@@ -574,10 +623,13 @@ async def test_negative_or_zero_qty_clamped_to_none():
             assert captured_args["quote_qty"] is None
 
             # Test non-numeric qty
-            await execute_trade(_make_event(quote_qty="InvalidQty", price=100.0, signal_id=222))
+            await execute_trade(
+                _make_event(quote_qty="InvalidQty", price=100.0, signal_id=222)
+            )
             assert captured_args["quote_qty"] is None
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
 
 
@@ -597,9 +649,10 @@ async def test_weex_routing_success():
     adapter = _make_adapter(exchange_id="weex")
 
     try:
-        with patch("exchanges.router.get_router") as mock_get_router, \
-             patch("engine.trade_engine.database") as mock_db:
-
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
             mock_router = MagicMock()
             mock_router.resolve_exchange.return_value = adapter
             mock_get_router.return_value = mock_router
@@ -608,13 +661,14 @@ async def test_weex_routing_success():
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
 
-            await execute_trade(_make_event(exchange="weex", symbol="BTCUSDT", signal_id=300))
+            await execute_trade(
+                _make_event(exchange="weex", symbol="BTCUSDT", signal_id=300)
+            )
 
             assert len(executed_events) == 1
             assert executed_events[0].exchange == "weex"
             assert executed_events[0].symbol == "BTCUSDT"
     finally:
         from core.event_bus import bus as default_bus
+
         set_bus(default_bus)
-
-

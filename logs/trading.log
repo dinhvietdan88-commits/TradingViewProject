@@ -392,14 +392,14 @@
 2026-05-30 17:37:35,351  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 17:37:35,352  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 17:37:37,792  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 17:38:01,394  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 17:38:01,394  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 17:38:07,810  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 17:38:31,805  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 17:38:31,805  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 17:38:37,817  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 17:39:06,666  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 17:39:06,667  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 17:39:07,821  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 17:39:37,077  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 17:39:37,077  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 17:39:37,825  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 17:40:07,839  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 17:40:11,912  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
@@ -417,7 +417,7 @@
 2026-05-30 17:42:31,280  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 17:42:31,281  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 17:42:37,909  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 17:43:01,708  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 17:43:01,708  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 17:43:07,923  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 17:43:36,549  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 17:43:36,550  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -445,7 +445,7 @@
 2026-05-30 17:47:40,968  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 17:47:40,970  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 17:48:08,027  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 17:48:11,399  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 17:48:11,399  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 17:48:38,045  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 17:48:46,266  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 17:48:46,267  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -485,7 +485,7 @@
 2026-05-30 17:55:10,139  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 17:55:10,141  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 17:55:38,222  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 17:55:40,586  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 17:55:40,586  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 17:56:08,235  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 17:56:15,686  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 17:56:15,687  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -499,7 +499,7 @@
 2026-05-30 17:58:00,296  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 17:58:00,297  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 17:58:08,266  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 17:58:30,706  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 17:58:30,706  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 17:58:38,283  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 17:59:05,553  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 17:59:05,554  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -527,9 +527,9 @@
 2026-05-30 18:03:09,514  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:03:09,515  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:03:38,379  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:03:39,939  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:03:39,939  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:04:08,388  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:04:10,377  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:04:10,377  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:04:38,394  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:04:45,248  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:04:45,250  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -537,17 +537,17 @@
 2026-05-30 18:05:20,342  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:05:20,343  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:05:38,415  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:05:50,765  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:05:50,765  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:06:08,427  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:06:25,606  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:06:25,607  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:06:38,438  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:06:56,036  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:06:56,036  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:07:08,449  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:07:30,882  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:07:30,883  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:07:38,462  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:08:01,291  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:08:01,291  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:08:08,477  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:08:36,136  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:08:36,137  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -562,9 +562,9 @@
 2026-05-30 18:10:20,964  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:10:20,965  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:10:38,536  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:10:51,404  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:10:51,404  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:11:08,545  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:11:21,814  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:11:21,814  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:11:38,550  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:11:56,663  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:11:56,664  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -572,7 +572,7 @@
 2026-05-30 18:12:31,510  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:12:31,511  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:12:38,578  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:13:01,941  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:13:01,941  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:13:08,595  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:13:36,788  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:13:36,789  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -581,7 +581,7 @@
 2026-05-30 18:14:11,671  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:14:11,672  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:14:38,631  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:14:42,089  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:14:42,089  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:15:08,645  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:15:16,938  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:15:16,940  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -608,7 +608,7 @@
 2026-05-30 18:19:21,372  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:19:21,374  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:19:38,763  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:19:51,791  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:19:51,791  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:20:08,781  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:20:26,902  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:20:26,903  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -635,7 +635,7 @@
 2026-05-30 18:24:31,248  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:24:31,249  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:24:38,876  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:25:01,690  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:25:01,690  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:25:08,886  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:25:36,776  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:25:36,777  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -653,7 +653,7 @@
 2026-05-30 18:27:56,414  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:27:56,415  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:28:08,942  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:28:26,867  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:28:26,867  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:28:38,954  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:29:01,697  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:29:01,698  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -671,14 +671,14 @@
 2026-05-30 18:31:21,157  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:31:21,158  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:31:39,002  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:31:51,572  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:31:51,572  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:32:09,013  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:32:26,425  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:32:26,427  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:32:39,028  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:32:56,845  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:32:56,845  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:33:09,034  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:33:27,268  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:33:27,268  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:33:39,042  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:34:02,114  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:34:02,115  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -686,11 +686,11 @@
 2026-05-30 18:34:36,970  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:34:36,971  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:34:39,061  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:35:07,394  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:35:07,394  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:35:09,077  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:35:37,803  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:35:37,803  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:35:39,089  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:36:08,212  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:36:08,212  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:36:09,106  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:36:39,112  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:36:43,082  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
@@ -702,7 +702,7 @@
 2026-05-30 18:37:52,764  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:37:52,765  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:38:09,147  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:38:23,201  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:38:23,201  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:38:39,153  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:38:58,073  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:38:58,074  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -710,7 +710,7 @@
 2026-05-30 18:39:32,928  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:39:32,929  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:39:39,165  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:40:03,342  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:40:03,342  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:40:09,172  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:40:38,215  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:40:38,216  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -722,7 +722,7 @@
 2026-05-30 18:41:47,974  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:41:47,976  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:42:09,219  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:42:18,408  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:42:18,408  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:42:39,234  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:42:53,304  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:42:53,306  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -743,14 +743,14 @@
 2026-05-30 18:45:48,078  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:45:48,079  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:46:09,313  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:46:18,491  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:46:18,491  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:46:39,318  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:46:48,909  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:46:48,909  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:47:09,328  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:47:23,779  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:47:23,780  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:47:39,344  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:47:54,214  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:47:54,214  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:48:09,359  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:48:29,076  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:48:29,078  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
@@ -762,14 +762,14 @@
 2026-05-30 18:49:38,993  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:49:39,388  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:50:09,404  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:50:09,422  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:50:09,422  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:50:39,411  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:50:39,841  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:50:39,841  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:51:09,426  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:51:14,809  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:51:14,810  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...
 2026-05-30 18:51:39,444  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
-2026-05-30 18:51:45,237  WARNING  🤖 TG NetworkError: httpx.ConnectError: 
+2026-05-30 18:51:45,237  WARNING  🤖 TG NetworkError: httpx.ConnectError:
 2026-05-30 18:52:09,462  WARNING  ExchangeQueryFacade: ExchangeRegistry not available
 2026-05-30 18:52:20,073  INFO  HTTP Request: POST https://api.telegram.org/bot8602739357:AAGMPw6IXRIE3Yu4d45Z2HPUfkh5_7nz-o4/getUpdates "HTTP/1.1 409 Conflict"
 2026-05-30 18:52:20,074  WARNING  🤖 TG Conflict (409) — another instance terminated. Resuming...

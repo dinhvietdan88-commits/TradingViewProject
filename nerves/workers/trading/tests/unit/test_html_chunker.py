@@ -1,7 +1,7 @@
 """Tests for utils/html_chunker.py — Telegram HTML truncation and chunking."""
+
 import sys
 from pathlib import Path
-import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -9,6 +9,7 @@ from utils.html_chunker import truncate_caption_html_safe, chunk_html_message
 
 
 # ── truncate_caption_html_safe ────────────────────────────
+
 
 def test_truncate_short_text_unchanged():
     text = "Hello world"
@@ -29,8 +30,8 @@ def test_truncate_preserves_html_tags():
     # With max_len=100 and original 1020+ chars, function may strip HTML
     # to fit. Either </b> is present (preserved) or tags are stripped (plain text).
     # Key invariant: no broken tags
-    open_bracket = result.rfind('<')
-    close_bracket = result.rfind('>')
+    open_bracket = result.rfind("<")
+    close_bracket = result.rfind(">")
     if open_bracket >= 0:
         assert close_bracket > open_bracket, "Found broken HTML tag"
 
@@ -40,13 +41,14 @@ def test_truncate_no_broken_tags():
     result = truncate_caption_html_safe(text, 50)
     assert len(result) <= 50
     # Should not have broken tag like "<b" without ">"
-    open_bracket = result.rfind('<')
-    close_bracket = result.rfind('>')
+    open_bracket = result.rfind("<")
+    close_bracket = result.rfind(">")
     if open_bracket >= 0:
         assert close_bracket > open_bracket, "Found broken HTML tag"
 
 
 # ── chunk_html_message ────────────────────────────────────
+
 
 def test_chunk_short_message_single():
     text = "Hello world"
