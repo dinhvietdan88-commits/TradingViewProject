@@ -47,7 +47,7 @@ jobs:
         id: filter
         uses: dorny/paths-filter@v4
         with:
-          base: ${{ github.event.before && github.event.before != '0000000000000000000000000000000000000000' && github.event.before || github.event.repository.default_branch }}
+          base: ${{ github.event_name != 'pull_request' && (github.event.before && github.event.before != '0000000000000000000000000000000000000000' && github.event.before || github.event.repository.default_branch) || '' }}
           filters: |
             code:
               - 'server/**'
