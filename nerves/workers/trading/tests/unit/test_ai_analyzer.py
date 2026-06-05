@@ -154,6 +154,7 @@ async def test_high_confidence_triggers_trade():
             # Config
             mock_config.MCP_ENABLED = True
             mock_config.RAG_ENABLED = False
+            mock_config.SENTIMENT_ENABLED = False
 
             # MCP
             mock_mcp = AsyncMock()

@@ -233,6 +233,17 @@ def safe_path(
         SecurityError: If the path escapes base_dir, does not exist (when required),
                        or has a disallowed extension.
     """
+    # Detect Windows absolute path (e.g. C:\... or C:/... or \\...) on non-Windows OS
+    import os
+    if os.name != "nt":
+        raw_path_str = str(raw_path)
+        if re.match(r"^[a-zA-Z]:[\\/]", raw_path_str) or raw_path_str.startswith(r"\\"):
+            raise SecurityError(
+                f"Windows absolute path '{raw_path}' is not permitted on non-Windows systems",
+                rule="PATH-01",
+                evidence=raw_path_str[:200],
+            )
+
     try:
         base_resolved = base_dir.resolve()
         # If raw_path is absolute, Path / raw_path discards the base.
