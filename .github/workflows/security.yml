@@ -28,6 +28,9 @@ permissions:
   contents: read
   security-events: write      # Required to upload SARIF results
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   # ── 0. PRE-CHECK: Skip entirely on docs-only changes ──────────────
   # Saves 4 runners on every push that only touches docs/pine/scratch.

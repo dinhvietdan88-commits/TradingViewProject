@@ -27,6 +27,8 @@ concurrency:
   cancel-in-progress: true
 
 # All actions upgraded to Node.js 24 native versions (setup-python@v6, checkout@v6, cache@v5)
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   # ── 0. CHANGE DETECTION ────────────────────────────────────────────

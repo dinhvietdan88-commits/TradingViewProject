@@ -10,6 +10,9 @@ on:
         required: false
         default: 'http://localhost:5000'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   # Step 1: Check staging config AND whether code actually changed
   check-config:

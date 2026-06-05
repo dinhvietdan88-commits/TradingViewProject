@@ -6,6 +6,9 @@ on:
     - cron: '0 19 * * *'
   workflow_dispatch: {}
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   nightly-regression:
     name: Nightly Regression Suite

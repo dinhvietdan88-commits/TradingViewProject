@@ -17,6 +17,9 @@ on:
         required: false
         default: '7000'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   evict-stale-caches:
     name: Evict Stale GHA Caches
