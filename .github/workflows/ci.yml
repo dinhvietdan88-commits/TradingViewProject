@@ -1,198 +1,153 @@
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║   CI PULL REQUEST PIPELINE                                      ║
+# ║                                                                ║
+# ║   Smart dispatch: detects change tier + branch pattern         ║
+# ║   → maps to test_depth → delegates to _ci-gate.yml            ║
+# ║                                                                ║
+# ║   Branch strategy (Gold Council V1):                           ║
+# ║     feat/*     → quick    (unit only, ~3 min)                  ║
+# ║     fix/*      → standard (no E2E, ~8 min)                     ║
+# ║     hotfix/*   → quick+safety (~5 min) + auto-deploy           ║
+# ║     release/*  → full (~20 min)                                ║
+# ║     main/dev   → standard (~8 min) via PR or push              ║
+# ║                                                                ║
+# ║   Change tiers:                                                ║
+# ║     T0 docs/pine/scratch → skip (0 runners)                   ║
+# ║     T1 config/.gitignore → lint only                           ║
+# ║     T2 server/*.py       → depth by branch                     ║
+# ║     T3 requirements/Docker → full override                     ║
+# ╚══════════════════════════════════════════════════════════════════╝
 name: CI Pull Request Pipeline
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main, develop]
   push:
     branches:
       - main
+      - develop
+      - "feat/*"
+      - "fix/*"
+      - "hotfix/*"
+      - "release/*"
 
-# Cancel any in-progress run for the same branch/PR — avoids redundant cache writes
+# Cancel in-progress runs for same ref — prevents cache write races
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # ── 0. CHANGE DETECTION ────────────────────────────────────────────
-  changes:
-    name: Detect Changes
+  # ── 0. SMART CHANGE CLASSIFICATION ─────────────────────────────────
+  classify:
+    name: "Classify Changes → Depth"
     runs-on: ubuntu-latest
     outputs:
-      code: ${{ steps.filter.outputs.code }}
+      test_depth:     ${{ steps.depth.outputs.test_depth }}
+      change_summary: ${{ steps.depth.outputs.change_summary }}
+
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          # Shallow clone — only need HEAD for change detection
-          fetch-depth: 1
+          fetch-depth: 2   # Need HEAD~1 for diff size check (hotfix guard)
 
-      - name: Check for changes
+      - name: Detect file changes
         id: filter
         uses: dorny/paths-filter@v4
         with:
           filters: |
-            code:
-              - 'nerves/workers/trading/**'
-              - 'vbs/**'
+            deps:
+              - 'nerves/workers/trading/requirements*.txt'
               - 'Dockerfile'
-              - 'pine/**'
-              - '.github/workflows/**'
-              - 'nerves/workers/trading/utils/**'
-              - 'nerves/workers/trading/hub/**'
-              - 'nerves/workers/trading/.env.example'
+              - 'vbs/Dockerfile'
+            code:
+              - 'nerves/workers/trading/**/*.py'
               - 'nerves/workers/trading/database.py'
+              - 'vbs/**'
+            config:
+              - '.github/workflows/**'
+              - 'nerves/workers/trading/.env.example'
+              - 'deploy/**'
+              - 'docker-compose*.yml'
+            skip_only:
+              - '*.md'
+              - 'docs/**'
+              - 'scratch/**'
+              - 'reports/**'
+              - 'pine/**'
+              - 'memory/**'
+              - 'logs/**'
 
-  # ── 1A. LINT & SECURITY (Fast ~15s — zero pip install) ───────────
-  ci-lint-security:
-    name: Lint & Security Scan
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Create server symlink
-        run: ln -s nerves/workers/trading server
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Code Linting (Ruff)
-        run: pipx run ruff check server/ --exit-zero
-
-      - name: Security AST Scan
+      - name: Determine test depth
+        id: depth
         run: |
-          cd server
-          python -m security.cli scan || echo "Warning: Review security scan report"
+          BRANCH="${GITHUB_REF_NAME}"
+          DEPS="${{ steps.filter.outputs.deps }}"
+          CODE="${{ steps.filter.outputs.code }}"
+          CONFIG="${{ steps.filter.outputs.config }}"
+          SKIP="${{ steps.filter.outputs.skip_only }}"
+          DEPTH=""
+          SUMMARY=""
 
-  # ── 1B. ORGANIZED TEST SUITE (2 Parallel Runners) ──────────────────
-  ci-tests:
-    name: "Test: ${{ matrix.stage }}"
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: true
-      matrix:
-        include:
-          - stage: "Fast (Unit + Integration + System)"
-            paths: "tests/unit/ tests/property/ tests/integration/ __auto_root__"
-            parallel: true
-            install-browser: false
-          - stage: "Parity (Env + DB Schema)"
-            paths: "tests/unit/test_env_parity.py tests/unit/test_db_schema_parity.py"
-            parallel: false
-            install-browser: false
-          - stage: "Safety (Callback + VBS Recovery)"
-            paths: "tests/unit/test_approval_callbacks.py tests/unit/test_vbs_recovery.py"
-            parallel: false
-            install-browser: false
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
+          # ── Priority 1: Branch pattern (overrides tier) ──
+          if [[ "$BRANCH" == hotfix/* ]]; then
+            # Hotfix guard: large diff → upgrade to standard
+            ADDED=$(git diff --shortstat HEAD~1 2>/dev/null \
+              | grep -oP '\d+(?= insertion)' || echo "0")
+            DELETED=$(git diff --shortstat HEAD~1 2>/dev/null \
+              | grep -oP '\d+(?= deletion)' || echo "0")
+            TOTAL=$((ADDED + DELETED))
+            if [ "$TOTAL" -gt 300 ]; then
+              DEPTH="standard"
+              SUMMARY="hotfix/* but diff=$TOTAL lines >300 → upgraded to standard ⚠️"
+            else
+              DEPTH="quick"
+              SUMMARY="hotfix/* ($TOTAL lines) → quick+safety, deploy enabled"
+            fi
 
-      # Hash source code to bypass if test already passed for identical code
-      - name: Compute code hash for test cache
-        id: code-hash
-        run: |
-          CODE_HASH=$(find nerves/workers/trading -type f -name '*.py' | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
-          echo "hash=$CODE_HASH" >> $GITHUB_OUTPUT
-          # Weekly rotation key for uv cache (evicts stale packages every 7 days)
-          echo "week=$(date -u +%Y-W%V)" >> $GITHUB_OUTPUT
+          elif [[ "$BRANCH" == release/* ]]; then
+            DEPTH="full"
+            SUMMARY="release/* → full suite (all stages)"
 
-      - name: Check test result cache
-        id: test-cache
-        uses: actions/cache@v5
-        with:
-          path: .test-passed
-          key: test-passed-${{ matrix.stage }}-${{ steps.code-hash.outputs.hash }}
+          # ── Priority 2: Change tier ──
+          elif [ "$DEPS" = "true" ]; then
+            DEPTH="full"
+            SUMMARY="T3 dependency changes (requirements/Dockerfile) → full"
 
-      - name: Skip tests (cache hit)
-        if: steps.test-cache.outputs.cache-hit == 'true'
-        run: echo "⚡ [${{ matrix.stage }}] Tests already passed for this code hash."
+          elif [ "$CODE" = "true" ]; then
+            if [[ "$BRANCH" == feat/* ]]; then
+              DEPTH="quick"
+              SUMMARY="T2 code on feat/* → quick tests"
+            else
+              # fix/*, develop, main — standard
+              DEPTH="standard"
+              SUMMARY="T2 code on $BRANCH → standard tests"
+            fi
 
-      - name: Create server symlink
-        if: steps.test-cache.outputs.cache-hit != 'true'
-        run: ln -s nerves/workers/trading server
+          elif [ "$CONFIG" = "true" ]; then
+            DEPTH="lint"
+            SUMMARY="T1 config/workflow changes → lint only"
 
-      - name: Set up Python 3.11
-        if: steps.test-cache.outputs.cache-hit != 'true'
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install uv (fast pip)
-        if: steps.test-cache.outputs.cache-hit != 'true'
-        run: pip install uv
-
-      - name: Cache uv packages
-        if: steps.test-cache.outputs.cache-hit != 'true'
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ steps.code-hash.outputs.week }}-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-uv-${{ steps.code-hash.outputs.week }}-
-            ${{ runner.os }}-uv-
-
-      - name: Install Dependencies
-        if: steps.test-cache.outputs.cache-hit != 'true'
-        run: |
-          uv pip install --system -r server/requirements.txt
-          uv pip install --system -r server/requirements-test.txt
-
-      - name: Cache Playwright browsers
-        if: steps.test-cache.outputs.cache-hit != 'true' && matrix.install-browser == true
-        id: playwright-cache
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
-
-      - name: Install Playwright Chromium Browser
-        if: steps.test-cache.outputs.cache-hit != 'true' && steps.playwright-cache.outputs.cache-hit != 'true' && matrix.install-browser == true
-        run: python -m playwright install chromium
-
-      - name: "Run Tests: ${{ matrix.stage }}"
-        if: steps.test-cache.outputs.cache-hit != 'true'
-        env:
-          VPS_BUFFER_ENABLED: "false"
-          CHROMA_REMOTE: "false"
-        run: |
-          cd server
-          # Resolve test paths (expand __auto_root__ to root-level test files)
-          RAW_PATHS="${{ matrix.paths }}"
-          if echo "$RAW_PATHS" | grep -q '__auto_root__'; then
-            ROOT_FILES=$(find tests/ -maxdepth 1 -name 'test_*.py' | sort | tr '\n' ' ')
-            TEST_PATHS=$(echo "$RAW_PATHS" | sed "s|__auto_root__|$ROOT_FILES|")
           else
-            TEST_PATHS="$RAW_PATHS"
+            # Only docs/pine/scratch/memory/logs changed
+            DEPTH="skip"
+            SUMMARY="T0 docs/pine/scratch → skip all (0 runners)"
           fi
 
-          # Auto-count tests
-          COUNT=$(python -m pytest $TEST_PATHS --collect-only -q 2>/dev/null | tail -1 | grep -oP '\d+(?= tests?)' || echo "?")
-          echo "🧪 [${{ matrix.stage }}] Running $COUNT tests"
+          echo "test_depth=$DEPTH" >> $GITHUB_OUTPUT
+          echo "change_summary=$SUMMARY" >> $GITHUB_OUTPUT
 
-          # Run with or without parallelism
-          if [ "${{ matrix.parallel }}" = "true" ]; then
-            python -m pytest $TEST_PATHS -x -n auto --dist worksteal --tb=short -q
-          else
-            python -m pytest $TEST_PATHS -x --tb=short -q
-          fi
+          echo "──────────────────────────────────"
+          echo " Branch:  $BRANCH"
+          echo " Depth:   $DEPTH"
+          echo " Reason:  $SUMMARY"
+          echo "──────────────────────────────────"
 
-      - name: Mark tests passed for cache
-        if: steps.test-cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p .test-passed
-          echo "${{ steps.code-hash.outputs.hash }}" > .test-passed/hash.txt
-          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .test-passed/timestamp.txt
+  # ── 1. CI GATE (Delegated to reusable workflow) ────────────────────
+  ci-gate:
+    name: "CI Gate [${{ needs.classify.outputs.test_depth }}]"
+    needs: classify
+    uses: ./.github/workflows/_ci-gate.yml
+    with:
+      test_depth: ${{ needs.classify.outputs.test_depth }}
+      branch:     ${{ github.ref_name }}

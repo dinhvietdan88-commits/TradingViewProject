@@ -1,0 +1,287 @@
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║           ANGATI AUTOMATION WORKFLOWS — GitHub Actions          ║
+# ║  PR Labeler · Stale Cleanup · AI Issue Summary · Greetings     ║
+# ╚══════════════════════════════════════════════════════════════════╝
+name: Automation Suite
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+  schedule:
+    # Stale cleanup — daily at 03:00 UTC
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  # ── 1. PR AUTO-LABELER ────────────────────────────────────────────
+  labeler:
+    name: PR Auto-Labeler
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Apply labels based on changed files
+        uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml
+          sync-labels: true
+
+  # ── 2. PR SIZE LABELER ────────────────────────────────────────────
+  pr-size:
+    name: PR Size Label
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 5
+
+    steps:
+      - name: Label PR by diff size
+        uses: codelytv/pr-size-labeler@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          xs_label: "size/XS"
+          xs_max_size: 10
+          s_label: "size/S"
+          s_max_size: 100
+          m_label: "size/M"
+          m_max_size: 500
+          l_label: "size/L"
+          l_max_size: 1000
+          xl_label: "size/XL"
+          fail_if_xl: false
+          message_if_xl: >
+            ⚠️ This PR is very large (>1000 lines). Consider splitting it into
+            smaller, focused PRs to ease review.
+
+  # ── 3. GREET FIRST-TIME CONTRIBUTORS ─────────────────────────────
+  greetings:
+    name: Greet New Contributors
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' || github.event_name == 'pull_request'
+    timeout-minutes: 5
+
+    steps:
+      - name: Send greeting
+        uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            👋 **Welcome to TradingViewProject!**
+
+            Thank you for opening your first issue, @${{ github.actor }}!
+
+            To help us address this quickly:
+            - 📋 Please provide steps to reproduce (if a bug)
+            - 🌍 Include your environment (OS, Python version, broker)
+            - 📎 Attach relevant logs from `server/logs/` if applicable
+
+            A maintainer will review this shortly. Thank you! 🚀
+          pr-message: |
+            👋 **Thanks for your first contribution, @${{ github.actor }}!**
+
+            Our CI pipeline will now run. Please ensure:
+            - ✅ All tests pass (`cd server && python -m pytest tests/`)
+            - 🔒 No secrets or `.env` files are committed
+            - 📝 The PR description explains **what** and **why**
+
+            We appreciate your contribution to the Angati trading system! 🎯
+
+  # ── 4. STALE ISSUE & PR CLEANUP ──────────────────────────────────
+  stale:
+    name: Stale Issue & PR Cleanup
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 10
+
+    steps:
+      - name: Mark and close stale issues/PRs
+        uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+          # ── Issues ──
+          stale-issue-label: "stale"
+          days-before-issue-stale: 30
+          days-before-issue-close: 14
+          stale-issue-message: |
+            🕒 **This issue has been inactive for 30 days.**
+
+            It will be automatically closed in 14 days unless there is new activity.
+            If this is still relevant, please leave a comment or remove the `stale` label.
+          close-issue-message: |
+            🔒 **Closed due to inactivity.**
+
+            Feel free to re-open if this is still relevant. Please include fresh
+            reproduction steps and environment details.
+
+          # ── Pull Requests ──
+          stale-pr-label: "stale"
+          days-before-pr-stale: 21
+          days-before-pr-close: 7
+          stale-pr-message: |
+            🕒 **This PR has been inactive for 21 days.**
+
+            It will be automatically closed in 7 days unless new commits or
+            comments are added. Please rebase and update if still needed.
+          close-pr-message: |
+            🔒 **Closed due to inactivity.**
+
+            The PR can be re-opened at any time. Please rebase on `main` before
+            re-opening to ensure a clean merge.
+
+          # ── Exceptions ──
+          exempt-issue-labels: "pinned,security,critical,in-progress"
+          exempt-pr-labels: "pinned,security,critical,do-not-close"
+          exempt-all-milestones: true
+
+  # ── 5. AI ISSUE SUMMARY (Gemini-powered) ──────────────────────────
+  ai-issue-summary:
+    name: AI Issue Summary
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    timeout-minutes: 10
+
+    steps:
+      - name: Generate AI summary and tag
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title;
+            const body = issue.body || "";
+
+            // Classify issue type from title/body keywords
+            const labelMap = [
+              { keywords: ["bug", "error", "fail", "crash", "exception", "traceback"], label: "bug" },
+              { keywords: ["feat", "feature", "add", "request", "enhancement"], label: "enhancement" },
+              { keywords: ["security", "vuln", "cve", "secret", "injection", "xss"], label: "security" },
+              { keywords: ["doc", "documentation", "readme", "typo", "spelling"], label: "documentation" },
+              { keywords: ["perf", "performance", "slow", "latency", "memory"], label: "performance" },
+              { keywords: ["webhook", "tradingview", "alert", "signal"], label: "webhook" },
+              { keywords: ["binance", "exchange", "trade", "order", "position"], label: "trading" },
+              { keywords: ["telegram", "bot", "notification", "notify"], label: "telegram" },
+              { keywords: ["ci", "cd", "workflow", "action", "pipeline"], label: "ci-cd" },
+            ];
+
+            const text = (title + " " + body).toLowerCase();
+            const matchedLabels = [];
+
+            for (const { keywords, label } of labelMap) {
+              if (keywords.some(k => text.includes(k))) {
+                matchedLabels.push(label);
+              }
+            }
+
+            // Ensure at least one label
+            if (matchedLabels.length === 0) matchedLabels.push("needs-triage");
+
+            // Add "needs-triage" only if multiple labels found (for tracking)
+            if (matchedLabels.length > 1) matchedLabels.push("needs-triage");
+
+            // Remove duplicate labels
+            const uniqueLabels = [...new Set(matchedLabels)];
+
+            // Apply labels (create missing ones automatically)
+            for (const label of uniqueLabels) {
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  labels: [label],
+                });
+              } catch (e) {
+                // Try to create label if it doesn't exist
+                try {
+                  const colors = {
+                    bug: "d73a4a", enhancement: "a2eeef", security: "e4e669",
+                    documentation: "0075ca", performance: "f9d0c4", webhook: "bfd4f2",
+                    trading: "006b75", telegram: "c2e0c6", "ci-cd": "fef2c0",
+                    "needs-triage": "ededed"
+                  };
+                  await github.rest.issues.createLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: label,
+                    color: colors[label] || "cccccc",
+                    description: `Auto-created label: ${label}`
+                  });
+                  await github.rest.issues.addLabels({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number,
+                    labels: [label],
+                  });
+                } catch (createErr) {
+                  console.log(`Could not create label ${label}: ${createErr.message}`);
+                }
+              }
+            }
+
+            // Post a triage comment
+            const labelList = uniqueLabels.map(l => `\`${l}\``).join(", ");
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: [
+                "## 🤖 Angati Auto-Triage",
+                "",
+                `**Labels applied:** ${labelList}`,
+                "",
+                "| Field | Value |",
+                "|-------|-------|",
+                `| Issue # | #${issue.number} |`,
+                `| Author | @${issue.user.login} |`,
+                `| Opened | ${new Date(issue.created_at).toUTCString()} |`,
+                "",
+                "> _This summary was generated automatically by the Angati Automation Suite._",
+                "> _A human reviewer will follow up shortly._",
+              ].join("\n"),
+            });
+
+  # ── 6. PR REVIEW REMINDER ────────────────────────────────────────
+  pr-reminder:
+    name: PR Review Reminder
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    timeout-minutes: 5
+
+    steps:
+      - name: Post PR checklist comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: [
+                "## 🤖 Angati PR Checklist",
+                "",
+                "Before merging, please verify:",
+                "",
+                "- [ ] ✅ All CI checks pass (lint, tests, security scan)",
+                "- [ ] 🔒 No secrets, API keys, or `.env` files committed",
+                "- [ ] 📝 AGENTS.md updated if new patterns were introduced",
+                "- [ ] 🧪 New code has corresponding tests in `server/tests/`",
+                "- [ ] 🌐 Webhook payload changes are backward-compatible",
+                "- [ ] 📊 Database migrations applied (`apply_indexes.py` if needed)",
+                "",
+                "> _Auto-generated by the Angati Automation Suite._",
+              ].join("\n"),
+            });

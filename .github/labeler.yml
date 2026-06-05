@@ -1,0 +1,108 @@
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║        ANGATI PR LABELER CONFIGURATION                         ║
+# ║  Maps file path patterns → PR labels                           ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+# ── Core Server ─────────────────────────────────────────────────────
+backend:
+  - changed-files:
+    - any-glob-to-any-file:
+      - "server/**/*.py"
+      - "server/requirements*.txt"
+
+# ── Gateway / Webhook ───────────────────────────────────────────────
+webhook:
+  - changed-files:
+    - any-glob-to-any-file:
+      - "server/gateway/**"
+
+# ── Trade Engine ────────────────────────────────────────────────────
+trading:
+  - changed-files:
+    - any-glob-to-any-file:
+      - "server/engine/**"
+      - "server/binance_client.py"
+      - "server/exchanges/**"
+      - "trading/**"
+
+# ── Security Module ─────────────────────────────────────────────────
+security:
+  - changed-files:
+    - any-glob-to-any-file:
+      - "server/security/**"
+      - "server/auth/**"
+      - ".github/workflows/security.yml"
+      - ".gitsecrets"
+
+# ── Infrastructure / DevOps ─────────────────────────────────────────
+infrastructure:
+  - changed-files:
+    - any-glob-to-any-file:
+      - "Dockerfile"
+      - "docker-compose*.yml"
+      - ".github/workflows/**"
+      - "deploy/**"
+      - "scripts/**"
+      - "setup_*.ps1"
+
+# ── CI/CD ───────────────────────────────────────────────────────────
+ci-cd:
+  - changed-files:
+    - any-glob-to-any-file:
+      - ".github/**"
+
+# ── Tests ───────────────────────────────────────────────────────────
+testing:
+  - changed-files:
+    - any-glob-to-any-file:
+      - "server/tests/**"
+      - "tests/**"
+      - "test_*.py"
+      - "**/pytest.ini"
+      - "server/requirements-test.txt"
+
+# ── Documentation ───────────────────────────────────────────────────
+documentation:
+  - changed-files:
+    - any-glob-to-any-file:
+      - "*.md"
+      - "docs/**"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "ONBOARDING.md"
+      - "README.md"
+
+# ── TradingView / Pine Script ────────────────────────────────────────
+pine:
+  - changed-files:
+    - any-glob-to-any-file:
+      - "pine/**"
+      - "**/*.pine"
+
+# ── Telegram Bot ────────────────────────────────────────────────────
+telegram:
+  - changed-files:
+    - any-glob-to-any-file:
+      - "server/telegram_bot.py"
+      - "server/notifier.py"
+      - "server/telegram_templates.json"
+
+# ── Dashboard / Frontend ─────────────────────────────────────────────
+frontend:
+  - changed-files:
+    - any-glob-to-any-file:
+      - "server/static/**"
+      - "**/*.html"
+      - "**/*.css"
+      - "**/*.js"
+
+# ── RAG / AI ─────────────────────────────────────────────────────────
+ai:
+  - changed-files:
+    - any-glob-to-any-file:
+      - "server/rag.py"
+      - "server/rag_mcp.py"
+      - "server/analysis.py"
+      - "server/vision.py"
+      - "lobes/**"
+      - "cortex/**"

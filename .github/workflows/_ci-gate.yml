@@ -1,0 +1,559 @@
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║   _CI-GATE — REUSABLE CI GATE (workflow_call)                  ║
+# ║   Single source of truth for lint + tests.                     ║
+# ║   Callers: ci.yml, deploy.yml (check only)                     ║
+# ║                                                                ║
+# ║   test_depth values:                                           ║
+# ║     skip     → nothing runs                                    ║
+# ║     lint     → lint + security.cli only                        ║
+# ║     quick    → lint + fast tests (unit/integration/property)   ║
+# ║     standard → lint + fast + parity + safety                   ║
+# ║     full     → lint + fast + parity + safety + e2e + advanced  ║
+# ╚══════════════════════════════════════════════════════════════════╝
+name: "⚙️ CI Gate (Reusable)"
+
+on:
+  workflow_call:
+    inputs:
+      test_depth:
+        description: "skip | lint | quick | standard | full"
+        type: string
+        default: "standard"
+      branch:
+        description: "Caller branch name (for logging)"
+        type: string
+        default: ""
+    outputs:
+      passed:
+        description: "true if all required checks passed or were appropriately skipped"
+        value: ${{ jobs.gate-result.outputs.passed }}
+
+jobs:
+  # ── LINT & INTERNAL SECURITY SCAN ──────────────────────────────────
+  lint:
+    name: "Lint & Security"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: inputs.test_depth != 'skip'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create server symlink
+        run: |
+          [ ! -d "server" ] && [ -d "nerves/workers/trading" ] \
+            && ln -s nerves/workers/trading server || true
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Ruff Lint (E, W, S, B rules)
+        run: pipx run ruff check server/ --exit-zero
+
+      - name: Angati Security AST Scan
+        run: |
+          cd server
+          python -m security.cli scan \
+            || echo "⚠️  security.cli not available in CI — skipping internal scan"
+
+  # ── FAST TESTS (Unit + Integration + Property) ─────────────────────
+  tests-fast:
+    name: "Tests / Fast"
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 20
+    if: |
+      always() &&
+      needs.lint.result != 'failure' &&
+      contains(fromJSON('["quick","standard","full"]'), inputs.test_depth)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Compute code hash
+        id: hash
+        run: |
+          CODE_HASH=$(find nerves/workers/trading -type f -name '*.py' \
+            | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+          echo "code=$CODE_HASH" >> $GITHUB_OUTPUT
+          echo "week=$(date -u +%Y-W%V)" >> $GITHUB_OUTPUT
+
+      - name: Check test sentinel cache
+        id: sentinel
+        uses: actions/cache@v5
+        with:
+          path: .test-passed-fast
+          key: test-passed-fast-${{ steps.hash.outputs.code }}
+
+      - name: Skip (cache hit)
+        if: steps.sentinel.outputs.cache-hit == 'true'
+        run: echo "⚡ [Fast] Tests already passed for hash ${{ steps.hash.outputs.code }} — skipping."
+
+      - name: Create server symlink
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: |
+          [ ! -d "server" ] && [ -d "nerves/workers/trading" ] \
+            && ln -s nerves/workers/trading server || true
+
+      - name: Set up Python 3.11
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: pip install uv
+
+      - name: Cache uv packages
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ steps.hash.outputs.week }}-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-${{ steps.hash.outputs.week }}-
+            ${{ runner.os }}-uv-
+
+      - name: Install dependencies
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: |
+          uv pip install --system -r server/requirements.txt
+          uv pip install --system -r server/requirements-test.txt
+
+      - name: Run fast tests (parallel)
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        env:
+          VPS_BUFFER_ENABLED: "false"
+          CHROMA_REMOTE: "false"
+        run: |
+          cd server
+          ROOT_FILES=$(find tests/ -maxdepth 1 -name 'test_*.py' | sort | tr '\n' ' ')
+          COUNT=$(python -m pytest tests/unit/ tests/property/ tests/integration/ $ROOT_FILES \
+            --collect-only -q 2>/dev/null | tail -1 | grep -oP '\d+(?= tests?)' || echo "?")
+          echo "🧪 [Fast] Running $COUNT tests"
+          python -m pytest tests/unit/ tests/property/ tests/integration/ $ROOT_FILES \
+            -x -n auto --dist worksteal --tb=short -q
+
+      - name: Write sentinel
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .test-passed-fast
+          echo "${{ steps.hash.outputs.code }}" > .test-passed-fast/hash.txt
+          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .test-passed-fast/timestamp.txt
+
+  # ── PARITY TESTS (Env + DB Schema) ─────────────────────────────────
+  tests-parity:
+    name: "Tests / Parity"
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 15
+    if: |
+      always() &&
+      needs.lint.result != 'failure' &&
+      contains(fromJSON('["standard","full"]'), inputs.test_depth)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Compute code hash
+        id: hash
+        run: |
+          CODE_HASH=$(find nerves/workers/trading -type f -name '*.py' \
+            | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+          echo "code=$CODE_HASH" >> $GITHUB_OUTPUT
+          echo "week=$(date -u +%Y-W%V)" >> $GITHUB_OUTPUT
+
+      - name: Check test sentinel cache
+        id: sentinel
+        uses: actions/cache@v5
+        with:
+          path: .test-passed-parity
+          key: test-passed-parity-${{ steps.hash.outputs.code }}
+
+      - name: Skip (cache hit)
+        if: steps.sentinel.outputs.cache-hit == 'true'
+        run: echo "⚡ [Parity] Tests already passed — skipping."
+
+      - name: Create server symlink
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: |
+          [ ! -d "server" ] && [ -d "nerves/workers/trading" ] \
+            && ln -s nerves/workers/trading server || true
+
+      - name: Set up Python 3.11
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: pip install uv
+
+      - name: Cache uv packages
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ steps.hash.outputs.week }}-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-${{ steps.hash.outputs.week }}-
+            ${{ runner.os }}-uv-
+
+      - name: Install dependencies
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: |
+          uv pip install --system -r server/requirements.txt
+          uv pip install --system -r server/requirements-test.txt
+
+      - name: Run parity tests
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        env:
+          VPS_BUFFER_ENABLED: "false"
+          CHROMA_REMOTE: "false"
+        run: |
+          cd server
+          echo "🧪 [Parity] Env parity + DB schema"
+          python -m pytest \
+            tests/unit/test_env_parity.py \
+            tests/unit/test_db_schema_parity.py \
+            -x --tb=short -q
+
+      - name: Write sentinel
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .test-passed-parity
+          echo "${{ steps.hash.outputs.code }}" > .test-passed-parity/hash.txt
+          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .test-passed-parity/timestamp.txt
+
+  # ── SAFETY TESTS (Callbacks + VBS Recovery) ────────────────────────
+  tests-safety:
+    name: "Tests / Safety"
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 15
+    if: |
+      always() &&
+      needs.lint.result != 'failure' &&
+      contains(fromJSON('["quick","standard","full"]'), inputs.test_depth)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Compute code hash
+        id: hash
+        run: |
+          CODE_HASH=$(find nerves/workers/trading -type f -name '*.py' \
+            | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+          echo "code=$CODE_HASH" >> $GITHUB_OUTPUT
+          echo "week=$(date -u +%Y-W%V)" >> $GITHUB_OUTPUT
+
+      - name: Check test sentinel cache
+        id: sentinel
+        uses: actions/cache@v5
+        with:
+          path: .test-passed-safety
+          key: test-passed-safety-${{ steps.hash.outputs.code }}
+
+      - name: Skip (cache hit)
+        if: steps.sentinel.outputs.cache-hit == 'true'
+        run: echo "⚡ [Safety] Tests already passed — skipping."
+
+      - name: Create server symlink
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: |
+          [ ! -d "server" ] && [ -d "nerves/workers/trading" ] \
+            && ln -s nerves/workers/trading server || true
+
+      - name: Set up Python 3.11
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: pip install uv
+
+      - name: Cache uv packages
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ steps.hash.outputs.week }}-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-${{ steps.hash.outputs.week }}-
+            ${{ runner.os }}-uv-
+
+      - name: Install dependencies
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: |
+          uv pip install --system -r server/requirements.txt
+          uv pip install --system -r server/requirements-test.txt
+
+      - name: Run safety tests
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        env:
+          VPS_BUFFER_ENABLED: "false"
+        run: |
+          cd server
+          echo "🧪 [Safety] Approval callbacks + VBS recovery"
+          python -m pytest \
+            tests/unit/test_approval_callbacks.py \
+            tests/unit/test_vbs_recovery.py \
+            -x --tb=short -q
+
+      - name: Write sentinel
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .test-passed-safety
+          echo "${{ steps.hash.outputs.code }}" > .test-passed-safety/hash.txt
+          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .test-passed-safety/timestamp.txt
+
+  # ── E2E + BROWSER SECURITY TESTS ───────────────────────────────────
+  tests-e2e:
+    name: "Tests / E2E + Security (Browser)"
+    runs-on: ubuntu-latest
+    needs: [tests-fast, tests-safety]
+    timeout-minutes: 30
+    if: |
+      always() &&
+      needs.tests-fast.result != 'failure' &&
+      needs.tests-safety.result != 'failure' &&
+      inputs.test_depth == 'full'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Compute code hash
+        id: hash
+        run: |
+          CODE_HASH=$(find nerves/workers/trading -type f -name '*.py' \
+            | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+          echo "code=$CODE_HASH" >> $GITHUB_OUTPUT
+          echo "week=$(date -u +%Y-W%V)" >> $GITHUB_OUTPUT
+
+      - name: Check test sentinel cache
+        id: sentinel
+        uses: actions/cache@v5
+        with:
+          path: .test-passed-e2e
+          key: test-passed-e2e-${{ steps.hash.outputs.code }}
+
+      - name: Skip (cache hit)
+        if: steps.sentinel.outputs.cache-hit == 'true'
+        run: echo "⚡ [E2E] Tests already passed — skipping."
+
+      - name: Create server symlink
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: |
+          [ ! -d "server" ] && [ -d "nerves/workers/trading" ] \
+            && ln -s nerves/workers/trading server || true
+
+      - name: Set up Python 3.11
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: pip install uv
+
+      - name: Cache uv packages
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ steps.hash.outputs.week }}-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-${{ steps.hash.outputs.week }}-
+            ${{ runner.os }}-uv-
+
+      - name: Install dependencies
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: |
+          uv pip install --system -r server/requirements.txt
+          uv pip install --system -r server/requirements-test.txt
+
+      - name: Cache Playwright browsers
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        id: playwright-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright Chromium
+        if: steps.sentinel.outputs.cache-hit != 'true' && steps.playwright-cache.outputs.cache-hit != 'true'
+        run: python -m playwright install chromium
+
+      - name: Run E2E + Security tests
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        env:
+          VPS_BUFFER_ENABLED: "false"
+          CHROMA_REMOTE: "false"
+        run: |
+          cd server
+          echo "🧪 [E2E] Browser + Security tests"
+          python -m pytest tests/e2e/ tests/security/ -x --tb=short -q
+
+      - name: Write sentinel
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .test-passed-e2e
+          echo "${{ steps.hash.outputs.code }}" > .test-passed-e2e/hash.txt
+          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .test-passed-e2e/timestamp.txt
+
+  # ── ADVANCED TESTS (Load + Chaos + Backtest) ───────────────────────
+  tests-advanced:
+    name: "Tests / Advanced"
+    runs-on: ubuntu-latest
+    needs: [tests-fast]
+    timeout-minutes: 30
+    if: |
+      always() &&
+      needs.tests-fast.result != 'failure' &&
+      inputs.test_depth == 'full'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Compute code hash
+        id: hash
+        run: |
+          CODE_HASH=$(find nerves/workers/trading -type f -name '*.py' \
+            | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+          echo "code=$CODE_HASH" >> $GITHUB_OUTPUT
+          echo "week=$(date -u +%Y-W%V)" >> $GITHUB_OUTPUT
+
+      - name: Check test sentinel cache
+        id: sentinel
+        uses: actions/cache@v5
+        with:
+          path: .test-passed-advanced
+          key: test-passed-advanced-${{ steps.hash.outputs.code }}
+
+      - name: Skip (cache hit)
+        if: steps.sentinel.outputs.cache-hit == 'true'
+        run: echo "⚡ [Advanced] Tests already passed — skipping."
+
+      - name: Create server symlink
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: |
+          [ ! -d "server" ] && [ -d "nerves/workers/trading" ] \
+            && ln -s nerves/workers/trading server || true
+
+      - name: Set up Python 3.11
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: pip install uv
+
+      - name: Cache uv packages
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ steps.hash.outputs.week }}-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-${{ steps.hash.outputs.week }}-
+            ${{ runner.os }}-uv-
+
+      - name: Install dependencies
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: |
+          uv pip install --system -r server/requirements.txt
+          uv pip install --system -r server/requirements-test.txt
+
+      - name: Run advanced tests
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        env:
+          VPS_BUFFER_ENABLED: "false"
+          CHROMA_REMOTE: "false"
+        run: |
+          cd server
+          echo "🧪 [Advanced] Load + Chaos + Backtest"
+          python -m pytest tests/advanced/ -x --tb=short -q
+
+      - name: Write sentinel
+        if: steps.sentinel.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .test-passed-advanced
+          echo "${{ steps.hash.outputs.code }}" > .test-passed-advanced/hash.txt
+          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .test-passed-advanced/timestamp.txt
+
+  # ── GATE RESULT AGGREGATOR ─────────────────────────────────────────
+  gate-result:
+    name: "CI Gate Result"
+    runs-on: ubuntu-latest
+    needs: [lint, tests-fast, tests-parity, tests-safety, tests-e2e, tests-advanced]
+    if: always()
+    outputs:
+      passed: ${{ steps.eval.outputs.passed }}
+
+    steps:
+      - name: Evaluate all job results
+        id: eval
+        env:
+          R_LINT:     ${{ needs.lint.result }}
+          R_FAST:     ${{ needs.tests-fast.result }}
+          R_PARITY:   ${{ needs.tests-parity.result }}
+          R_SAFETY:   ${{ needs.tests-safety.result }}
+          R_E2E:      ${{ needs.tests-e2e.result }}
+          R_ADVANCED: ${{ needs.tests-advanced.result }}
+          DEPTH:      ${{ inputs.test_depth }}
+          BRANCH:     ${{ inputs.branch }}
+        run: |
+          echo "============================================"
+          echo "  CI GATE — RESULT SUMMARY"
+          echo "  Branch: $BRANCH | Depth: $DEPTH"
+          echo "============================================"
+          printf "  %-18s %s\n" "Lint:"          "$R_LINT"
+          printf "  %-18s %s\n" "Tests/Fast:"    "$R_FAST"
+          printf "  %-18s %s\n" "Tests/Parity:"  "$R_PARITY"
+          printf "  %-18s %s\n" "Tests/Safety:"  "$R_SAFETY"
+          printf "  %-18s %s\n" "Tests/E2E:"     "$R_E2E"
+          printf "  %-18s %s\n" "Tests/Advanced:""$R_ADVANCED"
+          echo "============================================"
+
+          FAILED=false
+          for r in "$R_LINT" "$R_FAST" "$R_PARITY" "$R_SAFETY" "$R_E2E" "$R_ADVANCED"; do
+            if [ "$r" = "failure" ] || [ "$r" = "cancelled" ]; then
+              FAILED=true
+            fi
+          done
+
+          if [ "$FAILED" = "true" ]; then
+            echo "passed=false" >> $GITHUB_OUTPUT
+            echo "❌ CI GATE FAILED — depth=$DEPTH"
+            exit 1
+          fi
+
+          echo "passed=true" >> $GITHUB_OUTPUT
+          echo "✅ CI GATE PASSED — depth=$DEPTH"

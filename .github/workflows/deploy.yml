@@ -1,6 +1,23 @@
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║  CI/CD PRODUCTION PIPELINE                                      ║
+# ║                                                                ║
+# ║  Triggers:                                                     ║
+# ║    workflow_run  ← ci.yml completed on main (primary)          ║
+# ║    push → main  ← [force deploy] bypass only                  ║
+# ║                                                                ║
+# ║  CI gate is enforced by ci.yml (_ci-gate.yml reusable).        ║
+# ║  deploy.yml does NOT re-run lint or tests — it verifies        ║
+# ║  the sentinel written by _ci-gate.yml jobs.                    ║
+# ╚══════════════════════════════════════════════════════════════════╝
 name: CI/CD Production Pipeline
 
 on:
+  # Primary: fires AFTER ci.yml completes successfully on main
+  workflow_run:
+    workflows: ["CI Pull Request Pipeline"]
+    types: [completed]
+    branches: [main]
+  # Fallback: direct push with [force deploy] or merge commit
   push:
     branches:
       - main
@@ -114,172 +131,89 @@ jobs:
           echo "📊 Deploy Tiers: A=$A B=$B C=$C"
 
 
-  # ── 1A. LINT & SECURITY (Fast ~15s — zero pip install) ───────────
-  ci-lint-security:
-    name: Lint & Security Scan
+  # ── 1. CI GATE VERIFICATION ─────────────────────────────────────────
+  # ci.yml runs _ci-gate.yml (reusable) which writes sentinel caches.
+  # This job verifies the gate without re-running any tests.
+  check-ci-gate:
+    name: "Verify CI Gate"
     needs: changes
-    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
-
-      - name: Create server symlink
-        run: ln -s nerves/workers/trading server
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
+          fetch-depth: 2
 
-      - name: Code Linting (Ruff)
-        run: pipx run ruff check server/ --exit-zero
-
-      - name: Security AST Scan
+      - name: Compute code hash
+        id: hash
         run: |
-          cd server
-          python -m security.cli scan || echo "Warning: Review security scan report"
+          CODE_HASH=$(find nerves/workers/trading -type f -name '*.py' \
+            | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
+          echo "code=$CODE_HASH" >> $GITHUB_OUTPUT
 
-  # ── 1B. ORGANIZED TEST SUITE (2 Parallel Runners) ──────────────────
-  # Runner 1 (Fast):    Unit + Property + Integration + System (540 tests)
-  # Runner 2 (Browser): E2E + Security (35 tests)
-  # Both run IN PARALLEL — only 2 installs instead of 4.
-  ci-tests:
-    name: "Test: ${{ matrix.stage }}"
-    needs: changes
-    if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        include:
-          - stage: "Fast (Unit + Integration + System)"
-            paths: "tests/unit/ tests/property/ tests/integration/ __auto_root__"
-            parallel: true
-            install-browser: false
-          - stage: "Browser (E2E + Security)"
-            paths: "tests/e2e/ tests/security/"
-            parallel: false
-            install-browser: true
-          - stage: "Advanced (Load + Chaos + Backtest)"
-            paths: "tests/advanced/"
-            parallel: false
-            install-browser: false
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v6
+      - name: Restore fast-test sentinel
+        id: sentinel
+        uses: actions/cache/restore@v5
+        with:
+          path: .test-passed-fast
+          key: test-passed-fast-${{ steps.hash.outputs.code }}
 
-      # Hash source code để bypass nếu test đã pass cho code giống hệt
-      - name: Compute code hash for test cache
-        id: code-hash
+      - name: Validate CI gate
         run: |
-          CODE_HASH=$(find nerves/workers/trading -type f -name '*.py' | sort | xargs sha256sum | sha256sum | cut -d' ' -f1)
-          echo "hash=$CODE_HASH" >> $GITHUB_OUTPUT
-          # Weekly rotation key for uv cache (evicts stale packages every 7 days)
-          echo "week=$(date -u +%Y-W%V)" >> $GITHUB_OUTPUT
+          EVENT="${{ github.event_name }}"
+          MSG=$(git log -1 --format=%s 2>/dev/null || echo "")
+          PARENTS=$(git rev-list --parents -1 HEAD | wc -w)
 
-      - name: Check test result cache
-        id: test-cache
-        uses: actions/cache@v5
-        with:
-          path: .test-passed
-          key: test-passed-${{ matrix.stage }}-${{ steps.code-hash.outputs.hash }}
+          echo "════════════════════════════════════"
+          echo "  CI GATE VALIDATION"
+          echo "  Event:    $EVENT"
+          echo "  Sentinel: ${{ steps.sentinel.outputs.cache-hit }}"
+          echo "  Hash:     ${{ steps.hash.outputs.code }}"
+          echo "════════════════════════════════════"
 
-      - name: Skip tests (cache hit)
-        if: steps.test-cache.outputs.cache-hit == 'true'
-        run: echo "⚡ [${{ matrix.stage }}] Tests already passed for this code hash."
-
-      - name: Create server symlink
-        if: steps.test-cache.outputs.cache-hit != 'true'
-        run: ln -s nerves/workers/trading server
-
-      - name: Set up Python 3.11
-        if: steps.test-cache.outputs.cache-hit != 'true'
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.11"
-
-      - name: Install uv (fast pip)
-        if: steps.test-cache.outputs.cache-hit != 'true'
-        run: pip install uv
-
-      - name: Cache uv packages
-        if: steps.test-cache.outputs.cache-hit != 'true'
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-${{ steps.code-hash.outputs.week }}-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-uv-${{ steps.code-hash.outputs.week }}-
-            ${{ runner.os }}-uv-
-
-      - name: Install Dependencies
-        if: steps.test-cache.outputs.cache-hit != 'true'
-        run: |
-          uv pip install --system -r server/requirements.txt
-          uv pip install --system -r server/requirements-test.txt
-
-      - name: Cache Playwright browsers
-        if: steps.test-cache.outputs.cache-hit != 'true' && matrix.install-browser == true
-        id: playwright-cache
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
-
-      - name: Install Playwright Chromium Browser
-        if: steps.test-cache.outputs.cache-hit != 'true' && steps.playwright-cache.outputs.cache-hit != 'true' && matrix.install-browser == true
-        run: python -m playwright install chromium
-
-      - name: "Run Tests: ${{ matrix.stage }}"
-        if: steps.test-cache.outputs.cache-hit != 'true'
-        env:
-          VPS_BUFFER_ENABLED: "false"
-          CHROMA_REMOTE: "false"
-        run: |
-          cd server
-          # Resolve test paths (expand __auto_root__ to root-level test files)
-          RAW_PATHS="${{ matrix.paths }}"
-          if echo "$RAW_PATHS" | grep -q '__auto_root__'; then
-            ROOT_FILES=$(find tests/ -maxdepth 1 -name 'test_*.py' | sort | tr '\n' ' ')
-            TEST_PATHS=$(echo "$RAW_PATHS" | sed "s|__auto_root__|$ROOT_FILES|")
-          else
-            TEST_PATHS="$RAW_PATHS"
+          # (a) workflow_run trigger: ci.yml already completed
+          if [ "$EVENT" = "workflow_run" ]; then
+            CONCLUSION="${{ github.event.workflow_run.conclusion }}"
+            echo "workflow_run conclusion: $CONCLUSION"
+            if [ "$CONCLUSION" = "success" ]; then
+              echo "✅ CI gate: workflow_run success — deploy allowed"
+              exit 0
+            else
+              echo "❌ CI gate: ci.yml concluded '$CONCLUSION' — deploy blocked"
+              exit 1
+            fi
           fi
 
-          # Auto-count tests
-          COUNT=$(python -m pytest $TEST_PATHS --collect-only -q 2>/dev/null | tail -1 | grep -oP '\d+(?= tests?)' || echo "?")
-          echo "🧪 [${{ matrix.stage }}] Running $COUNT tests"
-
-          # Run with or without parallelism
-          if [ "${{ matrix.parallel }}" = "true" ]; then
-            python -m pytest $TEST_PATHS -x -n auto --dist worksteal --tb=short -q
-          else
-            python -m pytest $TEST_PATHS -x --tb=short -q
+          # (b) [force deploy] or merge commit bypass (direct push trigger)
+          if [[ "$MSG" == *"[force deploy]"* ]] || [ "$PARENTS" -gt 2 ]; then
+            echo "🔴 [force deploy] / merge commit — bypassing sentinel check"
+            exit 0
           fi
 
-      - name: Mark tests passed for cache
-        if: steps.test-cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p .test-passed
-          echo "${{ steps.code-hash.outputs.hash }}" > .test-passed/hash.txt
-          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .test-passed/timestamp.txt
+          # (c) Sentinel cache from _ci-gate.yml fast tests
+          if [ "${{ steps.sentinel.outputs.cache-hit }}" = "true" ]; then
+            echo "✅ CI sentinel found — tests passed for hash ${{ steps.hash.outputs.code }}"
+            exit 0
+          fi
 
-  # ── 1C. BUILD & PUSH DOCKER IMAGES (Parallel Matrix + Hash Skip) ──
+          echo "❌ CI gate not satisfied."
+          echo "   Options: (1) let ci.yml complete, (2) add [force deploy] to commit."
+          exit 1
+
+
+  # ── 2. BUILD & PUSH DOCKER IMAGES (Parallel Matrix + Hash Skip) ──
   # Optimization: 3 images build simultaneously on separate runners.
   # Hash-based skip: if source files haven't changed, build is skipped.
   # Scoped GHA cache: each image has its own BuildKit cache partition.
   # Trivy runs inside each matrix entry (parallel, not sequential).
   build-images:
     name: "Build: ${{ matrix.name }}"
-    needs: [changes, ci-lint-security, ci-tests]
+    needs: [changes, check-ci-gate]
     if: |
       always() &&
       (needs.changes.outputs.docker == 'true' || contains(github.event.head_commit.message, '[force deploy]')) &&
-      (needs.ci-lint-security.result == 'success' || needs.ci-lint-security.result == 'skipped') &&
-      (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped')
+      (needs.check-ci-gate.result == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -380,12 +314,11 @@ jobs:
   # ── 2A. DEPLOY SERVER A (Gateway) ──────────────────────────────────
   deploy-server-a:
     name: "Deploy Server A (Gateway) [T${{ needs.changes.outputs.server_a_tier }}]"
-    needs: [changes, ci-lint-security, ci-tests, build-images]
+    needs: [changes, check-ci-gate, build-images]
     if: |
       always() &&
       needs.changes.outputs.server_a_tier != '0' &&
-      (needs.ci-lint-security.result == 'success' || needs.ci-lint-security.result == 'skipped') &&
-      (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped') &&
+      (needs.check-ci-gate.result == 'success') &&
       (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
@@ -549,12 +482,11 @@ jobs:
   # ── 2B. DEPLOY SERVER C (AI Core) ──────────────────────────────────
   deploy-server-c:
     name: "Deploy Server C (AI Core) [T${{ needs.changes.outputs.server_c_tier }}]"
-    needs: [changes, ci-lint-security, ci-tests, build-images]
+    needs: [changes, check-ci-gate, build-images]
     if: |
       always() &&
       needs.changes.outputs.server_c_tier != '0' &&
-      (needs.ci-lint-security.result == 'success' || needs.ci-lint-security.result == 'skipped') &&
-      (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped') &&
+      (needs.check-ci-gate.result == 'success') &&
       (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
@@ -808,12 +740,11 @@ jobs:
   # ── 2C. DEPLOY SERVER B (Execution Vault — Windows) ─────────────────
   deploy-server-b:
     name: "Deploy Server B (Execution Vault) [T${{ needs.changes.outputs.server_b_tier }}]"
-    needs: [changes, ci-lint-security, ci-tests, build-images]
+    needs: [changes, check-ci-gate, build-images]
     if: |
       always() &&
       needs.changes.outputs.server_b_tier != '0' &&
-      (needs.ci-lint-security.result == 'success' || needs.ci-lint-security.result == 'skipped') &&
-      (needs.ci-tests.result == 'success' || needs.ci-tests.result == 'skipped') &&
+      (needs.check-ci-gate.result == 'success') &&
       (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
     runs-on: ubuntu-latest
     steps:

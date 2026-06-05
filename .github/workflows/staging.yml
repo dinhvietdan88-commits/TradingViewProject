@@ -11,23 +11,51 @@ on:
         default: 'http://localhost:5000'
 
 jobs:
-  # Step 1: Check if STAGING_BASE_URL secret is set (secrets can't be compared in if: directly)
+  # Step 1: Check staging config AND whether code actually changed
   check-config:
     name: Check Staging Config
     runs-on: ubuntu-latest
     outputs:
       has_url: ${{ steps.check.outputs.has_url }}
     steps:
-      - name: Check if STAGING_BASE_URL is configured
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect code changes (skip docs-only pushes)
+        id: paths
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            code:
+              - 'server/**'
+              - 'nerves/workers/trading/**'
+              - 'vbs/**'
+              - 'Dockerfile'
+
+      - name: Check if staging smoke should run
         id: check
         env:
           STAGING_URL: ${{ secrets.STAGING_BASE_URL }}
+          HAS_CODE: ${{ steps.paths.outputs.code }}
         run: |
-          if [ -n "$STAGING_URL" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          DISPATCH="${{ github.event_name }}"
+          # workflow_dispatch always runs (manual trigger)
+          if [ "$DISPATCH" = "workflow_dispatch" ]; then
+            echo "has_url=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          # Skip on docs-only pushes
+          if [ "$HAS_CODE" = "false" ]; then
+            echo "has_url=false" >> $GITHUB_OUTPUT
+            echo "⏭️  Docs-only push — skipping staging smoke test."
+            exit 0
+          fi
+          # Require STAGING_BASE_URL secret for push triggers
+          if [ -n "$STAGING_URL" ]; then
             echo "has_url=true" >> $GITHUB_OUTPUT
           else
             echo "has_url=false" >> $GITHUB_OUTPUT
-            echo "⚠️ STAGING_BASE_URL secret not set — skipping smoke tests. Add it in Settings → Secrets → Actions."
+            echo "⚠️ STAGING_BASE_URL secret not set — skipping smoke tests."
           fi
 
   staging-smoke:

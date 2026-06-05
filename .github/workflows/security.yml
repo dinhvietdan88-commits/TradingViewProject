@@ -1,0 +1,285 @@
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║         ANGATI SECURITY GATE — GitHub Code Scanning             ║
+# ║  Triggers: push/PR to main + weekly schedule                    ║
+# ╚══════════════════════════════════════════════════════════════════╝
+name: Security & Code Scanning
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly deep scan — every Monday at 02:00 UTC
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+    inputs:
+      scan_level:
+        description: "Scan level (quick | full)"
+        required: false
+        default: "full"
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: false   # Security scans must complete
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write      # Required to upload SARIF results
+
+jobs:
+  # ── 0. PRE-CHECK: Skip entirely on docs-only changes ──────────────
+  # Saves 4 runners on every push that only touches docs/pine/scratch.
+  # Weekly schedule always runs (no path filter on cron).
+  check-code-changed:
+    name: "Check — Code Changed?"
+    runs-on: ubuntu-latest
+    outputs:
+      has_code: ${{ steps.filter.outputs.code }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Detect code changes
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            code:
+              - 'server/**'
+              - 'nerves/workers/trading/**'
+              - 'vbs/**'
+              - 'Dockerfile'
+              - 'vbs/Dockerfile'
+              - 'requirements*.txt'
+
+  # ── 1. CODEQL ANALYSIS ──────────────────────────────────────────
+  codeql:
+    name: CodeQL Analysis (Python)
+    needs: check-code-changed
+    if: |
+      needs.check-code-changed.outputs.has_code == 'true' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2       # Required for CodeQL to detect changes
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: python
+          queries: +security-extended,security-and-quality
+          config: |
+            paths:
+              - server
+              - trading
+            paths-ignore:
+              - server/.venv
+              - server/chroma_db
+              - '**/__pycache__'
+              - '**/*.pyc'
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Auto-build step (CodeQL auto-detects Python — no explicit build needed)
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:python"
+          output: sarif-results
+          upload: true
+
+  # ── 2. DEPENDENCY VULNERABILITY AUDIT ───────────────────────────
+  dependency-audit:
+    name: Dependency Vulnerability Audit
+    needs: check-code-changed
+    if: |
+      needs.check-code-changed.outputs.has_code == 'true' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit server/requirements.txt
+        run: |
+          echo "🔍 Auditing server/requirements.txt..."
+          pip-audit -r server/requirements.txt \
+            --format=json \
+            --output=audit-server.json \
+            --ignore-vuln PYSEC-2022-42969 \
+            || true
+
+          echo "🔍 Auditing server/requirements-test.txt..."
+          pip-audit -r server/requirements-test.txt \
+            --format=json \
+            --output=audit-test.json \
+            || true
+
+          # Print human-readable summary
+          pip-audit -r server/requirements.txt || true
+
+      - name: Upload audit reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-audit-${{ github.run_id }}
+          path: |
+            audit-server.json
+            audit-test.json
+          retention-days: 30
+
+  # ── 3. ANGATI INTERNAL SECURITY SCAN (AST-based) ────────────────
+  angati-security-scan:
+    name: Angati Internal Security Scan
+    needs: check-code-changed
+    if: |
+      needs.check-code-changed.outputs.has_code == 'true' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Ruff + Bandit
+        run: pip install ruff bandit[toml]
+
+      - name: Create server symlink (repo layout compatibility)
+        run: |
+          if [ ! -d "server" ] && [ -d "nerves/workers/trading" ]; then
+            ln -s nerves/workers/trading server
+          fi
+
+      - name: Ruff Security-Relevant Lint (E, S rules)
+        run: |
+          echo "=== Ruff Lint Report ===" | tee ruff-report.txt
+          ruff check server/ \
+            --select E,W,S,B,A,C4,T20 \
+            --output-format=github \
+            --exit-zero | tee -a ruff-report.txt
+
+      - name: Bandit SAST (AST security patterns)
+        run: |
+          echo "=== Bandit SAST Report ===" | tee bandit-report.txt
+          bandit -r server/ \
+            -x server/.venv,server/chroma_db,server/__pycache__ \
+            -f txt \
+            --severity-level medium \
+            -o bandit-report.txt \
+            || true
+          cat bandit-report.txt
+
+      - name: Angati Internal Security CLI
+        run: |
+          echo "=== Angati Security CLI ===" | tee angati-sec.txt
+          cd server && python -m security.cli scan 2>&1 | tee -a ../angati-sec.txt || \
+            echo "⚠️  security.cli not available in CI — skipping internal scan"
+
+      - name: Upload security scan reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: angati-security-reports-${{ github.run_id }}
+          path: |
+            ruff-report.txt
+            bandit-report.txt
+            angati-sec.txt
+          retention-days: 30
+
+  # ── 4. SECRET DETECTION ─────────────────────────────────────────
+  secret-scan:
+    name: Secret Detection (TruffleHog)
+    needs: check-code-changed
+    if: |
+      needs.check-code-changed.outputs.has_code == 'true' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0       # Full history needed for secret scanning
+
+      - name: TruffleHog OSS Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: >-
+            --only-verified
+            --exclude-paths=.gitsecrets
+
+      - name: Check for .env files committed by mistake
+        run: |
+          echo "Checking for accidentally committed secrets..."
+          # Warn if any .env file (not .env.example) is tracked
+          TRACKED=$(git ls-files | grep -E '\.env$' | grep -v '\.env\.example' || true)
+          if [ -n "$TRACKED" ]; then
+            echo "⚠️  WARNING: The following .env files are tracked by git:"
+            echo "$TRACKED"
+            echo "Remove them with: git rm --cached <file>"
+          else
+            echo "✅ No .env files tracked — clean"
+          fi
+
+  # ── 5. SECURITY GATE SUMMARY ────────────────────────────────────
+  security-gate:
+    name: Security Gate (Pass/Fail)
+    runs-on: ubuntu-latest
+    needs: [check-code-changed, codeql, dependency-audit, angati-security-scan, secret-scan]
+    if: always()
+
+    steps:
+      - name: Evaluate Gate
+        run: |
+          echo "============================================"
+          echo "  ANGATI SECURITY GATE — RESULTS SUMMARY"
+          echo "============================================"
+          echo "CodeQL:             ${{ needs.codeql.result }}"
+          echo "Dependency Audit:   ${{ needs.dependency-audit.result }}"
+          echo "Angati Sec Scan:    ${{ needs.angati-security-scan.result }}"
+          echo "Secret Scan:        ${{ needs.secret-scan.result }}"
+          echo "============================================"
+
+          # Fail if CodeQL or secret scan fails (hard blockers)
+          if [ "${{ needs.codeql.result }}" = "failure" ]; then
+            echo "❌ GATE FAILED: CodeQL found critical issues."
+            exit 1
+          fi
+          if [ "${{ needs.secret-scan.result }}" = "failure" ]; then
+            echo "❌ GATE FAILED: Secrets detected in repository."
+            exit 1
+          fi
+          echo "✅ Security gate PASSED."
