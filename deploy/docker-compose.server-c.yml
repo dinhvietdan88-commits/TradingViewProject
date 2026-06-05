@@ -90,6 +90,9 @@ services:
       - EXCLUDE_INDICATOR_SIGNALS=${EXCLUDE_INDICATOR_SIGNALS:-false}
       # Matplotlib config dir — avoid read-only /app bind mount conflict
       - MPLCONFIGDIR=/tmp/matplotlib
+      # HuggingFace cache dirs — avoid read-only /app/.cache conflict
+      - HF_HOME=/tmp/huggingface
+      - TRANSFORMERS_CACHE=/tmp/huggingface
     networks:
       - analyzer
     # Map host.docker.internal -> Docker host IP

@@ -331,8 +331,8 @@ jobs:
       - name: Connect to Tailscale VPN
         uses: tailscale/github-action@v4
         with:
-          oauth-client-id:     ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
-          oauth-client-secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
+          oauth-client-id:     ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-client-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci-deploy
 
       - name: Setup SSH Agent
@@ -501,8 +501,8 @@ jobs:
       - name: Connect to Tailscale VPN
         uses: tailscale/github-action@v4
         with:
-          oauth-client-id:     ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
-          oauth-client-secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
+          oauth-client-id:     ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-client-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci-deploy
 
       - name: Setup SSH Agent
@@ -771,8 +771,8 @@ jobs:
       - name: Connect to Tailscale VPN
         uses: tailscale/github-action@v4
         with:
-          oauth-client-id:     ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
-          oauth-client-secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
+          oauth-client-id:     ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-client-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci-deploy
 
       - name: Setup SSH Agent
