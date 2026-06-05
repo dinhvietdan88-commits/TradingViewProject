@@ -6,6 +6,13 @@ on:
     - cron: '0 19 * * *'
   workflow_dispatch: {}
 
+concurrency:
+  group: nightly-regression
+  cancel-in-progress: false  # Nightly must complete — never cancel mid-run
+
+permissions:
+  contents: read
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
@@ -13,7 +20,7 @@ jobs:
   nightly-regression:
     name: Nightly Regression Suite
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
