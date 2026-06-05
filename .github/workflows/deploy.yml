@@ -37,15 +37,9 @@ jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
-    # Early-exit gate: skip entire pipeline when triggered by push WITHOUT [force deploy].
-    # ─ workflow_run: always proceed (ci.yml already passed)
-    # ─ push + [force deploy]: proceed (manual override)
-    # ─ push (normal commit): SKIP — workflow_run will handle it once ci.yml completes
-    # This prevents the double-run waste where push fires immediately but is always
-    # blocked by check-ci-gate anyway (sentinel cache miss at push time).
-    if: >-
-      github.event_name == 'workflow_run' ||
-      (github.event_name == 'push' && contains(github.event.head_commit.message, '[force deploy]'))
+    # Early-exit gate: skip entire pipeline when push fires WITHOUT [force deploy].
+    # workflow_run always proceeds; push only proceeds with [force deploy].
+    if: "github.event_name == 'workflow_run' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[force deploy]'))"
     outputs:
       code: ${{ steps.filter.outputs.code }}
       deploy: ${{ steps.filter.outputs.deploy }}
