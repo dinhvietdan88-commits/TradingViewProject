@@ -11,23 +11,10 @@ Capabilities:
 """
 
 import logging
-"""
-P7 Sprint 7.5 — AI Vision Analysis
-Gửi chart screenshot cho Claude Vision để nhận diện pattern trực quan.
-
-Capabilities:
-    - VCP (Volatility Contraction Pattern) visual detection
-    - Cup-with-Handle, Ascending Base, Flat Base identification
-    - Volume analysis from chart visual
-    - Support/Resistance zone detection
-    - Combined score: algorithmic (TT/VCP) + visual (Claude Vision)
-"""
-
-import logging
 import base64
 import asyncio
 from pathlib import Path
-from typing import Optional, List, Dict
+from typing import Optional, List, Tuple
 
 log = logging.getLogger(__name__)
 
@@ -115,67 +102,87 @@ Trả lời bằng Tiếng Việt ngắn gọn, format Telegram-friendly (sử d
 Bắt đầu bằng: 👁️ MULTI-TIMEFRAME ANALYSIS — {symbol}"""
 
 
-from typing import Tuple
 
 def _encode_image(image_path: Path, max_width: int = 1024) -> Tuple[Optional[str], str]:
     """Encode image to base64, compressing/resizing to WebP if PIL is available."""
     mime_type = _get_media_type(image_path)
-    
+
     # ── PATH & LOG INJECTION SANITIZATION (CodeQL CWE-22, CWE-117) ──
     import os
     import tempfile
-    
-    # Resolve the path to absolute
-    resolved_path = image_path.resolve()
-    
-    # Define allowed directories (Workspace, Temp, or User Home)
+
+    # Resolve user-provided path to absolute canonical string
+    resolved_str = os.path.realpath(str(image_path))
+
+    # Define allowed root directories (Workspace, Temp, User Home)
     allowed_roots = [
-        Path(tempfile.gettempdir()).resolve(),
-        Path(os.path.expanduser("~")).resolve(),
-        Path(__file__).parent.parent.parent.resolve()
+        os.path.realpath(tempfile.gettempdir()),
+        os.path.realpath(os.path.expanduser("~")),
+        os.path.realpath(
+            os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)
+        ),
     ]
-    
-    is_safe = False
+
+    # Validate: the resolved path MUST fall under an allowed root
+    matched_root = None
     for root in allowed_roots:
-        try:
-            if resolved_path.is_relative_to(root):
-                is_safe = True
-                break
-        except (ValueError, AttributeError):
-            if str(resolved_path).startswith(str(root)):
-                is_safe = True
-                break
-                
-    if not is_safe:
-        clean_path_log = str(resolved_path).replace('\r', '').replace('\n', '')
-        log.error(f"Security Rejection: Path is outside allowed directories: {clean_path_log}")
+        # Ensure root ends with separator for prefix-safety
+        prefix = root if root.endswith(os.sep) else root + os.sep
+        if resolved_str == root or resolved_str.startswith(prefix):
+            matched_root = root
+            break
+
+    if matched_root is None:
+        sanitized_log = resolved_str.replace("\r", "").replace("\n", "")
+        log.error(
+            "Security Rejection: Path is outside allowed "
+            f"directories: {sanitized_log}"
+        )
         return None, mime_type
 
-    clean_path_str = str(resolved_path).replace('\r', '').replace('\n', '')
+    # ── TAINT-BREAK: rebuild path from safe root + validated relative ──
+    # This breaks the CodeQL data-flow from user input to open().
+    rel = os.path.relpath(resolved_str, matched_root)
+    # Guard against path traversal components in the relative path
+    rel_parts = rel.replace("\\", "/").split("/")
+    if ".." in rel_parts:
+        sanitized_log = resolved_str.replace("\r", "").replace("\n", "")
+        log.error(
+            "Security Rejection: Path traversal "
+            f"detected: {sanitized_log}"
+        )
+        return None, mime_type
+    safe_path = os.path.join(matched_root, rel)  # known-safe construction
+    clean_path_str = safe_path.replace("\r", "").replace("\n", "")
 
     try:
         from PIL import Image
         import io
-        
-        with Image.open(resolved_path) as img:
+
+        with Image.open(safe_path) as img:
             # Resize if too large
             if img.width > max_width:
                 height = int((max_width / img.width) * img.height)
                 img = img.resize((max_width, height), Image.Resampling.LANCZOS)
-            
+
             # Save to bytes in WebP format
             output = io.BytesIO()
             img.save(output, format="WEBP", quality=80)
             base64_str = base64.b64encode(output.getvalue()).decode("utf-8")
             return base64_str, "image/webp"
     except Exception as e:
-        log.warning(f"PIL compression failed for {clean_path_str}, falling back to raw: {e}")
+        log.warning(
+            f"PIL compression failed for {clean_path_str}, "
+            f"falling back to raw: {e}"
+        )
         try:
-            with open(resolved_path, "rb") as f:
+            with open(safe_path, "rb") as f:
                 base64_str = base64.b64encode(f.read()).decode("utf-8")
                 return base64_str, mime_type
         except Exception as read_err:
-            log.error(f"Failed to read image file {clean_path_str}: {read_err}")
+            log.error(
+                f"Failed to read image file {clean_path_str}: {read_err}"
+            )
             return None, mime_type
 
 
@@ -815,7 +822,8 @@ async def analyze_chart_vision_mtf(
             if mtf_scan_result and "timeframes" in mtf_scan_result:
                 scan_1d = mtf_scan_result["timeframes"].get("1d")
                 tt_score = scan_1d.trend_template.score if scan_1d and not getattr(scan_1d, 'error', None) else 0
-                vcp_algo = scan_1d.vcp.detected if scan_1d and not getattr(scan_1d, 'error', None) else False
+                # vcp_algo reserved for future VCP-weighted scoring
+                # vcp_algo = scan_1d.vcp.detected if scan_1d and not getattr(scan_1d, 'error', None) else False
                 visual_conf = result["confidence"]
                 algo_score = (tt_score / 8) * 10
                 combined = algo_score * 0.4 + visual_conf * 0.6 if visual_conf >= 9 else algo_score * 0.5 + visual_conf * 0.5
@@ -992,7 +1000,8 @@ async def analyze_chart_vision_mtf(
         if mtf_scan_result and "timeframes" in mtf_scan_result:
             scan_1d = mtf_scan_result["timeframes"].get("1d")
             tt_score = scan_1d.trend_template.score if scan_1d and not getattr(scan_1d, 'error', None) else 0
-            vcp_algo = scan_1d.vcp.detected if scan_1d and not getattr(scan_1d, 'error', None) else False
+            # vcp_algo reserved for future VCP-weighted scoring
+            # vcp_algo = scan_1d.vcp.detected if scan_1d and not getattr(scan_1d, 'error', None) else False
             visual_conf = result["confidence"]
 
             algo_score = (tt_score / 8) * 10
@@ -1025,7 +1034,8 @@ async def analyze_chart_vision_mtf(
             if mtf_scan_result and "timeframes" in mtf_scan_result:
                 scan_1d = mtf_scan_result["timeframes"].get("1d")
                 tt_score = scan_1d.trend_template.score if scan_1d and not getattr(scan_1d, 'error', None) else 0
-                vcp_algo = scan_1d.vcp.detected if scan_1d and not getattr(scan_1d, 'error', None) else False
+                # vcp_algo extraction reserved for future VCP-weighted scoring
+                # vcp_algo = scan_1d.vcp.detected if scan_1d and not getattr(scan_1d, 'error', None) else False
                 visual_conf = result["confidence"]
                 algo_score = (tt_score / 8) * 10
                 combined = algo_score * 0.4 + visual_conf * 0.6 if visual_conf >= 9 else algo_score * 0.5 + visual_conf * 0.5

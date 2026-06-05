@@ -22,7 +22,6 @@ Design Invariants (v6.0 INV-5/6):
 """
 import logging
 import json
-from pathlib import Path
 from typing import Optional
 import aiosqlite
 
@@ -322,8 +321,8 @@ async def notify_signal_rejected(event: SignalRejected) -> None:
         )
         if event.reason == "invalid_timeframe":
             msg += (
-                f"\n\n💡 Chiến lược MIS v1 chỉ cho phép khung 1H (60). "
-                f"Vui lòng kiểm tra cài đặt TradingView Alert."
+                "\n\n💡 Chiến lược MIS v1 chỉ cho phép khung 1H (60). "
+                "Vui lòng kiểm tra cài đặt TradingView Alert."
             )
 
     log.info(f"NotificationHub: Rejected signal #{event.signal_id} on {getattr(event, 'exchange', 'binance')} — {event.reason}")
@@ -356,7 +355,7 @@ async def notify_signal_rejected(event: SignalRejected) -> None:
             from utils.html_chunker import truncate_caption_html_safe
             edit_msg += f"\n• 🧠 Phân tích AI: {truncate_caption_html_safe(event.analysis_text, 300)}"
         elif event.reason == "invalid_timeframe":
-            edit_msg += f" (Khung 1H/Daily mới hợp lệ)"
+            edit_msg += " (Khung 1H/Daily mới hợp lệ)"
 
         edited = False
         for m in tg_msgs:
@@ -869,7 +868,7 @@ async def notify_circuit_breaker_tripped(event: CircuitBreakerTripped) -> None:
             log.warning(f"NotificationHub: Failed to render chart for circuit breaker trip: {chart_err}")
 
     try:
-        import telegram_bot
+        import telegram_bot  # intentional lazy import to break circular dependency at load time
         sent_pairs = await telegram_bot.send_circuit_breaker_alert(
             exchange=event.exchange,
             symbol=event.symbol,

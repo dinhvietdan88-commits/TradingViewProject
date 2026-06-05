@@ -649,7 +649,7 @@ async def get_recent_circuit_breaker_logs(limit: int = 10) -> list:
                             import json
                             row_dict["current_metrics"] = json.loads(row_dict["current_metrics"])
                         except Exception:
-                            pass
+                            pass  # JSON parse of metrics is best-effort; keep raw string on failure
                     logs.append(row_dict)
                 return logs
     except Exception as e:

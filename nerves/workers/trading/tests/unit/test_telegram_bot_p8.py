@@ -9,7 +9,6 @@ Tests cover:
 - DataQueryFacade.get_daily_stats: aggregates correctly
 - ExchangeQueryFacade.get_balance: fallback to binance_client
 """
-import asyncio
 import time
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -21,7 +20,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 def test_send_interactive_trade_approval_returns_list():
     """G2 guard: function must return a list (not bool)."""
-    import inspect
     import telegram_bot
     hints = {}
     try:
@@ -197,7 +195,7 @@ async def test_approval_timeout_manager_check_cycle_expires():
     mock_event.action = "BUY"
 
     with patch("telegram_bot.get_sender", return_value=mock_sender):
-        with patch("hub.notification_hub.PENDING_TRADES", {77: mock_event}) as mock_pt:
+        with patch("hub.notification_hub.PENDING_TRADES", {77: mock_event}):
             await mgr._check_cycle()
 
     # Entry should be removed
@@ -290,7 +288,7 @@ async def test_data_facade_get_recent_trades_limit():
         mock_connect.return_value = mock_db
 
         with patch("config.DB_PATH", ":memory:"):
-            trades = await facade.get_recent_trades(limit=100)
+            _trades = await facade.get_recent_trades(limit=100)  # noqa: F841 — result unused, testing execute args
 
         # fetchall called → execute was called with limit <= 50
         call_args = mock_db.execute.call_args
@@ -336,7 +334,7 @@ async def test_exchange_facade_get_open_positions_empty_registry():
 @pytest.mark.asyncio
 async def test_send_circuit_breaker_alert_broadcasts():
     """send_circuit_breaker_alert should send to all TELEGRAM_CHAT_IDS and return tuples."""
-    import telegram_bot
+    import telegram_bot  # module-level access needed for _bot_app; other tests use from-import for classes
     from telegram import InlineKeyboardMarkup
 
     mock_msg = MagicMock()
