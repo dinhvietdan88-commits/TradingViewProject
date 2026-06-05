@@ -24,10 +24,10 @@ class TrendTemplateResult:
 @dataclass
 class VCPResult:
     detected: bool
-    volume_ratio: float                 # current vol / 20-period avg (< 0.5 = contraction)
+    volume_ratio: float  # current vol / 20-period avg (< 0.5 = contraction)
     range_ratio: float                  # (H-L) / ATR14 (< 0.5 = narrow)
     pivot_level: Optional[float]        # estimated breakout pivot
-    vol_breakout: bool                  # volume > 1.2x average (for breakout confirmation)
+    vol_breakout: bool  # volume > 1.2x average (for breakout confirmation)
     note: str
 
 
@@ -154,9 +154,17 @@ def score_trend_template(
 
     # Macro Regime classification
     if sma200 is not None and sma50 is not None:
-        if price > sma50 and sma50 > sma200 and (sma200_slope is None or sma200_slope > 0):
+        if (
+            price > sma50
+            and sma50 > sma200
+            and (sma200_slope is None or sma200_slope > 0)
+        ):
             macro_regime = "Bull 🐂"
-        elif price < sma50 and sma50 < sma200 and (sma200_slope is None or sma200_slope < 0):
+        elif (
+            price < sma50
+            and sma50 < sma200
+            and (sma200_slope is None or sma200_slope < 0)
+        ):
             macro_regime = "Bear 🐻"
         else:
             macro_regime = "Choppy 🌊"
@@ -267,8 +275,6 @@ async def scan_symbols(symbols: list[str], mcp_client) -> list[ScanResult]:
     Falls back to REST scanning if MCP is unavailable, fails, or returns incomplete data.
     Returns sorted by VCP detected first, then by TT score descending.
     """
-    from mcp_client import QuoteData, StudyValues
-
     raw_data = None
     mcp_healthy = False
     
