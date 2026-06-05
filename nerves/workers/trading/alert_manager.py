@@ -14,7 +14,10 @@ log_file_path = os.path.join(os.path.dirname(__file__), "test_runs.log")
 if not test_runs_logger.handlers:
     test_runs_logger.setLevel(logging.INFO)
     file_handler = logging.FileHandler(log_file_path, encoding="utf-8")
-    formatter = logging.Formatter("[%(asctime)s] | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter(
+        "[%(asctime)s] | %(levelname)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
     file_handler.setFormatter(formatter)
     test_runs_logger.addHandler(file_handler)
 
@@ -68,7 +71,8 @@ async def get_setting_async(key: str, default: Optional[str] = None) -> Optional
     import aiosqlite
     try:
         async with aiosqlite.connect(config.DB_PATH) as db:
-            async with db.execute("SELECT value FROM settings WHERE key = ?", (key,)) as cursor:
+            query = "SELECT value FROM settings WHERE key = ?"
+            async with db.execute(query, (key,)) as cursor:
                 row = await cursor.fetchone()
                 return row[0] if row else default
     except Exception as e:
@@ -92,18 +96,20 @@ async def handle_test_failure_alert(filename: str, traceback_short: str):
     except Exception as e:
         logger.error(f"Failed to send Telegram alert for test failure: {e}")
 
-async def handle_health_check_transition(check_name: str, status: str, error_message: str = ""):
+async def handle_health_check_transition(
+    check_name: str, status: str, error_message: str = ""
+):
     """
     Checks if a health check transitioned from "OK" (or non-ERROR) to "ERROR".
     Updates the setting key and sends a Telegram alert if a transition occurs.
     """
     setting_key = f"health_{check_name}"
     prev_status = await get_setting_async(setting_key)
-    
+
     # Update status in settings table
     await set_setting_async(setting_key, status)
-    
-    # Check for transition: only alert if previous was OK (or not ERROR) and new is ERROR
+
+    # Only alert if previous status was OK (or not ERROR) and new is ERROR
     if prev_status != "ERROR" and status == "ERROR":
         message = (
             f"🚨 <b>System Health Check Failed!</b>\n\n"
@@ -116,6 +122,8 @@ async def handle_health_check_transition(check_name: str, status: str, error_mes
             from notifier import send_telegram_alert
             await send_telegram_alert(message)
             # Log transition to log file
-            test_runs_logger.error(f"Health check '{check_name}' failed: {error_message}")
+            test_runs_logger.error(
+                f"Health check '{check_name}' failed: {error_message}"
+            )
         except Exception as e:
             logger.error(f"Failed to send Telegram alert for health check failure: {e}")

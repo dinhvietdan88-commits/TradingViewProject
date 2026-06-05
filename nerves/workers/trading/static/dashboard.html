@@ -8,6 +8,310 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/dashboard.css?v=20260529b">
+  <style>
+    /* Security & Protection Gates */
+    .risk-gates-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .risk-card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+    }
+    .risk-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .risk-card-name {
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #ffffff;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .cb-badge {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+      border: 1px solid;
+    }
+    .cb-badge.closed {
+      color: #34d399;
+      border-color: rgba(52,211,153,0.3);
+      background: rgba(52,211,153,0.08);
+    }
+    .cb-badge.half-open {
+      color: #fb923c;
+      border-color: rgba(251,146,60,0.3);
+      background: rgba(251,146,60,0.08);
+    }
+    .cb-badge.open {
+      color: #f87171;
+      border-color: rgba(248,113,113,0.3);
+      background: rgba(248,113,113,0.08);
+      animation: pulse-border 1.5s infinite;
+    }
+    @keyframes pulse-border {
+      0%, 100% { border-color: rgba(248,113,113,0.3); box-shadow: 0 0 0px rgba(248,113,113,0); }
+      50% { border-color: rgba(248,113,113,0.8); box-shadow: 0 0 6px rgba(248,113,113,0.2); }
+    }
+    .risk-gauges {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .gauge-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .gauge-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-family: var(--mono);
+    }
+    .gauge-header span.val {
+      color: #cbd5e1;
+    }
+    .gauge-bar-bg {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      height: 5px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .gauge-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+    .gauge-bar-fill.normal {
+      background: linear-gradient(90deg, #6c63ff, #8b5cf6);
+    }
+    .gauge-bar-fill.drawdown {
+      background: linear-gradient(90deg, #06b6d4, #3b82f6);
+    }
+    .gauge-bar-fill.danger {
+      background: #ef4444;
+    }
+    .risk-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255,255,255,0.03);
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--text-muted);
+    }
+    .override-btn {
+      padding: 2px 8px;
+      font-size: 0.65rem;
+      background: transparent;
+      border: 1px solid rgba(248,113,113,0.4);
+      border-radius: 4px;
+      color: #f87171;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .override-btn:hover {
+      background: rgba(248,113,113,0.1);
+      border-color: #f87171;
+    }
+    .reset-btn {
+      padding: 2px 8px;
+      font-size: 0.65rem;
+      background: transparent;
+      border: 1px solid rgba(52,211,153,0.4);
+      border-radius: 4px;
+      color: #34d399;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .reset-btn:hover {
+      background: rgba(52,211,153,0.1);
+      border-color: #34d399;
+    }
+
+    /* Risk Settings Modal Styles */
+    .risk-settings-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+      z-index: 1100;
+    }
+    .risk-settings-box {
+      background: rgba(17,19,24,0.98);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      width: 380px;
+      padding: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .risk-settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding-bottom: 6px;
+    }
+    .risk-settings-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .risk-settings-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .risk-settings-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .risk-settings-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .risk-settings-row label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      font-family: var(--mono);
+    }
+    .risk-settings-row input, .risk-settings-row select {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      padding: 6px 10px;
+      color: #fff;
+      font-size: 0.8rem;
+      font-family: var(--mono);
+    }
+    .risk-settings-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .risk-settings-btn-save {
+      background: #6c63ff;
+      color: #fff;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+    .risk-settings-btn-save:hover {
+      background: #8b5cf6;
+    }
+    .settings-gear-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 2px;
+      margin-left: 6px;
+      font-size: 0.8rem;
+      transition: color 0.2s;
+    }
+    .settings-gear-btn:hover {
+      color: #fff;
+    }
+
+    /* CB Logs Activity Feed Styles */
+    .cb-activity-logs-section {
+      margin-top: 14px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding-top: 10px;
+    }
+    .cb-activity-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cb-activity-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 120px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .cb-log-item {
+      background: rgba(255,255,255,0.01);
+      border: 1px solid rgba(255,255,255,0.03);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.68rem;
+      font-family: var(--mono);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .cb-log-item-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--text-muted);
+    }
+    .cb-log-item-msg {
+      color: #cbd5e1;
+      line-height: 1.3;
+    }
+    .cb-log-badge {
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.6rem;
+    }
+    .cb-log-badge.open {
+      background: rgba(239, 68, 68, 0.1);
+      color: #f87171;
+    }
+    .cb-log-badge.closed {
+      background: rgba(52, 211, 153, 0.1);
+      color: #34d399;
+    }
+  </style>
 </head>
 <body>
 
@@ -25,6 +329,8 @@
 
 <!-- TOAST -->
 <div id="toastContainer" class="toast-container"></div>
+
+<!-- Risk Settings Modal decommissioned and moved to inline panel in System tab -->
 
 <!-- QUICK ORDER MODAL -->
 <div id="orderModal" class="modal-overlay d-none" >
@@ -304,6 +610,30 @@
             <div class="health-item">
               <span class="health-dot" id="hd-vbs"></span>
               <span class="health-label">VBS Queue</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Security & Protection Gates -->
+        <section class="glass-section overview-risk-gates-section" id="riskGatesSection">
+          <div class="section-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
+            <div class="section-title" style="display: flex; align-items: center; gap: 8px; margin-bottom: 0;">
+              <span>🛡️</span> Security & Protection Gates
+            </div>
+            <span class="muted-label" style="font-size: 0.68rem; background: rgba(255,255,255,0.04); padding: 2px 8px; border-radius: 12px; font-family: var(--mono)">Telemetry</span>
+          </div>
+          <div class="risk-gates-grid" id="riskGatesGrid">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+          
+          <!-- Circuit Breaker Logs Activity Feed -->
+          <div class="cb-activity-logs-section">
+            <div class="cb-activity-title">
+              <span>⚠️ Gate Transition Logs</span>
+              <span style="font-size: 0.6rem; opacity: 0.6" id="cbLogsCount">0 entries</span>
+            </div>
+            <div class="cb-activity-list" id="cbActivityLogs">
+              <div class="loading" style="padding: 10px"><div class="spinner"></div></div>
             </div>
           </div>
         </section>
@@ -1250,6 +1580,49 @@
     <div id="statusGrid" class="status-grid">
       <div class="loading"><div class="spinner"></div></div>
     </div>
+
+    <!-- Risk Settings Panel -->
+    <section class="glass-section mt-20" id="riskSettingsPanel">
+      <div class="section-header">
+        <div class="section-title">🛡️ Risk Settings Manager</div>
+        <div class="flex-gap-6">
+          <select id="riskSelectExchange" onchange="onRiskExchangeChange()" class="form-input" style="width: auto; height: 26px; padding: 0 8px; font-size: 0.75rem; background: var(--bg2); border-color: var(--border); color: var(--text); border-radius: 4px; cursor: pointer;">
+            <option value="weex">WEEX</option>
+            <option value="binance">BINANCE</option>
+            <option value="bybit">BYBIT</option>
+          </select>
+        </div>
+      </div>
+      
+      <form class="risk-settings-form" id="tabRiskSettingsForm" onsubmit="event.preventDefault(); submitTabRiskSettings();" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 12px;">
+        <div class="risk-settings-row">
+          <label>Daily Loss Cap (USDT)</label>
+          <input type="number" id="tabRiskDailyLossCap" step="0.1" min="0" required>
+        </div>
+        <div class="risk-settings-row">
+          <label>Drawdown Cap (%)</label>
+          <input type="number" id="tabRiskDrawdownCap" step="0.1" min="0" required>
+        </div>
+        <div class="risk-settings-row">
+          <label>Max Quote Quantity (USDT)</label>
+          <input type="number" id="tabRiskMaxQuoteQty" step="1" min="0" required>
+        </div>
+        <div class="risk-settings-row">
+          <label>Slippage Limit (%)</label>
+          <input type="number" id="tabRiskSlippageLimit" step="0.001" min="0" max="1" required>
+        </div>
+        <div class="risk-settings-row">
+          <label>Safe Mode (Size Halving)</label>
+          <select id="tabRiskSafeMode">
+            <option value="1">Enabled (Halve Sizes)</option>
+            <option value="0">Disabled (Normal Sizes)</option>
+          </select>
+        </div>
+        <div class="risk-settings-actions" style="grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 8px;">
+          <button type="submit" class="risk-settings-btn-save" style="padding: 8px 20px; font-size: 0.8rem;">Save Risk Settings</button>
+        </div>
+      </form>
+    </section>
 
     <!-- VPS Buffer Queue Status Panel -->
     <section class="glass-section mt-20" id="vbsStatusPanel">

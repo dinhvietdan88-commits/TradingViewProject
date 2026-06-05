@@ -186,6 +186,18 @@ class TradeFailed(Event):
 
 
 @dataclass(frozen=True)
+class CircuitBreakerTripped(Event):
+    """Emitted by TradeEngine when a circuit breaker trips to OPEN."""
+    exchange: str = ""
+    symbol: str = ""
+    prev_state: str = ""
+    new_state: str = "OPEN"
+    reason: str = ""
+    metrics: Optional[Dict[str, Any]] = None
+
+
+
+@dataclass(frozen=True)
 class TradeApprovalTimeout(Event):
     """Emitted by NotificationHub or ApprovalTimeoutManager when an interactive request expires."""
     signal_id: int = 0

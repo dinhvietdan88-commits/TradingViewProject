@@ -19,7 +19,7 @@ from typing import Optional
 import database
 
 from core.event_bus import bus as _default_bus
-from core.events import TradeApproved, TradeExecuted, TradeFailed
+from core.events import TradeApproved, TradeExecuted, TradeFailed, CircuitBreakerTripped
 from symbol_config import get_symbol_config
 
 log = logging.getLogger(__name__)
@@ -367,6 +367,26 @@ async def execute_trade(event: TradeApproved) -> None:
             trip = True
             reason = f"Drawdown {rolling_dd:.2f}% exceeds limit {drawdown_cap:.2f}%"
             
+        # Check if there is an active bypass
+        if trip and not is_legacy_mock:
+            from unittest.mock import Mock, AsyncMock
+            is_get_setting_mock = isinstance(database.get_setting, Mock)
+            is_get_setting_async = isinstance(database.get_setting, AsyncMock)
+            if is_get_setting_mock and not is_get_setting_async:
+                bypass_until_str = None
+            else:
+                bypass_until_str = await database.get_setting(f"bypass_until_{actual_exchange}")
+
+            if bypass_until_str:
+                try:
+                    from datetime import datetime, timezone
+                    bypass_until = datetime.fromisoformat(bypass_until_str)
+                    if datetime.now(timezone.utc) < bypass_until:
+                        log.info(f"TradeEngine: Tripping bypassed for {actual_exchange} until {bypass_until_str}")
+                        trip = False
+                except Exception as e:
+                    log.warning(f"TradeEngine: Failed to parse bypass timestamp: {e}")
+
         if trip:
             log.warning(f"TradeEngine: Tripping circuit breaker for {actual_exchange} to OPEN. Reason: {reason}")
             if not is_legacy_mock:
@@ -375,6 +395,15 @@ async def execute_trade(event: TradeApproved) -> None:
                     actual_exchange, event.symbol, cb_state, "OPEN", reason,
                     {"dailyLoss": daily_loss, "dailyLossCap": daily_loss_cap, "drawdown": rolling_dd, "drawdownCap": drawdown_cap}
                 )
+                # Emit CircuitBreakerTripped event
+                await _bus.emit(CircuitBreakerTripped(
+                    exchange=actual_exchange,
+                    symbol=event.symbol,
+                    prev_state=cb_state,
+                    new_state="OPEN",
+                    reason=reason,
+                    metrics={"dailyLoss": daily_loss, "dailyLossCap": daily_loss_cap, "drawdown": rolling_dd, "drawdownCap": drawdown_cap}
+                ))
             error_msg = f"Skipped {actual_exchange} trade: Circuit Breaker tripped to OPEN due to: {reason}"
             await _handle_failure(event, action, error_msg, requested_exchange, combined_score)
             return

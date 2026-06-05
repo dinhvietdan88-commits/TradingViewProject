@@ -28,6 +28,9 @@ on:
         description: "true if all required checks passed or were appropriately skipped"
         value: ${{ jobs.gate-result.outputs.passed }}
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   # ── SHARED SETUP: Compute code hash ONCE, shared by all test jobs ───
   # Runs in parallel with lint (~30s) — no extra latency on critical path.
@@ -62,7 +65,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Create server symlink
         run: |
@@ -70,7 +73,7 @@ jobs:
             && ln -s nerves/workers/trading server || true
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -96,7 +99,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
@@ -119,7 +122,7 @@ jobs:
 
       - name: Set up Python 3.11
         if: steps.sentinel.outputs.cache-hit != 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -177,7 +180,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
@@ -200,7 +203,7 @@ jobs:
 
       - name: Set up Python 3.11
         if: steps.sentinel.outputs.cache-hit != 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -257,7 +260,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
@@ -280,7 +283,7 @@ jobs:
 
       - name: Set up Python 3.11
         if: steps.sentinel.outputs.cache-hit != 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -337,7 +340,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
@@ -360,7 +363,7 @@ jobs:
 
       - name: Set up Python 3.11
         if: steps.sentinel.outputs.cache-hit != 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -428,7 +431,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
@@ -451,7 +454,7 @@ jobs:
 
       - name: Set up Python 3.11
         if: steps.sentinel.outputs.cache-hit != 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 

@@ -598,6 +598,26 @@ async def get_all_risk_statuses() -> list:
         settings = await get_risk_settings(ex)
         daily_loss = await get_daily_loss(ex)
         drawdown = await get_rolling_drawdown()
+        
+        # Query actual latency from exchange_health table
+        latency_ms = None
+        try:
+            async with aiosqlite.connect(config.DB_PATH) as db:
+                db.row_factory = aiosqlite.Row
+                async with db.execute(
+                    "SELECT latency_ms FROM exchange_health WHERE exchange_id = ? ORDER BY id DESC LIMIT 1",
+                    (ex.lower(),)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if row:
+                        latency_ms = float(row["latency_ms"])
+        except Exception as e:
+            log.warning(f"Failed to fetch actual latency for {ex}: {e}")
+            
+        if latency_ms is None:
+            # Fallback to hardcoded defaults
+            latency_ms = 120.0 if ex == "weex" else (85.0 if ex == "bybit" else 45.0)
+
         statuses.append({
             "exchange": ex,
             "state": settings["state"],
@@ -605,8 +625,35 @@ async def get_all_risk_statuses() -> list:
             "dailyLossCap": settings["daily_loss_cap"],
             "drawdown": drawdown,
             "drawdownCap": settings["drawdown_cap"],
-            "latencyMs": 120 if ex == "weex" else (85 if ex == "bybit" else 45),
+            "latencyMs": int(latency_ms),
         })
     return statuses
+
+
+async def get_recent_circuit_breaker_logs(limit: int = 10) -> list:
+    """Fetch the recent circuit breaker state transition logs."""
+    try:
+        async with aiosqlite.connect(config.DB_PATH) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                "SELECT id, timestamp, exchange, symbol, prev_state, new_state, trigger_reason, current_metrics "
+                "FROM circuit_breaker_logs ORDER BY id DESC LIMIT ?",
+                (limit,)
+            ) as cursor:
+                rows = await cursor.fetchall()
+                logs = []
+                for r in rows:
+                    row_dict = dict(r)
+                    if row_dict.get("current_metrics"):
+                        try:
+                            import json
+                            row_dict["current_metrics"] = json.loads(row_dict["current_metrics"])
+                        except Exception:
+                            pass  # JSON parse of metrics is best-effort; keep raw string on failure
+                    logs.append(row_dict)
+                return logs
+    except Exception as e:
+        log.warning(f"Failed to fetch circuit breaker logs: {e}")
+        return []
 
 

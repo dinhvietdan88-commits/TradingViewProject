@@ -192,6 +192,63 @@ async def send_interactive_indicator_alert(
     return results
 
 
+async def send_circuit_breaker_alert(
+    exchange: str, symbol: str, message: str, photo_path: Optional[str] = None
+) -> list:
+    """Send interactive circuit breaker alert with Reset Closed and Bypass 1h buttons."""
+    global _bot_app
+    if not _bot_app:
+        return []
+
+    results = []
+    try:
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        import config
+        from notifier import sanitize_for_telegram_html
+
+        keyboard = [
+            [
+                InlineKeyboardButton("🔄 Reset Closed", callback_data=f"cbreset_{exchange}"),
+                InlineKeyboardButton("⚡ Bypass 1h", callback_data=f"cbbypass_{exchange}"),
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        html_message = sanitize_for_telegram_html(message)
+
+        for chat_id in config.TELEGRAM_CHAT_IDS:
+            try:
+                # Send photo first if available
+                if photo_path:
+                    try:
+                        from pathlib import Path
+                        photo_file_path = Path(photo_path)
+                        if photo_file_path.exists():
+                            caption = f"🚨 Circuit Breaker Alert — {exchange.upper()}"
+                            with open(photo_file_path, "rb") as f:
+                                await _bot_app.bot.send_photo(
+                                    chat_id=chat_id,
+                                    photo=f,
+                                    caption=caption,
+                                )
+                    except Exception as photo_err:
+                        log.warning(f"Failed to send cb photo to {chat_id}: {photo_err}")
+
+                msg = await _bot_app.bot.send_message(
+                    chat_id=chat_id,
+                    text=html_message,
+                    parse_mode="HTML",
+                    reply_markup=reply_markup,
+                )
+                results.append((int(chat_id), msg.message_id))
+            except Exception as e:
+                log.error(f"Failed to send cb alert message to {chat_id}: {e}")
+
+    except Exception as e:
+        log.error(f"Error sending cb alert: {e}")
+
+    return results
+
+
 # ── Command Handlers ──────────────────────────────────────────────────────
 
 async def cmd_start(update, context):
@@ -1845,6 +1902,54 @@ async def button_callback(update, context):
         safe_text = sanitize_for_telegram_html(query.message.text)
         new_text = safe_text + f"\n\n❌ <b>ĐÃ BỎ QUA BỞI @{user}</b>"
         await query.message.edit_text(new_text, parse_mode="HTML")
+
+    elif data.startswith("cbreset_"):
+        exchange = data.split("_")[1].lower()
+        user = query.from_user.username or query.from_user.first_name
+        import database
+        try:
+            prev_status = await database.get_risk_settings(exchange)
+            prev_state = prev_status.get("state", "CLOSED")
+            await database.update_circuit_breaker_state(exchange, "CLOSED")
+            await database.log_circuit_breaker(
+                exchange, "*", prev_state, "CLOSED", f"Reset Closed via Telegram by @{user}",
+                {"action": "reset"}
+            )
+            # Clear bypass
+            await database.set_setting(f"bypass_until_{exchange}", "")
+            
+            from notifier import sanitize_for_telegram_html
+            safe_text = sanitize_for_telegram_html(query.message.text)
+            new_text = safe_text + f"\n\n✅ <b>RESET CLOSED BỞI @{user}</b>"
+            await query.message.edit_text(new_text, parse_mode="HTML")
+        except Exception as e:
+            await query.message.reply_text(f"❌ Lỗi reset: {e}")
+
+    elif data.startswith("cbbypass_"):
+        exchange = data.split("_")[1].lower()
+        user = query.from_user.username or query.from_user.first_name
+        import database
+        from datetime import datetime, timezone, timedelta
+        try:
+            prev_status = await database.get_risk_settings(exchange)
+            prev_state = prev_status.get("state", "CLOSED")
+            
+            # Set bypass for 1 hour
+            bypass_until = datetime.now(timezone.utc) + timedelta(hours=1)
+            await database.set_setting(f"bypass_until_{exchange}", bypass_until.isoformat())
+            
+            await database.update_circuit_breaker_state(exchange, "CLOSED")
+            await database.log_circuit_breaker(
+                exchange, "*", prev_state, "CLOSED", f"Bypassed 1h via Telegram by @{user}",
+                {"action": "bypass"}
+            )
+            
+            from notifier import sanitize_for_telegram_html
+            safe_text = sanitize_for_telegram_html(query.message.text)
+            new_text = safe_text + f"\n\n⚡ <b>ĐÃ BYPASS 1H BỞI @{user}</b>"
+            await query.message.edit_text(new_text, parse_mode="HTML")
+        except Exception as e:
+            await query.message.reply_text(f"❌ Lỗi bypass: {e}")
 
     elif data == "status":
         # Re-use status logic

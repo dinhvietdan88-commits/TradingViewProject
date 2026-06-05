@@ -241,3 +241,131 @@ async def test_trade_engine_half_open_halves_position_size():
         # The original was 50.0. Under HALF-OPEN state, it should be passed to the adapter as 25.0
         args, kwargs = mock_client.execute_smart_order.call_args
         assert kwargs.get("quote_qty") == 25.0
+
+
+@pytest.mark.asyncio
+async def test_trade_engine_tripping_event_emitted():
+    """Verify that TradeEngine emits CircuitBreakerTripped when circuit breaker is tripped."""
+    from engine.trade_engine import execute_trade, set_bus
+    from core.events import CircuitBreakerTripped
+
+    test_bus = EventBus()
+    set_bus(test_bus)
+    tripped_events = []
+
+    @test_bus.on(CircuitBreakerTripped)
+    async def on_tripped(event):
+        tripped_events.append(event)
+
+    mock_settings = {
+        "exchange": "weex",
+        "state": "CLOSED",
+        "daily_loss_cap": 10.0,
+        "drawdown_cap": 5.0
+    }
+
+    mock_client = AsyncMock()
+    mock_client.exchange_id = "weex"
+
+    event = TradeApproved(
+        signal_id=103,
+        symbol="BTCUSDT_UMCBL",
+        action="BUY",
+        price="68000.0",
+        quote_qty="50.0",
+        sl="66000.0",
+        tp="72000.0",
+        exchange="weex"
+    )
+
+    with patch("exchanges.router.get_router") as mock_get_router, \
+         patch("engine.trade_engine.database") as mock_db:
+
+        mock_router = MagicMock()
+        mock_router.resolve_exchange.return_value = mock_client
+        mock_get_router.return_value = mock_router
+
+        mock_db.get_risk_settings = AsyncMock(return_value=mock_settings)
+        mock_db.get_daily_loss = AsyncMock(return_value=12.50)  # Exceeds cap
+        mock_db.get_rolling_drawdown = AsyncMock(return_value=1.0)
+        mock_db.update_circuit_breaker_state = AsyncMock()
+        mock_db.log_circuit_breaker = AsyncMock()
+        mock_db.insert_trade = AsyncMock(return_value=1)
+        mock_db.update_signal_status = AsyncMock()
+        mock_db.get_setting = AsyncMock(return_value=None)  # No bypass
+
+        await execute_trade(event)
+
+        # Assert CircuitBreakerTripped was emitted
+        assert len(tripped_events) == 1
+        assert tripped_events[0].exchange == "weex"
+        assert tripped_events[0].prev_state == "CLOSED"
+        assert tripped_events[0].new_state == "OPEN"
+        assert "Daily loss 12.50" in tripped_events[0].reason
+
+
+@pytest.mark.asyncio
+async def test_trade_engine_respects_bypass_setting():
+    """Verify that TradeEngine does NOT trip if a valid bypass timestamp is active."""
+    from engine.trade_engine import execute_trade, set_bus
+    from datetime import datetime, timezone, timedelta
+    from tests.unit.test_trade_engine import MockOrderResult
+
+    test_bus = EventBus()
+    set_bus(test_bus)
+    executed_events = []
+
+    @test_bus.on(TradeExecuted)
+    async def on_executed(event):
+        executed_events.append(event)
+
+    mock_settings = {
+        "exchange": "weex",
+        "state": "CLOSED",
+        "daily_loss_cap": 10.0,
+        "drawdown_cap": 5.0
+    }
+
+    mock_client = AsyncMock()
+    mock_client.exchange_id = "weex"
+    mock_client.execute_smart_order.return_value = MockOrderResult()
+
+    event = TradeApproved(
+        signal_id=104,
+        symbol="BTCUSDT_UMCBL",
+        action="BUY",
+        price="68000.0",
+        quote_qty="50.0",
+        sl="66000.0",
+        tp="72000.0",
+        exchange="weex"
+    )
+
+    # Active bypass until 30 minutes in the future
+    future_bypass = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+
+    with patch("exchanges.router.get_router") as mock_get_router, \
+         patch("engine.trade_engine.database") as mock_db:
+
+        mock_router = MagicMock()
+        mock_router.resolve_exchange.return_value = mock_client
+        mock_get_router.return_value = mock_router
+
+        mock_db.get_risk_settings = AsyncMock(return_value=mock_settings)
+        mock_db.get_daily_loss = AsyncMock(return_value=12.50)  # Exceeds cap but bypassed
+        mock_db.get_rolling_drawdown = AsyncMock(return_value=1.0)
+        mock_db.update_circuit_breaker_state = AsyncMock()
+        mock_db.log_circuit_breaker = AsyncMock()
+        mock_db.insert_trade = AsyncMock(return_value=1)
+        mock_db.update_signal_status = AsyncMock()
+        mock_db.update_trade_oco = AsyncMock()
+        mock_db.get_setting = AsyncMock(return_value=future_bypass)
+
+        await execute_trade(event)
+
+        # Assert circuit breaker was NOT tripped
+        mock_db.update_circuit_breaker_state.assert_not_called()
+        # Assert trade successfully executed
+        assert len(executed_events) == 1
+        mock_client.execute_smart_order.assert_called_once()
+

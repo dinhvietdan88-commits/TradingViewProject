@@ -27,6 +27,8 @@ concurrency:
   cancel-in-progress: true
 
 # All actions upgraded to Node.js 24 native versions (setup-python@v6, checkout@v6, cache@v5)
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   # ── 0. CHANGE DETECTION ────────────────────────────────────────────
@@ -52,6 +54,7 @@ jobs:
         id: filter
         uses: dorny/paths-filter@v4
         with:
+          base: ${{ github.event_name != 'pull_request' && (github.event.before && github.event.before != '0000000000000000000000000000000000000000' && github.event.before || github.event.repository.default_branch) || '' }}
           filters: |
             code:
               - 'nerves/workers/trading/**'

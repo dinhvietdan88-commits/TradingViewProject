@@ -1,0 +1,5 @@
+# TruffleHog Ignore File
+# Exclude config files that contain regex patterns or dry-run proposals
+^\.gitsecrets$
+^proposal\.json$
+^docs/plans/P7/.*\.md$

@@ -226,6 +226,7 @@ async def test_bear_end_tactical_sizing_breakout():
         mock_get_router.return_value = mock_router
 
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
+        mock_db.get_risk_settings = AsyncMock(return_value={"state": "CLOSED", "daily_loss_cap": 100.0, "drawdown_cap": 20.0})
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.2)
         mock_db.get_setting = AsyncMock(side_effect=lambda key, default: "false" if key == "safe_mode_active" else default)
         mock_db.set_setting = AsyncMock()
@@ -285,6 +286,7 @@ async def test_safe_mode_halves_sizing():
 
         # Mock drawdown is 15.0% (> 10.0%)
         mock_db.get_rolling_drawdown = AsyncMock(return_value=15.0)
+        mock_db.get_risk_settings = AsyncMock(return_value={"state": "CLOSED", "daily_loss_cap": 100.0, "drawdown_cap": 20.0})
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
         mock_db.get_setting = AsyncMock(side_effect=lambda key, default: "false" if key == "safe_mode_active" else default)
         mock_db.set_setting = AsyncMock()
@@ -341,6 +343,7 @@ async def test_safe_mode_deactivation():
         # Mock low drawdown (5.0%) and high profit factor (2.1 > 1.5)
         # Safe mode was previously active ("true")
         mock_db.get_rolling_drawdown = AsyncMock(return_value=5.0)
+        mock_db.get_risk_settings = AsyncMock(return_value={"state": "CLOSED", "daily_loss_cap": 100.0, "drawdown_cap": 20.0})
         mock_db.get_recent_profit_factor = AsyncMock(return_value=2.1)
         mock_db.get_setting = AsyncMock(side_effect=lambda key, default: "true" if key == "safe_mode_active" else default)
         mock_db.set_setting = AsyncMock()

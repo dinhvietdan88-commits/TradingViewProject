@@ -28,6 +28,9 @@ permissions:
   contents: read
   security-events: write      # Required to upload SARIF results
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   # ── 0. PRE-CHECK: Skip entirely on docs-only changes ──────────────
   # Saves 4 runners on every push that only touches docs/pine/scratch.
@@ -39,11 +42,12 @@ jobs:
       has_code: ${{ steps.filter.outputs.code }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Detect code changes
         id: filter
         uses: dorny/paths-filter@v4
         with:
+          base: ${{ github.event_name != 'pull_request' && (github.event.before && github.event.before != '0000000000000000000000000000000000000000' && github.event.before || github.event.repository.default_branch) || '' }}
           filters: |
             code:
               - 'server/**'
@@ -66,12 +70,18 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2       # Required for CodeQL to detect changes
 
+      - name: Create server symlink
+        run: |
+          if [ ! -d "server" ] && [ -d "nerves/workers/trading" ]; then
+            ln -s nerves/workers/trading server
+          fi
+
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: python
           queries: +security-extended,security-and-quality
@@ -86,13 +96,13 @@ jobs:
               - '**/*.pyc'
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
       # Auto-build step (CodeQL auto-detects Python — no explicit build needed)
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:python"
           output: sarif-results
@@ -111,10 +121,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -140,7 +150,7 @@ jobs:
           pip-audit -r server/requirements.txt || true
 
       - name: Upload audit reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: dependency-audit-${{ github.run_id }}
@@ -162,10 +172,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -204,7 +214,7 @@ jobs:
             echo "⚠️  security.cli not available in CI — skipping internal scan"
 
       - name: Upload security scan reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: angati-security-reports-${{ github.run_id }}
@@ -227,7 +237,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0       # Full history needed for secret scanning
 
@@ -239,7 +249,7 @@ jobs:
           head: HEAD
           extra_args: >-
             --only-verified
-            --exclude-paths=.gitsecrets
+            --exclude-paths=.trufflehogignore
 
       - name: Check for .env files committed by mistake
         run: |

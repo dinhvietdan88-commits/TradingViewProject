@@ -9,7 +9,6 @@ Tests cover:
 - DataQueryFacade.get_daily_stats: aggregates correctly
 - ExchangeQueryFacade.get_balance: fallback to binance_client
 """
-import asyncio
 import time
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -21,7 +20,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 def test_send_interactive_trade_approval_returns_list():
     """G2 guard: function must return a list (not bool)."""
-    import inspect
     import telegram_bot
     hints = {}
     try:
@@ -197,7 +195,7 @@ async def test_approval_timeout_manager_check_cycle_expires():
     mock_event.action = "BUY"
 
     with patch("telegram_bot.get_sender", return_value=mock_sender):
-        with patch("hub.notification_hub.PENDING_TRADES", {77: mock_event}) as mock_pt:
+        with patch("hub.notification_hub.PENDING_TRADES", {77: mock_event}):
             await mgr._check_cycle()
 
     # Entry should be removed
@@ -290,7 +288,7 @@ async def test_data_facade_get_recent_trades_limit():
         mock_connect.return_value = mock_db
 
         with patch("config.DB_PATH", ":memory:"):
-            trades = await facade.get_recent_trades(limit=100)
+            await facade.get_recent_trades(limit=100)
 
         # fetchall called → execute was called with limit <= 50
         call_args = mock_db.execute.call_args
@@ -327,3 +325,145 @@ async def test_exchange_facade_get_open_positions_empty_registry():
             assert result == []
         except Exception:
             pass  # ImportError path - acceptable
+
+
+# ═══════════════════════════════════════════════════════════════
+# Circuit Breaker Alert & Callback Handling
+# ═══════════════════════════════════════════════════════════════
+
+@pytest.mark.asyncio
+async def test_send_circuit_breaker_alert_broadcasts():
+    """send_circuit_breaker_alert should send to all TELEGRAM_CHAT_IDS and return tuples."""
+    from telegram_bot import send_circuit_breaker_alert
+    from telegram import InlineKeyboardMarkup
+
+    mock_msg = MagicMock()
+    mock_msg.message_id = 101
+
+    mock_bot = AsyncMock()
+    mock_bot.send_message = AsyncMock(return_value=mock_msg)
+    mock_app = MagicMock()
+    mock_app.bot = mock_bot
+
+    with patch("telegram_bot._bot_app", mock_app):
+        with patch("config.TELEGRAM_CHAT_IDS", ["555", "777"]):
+            with patch("notifier.sanitize_for_telegram_html", side_effect=lambda x: x):
+                results = await send_circuit_breaker_alert(
+                    exchange="weex",
+                    symbol="BTCUSDT",
+                    message="circuit breaker triggered"
+                )
+
+        assert isinstance(results, list)
+        assert len(results) == 2
+        assert results[0] == (555, 101)
+        assert results[1] == (777, 101)
+
+        # Verify that send_message was called with correct markup and text
+        mock_bot.send_message.assert_called()
+        call_args = mock_bot.send_message.call_args[1]
+        assert call_args["text"] == "circuit breaker triggered"
+        assert call_args["parse_mode"] == "HTML"
+        assert isinstance(call_args["reply_markup"], InlineKeyboardMarkup)
+
+
+@pytest.mark.asyncio
+async def test_button_callback_cbreset():
+    """button_callback should handle cbreset_ by updating DB and clearing bypass."""
+    from telegram_bot import button_callback
+
+    mock_query = AsyncMock()
+    mock_query.data = "cbreset_weex"
+    mock_query.from_user.username = "test_admin"
+    
+    mock_message = AsyncMock()
+    mock_message.text = "Original CB alert text"
+    mock_query.message = mock_message
+    
+    mock_update = MagicMock()
+    mock_update.callback_query = mock_query
+    
+    mock_context = MagicMock()
+
+    # Mocks for database functions
+    mock_get_risk_settings = AsyncMock(return_value={"state": "OPEN"})
+    mock_update_state = AsyncMock()
+    mock_log_cb = AsyncMock()
+    mock_set_setting = AsyncMock()
+
+    with patch("database.get_risk_settings", mock_get_risk_settings), \
+         patch("database.update_circuit_breaker_state", mock_update_state), \
+         patch("database.log_circuit_breaker", mock_log_cb), \
+         patch("database.set_setting", mock_set_setting):
+        
+        await button_callback(mock_update, mock_context)
+
+    # Asserts
+    mock_query.answer.assert_awaited_once()
+    mock_get_risk_settings.assert_awaited_once_with("weex")
+    mock_update_state.assert_awaited_once_with("weex", "CLOSED")
+    mock_set_setting.assert_awaited_once_with("bypass_until_weex", "")
+    mock_log_cb.assert_awaited_once()
+    
+    # Check updated text contains admin info and check mark
+    mock_message.edit_text.assert_awaited_once()
+    edit_text_call = mock_message.edit_text.call_args[0][0]
+    assert "RESET CLOSED BỞI @test_admin" in edit_text_call
+    assert "Original CB alert text" in edit_text_call
+
+
+@pytest.mark.asyncio
+async def test_button_callback_cbbypass():
+    """button_callback should handle cbbypass_ by updating DB and setting 1h bypass."""
+    from telegram_bot import button_callback
+
+    mock_query = AsyncMock()
+    mock_query.data = "cbbypass_weex"
+    mock_query.from_user.username = "test_admin"
+    
+    mock_message = AsyncMock()
+    mock_message.text = "Original CB alert text"
+    mock_query.message = mock_message
+    
+    mock_update = MagicMock()
+    mock_update.callback_query = mock_query
+    
+    mock_context = MagicMock()
+
+    # Mocks for database functions
+    mock_get_risk_settings = AsyncMock(return_value={"state": "OPEN"})
+    mock_update_state = AsyncMock()
+    mock_log_cb = AsyncMock()
+    mock_set_setting = AsyncMock()
+
+    with patch("database.get_risk_settings", mock_get_risk_settings), \
+         patch("database.update_circuit_breaker_state", mock_update_state), \
+         patch("database.log_circuit_breaker", mock_log_cb), \
+         patch("database.set_setting", mock_set_setting):
+        
+        await button_callback(mock_update, mock_context)
+
+    # Asserts
+    mock_query.answer.assert_awaited_once()
+    mock_get_risk_settings.assert_awaited_once_with("weex")
+    mock_update_state.assert_awaited_once_with("weex", "CLOSED")
+    mock_set_setting.assert_awaited_once()
+    
+    # Check that bypass key was set to a valid ISO format string
+    set_setting_args = mock_set_setting.call_args[0]
+    assert set_setting_args[0] == "bypass_until_weex"
+    # It should be an ISO timestamp (e.g. 2026-06-05T08:25:51.123456+00:00)
+    assert len(set_setting_args[1]) > 0
+    from datetime import datetime
+    # Try parsing it back to make sure it's valid
+    parsed_dt = datetime.fromisoformat(set_setting_args[1])
+    assert parsed_dt is not None
+    
+    mock_log_cb.assert_awaited_once()
+    
+    # Check updated text contains admin info and bypass emoji
+    mock_message.edit_text.assert_awaited_once()
+    edit_text_call = mock_message.edit_text.call_args[0][0]
+    assert "ĐÃ BYPASS 1H BỞI @test_admin" in edit_text_call
+    assert "Original CB alert text" in edit_text_call
+

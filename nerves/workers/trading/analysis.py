@@ -24,10 +24,10 @@ class TrendTemplateResult:
 @dataclass
 class VCPResult:
     detected: bool
-    volume_ratio: float                 # current vol / 20-period avg (< 0.5 = contraction)
+    volume_ratio: float  # current vol / 20-period avg (< 0.5 = contraction)
     range_ratio: float                  # (H-L) / ATR14 (< 0.5 = narrow)
     pivot_level: Optional[float]        # estimated breakout pivot
-    vol_breakout: bool                  # volume > 1.2x average (for breakout confirmation)
+    vol_breakout: bool  # volume > 1.2x average (for breakout confirmation)
     note: str
 
 
@@ -154,9 +154,17 @@ def score_trend_template(
 
     # Macro Regime classification
     if sma200 is not None and sma50 is not None:
-        if price > sma50 and sma50 > sma200 and (sma200_slope is None or sma200_slope > 0):
+        if (
+            price > sma50
+            and sma50 > sma200
+            and (sma200_slope is None or sma200_slope > 0)
+        ):
             macro_regime = "Bull 🐂"
-        elif price < sma50 and sma50 < sma200 and (sma200_slope is None or sma200_slope < 0):
+        elif (
+            price < sma50
+            and sma50 < sma200
+            and (sma200_slope is None or sma200_slope < 0)
+        ):
             macro_regime = "Bear 🐻"
         else:
             macro_regime = "Choppy 🌊"
@@ -166,7 +174,10 @@ def score_trend_template(
     # Summary
     passed = [k for k, v in criteria.items() if v is True]
     failed = [k for k, v in criteria.items() if v is False]
-    summary = f"Score {score}/8 — {stage}. Regime: {macro_regime}. ✅ {len(passed)} passed, ❌ {len(failed)} failed"
+    summary = (
+        f"Score {score}/8 — {stage}. Regime: {macro_regime}. "
+        f"✅ {len(passed)} passed, ❌ {len(failed)} failed"
+    )
 
     return TrendTemplateResult(
         score=score,
@@ -209,9 +220,15 @@ def detect_vcp(
     pivot_level = round(high * 1.005, 2) if detected else None
 
     if detected and near_high:
-        note = f"VCP xác nhận: vol={volume_ratio:.0%} avg, range={range_ratio:.0%} ATR — gần 52w high ⭐ WATCH"
+        note = (
+            f"VCP xác nhận: vol={volume_ratio:.0%} avg, "
+            f"range={range_ratio:.0%} ATR — gần 52w high ⭐ WATCH"
+        )
     elif detected:
-        note = f"VCP contraction: vol={volume_ratio:.0%} avg, range={range_ratio:.0%} ATR"
+        note = (
+            f"VCP contraction: vol={volume_ratio:.0%} avg, "
+            f"range={range_ratio:.0%} ATR"
+        )
     elif vol_contracting:
         note = f"Volume co lại ({volume_ratio:.0%} avg) nhưng range chưa hẹp"
     elif range_contracting:
@@ -235,28 +252,43 @@ async def _run_rest_scan_for_symbols(symbols: list[str]) -> list[ScanResult]:
         return []
     logger.info(f"Performing REST scan for symbols: {symbols}...")
     semaphore = asyncio.Semaphore(15)
-    
+
     async with aiohttp.ClientSession() as session:
         btc_benchmarks = {}
-        
+
         # Sequentially pre-fetch BTC benchmarks to avoid Thundering Herd
-        unique_eids = set("weex" if sym.endswith("_UMCBL") else "binance" for sym in symbols)
+        unique_eids = {
+            "weex" if sym.endswith("_UMCBL") else "binance"
+            for sym in symbols
+        }
         for eid in unique_eids:
             btc_symbol = "BTCUSDT_UMCBL" if eid == "weex" else "BTCUSDT"
             try:
-                btc_candles = await fetch_candles_with_retry(session, eid, btc_symbol, limit=365, semaphore=semaphore)
-                btc_closes = {c[0]: c[4] for c in btc_candles} if btc_candles else {}
+                btc_candles = await fetch_candles_with_retry(
+                    session, eid, btc_symbol,
+                    limit=365, semaphore=semaphore,
+                )
+                btc_closes = (
+                    {c[0]: c[4] for c in btc_candles}
+                    if btc_candles else {}
+                )
                 btc_benchmarks[eid] = (btc_candles, btc_closes)
             except Exception as ex:
-                logger.warning(f"Could not fetch BTC benchmark for exchange {eid}: {ex}")
+                logger.warning(
+                    f"Could not fetch BTC benchmark "
+                    f"for exchange {eid}: {ex}"
+                )
                 btc_benchmarks[eid] = ([], {})
 
         tasks = []
         for sym in symbols:
             eid = "weex" if sym.endswith("_UMCBL") else "binance"
             btc_candles, btc_closes = btc_benchmarks[eid]
-            tasks.append(scan_single_symbol_rest(session, eid, sym, btc_closes, btc_candles, semaphore))
-        
+            tasks.append(scan_single_symbol_rest(
+                session, eid, sym,
+                btc_closes, btc_candles, semaphore,
+            ))
+
         results = await asyncio.gather(*tasks)
         return [r for r in results if r is not None]
 
@@ -267,11 +299,9 @@ async def scan_symbols(symbols: list[str], mcp_client) -> list[ScanResult]:
     Falls back to REST scanning if MCP is unavailable, fails, or returns incomplete data.
     Returns sorted by VCP detected first, then by TT score descending.
     """
-    from mcp_client import QuoteData, StudyValues
-
     raw_data = None
     mcp_healthy = False
-    
+
     if mcp_client is not None:
         try:
             health = await mcp_client.health_check()
@@ -391,10 +421,10 @@ async def fetch_candles_with_retry(
     exchange_name = exchange_name.lower()
     if ":" in symbol:
         symbol = symbol.split(":")[-1]
-    
+
     # Map standard timeframes to exchange standard
     bybit_tf_map = {"1d": "D", "4h": "240", "1h": "60"}
-    
+
     # 1. Determine URL and params based on exchange
     if exchange_name == "weex":
         clean_symbol = symbol.upper().replace("/", "").replace("-", "").replace("_UMCBL", "").lower()
@@ -669,7 +699,7 @@ async def scan_symbol_multi_timeframe(
     """Scan 1D, 4H, and 1H timeframes for a symbol, verifying trend alignment."""
     timeframes = ["1d", "4h", "1h"]
     scans = {}
-    
+
     btc_symbol = "BTCUSDT_UMCBL" if exchange_name == "weex" else "BTCUSDT"
 
     async def fetch_tf(tf):
@@ -683,7 +713,7 @@ async def scan_symbol_multi_timeframe(
             except Exception:
                 btc_candles = []
                 btc_closes = {}
-            
+
             # Analyze ohlcv
             result = _calculate_scan_result(ohlcv, exchange_name, symbol, btc_closes, btc_candles)
             return tf, result
@@ -709,11 +739,11 @@ async def scan_symbol_multi_timeframe(
 
     aligned_long = False
     aligned_short = False
-    
+
     scan_1d = scans.get("1d")
     scan_4h = scans.get("4h")
     scan_1h = scans.get("1h")
-    
+
     if scan_1d and scan_4h and scan_1h and not scan_1d.error and not scan_4h.error and not scan_1h.error:
         aligned_long = (
             scan_1d.trend_template.score >= 6 and
@@ -763,7 +793,7 @@ async def scan_all_configured_exchanges() -> List[ScanResult]:
         from exchanges.registry import get_registry
         registry = get_registry()
         exchange_ids = registry.list_exchange_ids()
-        
+
         results = []
         semaphore = asyncio.Semaphore(15)
 

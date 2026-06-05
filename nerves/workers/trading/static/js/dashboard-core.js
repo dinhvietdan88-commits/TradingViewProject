@@ -396,6 +396,9 @@ async function loadSystemStatus() {
   if (typeof refreshVBSStatus === 'function') {
     refreshVBSStatus();
   }
+  if (typeof window.onRiskExchangeChange === 'function') {
+    window.onRiskExchangeChange();
+  }
 }
 
 function updateCDPBadge(mcp) {
@@ -534,12 +537,16 @@ async function init() {
   loadTrades();
   loadEquityChart();
   loadCDPStatus();
+  loadRiskGates();
+  loadRiskLogs();
   if (typeof loadSignalStats === 'function') {
     loadSignalStats();
   }
   setInterval(() => {
     loadKPIs();
     loadCDPStatus();
+    loadRiskGates();
+    loadRiskLogs();
     if (typeof loadSignalStats === 'function') {
       loadSignalStats();
     }
@@ -622,4 +629,202 @@ async function refreshVBSStatus() {
   `;
 }
 
+async function loadRiskGates() {
+  const container = document.getElementById('riskGatesGrid');
+  if (!container) return;
+
+  const statuses = await apiFetch('/api/risk/status');
+  if (!statuses) {
+    container.innerHTML = '<p class="muted-label">Risk stats unavailable</p>';
+    return;
+  }
+
+  container.innerHTML = statuses.map(s => {
+    const cbState = s.state.toUpperCase();
+    const stateClass = cbState === 'CLOSED' ? 'closed' : (cbState === 'HALF-OPEN' ? 'half-open' : 'open');
+    const displayState = cbState === 'CLOSED' ? 'CB: CLOSED' : (cbState === 'HALF-OPEN' ? 'CB: HALF-OPEN' : 'CB: OPEN');
+
+    const lossPct = s.dailyLossCap > 0 ? Math.min(100, (s.dailyLoss / s.dailyLossCap) * 100) : 0;
+    const lossFillClass = s.dailyLoss >= s.dailyLossCap ? 'danger' : 'normal';
+
+    const ddPct = s.drawdownCap > 0 ? Math.min(100, (s.drawdown / s.drawdownCap) * 100) : 0;
+    const ddFillClass = s.drawdown >= s.drawdownCap ? 'danger' : 'drawdown';
+
+    let actionBtnHtml = '';
+    if (cbState === 'CLOSED') {
+      actionBtnHtml = `<button class="override-btn" onclick="toggleCircuitBreaker('${s.exchange}', 'trip')">Force Trip</button>`;
+    } else {
+      actionBtnHtml = `<button class="reset-btn" onclick="toggleCircuitBreaker('${s.exchange}', 'reset')">Reset Closed</button>`;
+    }
+
+    return `
+      <div class="risk-card">
+        <div class="risk-card-header">
+          <span class="risk-card-name" style="display: flex; align-items: center;">
+            ${s.exchange}
+            <button class="settings-gear-btn" onclick="openRiskSettings('${s.exchange}')" title="Configure Risk Thresholds">⚙️</button>
+          </span>
+          <span class="cb-badge ${stateClass}">${displayState}</span>
+        </div>
+        <div class="risk-gauges">
+          <div class="gauge-item">
+            <div class="gauge-header">
+              <span>Daily Loss (24h)</span>
+              <span class="val">$${s.dailyLoss.toFixed(2)} / $${s.dailyLossCap.toFixed(2)}</span>
+            </div>
+            <div class="gauge-bar-bg">
+              <div class="gauge-bar-fill ${lossFillClass}" style="width: ${lossPct}%"></div>
+            </div>
+          </div>
+          <div class="gauge-item">
+            <div class="gauge-header">
+              <span>Rolling Drawdown</span>
+              <span class="val">${s.drawdown.toFixed(2)}% / ${s.drawdownCap.toFixed(2)}%</span>
+            </div>
+            <div class="gauge-bar-bg">
+              <div class="gauge-bar-fill ${ddFillClass}" style="width: ${ddPct}%"></div>
+            </div>
+          </div>
+        </div>
+        <div class="risk-card-footer">
+          <span>Latency: ${s.latencyMs}ms</span>
+          ${actionBtnHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.toggleCircuitBreaker = async function(exchange, action) {
+  showToast(`Updating circuit breaker for ${exchange}...`, 'info');
+  const res = await apiFetch('/api/risk/override', {
+    method: 'POST',
+    body: JSON.stringify({ exchange, action })
+  });
+  if (res && res.status === 'success') {
+    showToast(`✅ ${res.message}`, 'success');
+    loadRiskGates();
+    loadRiskLogs();
+    loadCDPStatus();
+  } else {
+    showToast(`❌ Override action failed`, 'error');
+  }
+};
+
+window.openRiskSettings = async function(exchange) {
+  // Switch to System Tab
+  switchTab('status');
+  
+  // Set dropdown value and load exchange settings
+  const select = document.getElementById('riskSelectExchange');
+  if (select) {
+    select.value = exchange.toLowerCase();
+    await window.onRiskExchangeChange();
+  }
+  
+  // Scroll to riskSettingsPanel with smooth animation
+  const panel = document.getElementById('riskSettingsPanel');
+  if (panel) {
+    panel.scrollIntoView({ behavior: 'smooth' });
+    // Flash background for visual feedback
+    panel.style.transition = 'background 0.3s';
+    panel.style.background = 'rgba(108, 99, 255, 0.1)';
+    setTimeout(() => {
+      panel.style.background = '';
+    }, 1000);
+  }
+};
+
+window.onRiskExchangeChange = async function() {
+  const select = document.getElementById('riskSelectExchange');
+  if (!select) return;
+  const exchange = select.value;
+  
+  const settings = await apiFetch(`/api/risk/settings?exchange=${exchange}`);
+  if (!settings) {
+    showToast(`❌ Không thể tải cài đặt rủi ro cho ${exchange}`, 'error');
+    return;
+  }
+  
+  const dailyLossEl = document.getElementById('tabRiskDailyLossCap');
+  const ddCapEl = document.getElementById('tabRiskDrawdownCap');
+  const maxQuoteEl = document.getElementById('tabRiskMaxQuoteQty');
+  const slipEl = document.getElementById('tabRiskSlippageLimit');
+  const safeModeEl = document.getElementById('tabRiskSafeMode');
+  
+  if (dailyLossEl) dailyLossEl.value = settings.daily_loss_cap;
+  if (ddCapEl) ddCapEl.value = settings.drawdown_cap;
+  if (maxQuoteEl) maxQuoteEl.value = settings.max_quote_qty;
+  if (slipEl) slipEl.value = settings.slippage_limit;
+  if (safeModeEl) safeModeEl.value = settings.safe_mode;
+};
+
+window.submitTabRiskSettings = async function() {
+  const select = document.getElementById('riskSelectExchange');
+  if (!select) return;
+  const exchange = select.value;
+  
+  const payload = {
+    exchange: exchange,
+    daily_loss_cap: parseFloat(document.getElementById('tabRiskDailyLossCap').value),
+    drawdown_cap: parseFloat(document.getElementById('tabRiskDrawdownCap').value),
+    max_quote_qty: parseFloat(document.getElementById('tabRiskMaxQuoteQty').value),
+    slippage_limit: parseFloat(document.getElementById('tabRiskSlippageLimit').value),
+    safe_mode: parseInt(document.getElementById('tabRiskSafeMode').value)
+  };
+  
+  showToast(`Đang lưu cài đặt rủi ro cho ${exchange}...`, 'info');
+  const res = await apiFetch('/api/risk/settings', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  
+  if (res && res.status === 'success') {
+    showToast(`✅ ${res.message}`, 'success');
+    loadRiskGates();
+    loadRiskLogs();
+    loadCDPStatus();
+  } else {
+    showToast(`❌ Lưu cài đặt rủi ro thất bại`, 'error');
+  }
+};
+
+async function loadRiskLogs() {
+  const container = document.getElementById('cbActivityLogs');
+  const countEl = document.getElementById('cbLogsCount');
+  if (!container) return;
+  
+  const logs = await apiFetch('/api/risk/logs?limit=10');
+  if (!logs) {
+    container.innerHTML = '<p class="muted-label">Logs unavailable</p>';
+    return;
+  }
+  
+  if (countEl) countEl.textContent = `${logs.length} entries`;
+  
+  if (logs.length === 0) {
+    container.innerHTML = '<p class="muted-label" style="text-align:center; padding:10px; font-size:0.75rem;">No transitions logged</p>';
+    return;
+  }
+  
+  container.innerHTML = logs.map(l => {
+    const ts = l.timestamp ? l.timestamp.split(' ')[1] || l.timestamp : '—';
+    const badgeClass = l.new_state.toUpperCase() === 'OPEN' ? 'open' : 'closed';
+    return `
+      <div class="cb-log-item">
+        <div class="cb-log-item-meta">
+          <strong>${l.exchange.toUpperCase()}</strong>
+          <span class="cb-log-badge ${badgeClass}">${l.prev_state} ➜ ${l.new_state}</span>
+        </div>
+        <div class="cb-log-item-msg">${l.trigger_reason}</div>
+        <div class="cb-log-item-meta">
+          <span>${ts}</span>
+          <span>Symbol: ${l.symbol}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
 document.addEventListener('DOMContentLoaded', init);
+

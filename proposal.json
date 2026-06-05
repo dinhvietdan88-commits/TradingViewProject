@@ -2,39 +2,19 @@
   "warnings": [],
   "groups": [
     {
-      "scope": "core",
-      "type": "feat",
-      "subject": "update trading.log and 1 other files",
+      "scope": "ci",
+      "type": "ci",
+      "subject": "ci: patch workflows for Node.js 24 and fix security scan issues",
       "files": [
-        "logs/trading.log",
+        ".github/workflows/_ci-gate.yml",
+        ".github/workflows/automation.yml",
+        ".github/workflows/ci.yml",
+        ".github/workflows/nightly.yml",
+        ".github/workflows/security.yml",
+        ".github/workflows/staging.yml",
+        ".trufflehogignore",
+        "nerves/workers/trading/vision.py",
         "proposal.json"
-      ]
-    },
-    {
-      "scope": "workers",
-      "type": "feat",
-      "subject": "update analysis.py and 8 other files",
-      "files": [
-        "nerves/workers/trading/analysis.py",
-        "nerves/workers/trading/analyzer/ai_analyzer.py",
-        "nerves/workers/trading/config.py",
-        "nerves/workers/trading/data/persistence_store.py",
-        "nerves/workers/trading/database.py",
-        "nerves/workers/trading/gateway/webhook.py",
-        "nerves/workers/trading/main.py",
-        "nerves/workers/trading/rag.py",
-        "nerves/workers/trading/workers/vps_analyzer.py"
-      ]
-    },
-    {
-      "scope": "test",
-      "type": "test",
-      "subject": "update test_webhook.py and 3 other files",
-      "files": [
-        "test_webhook.py",
-        "nerves/workers/trading/test_reprocess.py",
-        "stress_test_trades.db",
-        "tests/stress_test_webhook.py"
       ]
     }
   ]

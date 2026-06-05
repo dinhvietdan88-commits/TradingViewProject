@@ -74,7 +74,7 @@ async def webhook(request: Request):
     if not is_dashboard_user and not secrets.compare_digest(
         str(secret), str(config.WEBHOOK_SECRET)
     ):
-        log.warning("Unauthorized webhook attempt (secret mismatch)")
+        log.warning(f"Unauthorized webhook attempt (secret mismatch): received={repr(secret)} expected={repr(config.WEBHOOK_SECRET)}")
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     if not payload:

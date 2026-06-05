@@ -64,3 +64,28 @@ def test_format_vision_telegram_error():
     vision_result = {"error": "Failed to connect to API"}
     msg = format_vision_telegram(vision_result)
     assert "👁️ Vision Error: Failed to connect to API" in msg
+
+
+def test_encode_image_compression(tmp_path):
+    """Should compress and resize image using PIL and return base64 and mime type."""
+    from vision import _encode_image
+    from PIL import Image
+    import base64
+    import io
+    
+    # Create a dummy large image (e.g. 2000x2000 px)
+    img_path = tmp_path / "large_chart.png"
+    img = Image.new("RGB", (2000, 2000), color="blue")
+    img.save(img_path)
+    
+    base64_str, mime_type = _encode_image(img_path, max_width=1024)
+    
+    # Assertions
+    assert base64_str is not None
+    assert mime_type == "image/webp"
+    
+    # Decode image to verify size
+    decoded_img = Image.open(io.BytesIO(base64.b64decode(base64_str)))
+    assert decoded_img.width == 1024
+    assert decoded_img.height == 1024
+    assert decoded_img.format == "WEBP"

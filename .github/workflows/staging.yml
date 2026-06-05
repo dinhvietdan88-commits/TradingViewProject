@@ -17,6 +17,9 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   # Step 1: Check staging config AND whether code actually changed
   check-config:
@@ -26,12 +29,13 @@ jobs:
       has_url: ${{ steps.check.outputs.has_url }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Detect code changes (skip docs-only pushes)
         id: paths
         uses: dorny/paths-filter@v4
         with:
+          base: ${{ github.event_name != 'pull_request' && (github.event.before && github.event.before != '0000000000000000000000000000000000000000' && github.event.before || github.event.repository.default_branch) || '' }}
           filters: |
             code:
               - 'server/**'
@@ -76,13 +80,13 @@ jobs:
       WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Create server symlink
         run: ln -s nerves/workers/trading server
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 

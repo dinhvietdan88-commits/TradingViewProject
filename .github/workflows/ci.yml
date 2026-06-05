@@ -40,6 +40,9 @@ permissions:
   contents: read
   actions:  read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   # ── 0. SMART CHANGE CLASSIFICATION ─────────────────────────────────
   classify:
@@ -51,7 +54,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2   # Need HEAD~1 for diff size check (hotfix guard)
 
@@ -59,6 +62,7 @@ jobs:
         id: filter
         uses: dorny/paths-filter@v4
         with:
+          base: ${{ github.event_name != 'pull_request' && (github.event.before && github.event.before != '0000000000000000000000000000000000000000' && github.event.before || github.event.repository.default_branch) || '' }}
           filters: |
             deps:
               - 'nerves/workers/trading/requirements*.txt'
