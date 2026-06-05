@@ -3,3 +3,5 @@
 ^\.gitsecrets$
 ^proposal\.json$
 ^docs/plans/P7/.*\.md$
+^\.secrets\.baseline$
+^\.env.*$
