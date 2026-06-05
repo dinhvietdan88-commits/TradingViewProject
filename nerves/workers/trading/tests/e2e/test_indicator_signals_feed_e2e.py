@@ -11,7 +11,16 @@ import sys
 from pathlib import Path
 
 # Add project root to sys.path so 'nerves' can be imported in all contexts
-project_root = Path(__file__).resolve().parent.parent.parent.parent.parent
+# Find the project root by searching upwards for a directory containing 'nerves'
+current = Path(__file__).resolve()
+project_root = None
+for parent in current.parents:
+    if (parent / "nerves").exists() and (parent / "pyproject.toml").exists():
+        project_root = parent
+        break
+if not project_root:
+    project_root = current.parent.parent.parent.parent.parent.parent
+
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
@@ -20,11 +29,12 @@ trading_dir = Path(__file__).resolve().parent.parent.parent
 if str(trading_dir) not in sys.path:
     sys.path.insert(0, str(trading_dir))
 
-import pytest
-import asyncio
-from unittest.mock import AsyncMock
+import pytest  # noqa: E402
+import asyncio  # noqa: E402
+from unittest.mock import AsyncMock  # noqa: E402
 
 # Explicitly import persistence module to register the EventBus handler in tests
+import data.indicator_persistence  # noqa: F401, E402
 
 
 @pytest.mark.asyncio

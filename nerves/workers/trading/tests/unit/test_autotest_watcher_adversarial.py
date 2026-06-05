@@ -288,7 +288,10 @@ async def test_debounce_verification():
         await queue.put("file3.py")
 
         # Wait for the debounce timeout to complete (window is 1.0s)
-        await asyncio.sleep(1.5)
+        for _ in range(50):
+            if len(suite_runs) == 1:
+                break
+            await asyncio.sleep(0.1)
 
         # Verify test suite run only once
         assert len(suite_runs) == 1
@@ -310,7 +313,6 @@ async def test_liveness_protection(temp_db):
     Ensure the daemon continues to run robustly even after a test fails or port check errors out.
     """
     # 1. Debouncer consumer should not crash when test suite execution returns non-zero (failed tests)
-    run_counts = 0
     mock_process = AsyncMock()
     mock_process.returncode = 1
     mock_process.communicate.return_value = (
@@ -323,19 +325,25 @@ async def test_liveness_protection(temp_db):
     # Mock subprocess execution to simulate pytest failure
     with (
         patch("asyncio.create_subprocess_exec", return_value=mock_process) as mock_exec,
-        patch("notifier.send_telegram_alert") as mock_tg,
+        patch("notifier.send_telegram_alert"),
     ):
         consumer_task = asyncio.create_task(autotest_watcher.debounce_consumer(queue))
 
         # First trigger: test fails
         await queue.put("file_a.py")
-        await asyncio.sleep(1.2)  # Wait for debounce to trigger run_test_suite
+        for _ in range(50):
+            if mock_exec.call_count == 1:
+                break
+            await asyncio.sleep(0.1)
         assert mock_exec.call_count == 1
         assert not consumer_task.done(), "Debouncer crashed after test failure!"
 
         # Second trigger: debouncer should still run
         await queue.put("file_b.py")
-        await asyncio.sleep(1.2)  # Wait for debounce
+        for _ in range(50):
+            if mock_exec.call_count == 2:
+                break
+            await asyncio.sleep(0.1)
         assert mock_exec.call_count == 2
         assert not consumer_task.done(), (
             "Debouncer crashed on second run after failure!"
@@ -363,7 +371,7 @@ async def test_liveness_protection(temp_db):
         patch("database.set_setting", side_effect=mock_set_setting_crash),
         patch("asyncio.sleep", side_effect=mock_sleep),
         patch("asyncio.open_connection", return_value=(MagicMock(), MagicMock())),
-        patch("notifier.send_telegram_alert") as mock_tg,
+        patch("notifier.send_telegram_alert"),
     ):
         try:
             await autotest_watcher.health_check_loop()
