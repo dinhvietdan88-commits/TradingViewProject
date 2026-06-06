@@ -214,7 +214,7 @@ async def test_webhook_empty_payload_after_secret_stripped():
         with pytest.raises(HTTPException) as exc_info:
             await webhook(req)
         assert exc_info.value.status_code == 400
-        assert exc_info.value.detail == "Empty payload"
+        assert exc_info.value.detail == "Missing required field: symbol"
 
 
 # ═══════════════════════════════════════════════════════════════

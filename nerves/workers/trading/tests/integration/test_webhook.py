@@ -26,4 +26,4 @@ async def test_webhook_validation_error(client):
     response = await client.post("/webhook", json={"secret": "test-secret"})
     assert response.status_code == 400
     data = response.json()
-    assert data["detail"] == "Empty payload"
+    assert data["detail"] == "Missing required field: symbol"

@@ -221,6 +221,8 @@ class WeexAdapter:
             return ["BTCUSDT_UMCBL", "ETHUSDT_UMCBL"]
 
     async def get_ticker_price(self, symbol: str) -> float:
+        if self.dry_run:
+            return 67500.0
         try:
             clean_symbol = symbol.replace("_UMCBL", "")
             data = await self._request(

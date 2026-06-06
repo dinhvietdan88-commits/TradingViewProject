@@ -71,7 +71,6 @@ def test_vcp_random_noise_not_detected():
     """Random flat data should not detect VCP."""
     import secrets
 
-    random.seed(42)  # noqa: F821
     prices = [100 + secrets.SystemRandom().uniform(-1, 1) for _ in range(80)]
     ohlcv = _make_ohlcv(prices)
     result = detect_vcp_contractions(ohlcv, pivot_window=3)
