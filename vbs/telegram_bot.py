@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 async def start_telegram_long_polling():
     """Starts a background loop to long-poll Telegram getUpdates for CallbackQueries."""
     if not config.TELEGRAM_BOT_TOKEN:
-        log.warning("TELEGRAM_BOT_TOKEN not configured. Long polling disabled.")
+        log.warning("Telegram bot token not configured. Long polling disabled.")
         return
 
     url = f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/getUpdates"
