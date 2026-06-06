@@ -9,7 +9,6 @@ Endpoints:
 """
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -180,7 +179,7 @@ async def telegram_widget_callback(request: Request):
 
         # Create session
         import uuid
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
         from auth.models import SessionData
 

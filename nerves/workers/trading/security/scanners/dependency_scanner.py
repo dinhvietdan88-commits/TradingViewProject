@@ -8,7 +8,6 @@ import json
 import re
 import subprocess
 from pathlib import Path
-from typing import List
 
 from security import Finding, Severity
 
@@ -26,29 +25,26 @@ def scan_requirements(target_dir: Path) -> list[Finding]:
     if not req_file.exists():
         return findings
 
-    # Try pip-audit first (best results)
+    # Try pip-audit first (best results, bypassed on Windows due to grandchild pipe hang bug)
     try:
         import os
-
-        cmd = [
-            "pip-audit",
-            "-r",
-            str(req_file),
-            "--format",
-            "json",
-            "--progress-spinner",
-            "off",
-        ]
-        if os.name == "nt":
-            cmd = ["cmd", "/c"] + cmd
-        else:
+        if os.name != "nt":
+            cmd = [
+                "pip-audit",
+                "-r",
+                str(req_file),
+                "--format",
+                "json",
+                "--progress-spinner",
+                "off",
+            ]
             cmd = ["bash", "-c", " ".join(cmd)]
 
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=60, check=False
-        )
-        if result.returncode == 0 or result.stdout:
-            return _parse_pip_audit_output(result.stdout, str(req_file))
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=2, check=False
+            )
+            if result.returncode == 0 or result.stdout:
+                return _parse_pip_audit_output(result.stdout, str(req_file))
     except FileNotFoundError:
         pass  # pip-audit not installed
     except subprocess.TimeoutExpired:

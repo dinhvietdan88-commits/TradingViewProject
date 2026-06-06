@@ -9,7 +9,6 @@ Runs the security scanning pipeline:
 
 import logging
 from pathlib import Path
-from typing import List, Optional
 
 from security import Finding, SecurityReport, Severity
 from security.scanners import (

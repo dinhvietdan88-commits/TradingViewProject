@@ -12,7 +12,6 @@ Lightweight alternative to Bandit for common dangerous patterns:
 import ast
 import re
 from pathlib import Path
-from typing import List
 
 from security import Finding, Severity
 
@@ -215,7 +214,15 @@ def scan_directory(target_dir: Path) -> list[Finding]:
     Skips: .venv, venv, site-packages, tests, security scanner itself, __pycache__.
     Uses Path.parts for platform-independent filtering (avoids Windows backslash issues).
     """
-    SKIP_PARTS = {".venv", "venv", "site-packages", "tests", "security", "__pycache__", ".agents"}
+    SKIP_PARTS = {
+        ".venv",
+        "venv",
+        "site-packages",
+        "tests",
+        "security",
+        "__pycache__",
+        ".agents",
+    }
     findings = []
     for py_file in target_dir.rglob("*.py"):
         # Skip directories by path component (works on Windows + Linux)

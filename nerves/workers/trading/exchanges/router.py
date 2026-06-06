@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .base import ExchangeAdapter, ExchangeUnavailableError
 from .registry import ExchangeRegistry

@@ -12,9 +12,8 @@ Usage:
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, UTC
+from datetime import datetime, UTC
 from enum import Enum
-from typing import Optional
 
 
 class Severity(Enum):
@@ -76,9 +75,7 @@ class ProbeResult:
 class SecurityReport:
     """Complete report from a full harness run."""
 
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     target: str = ""
     total_files_scanned: int = 0
     findings: list = field(default_factory=list)

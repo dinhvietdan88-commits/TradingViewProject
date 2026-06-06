@@ -2,7 +2,7 @@ import asyncio
 import logging
 import socket
 import sqlite3
-from typing import Any, Dict, List
+from typing import Any
 
 import aiohttp
 

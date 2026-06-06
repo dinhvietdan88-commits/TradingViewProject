@@ -13,7 +13,6 @@ import importlib.util
 import logging
 import re
 from pathlib import Path
-from typing import Optional
 
 import config
 
@@ -305,7 +304,9 @@ def query_knowledge(query: str, n_results: int = 3) -> list[dict]:
                 }
             )
 
-        log.info(f"RAG: Query '{query[:50]}...' → {len(output)} chunks retrieved.")  # codeql[py/log-injection]
+        log.info(
+            f"RAG: Query '{query[:50]}...' → {len(output)} chunks retrieved."
+        )  # codeql[py/log-injection]
         return output
 
     except Exception as e:

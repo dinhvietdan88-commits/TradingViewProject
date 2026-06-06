@@ -732,3 +732,50 @@ Run all RAG and analyzer unit tests to verify they pass successfully. Run static
 - [ ] Ruff lint checks return 0 errors on modified python files: `server/config.py`, `server/capture_client.py`, `server/rag.py`, `server/workers/vps_analyzer.py`, and `server/scripts/seed_chroma.py`.
 - [ ] Running `pytest server/tests/unit/test_vps_analyzer_rag_context.py` and `pytest server/tests/unit/test_rag.py` passes with 100% success.
 - [ ] No regression or compilation failures exist in `server/gateway/webhook.py` or other integrated files.
+
+## Follow-up — 2026-06-07T02:20:08+07:00
+
+Thiết lập và triển khai quy trình đánh giá mức độ sẵn sàng phát hành (Production Readiness Review - PRR) cho hệ sinh thái TradingViewProject và Angati Daemon, tự động hóa các chốt kiểm soát chất lượng từ local dev lên staging và production.
+
+Working directory: c:\Users\pesil\working\mj_trading\TradingViewProject
+Integrity mode: development
+
+## Requirements
+
+### R1. Local Dev Quality & Security Hardening (Semgrep & CodeQL CLI)
+Triển khai cơ chế quét an ninh tĩnh và động ở môi trường local trước khi commit/push:
+- Tích hợp Semgrep làm scanner chính cục bộ để kiểm tra an ninh nhanh (Stage SEC-01) tại local.
+- Sử dụng CodeQL CLI khi chạy chế độ kiểm tra sâu (Stage SEC-04) thông qua tham số `--deep` trong script `local_security_gate.py`.
+- Enforce ruff lint/format và Mini-MDASH thông qua git pre-commit hook hoạt động tự động.
+
+### R2. Staging Deployment Smoke Test Gate
+Đảm bảo mã nguồn trước khi merge vào nhánh chính (`main`) bắt buộc phải triển khai thành công lên Staging và vượt qua bài kiểm tra khói (Smoke Test):
+- Tích hợp kiểm tra tự động trong GitHub Actions workflow (`ci.yml` hoặc `staging.yml`) để chạy staging deploy và smoke test thực tế.
+- Sử dụng mock simulation (`simulate_pipeline.py`) làm fallback để tự động hóa smoke test trong môi trường CI không có kết nối staging vật lý.
+
+### R3. Quality Gates & Stacked Compliance Audit
+Áp đặt các thước đo định lượng về chất lượng code trước khi merge:
+- Đảm bảo độ phủ kiểm thử (Test Coverage) toàn cục đạt tối thiểu 80% và không bị giảm (Coverage Delta >= 0%).
+- Rà soát độ phức tạp (Cyclomatic Complexity) của các hàm mới, giới hạn tối đa <= 15.
+- Thiết lập yêu cầu bắt buộc tối thiểu 1 phê duyệt (approval) độc lập từ bot/peer trước khi merge.
+
+### R4. Transport Proof Rule & Network Telemetry
+Đảm bảo độ bền bỉ của kết nối và cảnh báo:
+- Cưỡng chế các luồng fallback phải có dữ liệu xác minh vật lý (`route_verified=true`) mới được xác nhận pipeline hoạt động.
+- Cấu hình telemetry gửi thông báo trực tiếp qua Telegram khi hệ thống gặp lỗi kết nối hoặc trôi lệch trạng thái cấu hình.
+
+### R5. Cron Check Process & Independent Auditor Verification
+Thiết lập cơ chế kiểm định độc lập liên tục:
+- Triển khai tiến trình định kỳ (Cron Check) để quét trạng thái liveness, clock drift NTP, và bộ nhớ đệm của các dịch vụ đang chạy.
+- Thiết lập quy trình tự động chạy một Auditor độc lập để xác minh tính tuân thủ của các cổng an ninh (SEC-01 đến SEC-04) trước khi phát hành phiên bản.
+
+## Acceptance Criteria
+
+### Verification Rules
+- [ ] Lệnh `python scripts/local_security_gate.py check` hoàn thành thành công và tích hợp Semgrep quét nhanh thành công.
+- [ ] Lệnh `python scripts/local_security_gate.py check --deep` hoàn thành thành công, tạo và phân tích được database CodeQL cục bộ.
+- [ ] GitHub workflow được cập nhật để bắt buộc staging smoke test phải đạt tích xanh trước khi mở khóa PR merge.
+- [ ] Báo cáo kiểm định chất lượng hiển thị đầy đủ thông số Test Coverage >= 80% và Complexity <= 15.
+- [ ] Mọi kịch bản truyền tin fallback (A2A) ghi nhận thông số xác minh vật lý từ transport layer (`route_verified=true`).
+- [ ] Tiến trình Cron Check được đăng ký và ghi nhận trạng thái liveness của các dịch vụ đúng định kỳ.
+- [ ] Auditor độc lập xuất báo cáo tuân thủ an toàn (Clean Verdict) trên toàn bộ dự án.

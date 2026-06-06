@@ -24,7 +24,7 @@ import json
 import logging
 import logging.handlers
 import os
-from datetime import datetime, timezone, UTC
+from datetime import datetime, UTC
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 _LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()

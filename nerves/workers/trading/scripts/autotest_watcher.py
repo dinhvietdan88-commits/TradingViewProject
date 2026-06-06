@@ -5,7 +5,6 @@ import os
 import subprocess
 import sys
 from datetime import datetime
-from typing import Set, Tuple
 
 # Add parent directory to sys.path
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

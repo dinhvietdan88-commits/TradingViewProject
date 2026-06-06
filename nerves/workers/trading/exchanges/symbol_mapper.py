@@ -1,5 +1,3 @@
-from typing import Dict, Optional
-
 from .base import SymbolMappingError
 
 

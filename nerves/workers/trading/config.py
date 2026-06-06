@@ -120,7 +120,9 @@ CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", str(Path(__file__).parent / "chroma
 # Đường dẫn lưu screenshots (phục vụ vẽ chart và gửi Telegram)
 default_screenshots_dir = "/screenshots"
 if not os.path.exists(default_screenshots_dir):
-    default_screenshots_dir = str((Path(__file__).resolve().parent / "screenshots").absolute())
+    default_screenshots_dir = str(
+        (Path(__file__).resolve().parent / "screenshots").absolute()
+    )
 SCREENSHOTS_DIR = os.getenv("SCREENSHOTS_DIR", default_screenshots_dir)
 
 # ── Remote ChromaDB (Phase 4: 3-Server Pipeline) ─────────────────────────

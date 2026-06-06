@@ -24,7 +24,7 @@ Properties tested:
 import os
 import re
 import sys
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import datetime, timedelta, UTC
 from unittest.mock import patch
 
 import pytest

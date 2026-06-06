@@ -263,7 +263,7 @@ class TestSecurityBoundaries:
             telegram_id=123456789, username="testuser"
         )
         # Store with expiry 1 second in the past
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         past = datetime.fromtimestamp(int(time.time()) - 1, tz=UTC)
         database.store_auth_code(

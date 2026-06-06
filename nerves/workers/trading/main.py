@@ -8,9 +8,8 @@ import io
 import logging
 import sys
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone, UTC
+from datetime import datetime, UTC
 from pathlib import Path
-from typing import Optional
 
 import aiosqlite
 from fastapi import (
@@ -901,7 +900,9 @@ async def scan_mtf_endpoint(
                 session=session, exchange_name=exch, symbol=sym, semaphore=semaphore
             )
         except Exception as e:
-            log.exception(f"Algorithmic scan failed in endpoint for {sym}: {e}")  # codeql[py/log-injection]
+            log.exception(
+                f"Algorithmic scan failed in endpoint for {sym}: {e}"
+            )  # codeql[py/log-injection]
             raise HTTPException(
                 status_code=500,
                 detail="MTF Scan failed due to an internal algorithmic error.",
@@ -947,7 +948,9 @@ async def scan_mtf_endpoint(
                 mtf_scan_result={"timeframes": mtf_res.timeframes},
             )
         except Exception as e:
-            log.error(f"Vision analysis failed in endpoint for {sym}: {e}")  # codeql[py/log-injection]
+            log.error(
+                f"Vision analysis failed in endpoint for {sym}: {e}"
+            )  # codeql[py/log-injection]
             vision_result = {"error": str(e)}
     else:
         vision_result = {"error": "Failed to capture any charts for vision analysis."}
@@ -999,9 +1002,15 @@ async def scan_mtf_endpoint(
             "error": vision_result.get("error"),
         },
         "screenshots": {
-            "1d": str(path_1d) if path_1d.exists() else None,  # codeql[py/path-injection]
-            "4h": str(path_4h) if path_4h.exists() else None,  # codeql[py/path-injection]
-            "1h": str(path_1h) if path_1h.exists() else None,  # codeql[py/path-injection]
+            "1d": str(path_1d)
+            if path_1d.exists()
+            else None,  # codeql[py/path-injection]
+            "4h": str(path_4h)
+            if path_4h.exists()
+            else None,  # codeql[py/path-injection]
+            "1h": str(path_1h)
+            if path_1h.exists()
+            else None,  # codeql[py/path-injection]
         },
     }
 
@@ -1873,7 +1882,9 @@ async def api_vision_capture(
         "patterns": patterns,
         "ai_analysis": analysis_text,
         "screenshot_url": f"/api/vision/screenshot/{brief_id}" if brief_id else None,
-        "has_screenshot": screenshot_path.exists() if screenshot_path else False,  # codeql[py/path-injection]
+        "has_screenshot": screenshot_path.exists()
+        if screenshot_path
+        else False,  # codeql[py/path-injection]
     }
 
 

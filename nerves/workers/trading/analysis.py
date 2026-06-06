@@ -6,8 +6,8 @@ Trend Template scorer (8 Minervini criteria) + VCP detector.
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone, UTC
-from typing import Any, Dict, List, Optional
+from datetime import datetime, UTC
+from typing import Any
 
 import aiohttp
 
@@ -250,7 +250,9 @@ async def _run_rest_scan_for_symbols(symbols: list[str]) -> list[ScanResult]:
     """Helper to run REST scanning for a list of symbols concurrently."""
     if not symbols:
         return []
-    logger.info(f"Performing REST scan for symbols: {symbols}...")  # codeql[py/log-injection]
+    logger.info(
+        f"Performing REST scan for symbols: {symbols}..."
+    )  # codeql[py/log-injection]
     semaphore = asyncio.Semaphore(15)
 
     async with aiohttp.ClientSession() as session:
@@ -500,13 +502,11 @@ async def fetch_candles_with_retry(
                         retry_after = float(retry_after_header)
                     except ValueError:
                         try:
-                            from datetime import datetime, timezone
+                            from datetime import datetime
                             from email.utils import parsedate_to_datetime
 
                             dt_hdr = parsedate_to_datetime(str(retry_after_header))
-                            delta = (
-                                dt_hdr - datetime.now(UTC)
-                            ).total_seconds()
+                            delta = (dt_hdr - datetime.now(UTC)).total_seconds()
                             retry_after = max(delta, 1.0)
                         except Exception:
                             retry_after = 1.0
@@ -526,7 +526,9 @@ async def fetch_candles_with_retry(
                     )
                     params["category"] = "spot"
                     continue
-                logger.warning(f"HTTP error {status} for {symbol} on {exchange_name}")  # codeql[py/log-injection]
+                logger.warning(
+                    f"HTTP error {status} for {symbol} on {exchange_name}"
+                )  # codeql[py/log-injection]
                 await asyncio.sleep(backoff_factor**retries)
                 retries += 1
                 continue
@@ -760,7 +762,9 @@ async def scan_single_symbol_rest(
             ohlcv, exchange_name, symbol, btc_closes, btc_candles
         )
     except Exception as e:
-        logger.exception(f"Exception during REST scan for {symbol}")  # codeql[py/log-injection]
+        logger.exception(
+            f"Exception during REST scan for {symbol}"
+        )  # codeql[py/log-injection]
         return ScanResult(
             symbol=symbol,
             price=0.0,
@@ -820,7 +824,9 @@ async def scan_symbol_multi_timeframe(
             )
             return tf, result
         except Exception as e:
-            logger.warning(f"Failed to scan timeframe {tf} for {symbol}: {e}")  # codeql[py/log-injection]
+            logger.warning(
+                f"Failed to scan timeframe {tf} for {symbol}: {e}"
+            )  # codeql[py/log-injection]
             err_result = ScanResult(
                 symbol=symbol,
                 price=0.0,
