@@ -19,8 +19,8 @@ shortCross = ta.crossunder(fast, slow)
 // Use alertcondition() so each event becomes a discrete alert in TradingView.
 // In the Alert dialog set the Message to the JSON template below
 // (placeholders are interpolated server-side by TradingView).
-alertcondition(longCross,  title="Long Cross",  message='{"secret":"REPLACE_WITH_WEBHOOK_SECRET","action":"buy","symbol":"{{ticker}}","price":"{{close}}","time":"{{time}}"}')
-alertcondition(shortCross, title="Short Cross", message='{"secret":"REPLACE_WITH_WEBHOOK_SECRET","action":"sell","symbol":"{{ticker}}","price":"{{close}}","time":"{{time}}"}')
+alertcondition(longCross,  title="Long Cross",  message='{"secret":"REPLACE_WITH_WEBHOOK_SECRET","action":"buy","symbol":"{{ticker}}","price":"{{close}}","time":"{{time}}"}') // pragma: allowlist secret
+alertcondition(shortCross, title="Short Cross", message='{"secret":"REPLACE_WITH_WEBHOOK_SECRET","action":"sell","symbol":"{{ticker}}","price":"{{close}}","time":"{{time}}"}') // pragma: allowlist secret
 
 plotshape(longCross,  style=shape.triangleup,   location=location.belowbar, color=color.green, size=size.tiny, title="Long")
 plotshape(shortCross, style=shape.triangledown, location=location.abovebar, color=color.red,   size=size.tiny, title="Short")
