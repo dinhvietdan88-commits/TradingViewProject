@@ -80,8 +80,8 @@ jobs:
       - name: Send greeting
         uses: actions/first-interaction@v3
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          issue-message: |
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: |
             👋 **Welcome to TradingViewProject!**
 
             Thank you for opening your first issue, @${{ github.actor }}!
@@ -92,7 +92,7 @@ jobs:
             - 📎 Attach relevant logs from `server/logs/` if applicable
 
             A maintainer will review this shortly. Thank you! 🚀
-          pr-message: |
+          pr_message: |
             👋 **Thanks for your first contribution, @${{ github.actor }}!**
 
             Our CI pipeline will now run. Please ensure:
