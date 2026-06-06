@@ -1,8 +1,8 @@
 import logging
 import os
-from pathlib import Path
 import re
 import sys
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -10,8 +10,9 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import chromadb
-import config
 from chromadb.utils import embedding_functions
+
+import config
 
 # Set up logging
 logging.basicConfig(

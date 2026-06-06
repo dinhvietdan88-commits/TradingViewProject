@@ -1,13 +1,14 @@
 import sys
-import pytest
 from pathlib import Path
-from unittest.mock import AsyncMock, patch, MagicMock, ANY
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
+
+import pytest
 
 # Fix path to include server/ if needed
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from core.event_bus import EventBus
-from core.events import IndicatorSignalReceived, AnalysisComplete
+from core.events import AnalysisComplete, IndicatorSignalReceived
 from hub.notification_hub import (
     notify_indicator_signal,
     process_analysis_complete,

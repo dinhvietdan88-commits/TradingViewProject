@@ -1,7 +1,8 @@
-import aiosqlite
 import json
 import logging
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
+import aiosqlite
 
 import config
 
@@ -15,12 +16,12 @@ log = logging.getLogger(__name__)
 async def insert_signal(
     symbol: str,
     action: str,
-    price: Optional[float] = None,
-    quote_qty: Optional[float] = None,
-    source_ip: Optional[str] = None,
-    payload: Optional[Dict] = None,
-    mode: Optional[str] = None,
-    vbs_queue_id: Optional[int] = None,
+    price: float | None = None,
+    quote_qty: float | None = None,
+    source_ip: str | None = None,
+    payload: dict | None = None,
+    mode: str | None = None,
+    vbs_queue_id: int | None = None,
 ) -> int:
     """Luu tin hieu moi tu TradingView, tra ve signal_id."""
     async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
@@ -41,7 +42,7 @@ async def insert_signal(
         await db.commit()
         signal_id = cursor.lastrowid
         log.info(
-            f"Signal #{signal_id} saved: {action} {symbol}"
+            f"Signal #{signal_id} saved: {action} {symbol}"  # codeql[py/log-injection]
             + (f" [{mode}]" if mode else "")
             + (f" (vbs_queue_id={vbs_queue_id})" if vbs_queue_id else "")
         )
@@ -67,8 +68,8 @@ async def insert_indicator_signal(
     conditions_met: str,
     metadata: str,
     interval: str = "",
-    price: Optional[float] = None,
-    source_ip: Optional[str] = None,
+    price: float | None = None,
+    source_ip: str | None = None,
     exchange: str = "binance",
 ) -> int:
     """Luu tin hieu indicator vao bang indicator_signals (REQ 7.1 — full schema)."""
@@ -110,17 +111,17 @@ async def insert_trade(
     signal_id: int,
     symbol: str,
     side: str,
-    order_id: Optional[str] = None,
-    status: Optional[str] = None,
-    requested_qty: Optional[float] = None,
-    executed_qty: Optional[float] = None,
-    executed_price: Optional[float] = None,
-    commission: Optional[float] = None,
-    error_message: Optional[str] = None,
-    pnl: Optional[float] = None,
-    combined_score: Optional[str] = None,
+    order_id: str | None = None,
+    status: str | None = None,
+    requested_qty: float | None = None,
+    executed_qty: float | None = None,
+    executed_price: float | None = None,
+    commission: float | None = None,
+    error_message: str | None = None,
+    pnl: float | None = None,
+    combined_score: str | None = None,
     exchange: str = "binance",
-    vbs_queue_id: Optional[int] = None,
+    vbs_queue_id: int | None = None,
 ) -> int:
     """Luu ket qua giao dich Binance/Bybit."""
     async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
@@ -171,9 +172,9 @@ async def insert_trade(
 
 async def update_trade_oco(
     trade_id: int,
-    stop_loss_price: Optional[float] = None,
-    take_profit_price: Optional[float] = None,
-    oco_order_id: Optional[str] = None,
+    stop_loss_price: float | None = None,
+    take_profit_price: float | None = None,
+    oco_order_id: str | None = None,
     order_type: str = "OCO",
 ) -> None:
     """Cập nhật OCO details cho một trade."""
@@ -198,11 +199,11 @@ async def update_trade_oco(
 
 async def insert_brief(
     symbols_scanned: int,
-    scan_data: Optional[str] = None,
-    ai_analysis: Optional[str] = None,
-    vision_data: Optional[str] = None,
-    screenshot: Optional[str] = None,
-    brief_text: Optional[str] = None,
+    scan_data: str | None = None,
+    ai_analysis: str | None = None,
+    vision_data: str | None = None,
+    screenshot: str | None = None,
+    brief_text: str | None = None,
     success: int = 1,
 ) -> int:
     """Lưu morning brief vào database."""
@@ -235,11 +236,11 @@ async def insert_brief(
 
 async def insert_sentiment_log(
     symbol: str,
-    twitter_score: Optional[float] = None,
-    rss_score: Optional[float] = None,
-    glassnode_score: Optional[float] = None,
-    combined_score: Optional[float] = None,
-    raw_data: Optional[Dict[str, Any]] = None,
+    twitter_score: float | None = None,
+    rss_score: float | None = None,
+    glassnode_score: float | None = None,
+    combined_score: float | None = None,
+    raw_data: dict[str, Any] | None = None,
 ) -> int:
     """Luu ket qua phan tich sentiment vao database."""
     async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:

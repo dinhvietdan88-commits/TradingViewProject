@@ -7,6 +7,7 @@ is exercised when Binance credentials are provided (dry-run mode).
 """
 
 import pytest
+
 import config
 
 

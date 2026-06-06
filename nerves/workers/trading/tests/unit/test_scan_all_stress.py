@@ -1,11 +1,12 @@
-import sys
-import pathlib
 import asyncio
 import gc
-import os
-import time
 import logging
+import os
+import pathlib
+import sys
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 # Try to import psutil for memory measurement
@@ -19,8 +20,8 @@ trading_dir = pathlib.Path(__file__).resolve().parent.parent.parent
 if str(trading_dir) not in sys.path:
     sys.path.insert(0, str(trading_dir))
 
-from analysis import scan_all_configured_exchanges, ScanResult  # noqa: E402
 import analysis as analysis_module  # noqa: E402
+from analysis import ScanResult, scan_all_configured_exchanges  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

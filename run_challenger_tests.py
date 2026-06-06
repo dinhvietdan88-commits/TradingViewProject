@@ -1,6 +1,7 @@
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 if __name__ == "__main__":
     # Add nerves/workers/trading to sys.path to resolve internal modules correctly

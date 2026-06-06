@@ -15,13 +15,14 @@ Usage (from telegram_bot.py setup):
 """
 
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from telegram import Update
-from telegram.ext import ContextTypes, CommandHandler
+from telegram.ext import CommandHandler, ContextTypes
 
 import config
-from .service import ClaudeService, AnalysisRequest
+
+from .service import AnalysisRequest, ClaudeService
 
 if TYPE_CHECKING:
     pass
@@ -32,7 +33,7 @@ log = logging.getLogger(__name__)
 _MAX_TELEGRAM_CHARS = 4096
 
 # Singleton reference injected at register time
-_service: Optional[ClaudeService] = None
+_service: ClaudeService | None = None
 
 
 # ─── Command handlers ──────────────────────────────────────────────────────────

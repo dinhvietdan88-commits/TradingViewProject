@@ -1,9 +1,10 @@
-import pytest
-from unittest.mock import AsyncMock
 from collections import namedtuple
+from unittest.mock import AsyncMock
 
-from core.events import TradeApproved
+import pytest
+
 from core.event_bus import EventBus
+from core.events import TradeApproved
 from engine import trade_engine
 
 pytestmark = pytest.mark.asyncio

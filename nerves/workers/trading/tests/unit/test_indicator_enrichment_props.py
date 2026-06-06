@@ -8,8 +8,8 @@ Property 14: entry → buy, exit → sell
 Property 15: Enriched entry/exit emits SignalValidated with correct fields
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 

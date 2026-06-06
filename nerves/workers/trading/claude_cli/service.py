@@ -21,7 +21,7 @@ import logging
 import re
 import time
 from dataclasses import dataclass
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import config
 
@@ -42,10 +42,10 @@ class AnalysisRequest:
     query: str
     symbol: str = ""
     action: str = ""
-    price: Optional[float] = None
-    trading_context: Optional[dict] = None  # positions, signals, watchlist
+    price: float | None = None
+    trading_context: dict | None = None  # positions, signals, watchlist
     include_rag_context: bool = True
-    image_path: Optional[str] = None  # reserved for future vision integration
+    image_path: str | None = None  # reserved for future vision integration
 
 
 @dataclass
@@ -260,7 +260,7 @@ class ClaudeService:
         Property 6: AnalysisComplete structural equivalence (via EventBusInterface)
     """
 
-    def __init__(self, sdk: "SdkClient", ctx: Optional[ContextManager] = None):
+    def __init__(self, sdk: SdkClient, ctx: ContextManager | None = None):
         self._sdk = sdk
         self._ctx = ctx or ContextManager()
         self._initialized: bool = False

@@ -1,15 +1,16 @@
 import asyncio
-import pytest
-from unittest.mock import patch
 import logging
-from typing import List, Dict
+from typing import Dict, List
+from unittest.mock import patch
 
-from analysis import scan_single_symbol_rest, ScanResult
+import pytest
+
+from analysis import ScanResult, scan_single_symbol_rest
 
 logger = logging.getLogger(__name__)
 
 # Track virtual time per asyncio Task
-task_clocks: Dict[asyncio.Task, float] = {}
+task_clocks: dict[asyncio.Task, float] = {}
 original_sleep = asyncio.sleep
 
 
@@ -52,7 +53,7 @@ async def test_rate_limit_robustness_simulation():
     total_200s = 0
 
     # Track retries per symbol
-    symbol_attempts: Dict[str, int] = {}
+    symbol_attempts: dict[str, int] = {}
 
     # Mock data for candles
     mock_candles_data = [
@@ -108,7 +109,7 @@ async def test_rate_limit_robustness_simulation():
                 )
             )
 
-        results: List[ScanResult] = await asyncio.gather(*tasks)
+        results: list[ScanResult] = await asyncio.gather(*tasks)
 
     # Calculate metrics
     success_count = sum(1 for r in results if r.error is None)

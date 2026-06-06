@@ -1,6 +1,7 @@
-import fitz
 import os
 import re
+
+import fitz
 
 PDF_PATH = r"c:\Users\Son\OneDrive\Tài liệu\Bussiness\MJ\Trading\TradingViewProject\docs\references\Unlock_Trade_Like_a_Stock_Market_Wizard_How_to_Achieve_Super_Performance.pdf"
 OUTPUT_DIR = r"c:\Users\Son\OneDrive\Tài liệu\Bussiness\MJ\Trading\TradingViewProject\docs\knowledge\trading_wizard"

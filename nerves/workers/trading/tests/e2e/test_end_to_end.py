@@ -8,16 +8,17 @@ BUG-02 fixes:
      prevent race conditions if tests ever run in parallel (pytest-xdist).
 """
 
-import pytest
 import json
-import sys
 import os
-from httpx import AsyncClient, ASGITransport
+import sys
+
+import pytest
+from httpx import ASGITransport, AsyncClient
 
 # Add server to path so we can import main
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-from main import app
 from database import init_db
+from main import app
 
 
 def load_payloads():
@@ -26,7 +27,7 @@ def load_payloads():
     payloads_path = os.path.join(
         os.path.dirname(__file__), "../mock_data/payloads.json"
     )
-    with open(payloads_path, "r") as f:
+    with open(payloads_path) as f:
         payloads = json.load(f)
 
     # Inject config.WEBHOOK_SECRET into payloads

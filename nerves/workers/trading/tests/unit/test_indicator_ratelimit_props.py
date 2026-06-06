@@ -5,15 +5,14 @@ Feature: tradingview-alert-indicator-signal
 Property 20: Shared rate limiting — indicator and strategy requests count against same 15/min limit.
 """
 
-import time
-import sys
 import os
+import sys
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from hypothesis import given, settings
 from hypothesis import strategies as st
-
 
 RATE_LIMIT = 15  # requests per minute
 WINDOW_SEC = 60.0

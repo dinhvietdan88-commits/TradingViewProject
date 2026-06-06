@@ -1,12 +1,12 @@
-import os
-import sys
-import time
-import signal
 import json
+import os
+import signal
 import subprocess
+import sys
 import threading
-import urllib.request
+import time
 import urllib.error
+import urllib.request
 from pathlib import Path
 
 # Color helpers

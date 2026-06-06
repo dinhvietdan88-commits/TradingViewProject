@@ -5,8 +5,8 @@ Configures UFW, Fail2ban, Chrony NTP, and Docker daemon log rotation.
 """
 
 import os
-import sys
 import subprocess
+import sys
 
 # SSH configuration parameters for Server A
 SERVER_A_IP = "100.92.13.100"

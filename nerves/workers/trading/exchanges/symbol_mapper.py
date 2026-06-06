@@ -1,4 +1,5 @@
 from typing import Dict, Optional
+
 from .base import SymbolMappingError
 
 
@@ -11,7 +12,7 @@ class SymbolMapper:
         "weex": lambda s: s.upper().replace("/", "").replace("-", "") + "_UMCBL",
     }
 
-    def __init__(self, custom_mappings: Optional[Dict[str, Dict[str, str]]] = None):
+    def __init__(self, custom_mappings: dict[str, dict[str, str]] | None = None):
         self._custom = custom_mappings or {}
 
     def map_symbol(self, canonical: str, exchange_id: str) -> str:

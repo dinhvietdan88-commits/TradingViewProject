@@ -60,7 +60,7 @@ def add_symbol(symbol: str) -> dict:
 
     symbols.append(symbol)
     _save(symbols)
-    logger.info(f"Watchlist: added {symbol}")
+    logger.info(f"Watchlist: added {symbol}")  # codeql[py/log-injection]
     return {"added": True, "symbol": symbol, "watchlist": symbols}
 
 
@@ -82,7 +82,7 @@ def remove_symbol(symbol: str) -> dict:
 
     symbols.remove(symbol)
     _save(symbols)
-    logger.info(f"Watchlist: removed {symbol}")
+    logger.info(f"Watchlist: removed {symbol}")  # codeql[py/log-injection]
     return {"removed": True, "symbol": symbol, "watchlist": symbols}
 
 

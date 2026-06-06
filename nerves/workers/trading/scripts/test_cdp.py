@@ -5,8 +5,8 @@ from pathlib import Path
 # Add server to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from mcp_client import get_mcp_client
 import config
+from mcp_client import get_mcp_client
 
 
 async def main():

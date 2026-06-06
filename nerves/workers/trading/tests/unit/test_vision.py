@@ -79,10 +79,12 @@ def test_format_vision_telegram_error():
 
 def test_encode_image_compression(tmp_path):
     """Should compress and resize image using PIL and return base64 and mime type."""
-    from vision import _encode_image
-    from PIL import Image
     import base64
     import io
+
+    from PIL import Image
+
+    from vision import _encode_image
 
     # Create a dummy large image (e.g. 2000x2000 px)
     img_path = tmp_path / "large_chart.png"

@@ -13,15 +13,15 @@ Design Invariants (v6.0):
 - Uses set_bus() pattern for test isolation.
 """
 
-import logging
 import asyncio
+import logging
 from typing import Optional
 
 import database
-
 from core.event_bus import bus as _default_bus
-from core.events import TradeApproved, TradeExecuted, TradeFailed, CircuitBreakerTripped
+from core.events import CircuitBreakerTripped, TradeApproved, TradeExecuted, TradeFailed
 from symbol_config import get_symbol_config
+from datetime import UTC
 
 log = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ def get_bus():
 
 
 async def monitor_limit_order(
-    adapter, symbol: str, order_id: str, oco_id: Optional[str], entry_price: float
+    adapter, symbol: str, order_id: str, oco_id: str | None, entry_price: float
 ):
     """Monitor a limit order placed due to slippage, cancel after 30s if unfilled."""
     await asyncio.sleep(30)
@@ -158,7 +158,7 @@ async def execute_trade(event: TradeApproved) -> None:
         await _handle_failure(event, action, error_msg, requested_exchange, None)
         return
 
-    combined_score: Optional[str] = getattr(event, "combined_score", None)
+    combined_score: str | None = getattr(event, "combined_score", None)
 
     # TVP-001 & TVP-002: Hardened validation
     if entry_price <= 0.0:
@@ -173,8 +173,10 @@ async def execute_trade(event: TradeApproved) -> None:
     original_action = ""
     original_payload = {}
     try:
-        import aiosqlite
         import json
+
+        import aiosqlite
+
         import config
 
         async with aiosqlite.connect(config.DB_PATH) as db:
@@ -286,6 +288,7 @@ async def execute_trade(event: TradeApproved) -> None:
             # Tactical Stop-loss at Swing Low of last 5 hours
             try:
                 import aiohttp
+
                 from analysis import fetch_candles_with_retry
 
                 async with aiohttp.ClientSession() as session:
@@ -388,8 +391,8 @@ async def execute_trade(event: TradeApproved) -> None:
 
     # Dynamic Risk Settings & Circuit Breaker checks
     try:
-        from unittest.mock import Mock, AsyncMock
         import inspect
+        from unittest.mock import AsyncMock, Mock
 
         is_legacy_mock = isinstance(
             database.get_risk_settings, Mock
@@ -434,7 +437,7 @@ async def execute_trade(event: TradeApproved) -> None:
 
         # Check if there is an active bypass
         if trip and not is_legacy_mock:
-            from unittest.mock import Mock, AsyncMock
+            from unittest.mock import AsyncMock, Mock
 
             is_get_setting_mock = isinstance(database.get_setting, Mock)
             is_get_setting_async = isinstance(database.get_setting, AsyncMock)
@@ -450,7 +453,7 @@ async def execute_trade(event: TradeApproved) -> None:
                     from datetime import datetime, timezone
 
                     bypass_until = datetime.fromisoformat(bypass_until_str)
-                    if datetime.now(timezone.utc) < bypass_until:
+                    if datetime.now(UTC) < bypass_until:
                         log.info(
                             f"TradeEngine: Tripping bypassed for {actual_exchange} until {bypass_until_str}"
                         )

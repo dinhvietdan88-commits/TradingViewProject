@@ -9,14 +9,15 @@ tv_cdp_webhook.py -- TradingView Desktop CDP Connection and Webhook Automation
 5. Builds and sends a validated webhook payload to the FastAPI server.
 """
 
+import asyncio
+import logging
 import os
+import subprocess
 import sys
 import time
-import subprocess
-import logging
-import requests
-import asyncio
 from pathlib import Path
+
+import requests
 
 # Ensure nerves/workers/trading is in the Python path
 TRADING_DIR = Path(__file__).resolve().parent.parent

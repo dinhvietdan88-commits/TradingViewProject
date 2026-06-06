@@ -34,7 +34,6 @@ import time
 import uuid
 from pathlib import Path
 
-
 AGENTS_ROOT = Path(__file__).resolve().parent.parent.parent
 CORTEX_DB = AGENTS_ROOT / "cortex" / "db"
 TRADES_DB = CORTEX_DB / "trades.db"

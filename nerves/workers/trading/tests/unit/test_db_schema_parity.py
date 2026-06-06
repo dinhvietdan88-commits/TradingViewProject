@@ -5,9 +5,9 @@ test_db_schema_parity.py — Kiểm tra tính nhất quán schema database.
 không gây lỗi (idempotent).
 """
 
+import aiosqlite
 import pytest
 import pytest_asyncio
-import aiosqlite
 
 
 @pytest.fixture

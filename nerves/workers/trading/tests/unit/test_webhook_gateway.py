@@ -15,9 +15,9 @@ Tests verify:
 """
 
 import time
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 
 # ═══════════════════════════════════════════════════════════════
 # HELPERS
@@ -43,7 +43,7 @@ def _make_request(payload: dict, headers: dict = None, client_host: str = "127.0
 @pytest.mark.asyncio
 async def test_webhook_auth_via_body_secret():
     """Secret in body JSON should authenticate successfully."""
-    from gateway.webhook import webhook, _WEBHOOK_RATE_LIMITS
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS, webhook
 
     _WEBHOOK_RATE_LIMITS.clear()
 
@@ -78,7 +78,7 @@ async def test_webhook_auth_via_body_secret():
 @pytest.mark.asyncio
 async def test_webhook_auth_via_header():
     """Secret in X-TV-Secret header should authenticate successfully."""
-    from gateway.webhook import webhook, _WEBHOOK_RATE_LIMITS
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS, webhook
 
     _WEBHOOK_RATE_LIMITS.clear()
 
@@ -108,7 +108,7 @@ async def test_webhook_auth_via_header():
 @pytest.mark.asyncio
 async def test_webhook_dashboard_token_bypass():
     """A valid DASHBOARD_TOKEN Bearer auth bypasses webhook secret check."""
-    from gateway.webhook import webhook, _WEBHOOK_RATE_LIMITS
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS, webhook
 
     _WEBHOOK_RATE_LIMITS.clear()
 
@@ -138,8 +138,9 @@ async def test_webhook_dashboard_token_bypass():
 @pytest.mark.asyncio
 async def test_webhook_unauthorized_wrong_secret():
     """Wrong secret should return 401 Unauthorized."""
-    from gateway.webhook import webhook, _WEBHOOK_RATE_LIMITS
     from fastapi import HTTPException
+
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS, webhook
 
     _WEBHOOK_RATE_LIMITS.clear()
 
@@ -159,8 +160,9 @@ async def test_webhook_unauthorized_wrong_secret():
 @pytest.mark.asyncio
 async def test_indicator_webhook_missing_name_no_db_insert():
     """Invalid indicator payload must return 400 without persisting a signal row."""
-    from gateway.webhook import webhook, _WEBHOOK_RATE_LIMITS
     from fastapi import HTTPException
+
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS, webhook
 
     _WEBHOOK_RATE_LIMITS.clear()
 
@@ -199,8 +201,9 @@ async def test_indicator_webhook_missing_name_no_db_insert():
 @pytest.mark.asyncio
 async def test_webhook_empty_payload_after_secret_stripped():
     """Payload that becomes empty after secret is stripped should return 400."""
-    from gateway.webhook import webhook, _WEBHOOK_RATE_LIMITS
     from fastapi import HTTPException
+
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS, webhook
 
     _WEBHOOK_RATE_LIMITS.clear()
 
@@ -225,8 +228,9 @@ async def test_webhook_empty_payload_after_secret_stripped():
 @pytest.mark.asyncio
 async def test_rate_limit_blocks_after_15_requests():
     """16th request from same IP within 60s should return 429."""
-    from gateway.webhook import webhook, _WEBHOOK_RATE_LIMITS
     from fastapi import HTTPException
+
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS, webhook
 
     _WEBHOOK_RATE_LIMITS.clear()
 
@@ -253,7 +257,7 @@ async def test_rate_limit_blocks_after_15_requests():
 @pytest.mark.asyncio
 async def test_rate_limit_resets_after_window():
     """First request after the 60s window should not be rate-limited."""
-    from gateway.webhook import webhook, _WEBHOOK_RATE_LIMITS
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS, webhook
 
     _WEBHOOK_RATE_LIMITS.clear()
 
@@ -296,7 +300,7 @@ async def test_rate_limit_resets_after_window():
 @pytest.mark.asyncio
 async def test_price_parsed_with_comma_separator():
     """Prices with commas (e.g., '68,000.50') should be parsed correctly."""
-    from gateway.webhook import webhook, _WEBHOOK_RATE_LIMITS
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS, webhook
 
     _WEBHOOK_RATE_LIMITS.clear()
     captured_args = {}
@@ -336,7 +340,7 @@ async def test_price_parsed_with_comma_separator():
 @pytest.mark.asyncio
 async def test_invalid_price_becomes_none():
     """Non-numeric price strings should resolve to None (not crash)."""
-    from gateway.webhook import webhook, _WEBHOOK_RATE_LIMITS
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS, webhook
 
     _WEBHOOK_RATE_LIMITS.clear()
     captured_args = {}
@@ -381,7 +385,7 @@ async def test_invalid_price_becomes_none():
 @pytest.mark.asyncio
 async def test_quote_qty_capped_at_max():
     """quoteQty exceeding MAX_QUOTE_QTY should be capped."""
-    from gateway.webhook import webhook, _WEBHOOK_RATE_LIMITS
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS, webhook
 
     _WEBHOOK_RATE_LIMITS.clear()
     captured_args = {}
@@ -421,7 +425,7 @@ async def test_quote_qty_capped_at_max():
 @pytest.mark.asyncio
 async def test_quote_qty_defaults_to_10_on_invalid():
     """Invalid quoteQty (e.g., text string) should default to 10.0."""
-    from gateway.webhook import webhook, _WEBHOOK_RATE_LIMITS
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS, webhook
 
     _WEBHOOK_RATE_LIMITS.clear()
     captured_args = {}
@@ -471,7 +475,7 @@ async def test_ip_extracted_from_x_forwarded_for():
     spoofed by the client. The leftmost entry (203.0.113.5) is client-provided
     and untrusted. The rightmost entry (10.0.0.1) is what our proxy recorded.
     """
-    from gateway.webhook import webhook, _WEBHOOK_RATE_LIMITS
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS, webhook
 
     _WEBHOOK_RATE_LIMITS.clear()
     captured_args = {}
@@ -513,8 +517,8 @@ async def test_ip_extracted_from_x_forwarded_for():
 @pytest.mark.asyncio
 async def test_signal_received_dispatched_to_event_bus():
     """Successful ingress should fire emit_background with a SignalReceived event."""
-    from gateway.webhook import webhook, _WEBHOOK_RATE_LIMITS
     from core.events import SignalReceived
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS, webhook
 
     _WEBHOOK_RATE_LIMITS.clear()
 
@@ -569,7 +573,7 @@ async def test_signal_received_dispatched_to_event_bus():
 @pytest.mark.asyncio
 async def test_secret_stripped_from_stored_payload():
     """The 'secret' key must NOT be stored in the DB payload after auth."""
-    from gateway.webhook import webhook, _WEBHOOK_RATE_LIMITS
+    from gateway.webhook import _WEBHOOK_RATE_LIMITS, webhook
 
     _WEBHOOK_RATE_LIMITS.clear()
     captured_args = {}

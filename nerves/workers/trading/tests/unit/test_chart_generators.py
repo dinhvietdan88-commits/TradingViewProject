@@ -1,7 +1,8 @@
-import unittest
 import os
 import shutil
+import unittest
 from pathlib import Path
+
 from utils.chart_generator_mpl import generate_chart_mpl
 
 
@@ -72,6 +73,7 @@ class TestChartGenerators(unittest.TestCase):
 
 
 import pytest  # noqa: E402
+
 from utils.chart_generator_lw import generate_chart_lw  # noqa: E402
 
 
@@ -86,8 +88,8 @@ def _playwright_available():
             timeout=5,
         )
         # If chromium binary exists, it's available
-        from pathlib import Path
         import sys
+        from pathlib import Path
 
         if sys.platform == "win32":
             return True  # Local Windows dev always has it

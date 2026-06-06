@@ -16,19 +16,19 @@ All external dependencies are mocked — no network, no DB, no Telegram token.
 """
 
 import sys
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from core.event_bus import EventBus
-from core.events import AnalysisComplete, TradeApproved, TradeApprovalTimeout
+from core.events import AnalysisComplete, TradeApprovalTimeout, TradeApproved
 from hub.notification_hub import (
-    process_analysis_complete,
-    set_bus,
     PENDING_TRADES,
     get_pending_trade,
     handle_approval_timeout,
+    process_analysis_complete,
+    set_bus,
 )
-
 
 # ═══════════════════════════════════════════════════════════════
 # HELPERS

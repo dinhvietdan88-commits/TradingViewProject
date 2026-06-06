@@ -39,7 +39,7 @@ class VCPOverlay:
     """Complete VCP pattern with multiple contractions."""
 
     detected: bool
-    contractions: List[VCPContraction] = field(default_factory=list)
+    contractions: list[VCPContraction] = field(default_factory=list)
     pivot_line_price: float = 0.0  # Breakout level (highest pivot)
     quality_score: float = 0.0  # 0-100
 
@@ -76,7 +76,7 @@ class DoubleBottomOverlay:
 # ═══════════════════════════════════════════════════════════════
 
 
-def find_pivot_highs(prices: List[float], window: int = 5) -> List[Tuple[int, float]]:
+def find_pivot_highs(prices: list[float], window: int = 5) -> list[tuple[int, float]]:
     """Find local pivot highs using N-bar window comparison.
 
     A pivot high at index i means prices[i] >= all prices in
@@ -97,7 +97,7 @@ def find_pivot_highs(prices: List[float], window: int = 5) -> List[Tuple[int, fl
     return pivots
 
 
-def find_pivot_lows(prices: List[float], window: int = 5) -> List[Tuple[int, float]]:
+def find_pivot_lows(prices: list[float], window: int = 5) -> list[tuple[int, float]]:
     """Find local pivot lows using N-bar window comparison."""
     pivots = []
     n = len(prices)
@@ -112,7 +112,7 @@ def find_pivot_lows(prices: List[float], window: int = 5) -> List[Tuple[int, flo
     return pivots
 
 
-def _extract_closes(ohlcv: list) -> List[float]:
+def _extract_closes(ohlcv: list) -> list[float]:
     """Extract close prices from OHLCV data (list-of-lists or list-of-dicts)."""
     if not ohlcv:
         return []
@@ -121,7 +121,7 @@ def _extract_closes(ohlcv: list) -> List[float]:
     return [float(c[4]) for c in ohlcv]
 
 
-def _extract_highs(ohlcv: list) -> List[float]:
+def _extract_highs(ohlcv: list) -> list[float]:
     """Extract high prices from OHLCV data."""
     if not ohlcv:
         return []
@@ -130,7 +130,7 @@ def _extract_highs(ohlcv: list) -> List[float]:
     return [float(c[2]) for c in ohlcv]
 
 
-def _extract_lows(ohlcv: list) -> List[float]:
+def _extract_lows(ohlcv: list) -> list[float]:
     """Extract low prices from OHLCV data."""
     if not ohlcv:
         return []
@@ -139,7 +139,7 @@ def _extract_lows(ohlcv: list) -> List[float]:
     return [float(c[3]) for c in ohlcv]
 
 
-def _extract_volumes(ohlcv: list) -> List[float]:
+def _extract_volumes(ohlcv: list) -> list[float]:
     """Extract volumes from OHLCV data."""
     if not ohlcv:
         return []
@@ -192,7 +192,7 @@ def detect_vcp_contractions(
         return VCPOverlay(detected=False)
 
     # Step 2: Build contraction waves between consecutive pivot highs
-    contractions: List[VCPContraction] = []
+    contractions: list[VCPContraction] = []
     for i in range(len(pivot_highs) - 1):
         ph_idx, ph_price = pivot_highs[i]
         next_ph_idx, _ = pivot_highs[i + 1]

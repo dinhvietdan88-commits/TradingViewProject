@@ -1,13 +1,14 @@
 import asyncio
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, ANY
 from pathlib import Path
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
+
+import pytest
 
 from analysis import (
+    MTFScanResult,
     ScanResult,
     TrendTemplateResult,
     VCPResult,
-    MTFScanResult,
     scan_symbol_multi_timeframe,
 )
 from telegram_bot import parse_mtf_trade_params

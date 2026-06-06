@@ -11,13 +11,13 @@ Tests cover:
   - register_handler: wires up the bus subscription
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import dataclass
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from claude_cli.service import ClaudeService, AnalysisRequest, AnalysisResponse
+import pytest
+
 import claude_cli.event_handler as eh
-
+from claude_cli.service import AnalysisRequest, AnalysisResponse, ClaudeService
 
 # ── minimal stubs for events ────────────────────────────────────────────────────
 

@@ -5,17 +5,18 @@ This test exercises the new end-to-end flow for indicator alerts:
   WebhookGateway -> SignalProcessor -> SignalEnricher -> (TradeEngine OR AIAnalyzer) -> NotificationHub
 """
 
-import pytest
-from unittest.mock import AsyncMock, patch
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from core.event_bus import EventBus
 from core.events import (
-    IndicatorSignalReceived,
-    IndicatorSignalValidated,
-    IndicatorSignalRejected,
-    SignalValidated,
     AlertTriggered,
+    IndicatorSignalReceived,
+    IndicatorSignalRejected,
+    IndicatorSignalValidated,
+    SignalValidated,
 )
 
 
@@ -24,12 +25,15 @@ def indicator_bus():
     """Create an isolated EventBus and wire up the indicator pipeline components."""
     bus = EventBus()
 
+    from processor.signal_enricher import enrich_indicator_signal
+    from processor.signal_enricher import set_bus as se_set_bus
     from processor.signal_processor import (
-        process_indicator_signal,
-        set_bus as sp_set_bus,
         _indicator_dedup_cache,
+        process_indicator_signal,
     )
-    from processor.signal_enricher import enrich_indicator_signal, set_bus as se_set_bus
+    from processor.signal_processor import (
+        set_bus as sp_set_bus,
+    )
 
     sp_set_bus(bus)
     se_set_bus(bus)
@@ -40,8 +44,8 @@ def indicator_bus():
 
     yield bus
 
-    from processor.signal_enricher import set_bus as se_set_bus
     from core.event_bus import bus as default_bus
+    from processor.signal_enricher import set_bus as se_set_bus
 
     sp_set_bus(default_bus)
     se_set_bus(default_bus)

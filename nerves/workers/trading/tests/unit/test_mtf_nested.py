@@ -1,8 +1,9 @@
-import pytest
 import asyncio
-from unittest.mock import AsyncMock, patch
-from pathlib import Path
 import shutil
+from pathlib import Path
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from capture_client import PythonCaptureClient
 from utils.chart_generator_mpl import generate_chart_mpl

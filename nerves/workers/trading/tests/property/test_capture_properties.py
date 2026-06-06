@@ -13,9 +13,9 @@ Properties tested:
 """
 
 import asyncio
-import time
-import sys
 import pathlib
+import sys
+import time
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -24,10 +24,9 @@ from hypothesis import strategies as st
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent.parent))
 
-from capture_client import PythonCaptureClient, CaptureResult, CaptureRequest
+from capture_client import CaptureRequest, CaptureResult, PythonCaptureClient
 from capture_hooks import HookDispatcher
-from core.events import SignalValidated, CaptureTriggered
-
+from core.events import CaptureTriggered, SignalValidated
 
 # ── Helpers ──────────────────────────────────────────────────────────────────────
 

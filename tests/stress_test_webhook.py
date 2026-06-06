@@ -1,8 +1,9 @@
 import asyncio
-import time
 import os
 import sys
-from httpx import AsyncClient, ASGITransport
+import time
+
+from httpx import ASGITransport, AsyncClient
 
 # Add 'server' path to sys.path so we can import modules directly
 sys.path.insert(

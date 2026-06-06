@@ -107,7 +107,7 @@ class ServerHealth:
 
 # Dynamic server list — read from env so Tailscale IPs can be configured
 # without code changes.
-def _build_server_list() -> List[ServerHealth]:
+def _build_server_list() -> list[ServerHealth]:
     servers = []
     a_url = os.getenv("SERVER_A_HEALTH_URL", "")
     b_url = os.getenv("SERVER_B_HEALTH_URL", "")
@@ -124,10 +124,10 @@ def _build_server_list() -> List[ServerHealth]:
 
 
 # Module-level server list (initialised on first check)
-_servers: Optional[List[ServerHealth]] = None
+_servers: list[ServerHealth] | None = None
 
 
-def _get_servers() -> List[ServerHealth]:
+def _get_servers() -> list[ServerHealth]:
     global _servers
     if _servers is None:
         _servers = _build_server_list()
@@ -171,7 +171,7 @@ def announce_server_online(server_name: str) -> dict:
     return {"status": "error", "message": f"No server matching '{server_name}'"}
 
 
-def get_server_status() -> List[dict]:
+def get_server_status() -> list[dict]:
     """Return current status of all monitored servers."""
     servers = _get_servers()
     return [

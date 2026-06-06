@@ -5,11 +5,10 @@ P6 — APScheduler
 Cron job: Morning Brief tự động lúc 07:00 ICT (UTC+7) mỗi ngày.
 """
 import logging  # noqa: E402
-
+from zoneinfo import ZoneInfo  # noqa: E402
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
 from apscheduler.triggers.cron import CronTrigger  # noqa: E402
-from zoneinfo import ZoneInfo  # noqa: E402
 
 import config  # noqa: E402
 
@@ -37,10 +36,11 @@ async def check_and_keep_alive_tv_cdp():
     If the connection is down, page is crashed, or does not respond within 30 seconds,
     trigger a reload command of the TradingView tab via CDP.
     """
-    import aiohttp
     import asyncio
-    import websockets
     import json
+
+    import aiohttp
+    import websockets
 
     cdp_port = 9222
     url = f"http://localhost:{cdp_port}/json/list"

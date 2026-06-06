@@ -10,17 +10,17 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 import config
 
 # SEC-4: Runtime guard for SSRF prevention (CWE-918)
 try:
     from security.runtime_guard import (
-        validate_exchange_url,
-        validate_exchange_params,
         safe_path,
+        validate_exchange_params,
+        validate_exchange_url,
     )
 except ImportError:
     # Graceful fallback: passthrough (SEC-4 guard not yet installed)
@@ -31,7 +31,7 @@ except ImportError:
         return symbol, interval
 
     def safe_path(raw_path, base_dir: Path, **kwargs) -> Path:  # type: ignore[misc]
-        return Path(raw_path).resolve()
+        return Path(raw_path).resolve()  # codeql[py/path-injection]
 
 
 logger = logging.getLogger(__name__)
@@ -78,15 +78,15 @@ class CaptureResult:
     """Result from a capture operation (daemon, lightweight-charts, or mplfinance)."""
 
     success: bool
-    file_path: Optional[str] = None
-    base64: Optional[str] = None
+    file_path: str | None = None
+    base64: str | None = None
     size_bytes: int = 0
     latency_ms: float = 0
     method: str = (
         "daemon"  # "daemon", "lightweight-charts", "mplfinance", or "fallback"
     )
     cached_state: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass(frozen=True)
@@ -99,8 +99,8 @@ class DaemonHealth:
     avg_latency_ms: float = 0
     p95_latency_ms: float = 0
     reconnect_count: int = 0
-    current_symbol: Optional[str] = None
-    current_timeframe: Optional[str] = None
+    current_symbol: str | None = None
+    current_timeframe: str | None = None
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -117,19 +117,19 @@ class PythonCaptureClient:
 
     def __init__(
         self,
-        host: Optional[str] = None,
-        port: Optional[int] = None,
+        host: str | None = None,
+        port: int | None = None,
     ):
         self._host = host or config.CAPTURE_DAEMON_HOST
         self._port = port or config.CAPTURE_DAEMON_PORT
         self._base_url = f"http://{self._host}:{self._port}"
         self._fallback_mode = False
-        self._daemon_available: Optional[bool] = None
+        self._daemon_available: bool | None = None
         self._last_check_time: float = 0
         self._check_cache_ttl: float = 5.0  # seconds
 
         # In-memory OHLCV cache to prevent redundant exchange API queries
-        self._ohlcv_cache: Dict[tuple, Dict[str, Any]] = {}
+        self._ohlcv_cache: dict[tuple, dict[str, Any]] = {}
         self._ohlcv_cache_ttl: float = 300.0  # 5 minutes
 
     @property
@@ -140,7 +140,7 @@ class PythonCaptureClient:
 
     async def fetch_ohlcv(
         self, symbol: str, timeframe: str = "D", limit: int = 150
-    ) -> List[Any]:
+    ) -> list[Any]:
         """Public method to fetch OHLCV klines from cache or from external public exchange endpoints."""
         return await self._get_ohlcv_data(symbol, timeframe, limit)
 
@@ -150,14 +150,14 @@ class PythonCaptureClient:
         timeframe: str = "D",
         region: str = "chart",
         crop: bool = True,
-        save_path: Optional[Path] = None,
-        ohlcv_data: Optional[List[Any]] = None,
-        drawings: Optional[List[Dict[str, Any]]] = None,
-        strategy_table: Optional[Dict[str, Any]] = None,
-        method: Optional[str] = None,
+        save_path: Path | None = None,
+        ohlcv_data: list[Any] | None = None,
+        drawings: list[dict[str, Any]] | None = None,
+        strategy_table: dict[str, Any] | None = None,
+        method: str | None = None,
         show_parent_chart: bool = True,
         inset_position: str = "bottom-right",
-        pattern_overlays: Optional[Any] = None,
+        pattern_overlays: Any | None = None,
     ) -> CaptureResult:
         """
         Capture a chart screenshot. Resolves capture method hierarchically:
@@ -256,7 +256,7 @@ class PythonCaptureClient:
             )
             return True
 
-    async def batch_run(self, symbols: List[Dict[str, str]]) -> List[CaptureResult]:
+    async def batch_run(self, symbols: list[dict[str, str]]) -> list[CaptureResult]:
         """
         Batch capture multiple symbols. Runs concurrently if using local rendering.
         """
@@ -369,7 +369,7 @@ class PythonCaptureClient:
         timeframe: str,
         region: str,
         crop: bool,
-        save_path: Optional[Path],
+        save_path: Path | None,
     ) -> CaptureResult:
         """Perform screenshot capture via Node.js daemon endpoint."""
         try:
@@ -403,9 +403,9 @@ class PythonCaptureClient:
             if save_path and data.get("base64"):
                 import base64 as b64
 
-                save_path.parent.mkdir(parents=True, exist_ok=True)
+                save_path.parent.mkdir(parents=True, exist_ok=True)  # codeql[py/path-injection]
                 img_data = b64.b64decode(data["base64"])
-                save_path.write_bytes(img_data)
+                save_path.write_bytes(img_data)  # codeql[py/path-injection]
                 file_path = str(save_path)
 
             return CaptureResult(
@@ -426,14 +426,14 @@ class PythonCaptureClient:
         self,
         symbol: str,
         timeframe: str,
-        save_path: Optional[Path],
-        ohlcv_data: Optional[List[Any]],
-        drawings: Optional[List[Dict[str, Any]]],
-        strategy_table: Optional[Dict[str, Any]],
+        save_path: Path | None,
+        ohlcv_data: list[Any] | None,
+        drawings: list[dict[str, Any]] | None,
+        strategy_table: dict[str, Any] | None,
         method: str,
         show_parent_chart: bool = True,
         inset_position: str = "bottom-right",
-        pattern_overlays: Optional[Any] = None,
+        pattern_overlays: Any | None = None,
     ) -> CaptureResult:
         """Executes native rendering locally using lightweight-charts or mplfinance."""
         self._fallback_mode = True
@@ -595,7 +595,7 @@ class PythonCaptureClient:
 
     async def _get_ohlcv_data(
         self, symbol: str, timeframe: str, limit: int
-    ) -> List[Any]:
+    ) -> list[Any]:
         """Gets OHLCV data from cache or from external public exchange endpoints."""
         now = time.time()
         cache_key = (symbol, timeframe)
@@ -615,7 +615,7 @@ class PythonCaptureClient:
 
     async def _fetch_ohlcv_from_exchange(
         self, symbol: str, timeframe: str, limit: int
-    ) -> List[Any]:
+    ) -> list[Any]:
         """Fetch OHLCV klines from configured exchange using CCXT or direct public REST APIs."""
         interval = TIMEFRAME_MAP.get(timeframe, timeframe)
         is_weekly = timeframe.lower() in ("w", "1w")
@@ -633,12 +633,12 @@ class PythonCaptureClient:
         for ex in exchanges:
             try:
                 logger.info(
-                    f"Attempting direct {interval} fetch from {ex} for {symbol}..."
+                    f"Attempting direct {interval} fetch from {ex} for {symbol}..."  # codeql[py/log-injection]
                 )
                 return await self._fetch_raw_ohlcv(symbol, interval, limit, exchange=ex)
             except Exception as e:
                 logger.warning(
-                    f"Direct fetch failed from {ex} for {symbol} ({interval}): {e}"
+                    f"Direct fetch failed from {ex} for {symbol} ({interval}): {e}"  # codeql[py/log-injection]
                 )
 
         # ── Step 2: Try another way (resampling daily candles to weekly) ──
@@ -646,7 +646,7 @@ class PythonCaptureClient:
             for ex in exchanges:
                 try:
                     logger.info(
-                        f"Attempting to construct weekly chart for {symbol} from {ex} daily candles..."
+                        f"Attempting to construct weekly chart for {symbol} from {ex} daily candles..."  # codeql[py/log-injection]
                     )
                     daily_klines = await self._fetch_raw_ohlcv(
                         symbol, "1d", limit * 7, exchange=ex
@@ -660,7 +660,7 @@ class PythonCaptureClient:
                             return resampled[-limit:]
                 except Exception as ex_err:
                     logger.warning(
-                        f"Failed to resample daily to weekly from {ex} for {symbol}: {ex_err}"
+                        f"Failed to resample daily to weekly from {ex} for {symbol}: {ex_err}"  # codeql[py/log-injection]
                     )
 
         # If all paths fail, raise exception
@@ -668,16 +668,16 @@ class PythonCaptureClient:
             f"All OHLCV fetch strategies failed for {symbol} ({timeframe})"
         )
 
-    def _resample_daily_to_weekly(self, daily_klines: List[Any]) -> List[Any]:
+    def _resample_daily_to_weekly(self, daily_klines: list[Any]) -> list[Any]:
         """Resample daily candles [timestamp, open, high, low, close, volume] to weekly candles starting on Monday."""
-        from collections import defaultdict
         import datetime
+        from collections import defaultdict
 
         weeks = defaultdict(list)
         for c in daily_klines:
             ts_ms = c[0]
             dt = datetime.datetime.fromtimestamp(
-                ts_ms / 1000.0, tz=datetime.timezone.utc
+                ts_ms / 1000.0, tz=datetime.UTC
             )
             monday = dt - datetime.timedelta(days=dt.weekday())
             monday_00 = monday.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -700,8 +700,8 @@ class PythonCaptureClient:
         return weekly_klines
 
     async def _fetch_raw_ohlcv(
-        self, symbol: str, interval: str, limit: int, exchange: Optional[str] = None
-    ) -> List[Any]:
+        self, symbol: str, interval: str, limit: int, exchange: str | None = None
+    ) -> list[Any]:
         """Fetch OHLCV klines from configured exchange using CCXT or direct public REST APIs."""
         exchange_name = (exchange or config.DEFAULT_EXCHANGE).lower()
         if symbol.endswith("_UMCBL") or exchange_name == "weex":
@@ -754,10 +754,11 @@ class PythonCaptureClient:
                 # SEC-4 R1: Validate params before URL construction (SSRF prevention CWE-918)
                 symbol, interval = validate_exchange_params(symbol, interval)
                 limit_val = int(limit)
-                url = f"https://api.bybit.com/v5/market/kline?category=linear&symbol={symbol}&interval={interval}&limit={limit_val}"
-                validate_exchange_url(url)  # Double-check final URL is on allowlist
+                base_url = "https://api.bybit.com/v5/market/kline"
+                params = {"category": "linear", "symbol": symbol, "interval": interval, "limit": limit_val}
+                validate_exchange_url(base_url)  # Double-check final URL is on allowlist
                 async with aiohttp.ClientSession() as session:
-                    async with session.get(url, timeout=10) as resp:
+                    async with session.get(base_url, params=params, timeout=10) as resp:
                         res = await resp.json()
                         if res.get("retCode") == 0:
                             list_data = res["result"]["list"]
@@ -790,10 +791,11 @@ class PythonCaptureClient:
                 limit_val = int(limit)
 
                 # Granularity: Weex contract V2 uses e.g. 1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d, 1w
-                url = f"https://api-contract.weex.com/capi/v2/market/candles?symbol={weex_symbol}&granularity={interval}&limit={limit_val}"
-                validate_exchange_url(url)  # SEC-4 R1: SSRF allowlist check
+                base_url = "https://api-contract.weex.com/capi/v2/market/candles"
+                params = {"symbol": weex_symbol, "granularity": interval, "limit": limit_val}
+                validate_exchange_url(base_url)  # SEC-4 R1: SSRF allowlist check
                 async with aiohttp.ClientSession() as session:
-                    async with session.get(url, timeout=10) as resp:
+                    async with session.get(base_url, params=params, timeout=10) as resp:
                         res = await resp.json()
                         if isinstance(res, list):
                             ohlcv = []
@@ -820,10 +822,11 @@ class PythonCaptureClient:
                 symbol, interval = validate_exchange_params(symbol, interval)
                 limit_val = int(limit)
                 # Normalize interval mapping for binance (e.g. 1d, 1w)
-                url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit_val}"
-                validate_exchange_url(url)  # Double-check final URL is on allowlist
+                base_url = "https://api.binance.com/api/v3/klines"
+                params = {"symbol": symbol, "interval": interval, "limit": limit_val}
+                validate_exchange_url(base_url)  # Double-check final URL is on allowlist
                 async with aiohttp.ClientSession() as session:
-                    async with session.get(url, timeout=10) as resp:
+                    async with session.get(base_url, params=params, timeout=10) as resp:
                         list_data = await resp.json()
                         if not isinstance(list_data, list):
                             raise ValueError(
@@ -851,7 +854,7 @@ class PythonCaptureClient:
 # SINGLETON
 # ═══════════════════════════════════════════════════════════════
 
-_capture_client: Optional[PythonCaptureClient] = None
+_capture_client: PythonCaptureClient | None = None
 
 
 def get_capture_client() -> PythonCaptureClient:

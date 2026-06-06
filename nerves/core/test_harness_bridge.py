@@ -13,8 +13,8 @@ Tests cover:
     - Report generation
 """
 
-import sys
 import os
+import sys
 import unittest
 from pathlib import Path
 
@@ -24,16 +24,16 @@ sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "nerves" / "core"))
 
 from nerves.core.harness_bridge import (  # noqa: E402
-    Verdict,
     GateResult,
     HarnessVerdict,
-    run_scar_gate,
-    run_ai_debate,
-    run_harness_light,
-    run_harness_full,
+    Verdict,
     _default_syntax_check,
     _findings_to_dicts,
     _parse_debate_response,
+    run_ai_debate,
+    run_harness_full,
+    run_harness_light,
+    run_scar_gate,
 )
 
 
@@ -199,8 +199,8 @@ class TestScarGate(unittest.TestCase):
         self.assertLess(result["score"], 1.0)
 
     def test_custom_config(self):
-        import tempfile
         import json
+        import tempfile
 
         config = {
             "scar_patterns": [

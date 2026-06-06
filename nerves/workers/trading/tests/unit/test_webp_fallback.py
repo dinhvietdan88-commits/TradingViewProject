@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock, patch
+
 from PIL import Image
 
 from notifier import prepare_telegram_photo, send_telegram_photo

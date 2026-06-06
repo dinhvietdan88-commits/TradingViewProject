@@ -1,13 +1,13 @@
+import asyncio
+import hashlib
+import json
 import logging
 import re
-import json
-import hashlib
 import time
-import asyncio
-from typing import Dict, Any
-import urllib.request
 import urllib.parse
+import urllib.request
 import xml.etree.ElementTree as ET
+from typing import Any, Dict
 
 import config
 import database
@@ -84,7 +84,7 @@ class TwitterClient:
     def __init__(self):
         self.bearer_token = getattr(config, "TWITTER_BEARER_TOKEN", "")
 
-    async def get_sentiment(self, symbol: str) -> Dict[str, Any]:
+    async def get_sentiment(self, symbol: str) -> dict[str, Any]:
         """Fetch tweets and compute average sentiment."""
         if not self.bearer_token:
             # Fallback to deterministic mock sentiment
@@ -153,7 +153,7 @@ class RSSClient:
     def __init__(self):
         self.feed_urls = getattr(config, "RSS_FEED_URLS", [])
 
-    async def get_sentiment(self, symbol: str) -> Dict[str, Any]:
+    async def get_sentiment(self, symbol: str) -> dict[str, Any]:
         """Fetch RSS feeds, filter by symbol keyword, and compute sentiment."""
         if not self.feed_urls:
             mock_score = self._get_mock_score(symbol, "rss")
@@ -243,7 +243,7 @@ class GlassnodeClient:
     def __init__(self):
         self.api_key = getattr(config, "GLASSNODE_API_KEY", "")
 
-    async def get_sentiment(self, symbol: str) -> Dict[str, Any]:
+    async def get_sentiment(self, symbol: str) -> dict[str, Any]:
         """Fetch on-chain metrics (NUPL, Reserve Risk, etc.) for BTC/ETH."""
         # Glassnode primarily supports BTC/ETH
         base_symbol = symbol.split("USDT")[0].upper()
@@ -345,7 +345,7 @@ class SentimentAnalyzer:
         self.glassnode = GlassnodeClient()
         self.enabled = getattr(config, "SENTIMENT_ENABLED", True)
 
-    async def analyze_symbol(self, symbol: str) -> Dict[str, Any]:
+    async def analyze_symbol(self, symbol: str) -> dict[str, Any]:
         """Orchestrate sentiment gathering from Twitter, RSS, and Glassnode."""
         if not self.enabled:
             return {"enabled": False, "combined_score": 0.0, "breakdown": {}}

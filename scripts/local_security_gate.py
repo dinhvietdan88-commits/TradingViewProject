@@ -243,7 +243,7 @@ def gate_codeql():
         import json
 
         sarif_path = os.path.join(CODEQL_DIR, "results.sarif")
-        with open(sarif_path, "r", encoding="utf-8") as f:
+        with open(sarif_path, encoding="utf-8") as f:
             sarif = json.load(f)
         results = []
         for run in sarif.get("runs", []):
@@ -285,7 +285,7 @@ def gate_precommit():
 
     if has_hook:
         # Check if it's the pre-commit framework hook
-        with open(hook_path, "r", encoding="utf-8", errors="replace") as f:
+        with open(hook_path, encoding="utf-8", errors="replace") as f:
             content = f.read()
         is_framework = "pre-commit" in content.lower()
         if is_framework:

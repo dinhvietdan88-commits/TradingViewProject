@@ -11,9 +11,10 @@ Tests:
   - Integration: Smoke test payload gets >= 60% confidence via A.007 route
 """
 
-import pytest
 import sys
 from pathlib import Path
+
+import pytest
 
 # Ensure server root is on sys.path
 sys.path.insert(0, str(Path(__file__).parent.parent))

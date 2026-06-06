@@ -24,11 +24,11 @@ SCAR-006: ANTIGRAVITY_API_KEY must be Tier 1 (pay-as-you-go) to avoid quota
 
 import asyncio
 import logging
+import os
 from dataclasses import dataclass
 from typing import Optional
 
 import aiohttp
-import os
 
 log = logging.getLogger("agy_harness")
 
@@ -46,10 +46,10 @@ class AgyResponse:
     model: str
     latency_ms: float
     success: bool
-    error: Optional[str] = None
+    error: str | None = None
     exit_code: int = 0
     stdout_len: int = 0
-    provider: Optional[str] = None
+    provider: str | None = None
 
 
 # ════════════════════════════════════════════════════════════════
@@ -84,7 +84,7 @@ class AgyHarness:
         self.max_retries = max_retries
         self.model = model
         self._secret = secret or os.environ.get("AGY_BRIDGE_SECRET", "")
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """Lazily create aiohttp session with proper timeout."""
@@ -132,7 +132,7 @@ class AgyHarness:
         self,
         prompt: str,
         system_instruction: str = "",
-        timeout_sec: Optional[int] = None,
+        timeout_sec: int | None = None,
     ) -> AgyResponse:
         """
         Send analysis prompt to agy-bridge and return structured response.
@@ -220,7 +220,7 @@ class AgyHarness:
                         last_error = f"HTTP {resp.status}: {body[:200]}"
                         log.warning(f"agy-harness attempt {attempt + 1}: {last_error}")
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 last_error = f"Client timeout after {effective_timeout}s"
                 log.warning(f"agy-harness attempt {attempt + 1}: {last_error}")
 

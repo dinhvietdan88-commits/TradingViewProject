@@ -1,10 +1,11 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 import config
-from brief import generate_morning_brief
 from analysis import ScanResult, TrendTemplateResult, VCPResult
+from brief import generate_morning_brief
 from capture_client import CaptureResult
 
 

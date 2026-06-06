@@ -1,7 +1,7 @@
-import unittest
-from unittest.mock import MagicMock, patch, AsyncMock
 import sys
+import unittest
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
 # Ensure server/ is in python path
 server_dir = Path(__file__).resolve().parent.parent.parent

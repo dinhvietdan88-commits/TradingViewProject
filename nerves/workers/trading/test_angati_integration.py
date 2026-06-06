@@ -1,11 +1,12 @@
 import os
-import sys
-import time
 import sqlite3
-import requests
-import unittest
+import sys
 import threading
+import time
+import unittest
 from pathlib import Path
+
+import requests
 
 # Add project root to sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
@@ -153,8 +154,8 @@ class TestAngatiIntegration(unittest.TestCase):
 
     def test_angati_version_mismatch_warning(self):
         """Tests that a mismatch triggers the stderr warning (using environment overrides)."""
-        import tempfile
         import os
+        import tempfile
         from contextlib import redirect_stderr
         from io import StringIO
 
@@ -193,8 +194,8 @@ class TestAngatiIntegration(unittest.TestCase):
 
     def test_angati_version_matching(self):
         """Tests that identical file hashes trigger no warning."""
-        import tempfile
         import os
+        import tempfile
         from contextlib import redirect_stderr
         from io import StringIO
 
@@ -234,8 +235,8 @@ class TestAngatiIntegration(unittest.TestCase):
 
     def test_angati_version_missing_files(self):
         """Tests that missing file conditions are handled gracefully and silently."""
-        import tempfile
         import os
+        import tempfile
         from contextlib import redirect_stderr
         from io import StringIO
 

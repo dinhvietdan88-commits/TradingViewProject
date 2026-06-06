@@ -4,8 +4,10 @@ Unit tests for Telegram Bot lifecycle thread safety and event loop management.
 
 import asyncio
 import threading
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 import telegram_bot
 
 

@@ -15,17 +15,17 @@ Tests cover:
   - ClaudeService._parse_confidence() regex patterns
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from claude_cli.sdk_client import SdkClient
 from claude_cli.service import (
-    ClaudeService,
-    ContextManager,
     AnalysisRequest,
     AnalysisResponse,
+    ClaudeService,
+    ContextManager,
 )
-
 
 # ── fixtures ────────────────────────────────────────────────────────────────────
 

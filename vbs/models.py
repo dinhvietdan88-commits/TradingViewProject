@@ -1,33 +1,34 @@
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel
 
 
 class IngestResponse(BaseModel):
     queued: bool
-    queue_id: Optional[int] = None
-    expires_at: Optional[str] = None
+    queue_id: int | None = None
+    expires_at: str | None = None
     status: str
-    duplicate_of: Optional[int] = None
+    duplicate_of: int | None = None
 
 
 class QueueSignal(BaseModel):
     queue_id: int
     symbol: str
     action: str
-    price: Optional[float] = None
-    quote_qty: Optional[float] = None
-    interval: Optional[str] = None
+    price: float | None = None
+    quote_qty: float | None = None
+    interval: str | None = None
     exchange: str = "binance"
-    sl: Optional[str] = None
-    tp: Optional[str] = None
+    sl: str | None = None
+    tp: str | None = None
     received_at: str
     expires_at: str
     age_minutes: float
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
 
 
 class ConsumeResponse(BaseModel):
-    signals: List[QueueSignal]
+    signals: list[QueueSignal]
     count: int
     has_more: bool
 
@@ -35,11 +36,11 @@ class ConsumeResponse(BaseModel):
 class AckItem(BaseModel):
     queue_id: int
     status: str  # "executed", "skipped_stale", "failed"
-    error_msg: Optional[str] = None
+    error_msg: str | None = None
 
 
 class AckRequest(BaseModel):
-    acks: List[AckItem]
+    acks: list[AckItem]
 
 
 class AckResultItem(BaseModel):
@@ -49,7 +50,7 @@ class AckResultItem(BaseModel):
 
 class AckResponse(BaseModel):
     acked: int
-    results: List[AckResultItem]
+    results: list[AckResultItem]
 
 
 class PendingSummaryItem(BaseModel):
@@ -65,9 +66,9 @@ class QueueSummary(BaseModel):
     dispatched: int
     acked_today: int
     stale_today: int
-    oldest_pending_age_minutes: Optional[float] = None
+    oldest_pending_age_minutes: float | None = None
 
 
 class QueueStatusResponse(BaseModel):
     summary: QueueSummary
-    pending_signals: List[PendingSummaryItem]
+    pending_signals: list[PendingSummaryItem]

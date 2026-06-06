@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 import notifier
 from core.events import SignalRejected
 from hub.notification_hub import notify_signal_rejected

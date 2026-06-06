@@ -9,17 +9,17 @@ Components tested:
   - CaptureTriggered: event immutability and field integrity
 """
 
-import time
-import pytest
-import sys
 import pathlib
+import sys
+import time
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent.parent))
 
 from core.event_bus import EventBus
-from core.events import SignalValidated, CaptureTriggered
-
+from core.events import CaptureTriggered, SignalValidated
 
 # ═══════════════════════════════════════════════════════════════
 # HELPERS
@@ -28,7 +28,7 @@ from core.events import SignalValidated, CaptureTriggered
 
 def _make_mock_capture_client(daemon_available=True):
     """Create a mock PythonCaptureClient for testing hooks."""
-    from capture_client import PythonCaptureClient, CaptureResult
+    from capture_client import CaptureResult, PythonCaptureClient
 
     client = PythonCaptureClient(host="127.0.0.1", port=9333)
 
@@ -105,7 +105,7 @@ def test_client_initial_state():
 @pytest.mark.asyncio
 async def test_client_fallback_on_daemon_down():
     """When daemon is unavailable, client should use local rendering fallback."""
-    from capture_client import PythonCaptureClient, CaptureResult
+    from capture_client import CaptureResult, PythonCaptureClient
 
     client = PythonCaptureClient(host="127.0.0.1", port=19999)
     client._daemon_available = False
@@ -137,7 +137,7 @@ async def test_client_availability_cache_ttl():
 @pytest.mark.asyncio
 async def test_client_batch_result_count():
     """Property 3: batch_run returns exactly len(symbols) results."""
-    from capture_client import PythonCaptureClient, CaptureResult
+    from capture_client import CaptureResult, PythonCaptureClient
 
     client = PythonCaptureClient()
     client._daemon_available = False
@@ -158,8 +158,8 @@ async def test_client_batch_result_count():
 @pytest.mark.asyncio
 async def test_client_singleton():
     """get_capture_client should return the same instance."""
-    from capture_client import get_capture_client
     import capture_client as mod
+    from capture_client import get_capture_client
 
     mod._capture_client = None  # Reset singleton
 

@@ -19,12 +19,13 @@ Usage (from main.py lifespan startup):
 from __future__ import annotations
 
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import config
 from core.event_bus import bus as _default_bus
-from core.events import SignalValidated, AnalysisComplete
-from .service import ClaudeService, AnalysisRequest, AnalysisResponse
+from core.events import AnalysisComplete, SignalValidated
+
+from .service import AnalysisRequest, AnalysisResponse, ClaudeService
 
 if TYPE_CHECKING:
     from core.event_bus import EventBus
@@ -32,11 +33,11 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 # ─── Module-level mutable state (safe — modified only at startup) ───────────────
-_bus: "EventBus" = _default_bus
-_service: Optional[ClaudeService] = None
+_bus: EventBus = _default_bus
+_service: ClaudeService | None = None
 
 
-def set_bus(bus_instance: "EventBus") -> None:
+def set_bus(bus_instance: EventBus) -> None:
     """Override the event bus instance (for unit testing)."""
     global _bus
     _bus = bus_instance

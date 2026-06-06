@@ -9,12 +9,12 @@ Property 10: same (symbol, indicator_name, signal_type) within 60s → duplicate
 Property 11: signal_type=info bypasses timeframe validation
 """
 
-import time
-from hypothesis import given, settings, assume
-from hypothesis import strategies as st
-
-import sys
 import os
+import sys
+import time
+
+from hypothesis import assume, given, settings
+from hypothesis import strategies as st
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 

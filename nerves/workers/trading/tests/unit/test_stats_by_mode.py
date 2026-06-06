@@ -4,10 +4,10 @@ Tests for get_stats_by_mode() in data/query_service.py.
 Strategy: use aiosqlite in-memory DB (":memory:") to avoid filesystem dependencies.
 """
 
-import pytest
-import aiosqlite
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock, patch
 
+import aiosqlite
+import pytest
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

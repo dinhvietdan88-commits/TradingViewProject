@@ -1,6 +1,6 @@
+from exchanges.base import ExchangeAdapter
 from exchanges.registry import ExchangeRegistry
 from exchanges.router import ExchangeRouter
-from exchanges.base import ExchangeAdapter
 
 
 class MockAdapter(ExchangeAdapter):

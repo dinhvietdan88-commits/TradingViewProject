@@ -272,7 +272,7 @@ async def analyze(req: AnalyzeRequest):
     )
 
     start = time.monotonic()
-    proc: Optional[asyncio.subprocess.Process] = None
+    proc: asyncio.subprocess.Process | None = None
 
     # Build env: inherit host env + ensure ANTIGRAVITY_API_KEY is passed
     subprocess_env = dict(os.environ)
@@ -321,7 +321,7 @@ async def analyze(req: AnalyzeRequest):
                 },
             )
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         breaker.record_failure(f"timeout after {req.timeout_sec}s")
         log.warning(f"agy TIMEOUT after {req.timeout_sec}s")
         # Kill the process if still running

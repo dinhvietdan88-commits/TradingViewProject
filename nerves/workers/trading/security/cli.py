@@ -118,8 +118,8 @@ def _run_scan(args):
     )
 
     # Import here to avoid circular imports at CLI parse time
-    from security.harness import SecurityHarness
     from security import report as report_mod
+    from security.harness import SecurityHarness
 
     # Run pipeline
     harness = SecurityHarness(str(target), exclude_rules=exclude)

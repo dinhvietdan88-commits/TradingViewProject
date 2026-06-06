@@ -1,6 +1,6 @@
+import logging
 import os
 import sys
-import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -23,8 +23,9 @@ except Exception as e:
     print(f"Weex L1 Ingestion failed: {e}")
 
 
-from main import app  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
+
+from main import app  # noqa: E402
 
 print("Starting TestClient...")
 try:

@@ -354,7 +354,7 @@ class TestADKCallbackBridge(unittest.TestCase):
 
     def test_telemetry_exporter(self):
         """ADKTelemetryExporter should record and return events."""
-        from adk_callback_bridge import ADKTelemetryExporter, ADKEvent
+        from adk_callback_bridge import ADKEvent, ADKTelemetryExporter
 
         exporter = ADKTelemetryExporter()
         event = ADKEvent(author="test", content_parts=[{"text": "test event"}])
@@ -584,6 +584,7 @@ class TestMemoryBridge(unittest.TestCase):
     def test_add_memory_fallback(self):
         """add_memory should return a valid UUID even in fallback mode."""
         import tempfile
+
         from memory_bridge import AngatiMemoryBridge
 
         # Use ignore_cleanup_errors=True to handle Windows file locks from ChromaDB

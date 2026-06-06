@@ -6,16 +6,17 @@ Adapted to actual implementation API:
   - telegram_bot sends photo_path separately before interactive message
 """
 
-import sys
 import shutil
-import numpy as np
+import sys
 from pathlib import Path
+
+import numpy as np
 import pytest
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 from utils.chart_generator_mpl import generate_chart_mpl
-from utils.html_chunker import truncate_caption_html_safe, chunk_html_message
+from utils.html_chunker import chunk_html_message, truncate_caption_html_safe
 from utils.pattern_overlay import detect_all_patterns
 
 

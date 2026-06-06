@@ -16,9 +16,10 @@ Flow under test:
 """
 
 import os
-import sys
 import pathlib
+import sys
 import time
+
 import pytest
 import pytest_asyncio
 
@@ -36,8 +37,8 @@ os.environ["DASHBOARD_URL"] = "http://test"
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent.parent))
 
-from httpx import AsyncClient, ASGITransport
-
+from httpx import ASGITransport, AsyncClient
+from datetime import UTC
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -64,9 +65,9 @@ async def auth_client(tmp_path):
 
     await database.init_db()
 
-    from main import app
-    from auth.service import AuthService
     from auth.auth_config import AuthConfig
+    from auth.service import AuthService
+    from main import app
 
     # Build AuthService using env vars (AuthConfig reads os.environ at init time)
     # ENV is already patched above: AUTH_SECRET_KEY, TELEGRAM_ALLOWED_USERS, etc.
@@ -264,7 +265,7 @@ class TestSecurityBoundaries:
         # Store with expiry 1 second in the past
         from datetime import datetime, timezone
 
-        past = datetime.fromtimestamp(int(time.time()) - 1, tz=timezone.utc)
+        past = datetime.fromtimestamp(int(time.time()) - 1, tz=UTC)
         database.store_auth_code(
             code=code_obj.code,
             telegram_id=code_obj.telegram_id,

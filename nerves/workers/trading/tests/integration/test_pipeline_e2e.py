@@ -31,20 +31,20 @@ Scenario E (Dedup — duplicate signal):
   Only the first passes; second is rejected with reason=duplicate_signal.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from core.event_bus import EventBus
 from core.events import (
-    SignalReceived,
-    SignalValidated,
-    SignalRejected,
     AnalysisComplete,
+    SignalReceived,
+    SignalRejected,
+    SignalValidated,
     TradeApproved,
     TradeExecuted,
 )
-
 
 # ═══════════════════════════════════════════════════════════════
 # SHARED FIXTURES
@@ -59,8 +59,10 @@ def pipeline_bus():
     # --- SignalProcessor ---
     from processor.signal_processor import (
         process_signal,
-        set_bus as sp_set_bus,
         reset_dedup_cache,
+    )
+    from processor.signal_processor import (
+        set_bus as sp_set_bus,
     )
 
     sp_set_bus(bus)
@@ -86,15 +88,20 @@ async def test_scenario_a_full_pipeline_high_confidence(pipeline_bus):
     """Full pipeline: buy signal → AI confidence 9 → auto-approve → TradeExecuted."""
     from analyzer.ai_analyzer import (
         process_validated_signal,
-        set_bus as ai_set_bus,
         reset_capture_state,
     )
-    from hub.notification_hub import (
-        process_analysis_complete,
-        set_bus as hub_set_bus,
-        PENDING_TRADES,
+    from analyzer.ai_analyzer import (
+        set_bus as ai_set_bus,
     )
-    from engine.trade_engine import execute_trade, set_bus as te_set_bus
+    from engine.trade_engine import execute_trade
+    from engine.trade_engine import set_bus as te_set_bus
+    from hub.notification_hub import (
+        PENDING_TRADES,
+        process_analysis_complete,
+    )
+    from hub.notification_hub import (
+        set_bus as hub_set_bus,
+    )
 
     PENDING_TRADES.clear()
     ai_set_bus(pipeline_bus)
@@ -183,10 +190,10 @@ async def test_scenario_a_full_pipeline_high_confidence(pipeline_bus):
 
             screenshot_path.unlink(missing_ok=True)
     finally:
-        from core.event_bus import bus as default_bus
         from analyzer.ai_analyzer import set_bus as ai_reset
-        from hub.notification_hub import set_bus as hub_reset
+        from core.event_bus import bus as default_bus
         from engine.trade_engine import set_bus as te_reset
+        from hub.notification_hub import set_bus as hub_reset
 
         ai_reset(default_bus)
         hub_reset(default_bus)
@@ -205,14 +212,18 @@ async def test_scenario_b_medium_confidence_held_for_approval(pipeline_bus):
     """Medium confidence (6) → trade held in PENDING_TRADES, no TradeExecuted."""
     from analyzer.ai_analyzer import (
         process_validated_signal,
-        set_bus as ai_set_bus,
         reset_capture_state,
     )
+    from analyzer.ai_analyzer import (
+        set_bus as ai_set_bus,
+    )
     from hub.notification_hub import (
-        process_analysis_complete,
-        set_bus as hub_set_bus,
         PENDING_TRADES,
         get_pending_trade,
+        process_analysis_complete,
+    )
+    from hub.notification_hub import (
+        set_bus as hub_set_bus,
     )
 
     PENDING_TRADES.clear()
@@ -290,8 +301,8 @@ async def test_scenario_b_medium_confidence_held_for_approval(pipeline_bus):
 
             screenshot_path.unlink(missing_ok=True)
     finally:
-        from core.event_bus import bus as default_bus
         from analyzer.ai_analyzer import set_bus as ai_reset
+        from core.event_bus import bus as default_bus
         from hub.notification_hub import set_bus as hub_reset
 
         ai_reset(default_bus)
@@ -310,14 +321,18 @@ async def test_scenario_c_low_confidence_no_trade(pipeline_bus):
     """Low confidence (3) → auto-reject, no TradeApproved or TradeExecuted."""
     from analyzer.ai_analyzer import (
         process_validated_signal,
-        set_bus as ai_set_bus,
         reset_capture_state,
     )
+    from analyzer.ai_analyzer import (
+        set_bus as ai_set_bus,
+    )
     from hub.notification_hub import (
-        process_analysis_complete,
-        set_bus as hub_set_bus,
         PENDING_TRADES,
         notify_signal_rejected,
+        process_analysis_complete,
+    )
+    from hub.notification_hub import (
+        set_bus as hub_set_bus,
     )
 
     PENDING_TRADES.clear()
@@ -390,8 +405,8 @@ async def test_scenario_c_low_confidence_no_trade(pipeline_bus):
 
             screenshot_path.unlink(missing_ok=True)
     finally:
-        from core.event_bus import bus as default_bus
         from analyzer.ai_analyzer import set_bus as ai_reset
+        from core.event_bus import bus as default_bus
         from hub.notification_hub import set_bus as hub_reset
 
         ai_reset(default_bus)

@@ -37,14 +37,14 @@ if sys.stdout.encoding != "utf-8":
 
         logging.getLogger(__name__).warning("Ignored: %s", e)
 
-import json
 import argparse
 import hashlib
-import uuid
-import time
+import json
 import re
-from pathlib import Path
+import time
+import uuid
 from collections import defaultdict
+from pathlib import Path
 
 AGENTS_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(AGENTS_ROOT / "tools"))
@@ -99,7 +99,7 @@ def _embed(text: str) -> list[float]:
 def _load_config() -> dict:
     if not CONFIG_FILE.exists():
         return {}
-    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+    with open(CONFIG_FILE, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -181,7 +181,7 @@ def _parse_l1_result(r: dict) -> dict:
 
 
 def _ensure_collection(client):
-    from qdrant_client.models import VectorParams, Distance
+    from qdrant_client.models import Distance, VectorParams
 
     collections = [c.name for c in client.get_collections().collections]
     if COLLECTION_NAME not in collections:
@@ -250,8 +250,8 @@ def record_scar(
     Delegates to angati.exe scar record.
     """
     angati_exe = _get_angati_exe()
-    import subprocess
     import json
+    import subprocess
 
     _cmd = [
         angati_exe,
@@ -310,8 +310,8 @@ def consult(instruction: str, top_k: int = 5) -> list[dict]:
     Delegates to angati.exe scar consult.
     """
     angati_exe = _get_angati_exe()
-    import subprocess
     import json
+    import subprocess
 
     try:
         res = subprocess.run(
@@ -340,8 +340,8 @@ def circuit_breaker_check(action_signature: str) -> bool:
     Delegates to angati.exe scar check.
     """
     angati_exe = _get_angati_exe()
-    import subprocess
     import json
+    import subprocess
 
     try:
         res = subprocess.run(
@@ -367,8 +367,8 @@ def circuit_breaker_check(action_signature: str) -> bool:
 def summary(top_k: int = 10) -> list[dict]:
     """Top K scars by severity and frequency for boot report."""
     angati_exe = _get_angati_exe()
-    import subprocess
     import json
+    import subprocess
 
     try:
         res = subprocess.run(
@@ -404,8 +404,8 @@ def stats() -> dict:
 def health_check(l1_only: bool = False) -> dict:
     """Boot-time health check — instant L1 read + optional L2 ping."""
     angati_exe = _get_angati_exe()
-    import subprocess
     import json
+    import subprocess
 
     try:
         res = subprocess.run(
@@ -655,8 +655,8 @@ def _extract_repeated_failures_from_event_log() -> int:
 def check_duplicate(text: str) -> dict:
     """Check if a semantically similar issue/scar exists"""
     angati_exe = _get_angati_exe()
-    import subprocess
     import json
+    import subprocess
 
     try:
         res = subprocess.run(

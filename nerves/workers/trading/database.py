@@ -9,10 +9,11 @@ V8.0 REFACTOR: This module now acts as a backward-compatible facade.
 - All public symbols are re-exported so existing `import database` still works.
 """
 
-import aiosqlite
-import sqlite3
 import logging
-from typing import Optional, Dict, Any
+import sqlite3
+from typing import Any, Dict, Optional
+
+import aiosqlite
 
 import config
 
@@ -271,27 +272,26 @@ async def init_db():
 
 # Write operations (PersistenceStore)
 from data.persistence_store import (  # noqa: E402, F401
-    insert_signal,
-    update_signal_status,
-    insert_indicator_signal,
-    insert_trade,
-    update_trade_oco,
     insert_brief,
+    insert_indicator_signal,
     insert_sentiment_log,
+    insert_signal,
+    insert_trade,
+    update_signal_status,
+    update_trade_oco,
 )
 
 # Read operations (QueryService)
 from data.query_service import (  # noqa: E402, F401
-    get_trades,
+    get_brief_by_id,
+    get_briefs,
+    get_db_counts,
+    get_equity_curve,
+    get_recent_trades,
     get_stats,
     get_stats_by_mode,
-    get_recent_trades,
-    get_equity_curve,
-    get_briefs,
-    get_brief_by_id,
-    get_db_counts,
+    get_trades,
 )
-
 
 # ═══════════════════════════════════════════════════════════════
 # AUTH HELPERS (synchronous — used by auth routes)
@@ -303,7 +303,7 @@ def _sync_conn():
     return sqlite3.connect(config.DB_PATH)
 
 
-def get_auth_code(code: str) -> Optional[Dict[str, Any]]:
+def get_auth_code(code: str) -> dict[str, Any] | None:
     """Fetch a one-time auth code record."""
     conn = _sync_conn()
     conn.row_factory = sqlite3.Row
@@ -321,7 +321,7 @@ def get_auth_code(code: str) -> Optional[Dict[str, Any]]:
 def store_auth_code(
     code: str,
     telegram_id: int,
-    username: Optional[str],
+    username: str | None,
     created_at: str,
     expires_at: str,
 ) -> None:
@@ -351,9 +351,9 @@ def mark_auth_code_used(code: str) -> None:
 def store_auth_session(
     session_id: str,
     telegram_id: int,
-    username: Optional[str],
+    username: str | None,
     created_at: str,
-    expires_at: Optional[str],
+    expires_at: str | None,
 ) -> None:
     """Store a new auth session."""
     conn = _sync_conn()
@@ -408,7 +408,7 @@ def cleanup_expired_auth_codes() -> int:
         conn.close()
 
 
-async def get_setting(key: str, default: Optional[str] = None) -> Optional[str]:
+async def get_setting(key: str, default: str | None = None) -> str | None:
     """Get a setting value asynchronously."""
     try:
         async with aiosqlite.connect(config.DB_PATH) as db:
@@ -527,7 +527,7 @@ async def get_daily_loss(exchange: str, window_hours: int = 24) -> float:
         return 0.0
 
 
-async def get_risk_settings(exchange: str, symbol: str = "*") -> Dict[str, Any]:
+async def get_risk_settings(exchange: str, symbol: str = "*") -> dict[str, Any]:
     """Get risk parameters and current circuit breaker state for an exchange."""
     try:
         async with aiosqlite.connect(config.DB_PATH) as db:
@@ -540,7 +540,7 @@ async def get_risk_settings(exchange: str, symbol: str = "*") -> Dict[str, Any]:
                 if row:
                     return dict(row)
     except Exception as e:
-        log.warning(f"Failed to fetch risk settings for {exchange}: {e}")
+        log.warning(f"Failed to fetch risk settings for {exchange}: {e}")  # codeql[py/log-injection]
 
     # Return defaults if not configured
     return {
@@ -585,7 +585,7 @@ async def save_risk_settings(
             )
             await db.commit()
     except Exception as e:
-        log.warning(f"Failed to save risk settings for {exchange}: {e}")
+        log.warning(f"Failed to save risk settings for {exchange}: {e}")  # codeql[py/log-injection]
 
 
 async def update_circuit_breaker_state(
@@ -611,7 +611,7 @@ async def update_circuit_breaker_state(
                     )
             await db.commit()
     except Exception as e:
-        log.warning(f"Failed to update circuit breaker state for {exchange}: {e}")
+        log.warning(f"Failed to update circuit breaker state for {exchange}: {e}")  # codeql[py/log-injection]
 
 
 async def log_circuit_breaker(

@@ -11,8 +11,9 @@ Endpoints:
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Request, Query
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from datetime import UTC
 
 log = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ def _get_auth_service(request: Request):
 
 
 @auth_router.get("/login")
-async def login_page(request: Request, next: Optional[str] = Query(default="/")):
+async def login_page(request: Request, next: str | None = Query(default="/")):
     """Serve the login page.
 
     If Telegram Login Widget is enabled, includes the widget script.
@@ -68,8 +69,8 @@ async def auth_callback(request: Request, code: str = Query(...)):
     6. Redirect to dashboard
     """
     from auth.models import (
-        CodeInvalidError,
         CodeExpiredError,
+        CodeInvalidError,
         CodeUsedError,
         UserNotAllowedError,
     )
@@ -157,9 +158,9 @@ async def telegram_widget_callback(request: Request):
     Receives widget data, verifies HMAC, creates session.
     """
     from auth.models import (
-        WidgetHashInvalidError,
-        WidgetExpiredError,
         UserNotAllowedError,
+        WidgetExpiredError,
+        WidgetHashInvalidError,
     )
 
     auth_service = _get_auth_service(request)
@@ -178,11 +179,12 @@ async def telegram_widget_callback(request: Request):
         user = auth_service.verify_widget_data(data)
 
         # Create session
-        from auth.models import SessionData
         import uuid
         from datetime import datetime, timedelta, timezone
 
-        now = datetime.now(timezone.utc)
+        from auth.models import SessionData
+
+        now = datetime.now(UTC)
         if auth_service.config.session_expiry_hours is None:
             expires_at = None
             never_expires = True

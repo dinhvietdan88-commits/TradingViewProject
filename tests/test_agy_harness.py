@@ -12,13 +12,13 @@ Tests cover:
   - Context manager protocol
 """
 
-from unittest.mock import AsyncMock, MagicMock
-
-import pytest
+import os
 
 # Ensure the trading module path is importable
 import sys
-import os
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 sys.path.insert(
     0,
@@ -26,7 +26,6 @@ sys.path.insert(
 )
 
 from agy_harness import AgyHarness, AgyResponse
-
 
 # ════════════════════════════════════════════════════════════════
 # Fixtures

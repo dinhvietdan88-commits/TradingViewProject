@@ -7,17 +7,18 @@ arrive within 60s. Both MUST be processed independently.
 Neither should deduplicate the other (separate caches).
 """
 
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from core.event_bus import EventBus
 from core.events import (
-    SignalReceived,
-    SignalValidated,
-    SignalRejected,
     IndicatorSignalReceived,
-    IndicatorSignalValidated,
     IndicatorSignalRejected,
+    IndicatorSignalValidated,
+    SignalReceived,
+    SignalRejected,
+    SignalValidated,
 )
 
 
@@ -26,14 +27,17 @@ def coexistence_bus():
     """Isolated EventBus with both strategy and indicator paths wired."""
     bus = EventBus()
 
+    from processor.signal_enricher import enrich_indicator_signal
+    from processor.signal_enricher import set_bus as se_set_bus
     from processor.signal_processor import (
-        process_signal,
-        process_indicator_signal,
-        set_bus as sp_set_bus,
         _dedup_cache,
         _indicator_dedup_cache,
+        process_indicator_signal,
+        process_signal,
     )
-    from processor.signal_enricher import enrich_indicator_signal, set_bus as se_set_bus
+    from processor.signal_processor import (
+        set_bus as sp_set_bus,
+    )
 
     sp_set_bus(bus)
     se_set_bus(bus)

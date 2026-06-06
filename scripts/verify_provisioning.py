@@ -5,13 +5,13 @@ Verifies 43 infrastructure items across Server A, Server B (Local), Server C, an
 Supports dry-run, no-tick, and auto-tick features.
 """
 
-import os
-import sys
-import re
-import json
-import time
 import argparse
+import json
+import os
+import re
 import subprocess
+import sys
+import time
 
 # Try importing requests, fallback to urllib if not installed (though requests is in our env)
 try:
@@ -35,7 +35,7 @@ def parse_ssh_config(host):
     settings = {}
     in_host = False
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith("#"):
@@ -1121,7 +1121,7 @@ def main():
         p = False
         env_path = "server/.env"
         if os.path.exists(env_path):
-            with open(env_path, "r", encoding="utf-8") as f:
+            with open(env_path, encoding="utf-8") as f:
                 for line in f:
                     if line.strip().startswith("SERVER_B_SECRET="):
                         val = line.split("=", 1)[1].strip().strip('"').strip("'")
@@ -1138,7 +1138,7 @@ def main():
         p = False
         found = []
         if os.path.exists(env_path):
-            with open(env_path, "r", encoding="utf-8") as f:
+            with open(env_path, encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if (
@@ -1170,7 +1170,7 @@ def main():
         if requests is not None:
             secret = ""
             if os.path.exists(env_path):
-                with open(env_path, "r", encoding="utf-8") as f:
+                with open(env_path, encoding="utf-8") as f:
                     for line in f:
                         if line.strip().startswith("SERVER_B_SECRET="):
                             secret = line.split("=", 1)[1].strip().strip('"').strip("'")
@@ -1204,7 +1204,7 @@ def main():
         print("Running Check 11.3.10 (Telegram config)...")
         p = False
         if os.path.exists(env_path):
-            with open(env_path, "r", encoding="utf-8") as f:
+            with open(env_path, encoding="utf-8") as f:
                 for line in f:
                     if line.strip().startswith("TELEGRAM_BOT_TOKEN="):
                         val = line.split("=", 1)[1].strip().strip('"').strip("'")
@@ -1435,7 +1435,7 @@ def main():
             if os.path.exists(doc_path):
                 # Update checkboxes in the file
                 try:
-                    with open(doc_path, "r", encoding="utf-8") as f:
+                    with open(doc_path, encoding="utf-8") as f:
                         lines = f.readlines()
 
                     new_lines = []

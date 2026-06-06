@@ -2,20 +2,20 @@
 Unit tests for core/event_bus.py and processor/signal_processor.py
 """
 
-import pytest
-import sys
 import pathlib
+import sys
+
+import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent.parent))
 
 from core.event_bus import EventBus
 from core.events import (
     SignalReceived,
-    SignalValidated,
     SignalRejected,
+    SignalValidated,
     TradeExecuted,
 )
-
 
 # ═══════════════════════════════════════════════════════════════
 # EVENT BUS TESTS

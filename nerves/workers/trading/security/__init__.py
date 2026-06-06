@@ -12,9 +12,9 @@ Usage:
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone, UTC
 from enum import Enum
 from typing import Optional
-from datetime import datetime, timezone
 
 
 class Severity(Enum):
@@ -48,7 +48,7 @@ class Finding:
     scanner: str = ""  # Which scanner found it
     confidence: float = 0.0  # 0.0-1.0
     remediation: str = ""  # Fix suggestion
-    cwe: Optional[str] = None  # CWE reference
+    cwe: str | None = None  # CWE reference
 
     @property
     def key(self) -> str:
@@ -67,8 +67,8 @@ class ProbeResult:
     expected: str
     actual: str
     passed: bool  # True = security held, False = vulnerability confirmed
-    response_code: Optional[int] = None
-    response_time_ms: Optional[float] = None
+    response_code: int | None = None
+    response_time_ms: float | None = None
     details: str = ""
 
 
@@ -77,7 +77,7 @@ class SecurityReport:
     """Complete report from a full harness run."""
 
     timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+        default_factory=lambda: datetime.now(UTC).isoformat()
     )
     target: str = ""
     total_files_scanned: int = 0

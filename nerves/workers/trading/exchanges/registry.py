@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 from .base import ExchangeAdapter, ExchangeNotFoundError
 
@@ -10,8 +10,8 @@ class ExchangeRegistry:
     """Manages registered exchange adapters. Singleton."""
 
     def __init__(self):
-        self._adapters: Dict[str, ExchangeAdapter] = {}
-        self._health_status: Dict[str, bool] = {}
+        self._adapters: dict[str, ExchangeAdapter] = {}
+        self._health_status: dict[str, bool] = {}
 
     def register(self, adapter: ExchangeAdapter) -> None:
         name = adapter.exchange_name.lower()
@@ -28,7 +28,7 @@ class ExchangeRegistry:
             )
         return self._adapters[eid]
 
-    def list_exchanges(self) -> List[Dict[str, Any]]:
+    def list_exchanges(self) -> list[dict[str, Any]]:
         return [
             {
                 "exchange": name,
@@ -39,7 +39,7 @@ class ExchangeRegistry:
             for name, adapter in self._adapters.items()
         ]
 
-    def list_exchange_ids(self) -> List[str]:
+    def list_exchange_ids(self) -> list[str]:
         return list(self._adapters.keys())
 
     def mark_unavailable(self, exchange_id: str) -> None:
@@ -75,6 +75,7 @@ def get_registry() -> ExchangeRegistry:
 def init_registry() -> None:
     """Auto-detects configured exchanges based on config."""
     import config
+
     from .binance_adapter import BinanceAdapter
     from .bybit_adapter import BybitAdapter
 

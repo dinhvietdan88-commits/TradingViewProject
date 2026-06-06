@@ -49,10 +49,10 @@ AGENTS_ROOT = Path(__file__).resolve().parent.parent.parent
 # Shared Utilities
 # ---------------------------------------------------------------------------
 
-_angati_exe_cache: Optional[Path] = None
+_angati_exe_cache: Path | None = None
 
 
-def _resolve_angati_exe() -> Optional[Path]:
+def _resolve_angati_exe() -> Path | None:
     """
     Single source of truth for angati.exe path resolution.
     Caches result after first successful lookup.

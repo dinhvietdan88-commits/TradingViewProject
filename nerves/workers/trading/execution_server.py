@@ -11,10 +11,10 @@ Runs on Tailscale VPN only (not exposed to WAN).
 import hmac
 import logging
 import sys
-from pathlib import Path
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 # Ensure server/ is in path for imports
@@ -116,17 +116,18 @@ async def execute_trade(request: Request):
     try:
         import asyncio
 
+        import hub.notification_hub as notification_hub
+        import telegram_bot
+
         # Import and use TradeEngine's event-based execution
         from core.event_bus import EventBus
         from core.events import (
+            AnalysisComplete,
+            TradeApprovalTimeout,
             TradeApproved,
             TradeExecuted,
             TradeFailed,
-            AnalysisComplete,
-            TradeApprovalTimeout,
         )
-        import hub.notification_hub as notification_hub
-        import telegram_bot
         from utils.telegram_templates import render_template
 
         # Create isolated event bus for this execution

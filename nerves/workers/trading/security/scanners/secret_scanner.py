@@ -11,7 +11,6 @@ from typing import List
 
 from security import Finding, Severity
 
-
 SCANNER_NAME = "secret-detector"
 
 # Patterns that indicate a secret value (not a placeholder/template)
@@ -90,7 +89,7 @@ PLACEHOLDER_PATTERNS = re.compile(
 )
 
 
-def scan_directory(target_dir: Path) -> List[Finding]:
+def scan_directory(target_dir: Path) -> list[Finding]:
     """Scan config files for hardcoded secrets."""
     findings = []
 
@@ -118,7 +117,7 @@ def scan_directory(target_dir: Path) -> List[Finding]:
     return findings
 
 
-def _scan_file(filepath: Path) -> List[Finding]:
+def _scan_file(filepath: Path) -> list[Finding]:
     """Scan a single config file for secrets."""
     findings = []
     try:

@@ -8,8 +8,8 @@ Handles Telegram API limits:
 Ensures HTML tags are never broken mid-tag when truncating/chunking.
 """
 
-import re
 import logging
+import re
 from typing import List
 
 log = logging.getLogger(__name__)
@@ -81,7 +81,7 @@ def truncate_caption_html_safe(text: str, max_len: int = 1024) -> str:
     return result
 
 
-def chunk_html_message(text: str, chunk_size: int = 4096) -> List[str]:
+def chunk_html_message(text: str, chunk_size: int = 4096) -> list[str]:
     """Split long HTML message into Telegram-safe chunks.
 
     Rules:
@@ -98,7 +98,7 @@ def chunk_html_message(text: str, chunk_size: int = 4096) -> List[str]:
 
     # Split by double newline (paragraph boundaries)
     paragraphs = text.split("\n\n")
-    chunks: List[str] = []
+    chunks: list[str] = []
     current = ""
 
     for para in paragraphs:

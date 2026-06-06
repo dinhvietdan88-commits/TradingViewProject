@@ -1,9 +1,10 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 import config
 import database
-from core.events import TradeExecuted, TradeFailed, SignalReceived
+from core.events import SignalReceived, TradeExecuted, TradeFailed
 from workers.vps_consumer import VpsSignalConsumer
 
 

@@ -7,14 +7,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from utils.pattern_overlay import (
-    find_pivot_highs,
-    find_pivot_lows,
-    detect_vcp_contractions,
+    detect_all_patterns,
     detect_cup_handle,
     detect_double_bottom,
-    detect_all_patterns,
+    detect_vcp_contractions,
+    find_pivot_highs,
+    find_pivot_lows,
 )
-
 
 # ── Helpers ──────────────────────────────────────────────
 

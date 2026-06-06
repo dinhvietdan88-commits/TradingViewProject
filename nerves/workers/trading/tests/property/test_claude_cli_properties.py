@@ -13,18 +13,17 @@ Properties tested:
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
-from hypothesis import given, settings, assume
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from claude_cli.sdk_client import SdkClient
 from claude_cli.service import (
-    ClaudeService,
-    ContextManager,
     AnalysisRequest,
     AnalysisResponse,
+    ClaudeService,
+    ContextManager,
 )
 from claude_cli.telegram_commands import _format_response
-
 
 # ── helpers ─────────────────────────────────────────────────────────────────────
 

@@ -58,7 +58,7 @@ class SdkClient:
         max_p = max_parallel or getattr(config, "CLAUDE_CLI_MAX_PARALLEL", 2)
         self._semaphore = asyncio.Semaphore(max(1, max_p))
         self._request_timestamps: list[float] = []
-        self._client: Optional[object] = None  # anthropic.AsyncAnthropic
+        self._client: object | None = None  # anthropic.AsyncAnthropic
         self._available: bool = False
 
     # ── Lifecycle ───────────────────────────────────────────────────────────────
@@ -128,7 +128,7 @@ class SdkClient:
         self,
         prompt: str,
         system_prompt: str = "",
-    ) -> "AnalysisResponse":  # noqa: F821
+    ) -> AnalysisResponse:  # noqa: F821
         """Execute Claude SDK call with the given prompt.
 
         - Checks rate limit before calling SDK
@@ -196,8 +196,8 @@ class SdkClient:
                 rate_limited = False
 
                 try:
-                    import httpx
                     import anthropic as _anthropic
+                    import httpx
 
                     if isinstance(exc, (httpx.TimeoutException,)):
                         timed_out = True

@@ -1,9 +1,9 @@
-import pytest
-import aiosqlite
-from httpx import AsyncClient, ASGITransport
-
 import sys
 from pathlib import Path
+
+import aiosqlite
+import pytest
+from httpx import ASGITransport, AsyncClient
 
 # All module names that overlap between server/ and vbs/
 _VBS_MODULE_NAMES = [

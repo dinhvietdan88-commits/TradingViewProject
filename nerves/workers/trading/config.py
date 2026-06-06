@@ -1,7 +1,8 @@
 import os
 import time as _time
-from dotenv import load_dotenv
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 load_dotenv()
 

@@ -17,11 +17,10 @@ from typing import List
 
 from security import Finding, Severity
 
-
 SCANNER_NAME = "tvp-trading-rules"
 
 
-def scan_file(filepath: Path) -> List[Finding]:
+def scan_file(filepath: Path) -> list[Finding]:
     """Run all trading-specific rules against a single Python file."""
     findings = []
     try:
@@ -41,7 +40,7 @@ def scan_file(filepath: Path) -> List[Finding]:
     return findings
 
 
-def scan_directory(target_dir: Path) -> List[Finding]:
+def scan_directory(target_dir: Path) -> list[Finding]:
     """Scan all Python files in the target directory."""
     findings = []
     for py_file in target_dir.rglob("*.py"):
@@ -61,7 +60,7 @@ def scan_directory(target_dir: Path) -> List[Finding]:
 # ── TVP-001: Unsafe Price Parsing ─────────────────────────────────────────────
 def _tvp001_unsafe_price_parse(
     filepath: Path, content: str, lines: list
-) -> List[Finding]:
+) -> list[Finding]:
     """Detect float() calls on user-controlled price/qty without try/except."""
     findings = []
     # Pattern: float(something) where something looks like payload/user data
@@ -111,7 +110,7 @@ def _tvp001_unsafe_price_parse(
 # ── TVP-002: Uncapped Trade Size ──────────────────────────────────────────────
 def _tvp002_uncapped_quote_qty(
     filepath: Path, content: str, lines: list
-) -> List[Finding]:
+) -> list[Finding]:
     """Detect missing max-cap on quoteQty / trade size from webhook payload."""
     findings = []
     if "webhook" not in filepath.name.lower() and "main" not in filepath.name.lower():
@@ -156,7 +155,7 @@ def _tvp002_uncapped_quote_qty(
 # ── TVP-003: Secret in Payload ────────────────────────────────────────────────
 def _tvp003_secret_in_payload(
     filepath: Path, content: str, lines: list
-) -> List[Finding]:
+) -> list[Finding]:
     """Detect if webhook secret is read from payload body before being stripped."""
     findings = []
 
@@ -195,10 +194,10 @@ def _tvp003_secret_in_payload(
                     file=str(filepath),
                     line=secret_read,
                     description=(
-                        "The webhook secret is read from the payload body (line {}) "
-                        "but not stripped until line {}. If insert_signal() stores the "
+                        f"The webhook secret is read from the payload body (line {secret_read}) "
+                        f"but not stripped until line {secret_pop}. If insert_signal() stores the "
                         "full payload, the secret will be persisted in the database."
-                    ).format(secret_read, secret_pop),
+                    ),
                     evidence=f"secret read: L{secret_read}, pop: L{secret_pop}, insert: L{insert_line}",
                     scanner=SCANNER_NAME,
                     confidence=0.7,
@@ -212,7 +211,7 @@ def _tvp003_secret_in_payload(
 # ── TVP-004: Missing Rate Limiting ────────────────────────────────────────────
 def _tvp004_missing_rate_limit(
     filepath: Path, content: str, lines: list
-) -> List[Finding]:
+) -> list[Finding]:
     """Check if FastAPI endpoints lack rate limiting decorators."""
     findings = []
     if "main" not in filepath.name.lower():
@@ -278,7 +277,7 @@ def _tvp004_missing_rate_limit(
 
 
 # ── TVP-005: Screenshot Path Traversal ────────────────────────────────────────
-def _tvp005_path_traversal(filepath: Path, content: str, lines: list) -> List[Finding]:
+def _tvp005_path_traversal(filepath: Path, content: str, lines: list) -> list[Finding]:
     """Detect user-controlled file paths in screenshot saving."""
     findings = []
     pattern = re.compile(r"save_path\s*=.*(?:symbol|payload|request)", re.IGNORECASE)
@@ -321,7 +320,7 @@ def _tvp005_path_traversal(filepath: Path, content: str, lines: list) -> List[Fi
 
 
 # ── TVP-006: Dry Run Bypass ───────────────────────────────────────────────────
-def _tvp006_dry_run_bypass(filepath: Path, content: str, lines: list) -> List[Finding]:
+def _tvp006_dry_run_bypass(filepath: Path, content: str, lines: list) -> list[Finding]:
     """Check if BINANCE_DRY_RUN can be overridden at runtime."""
     findings = []
     if "config" not in filepath.name.lower():
@@ -357,7 +356,7 @@ def _tvp006_dry_run_bypass(filepath: Path, content: str, lines: list) -> List[Fi
 # ── TVP-007: Telegram Token Exposure ──────────────────────────────────────────
 def _tvp007_telegram_token_exposure(
     filepath: Path, content: str, lines: list
-) -> List[Finding]:
+) -> list[Finding]:
     """Detect if Telegram bot token could leak via error messages or health endpoints."""
     findings = []
     # Check for token in error messages

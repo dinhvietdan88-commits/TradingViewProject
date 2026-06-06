@@ -19,7 +19,7 @@ import json
 import logging
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from typing import Optional
 
 from auth.auth_config import AuthConfig
@@ -57,7 +57,7 @@ class AuthService:
     # ═══════════════════════════════════════════════════════════════
 
     def generate_login_code(
-        self, telegram_id: int, username: Optional[str] = None
+        self, telegram_id: int, username: str | None = None
     ) -> OneTimeCode:
         """Generate a one-time login code for a Telegram user.
 
@@ -67,7 +67,7 @@ class AuthService:
         Returns:
             OneTimeCode to be stored in DB and sent to user.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         code = secrets.token_hex(16)  # 32-char hex
         expires_at = now + timedelta(minutes=self.config.code_ttl_minutes)
 
@@ -86,7 +86,7 @@ class AuthService:
         )
         return otp
 
-    def exchange_code(self, code_record: Optional[dict], code: str) -> SessionData:
+    def exchange_code(self, code_record: dict | None, code: str) -> SessionData:
         """Exchange a one-time code for a session token.
 
         STRICT VALIDATION ORDER (from design.md):
@@ -106,7 +106,7 @@ class AuthService:
         Raises:
             CodeInvalidError, CodeExpiredError, CodeUsedError, UserNotAllowedError
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Step 1: Code exists?
         if code_record is None:
@@ -117,7 +117,7 @@ class AuthService:
         if isinstance(expires_at, str):
             expires_at = datetime.fromisoformat(expires_at)
         if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
+            expires_at = expires_at.replace(tzinfo=UTC)
 
         if now > expires_at:
             raise CodeExpiredError("Login code has expired")
@@ -142,10 +142,10 @@ class AuthService:
     # ═══════════════════════════════════════════════════════════════
 
     def _create_session(
-        self, telegram_id: int, username: Optional[str] = None
+        self, telegram_id: int, username: str | None = None
     ) -> SessionData:
         """Create a new session for an authenticated user."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         session_id = str(uuid.uuid4())
 
         if self.config.session_expiry_hours is None:
@@ -207,7 +207,7 @@ class AuthService:
         """
         import base64
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Step 1: Format check
         parts = token.split(".", 1)
@@ -237,14 +237,14 @@ class AuthService:
 
         created_at = datetime.fromisoformat(payload["cat"])
         if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
+            created_at = created_at.replace(tzinfo=UTC)
 
         never_expires = payload.get("nex", False)
 
         if payload.get("eat") is not None:
             expires_at = datetime.fromisoformat(payload["eat"])
             if expires_at.tzinfo is None:
-                expires_at = expires_at.replace(tzinfo=timezone.utc)
+                expires_at = expires_at.replace(tzinfo=UTC)
         else:
             expires_at = None
 
@@ -276,7 +276,7 @@ class AuthService:
         if session.never_expires or session.expires_at is None:
             return False
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         time_left = session.expires_at - now
         return timedelta(0) < time_left <= timedelta(hours=1)
 
@@ -295,7 +295,7 @@ class AuthService:
         Raises:
             SessionMaxLifetimeError: If refresh would exceed 7-day max.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         max_lifetime = session.created_at + timedelta(
             days=self.config.max_session_lifetime_days
         )
@@ -382,8 +382,8 @@ class AuthService:
             raise WidgetHashInvalidError("Invalid widget authentication data")
 
         # Step 2: Freshness check (TECHNICAL)
-        now = datetime.now(timezone.utc)
-        auth_date = datetime.fromtimestamp(int(data["auth_date"]), tz=timezone.utc)
+        now = datetime.now(UTC)
+        auth_date = datetime.fromtimestamp(int(data["auth_date"]), tz=UTC)
         if (now - auth_date) > timedelta(minutes=5):
             raise WidgetExpiredError("Widget authentication has expired")
 

@@ -1,8 +1,10 @@
 import os
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
+
 import alert_manager
-from scripts.autotest_watcher import parse_pytest_failures, extract_failure_details
+from scripts.autotest_watcher import extract_failure_details, parse_pytest_failures
 
 
 @pytest.mark.asyncio
@@ -33,7 +35,7 @@ async def test_log_test_run_creates_file():
 
     alert_manager.log_test_run(True, "15 passed, 0 failed")
     assert os.path.exists(log_path)
-    with open(log_path, "r", encoding="utf-8") as f:
+    with open(log_path, encoding="utf-8") as f:
         content = f.read()
         assert "PASSED" in content
         assert "15 passed, 0 failed" in content

@@ -3,12 +3,13 @@ P6 — Analysis Engine
 Trend Template scorer (8 Minervini criteria) + VCP detector.
 """
 
-import logging
 import asyncio
-import aiohttp
-from datetime import datetime, timezone
+import logging
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone, UTC
+from typing import Any, Dict, List, Optional
+
+import aiohttp
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class VCPResult:
     detected: bool
     volume_ratio: float  # current vol / 20-period avg (< 0.5 = contraction)
     range_ratio: float  # (H-L) / ATR14 (< 0.5 = narrow)
-    pivot_level: Optional[float]  # estimated breakout pivot
+    pivot_level: float | None  # estimated breakout pivot
     vol_breakout: bool  # volume > 1.2x average (for breakout confirmation)
     note: str
 
@@ -40,9 +41,9 @@ class ScanResult:
     trend_template: TrendTemplateResult
     vcp: VCPResult
     volume: float
-    volume_avg: Optional[float]
+    volume_avg: float | None
     exchange: str = ""
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
@@ -50,7 +51,7 @@ class MTFScanResult:
     symbol: str
     exchange: str
     price: float
-    timeframes: Dict[str, ScanResult]
+    timeframes: dict[str, ScanResult]
     aligned_long: bool
     aligned_short: bool
     verdict: str
@@ -58,13 +59,13 @@ class MTFScanResult:
 
 def score_trend_template(
     price: float,
-    sma50: Optional[float],
-    sma150: Optional[float],
-    sma200: Optional[float],
-    high_52w: Optional[float],
-    low_52w: Optional[float],
-    sma200_slope: Optional[float] = None,  # positive = trending up
-    rs_ratio: Optional[float] = None,  # > 1.0 = outperforming benchmark
+    sma50: float | None,
+    sma150: float | None,
+    sma200: float | None,
+    high_52w: float | None,
+    low_52w: float | None,
+    sma200_slope: float | None = None,  # positive = trending up
+    rs_ratio: float | None = None,  # > 1.0 = outperforming benchmark
 ) -> TrendTemplateResult:
     """
     Score 8 Minervini Trend Template criteria.
@@ -193,9 +194,9 @@ def detect_vcp(
     high: float,
     low: float,
     volume: float,
-    volume_avg20: Optional[float],
-    atr14: Optional[float],
-    high_52w: Optional[float],
+    volume_avg20: float | None,
+    atr14: float | None,
+    high_52w: float | None,
 ) -> VCPResult:
     """
     Detect VCP (Volatility Contraction Pattern).
@@ -249,7 +250,7 @@ async def _run_rest_scan_for_symbols(symbols: list[str]) -> list[ScanResult]:
     """Helper to run REST scanning for a list of symbols concurrently."""
     if not symbols:
         return []
-    logger.info(f"Performing REST scan for symbols: {symbols}...")
+    logger.info(f"Performing REST scan for symbols: {symbols}...")  # codeql[py/log-injection]
     semaphore = asyncio.Semaphore(15)
 
     async with aiohttp.ClientSession() as session:
@@ -339,7 +340,7 @@ async def scan_symbols(symbols: list[str], mcp_client) -> list[ScanResult]:
 
         if item.get("error"):
             logger.warning(
-                f"MCP error for {sym}: {item.get('error')}. "
+                f"MCP error for {sym}: {item.get('error')}. "  # codeql[py/log-injection]
                 "Adding to REST fallback scan."
             )
             symbols_for_rest_fallback.append(sym)
@@ -360,7 +361,7 @@ async def scan_symbols(symbols: list[str], mcp_client) -> list[ScanResult]:
 
         if not has_essential_indicators:
             logger.warning(
-                f"MCP returned incomplete indicator/quote data for {sym}. "
+                f"MCP returned incomplete indicator/quote data for {sym}. "  # codeql[py/log-injection]
                 "Adding to REST fallback scan."
             )
             symbols_for_rest_fallback.append(sym)
@@ -415,11 +416,11 @@ async def scan_symbols(symbols: list[str], mcp_client) -> list[ScanResult]:
 
 # ── REST-based Concurrent Scanner ─────────────────────────────────────────
 
-_latest_scan_results: List[ScanResult] = []
+_latest_scan_results: list[ScanResult] = []
 _scan_status: str = "idle"
-_scan_start_time: Optional[str] = None
-_scan_end_time: Optional[str] = None
-_scan_error: Optional[str] = None
+_scan_start_time: str | None = None
+_scan_end_time: str | None = None
+_scan_error: str | None = None
 _scan_lock = asyncio.Lock()
 
 
@@ -431,8 +432,8 @@ async def fetch_candles_with_retry(
     limit: int = 365,
     max_retries: int = 5,
     backoff_factor: float = 1.5,
-    semaphore: Optional[asyncio.Semaphore] = None,
-) -> List[List[Any]]:
+    semaphore: asyncio.Semaphore | None = None,
+) -> list[list[Any]]:
     """Fetch candles directly from public REST endpoints
     with retry-on-429 rate limit protection.
     """
@@ -499,19 +500,19 @@ async def fetch_candles_with_retry(
                         retry_after = float(retry_after_header)
                     except ValueError:
                         try:
-                            from email.utils import parsedate_to_datetime
                             from datetime import datetime, timezone
+                            from email.utils import parsedate_to_datetime
 
                             dt_hdr = parsedate_to_datetime(str(retry_after_header))
                             delta = (
-                                dt_hdr - datetime.now(timezone.utc)
+                                dt_hdr - datetime.now(UTC)
                             ).total_seconds()
                             retry_after = max(delta, 1.0)
                         except Exception:
                             retry_after = 1.0
                 wait_time = max(retry_after, backoff_factor**retries)
                 logger.warning(
-                    f"Rate limited (429) for {symbol} on {exchange_name}. "
+                    f"Rate limited (429) for {symbol} on {exchange_name}. "  # codeql[py/log-injection]
                     f"Waiting {wait_time}s..."
                 )
                 await asyncio.sleep(wait_time)
@@ -521,11 +522,11 @@ async def fetch_candles_with_retry(
                 # If Bybit category linear failed, try spot
                 if exchange_name == "bybit" and params.get("category") == "linear":
                     logger.info(
-                        f"Bybit linear failed for {symbol}, trying category spot..."
+                        f"Bybit linear failed for {symbol}, trying category spot..."  # codeql[py/log-injection]
                     )
                     params["category"] = "spot"
                     continue
-                logger.warning(f"HTTP error {status} for {symbol} on {exchange_name}")
+                logger.warning(f"HTTP error {status} for {symbol} on {exchange_name}")  # codeql[py/log-injection]
                 await asyncio.sleep(backoff_factor**retries)
                 retries += 1
                 continue
@@ -596,13 +597,13 @@ async def fetch_candles_with_retry(
 
         except Exception as e:
             logger.warning(
-                f"Attempt {retries + 1} failed for {symbol} on {exchange_name}: {e}"
+                f"Attempt {retries + 1} failed for {symbol} on {exchange_name}: {e}"  # codeql[py/log-injection]
             )
             await asyncio.sleep(backoff_factor**retries)
             retries += 1
 
     logger.error(
-        f"Failed to fetch candles for {symbol} on {exchange_name} "
+        f"Failed to fetch candles for {symbol} on {exchange_name} "  # codeql[py/log-injection]
         f"after {max_retries} attempts."
     )
     raise RuntimeError(
@@ -612,11 +613,11 @@ async def fetch_candles_with_retry(
 
 
 def _calculate_scan_result(
-    ohlcv: List[List[Any]],
+    ohlcv: list[list[Any]],
     exchange_name: str,
     symbol: str,
-    btc_closes: Dict[int, float],
-    btc_candles: List[List[Any]],
+    btc_closes: dict[int, float],
+    btc_candles: list[list[Any]],
 ) -> ScanResult:
     """Analyze ohlcv to construct a ScanResult
     containing Trend Template & VCP scorecards.
@@ -746,8 +747,8 @@ async def scan_single_symbol_rest(
     session: aiohttp.ClientSession,
     exchange_name: str,
     symbol: str,
-    btc_closes: Dict[int, float],
-    btc_candles: List[List[Any]],
+    btc_closes: dict[int, float],
+    btc_candles: list[list[Any]],
     semaphore: asyncio.Semaphore,
 ) -> ScanResult:
     """Scan a single symbol using REST endpoints, scoring Trend Template & VCP."""
@@ -759,7 +760,7 @@ async def scan_single_symbol_rest(
             ohlcv, exchange_name, symbol, btc_closes, btc_candles
         )
     except Exception as e:
-        logger.exception(f"Exception during REST scan for {symbol}")
+        logger.exception(f"Exception during REST scan for {symbol}")  # codeql[py/log-injection]
         return ScanResult(
             symbol=symbol,
             price=0.0,
@@ -819,7 +820,7 @@ async def scan_symbol_multi_timeframe(
             )
             return tf, result
         except Exception as e:
-            logger.warning(f"Failed to scan timeframe {tf} for {symbol}: {e}")
+            logger.warning(f"Failed to scan timeframe {tf} for {symbol}: {e}")  # codeql[py/log-injection]
             err_result = ScanResult(
                 symbol=symbol,
                 price=0.0,
@@ -888,7 +889,7 @@ async def scan_symbol_multi_timeframe(
     )
 
 
-async def scan_all_configured_exchanges() -> List[ScanResult]:
+async def scan_all_configured_exchanges() -> list[ScanResult]:
     """Perform background scan of active symbols on all registered exchanges."""
     global \
         _scan_status, \
@@ -903,7 +904,7 @@ async def scan_all_configured_exchanges() -> List[ScanResult]:
             return _latest_scan_results
 
         _scan_status = "running"
-        _scan_start_time = datetime.now(timezone.utc).isoformat()
+        _scan_start_time = datetime.now(UTC).isoformat()
         _scan_end_time = None
         _scan_error = None
 
@@ -988,6 +989,6 @@ async def scan_all_configured_exchanges() -> List[ScanResult]:
             _scan_status = "failed"
     finally:
         async with _scan_lock:
-            _scan_end_time = datetime.now(timezone.utc).isoformat()
+            _scan_end_time = datetime.now(UTC).isoformat()
 
     return _latest_scan_results

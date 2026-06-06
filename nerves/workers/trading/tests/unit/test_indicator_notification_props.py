@@ -6,8 +6,8 @@ Property 16: Info signal notification must contain indicator_name, symbol, condi
 Property 17: confidence_score > 80 → high-priority notification; <= 80 → normal
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 

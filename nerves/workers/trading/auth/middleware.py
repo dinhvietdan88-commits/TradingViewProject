@@ -139,7 +139,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # 3. Unauthenticated
         return self._unauthenticated_response(request, path)
 
-    def _check_bearer(self, request: Request, auth_service=None) -> Optional[dict]:
+    def _check_bearer(self, request: Request, auth_service=None) -> dict | None:
         """Check Authorization: Bearer header."""
         svc = auth_service or self.auth_service
         if svc is None:
@@ -168,9 +168,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if svc is None:
             return None
         from auth.models import (
+            SessionMaxLifetimeError,
             TokenExpiredError,
             TokenInvalidError,
-            SessionMaxLifetimeError,
         )
 
         token = request.cookies.get("tg_session")
@@ -219,7 +219,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         return response
 
-    def _cookie_max_age(self, auth_service=None) -> Optional[int]:
+    def _cookie_max_age(self, auth_service=None) -> int | None:
         """Calculate cookie max-age from config."""
         svc = auth_service or self.auth_service
         if svc is None:

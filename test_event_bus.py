@@ -1,9 +1,10 @@
-import pytest
 from dataclasses import FrozenInstanceError
-from hypothesis import given, strategies as st
 
-from server.core.events import Event, SignalReceived
+import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 from server.core.event_bus import EventBus
+from server.core.events import Event, SignalReceived
 
 
 class DummyEvent(Event):

@@ -1,6 +1,6 @@
+import json
 import os
 import subprocess
-import json
 import time
 
 # Absolute paths
@@ -116,7 +116,7 @@ def run_mcp_ingestion():
         if not os.path.exists(filepath):
             log(f"Error: file not found: {filepath}", log_lines)
             return False
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             ki_contents[filename] = f.read()
         log(f"Read {filename} ({len(ki_contents[filename])} chars)", log_lines)
 
@@ -461,7 +461,7 @@ def run_mcp_ingestion():
         if not (found_graph_weex and found_graph_usdt):
             if os.path.exists(graph_db_path):
                 try:
-                    with open(graph_db_path, "r", encoding="utf-8") as gf:
+                    with open(graph_db_path, encoding="utf-8") as gf:
                         for line in gf:
                             line = line.strip()
                             if not line:

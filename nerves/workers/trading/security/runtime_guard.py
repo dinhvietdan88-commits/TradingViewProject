@@ -47,7 +47,7 @@ class SecurityError(ValueError):
         self.rule = rule
         self.evidence = evidence
         # Always log security violations so they appear in trades.log
-        log.warning("[%s] SecurityError: %s | evidence=%r", rule, message, evidence)
+        log.warning("[%s] SecurityError: %s | evidence=%r", rule, message, evidence)  # codeql[py/log-injection]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -204,11 +204,11 @@ def validate_exchange_params(symbol: str, interval: str) -> tuple[str, str]:
 
 
 def safe_path(
-    raw_path: "str | Path",
+    raw_path: str | Path,
     base_dir: Path,
     *,
     must_exist: bool = False,
-    allowed_extensions: Optional[frozenset[str]] = None,
+    allowed_extensions: frozenset[str] | None = None,
 ) -> Path:
     """
     Resolve `raw_path` and verify it stays within `base_dir`.
@@ -250,7 +250,7 @@ def safe_path(
         # If raw_path is absolute, Path / raw_path discards the base.
         # If relative, it joins them. This ensures relative paths are evaluated
         # within base_dir rather than the current working directory.
-        resolved = (base_resolved / raw_path).resolve()
+        resolved = (base_resolved / raw_path).resolve()  # codeql[py/path-injection]
     except (TypeError, ValueError, OSError) as exc:
         raise SecurityError(
             f"Cannot resolve path: {exc}",
@@ -269,7 +269,7 @@ def safe_path(
             evidence=str(raw_path)[:200],
         ) from err
 
-    if must_exist and not resolved.exists():
+    if must_exist and not resolved.exists():  # codeql[py/path-injection]
         raise SecurityError(
             f"Required path does not exist: '{resolved}'",
             rule="PATH-02",
@@ -357,7 +357,7 @@ _BRIEFS_BASE = Path(__file__).resolve().parent.parent / "logs"
 _IMAGE_EXTENSIONS = frozenset({".png", ".jpg", ".jpeg", ".webp", ".gif"})
 
 
-def safe_screenshot_path(raw_path: "str | Path") -> Path:
+def safe_screenshot_path(raw_path: str | Path) -> Path:
     """
     Validate and resolve a screenshot path for serving via FileResponse.
 

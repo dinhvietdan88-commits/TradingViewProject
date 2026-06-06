@@ -6,6 +6,7 @@ No API keys required — all tests use dry-run mode.
 
 import os
 import sys
+
 import pytest
 
 # Ensure server/ is on path
@@ -18,9 +19,9 @@ os.environ.setdefault("BINANCE_TESTNET", "true")
 os.environ.setdefault("BINANCE_DRY_RUN", "true")
 
 
-from binance_client import BinanceClient, OrderResult
 from unittest.mock import AsyncMock
 
+from binance_client import BinanceClient, OrderResult
 
 # ═══════════════════════════════════════════════════════════════
 # POSITION SIZING TESTS

@@ -21,16 +21,15 @@ Does NOT own:
 """
 
 import logging
-import time
 import secrets
+import time
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 import config
 import database
-
 from core.event_bus import bus as _event_bus
-from core.events import SignalReceived, IndicatorSignalReceived
+from core.events import IndicatorSignalReceived, SignalReceived
 from data.tv_models import TradingViewAlertPayload
 
 log = logging.getLogger(__name__)

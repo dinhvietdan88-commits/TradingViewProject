@@ -3,28 +3,28 @@ P6 — Morning Brief Generator
 Orchestrates: Watchlist scan → Screenshot → RAG → Claude → Telegram
 """
 
-import logging
 import asyncio
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from zoneinfo import ZoneInfo
 
 import config
-from mcp_client import get_mcp_client
-from watchlist import get_watchlist
-from analysis import scan_symbols, ScanResult
-from rag import query_knowledge, generate_trading_advice
-from notifier import send_telegram_message, send_telegram_photo
-from vision import analyze_chart_vision, format_vision_telegram
 import database
+from analysis import ScanResult, scan_symbols
+from mcp_client import get_mcp_client
+from notifier import send_telegram_message, send_telegram_photo
+from rag import generate_trading_advice, query_knowledge
+from vision import analyze_chart_vision, format_vision_telegram
+from watchlist import get_watchlist
 
 logger = logging.getLogger(__name__)
 
 ICT = ZoneInfo("Asia/Ho_Chi_Minh")
 
 # Store latest brief in memory
-_latest_brief: Optional[dict] = None
+_latest_brief: dict | None = None
 
 
 def _format_brief_text(
@@ -92,7 +92,7 @@ def _format_brief_text(
     return "\n".join(lines)
 
 
-async def generate_morning_brief() -> Optional[dict]:
+async def generate_morning_brief() -> dict | None:
     """
     Full morning brief orchestration:
     1. Get watchlist
@@ -130,7 +130,7 @@ async def generate_morning_brief() -> Optional[dict]:
         scan_results = []
 
     # 4. Screenshot top VCP (or top TT score)
-    screenshot_path: Optional[Path] = None
+    screenshot_path: Path | None = None
     top_candidates = [r for r in scan_results if r.vcp.detected and not r.error]
     if not top_candidates:
         top_candidates = [r for r in scan_results if not r.error]
@@ -433,6 +433,6 @@ async def generate_morning_brief() -> Optional[dict]:
     return brief
 
 
-def get_latest_brief() -> Optional[dict]:
+def get_latest_brief() -> dict | None:
     """Return the most recent morning brief."""
     return _latest_brief

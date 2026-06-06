@@ -1,9 +1,10 @@
-import sys
 import asyncio
-import pytest
-import httpx
+import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import httpx
+import pytest
 from httpx import ASGITransport
 
 # ── Dynamic import wrapper for VBS (to prevent module collisions) ──
@@ -186,8 +187,8 @@ async def test_db(tmp_path):
 @pytest.fixture
 async def worker(test_db):
     """Instantiate VpsAnalyzerWorker configured to connect to the test VBS app."""
-    from workers.vps_analyzer import VpsAnalyzerWorker
     import config as server_config
+    from workers.vps_analyzer import VpsAnalyzerWorker
 
     # Configure Server C config keys to align with the mock VBS settings
     server_config.VPS_BUFFER_URL = "http://vbs-mock"
@@ -405,8 +406,8 @@ async def test_fallback_routing_and_recovery(test_db):
     - If both fail -> return success=False.
     - If Primary recovers (in subsequent calls) -> execute on Local and do not fallback.
     """
-    from workers.vps_analyzer import VpsAnalyzerWorker
     import config as server_config
+    from workers.vps_analyzer import VpsAnalyzerWorker
 
     # Configure mock execution URLs
     server_config.LOCAL_EXECUTE_URL = "http://local-execute"

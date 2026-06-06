@@ -1,8 +1,9 @@
 import time
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
+
+from binance_client import BinanceClient
 
 from .base import OrderResult
-from binance_client import BinanceClient
 
 
 class BinanceAdapter:
@@ -24,25 +25,25 @@ class BinanceAdapter:
         return self._client.dry_run
 
     @property
-    def supported_order_types(self) -> List[str]:
+    def supported_order_types(self) -> list[str]:
         return ["MARKET", "LIMIT", "OCO"]
 
     async def get_account_balance(self, asset: str = "USDT") -> float:
         return await self._client.get_account_balance(asset)
 
-    async def get_symbol_info(self, symbol: str) -> Dict[str, Any]:
+    async def get_symbol_info(self, symbol: str) -> dict[str, Any]:
         return await self._client.get_symbol_info(symbol)
 
-    async def get_active_symbols(self) -> List[str]:
+    async def get_active_symbols(self) -> list[str]:
         return await self._client.get_active_symbols()
 
     async def place_market_order(
         self,
         symbol: str,
         side: str,
-        quote_qty: Optional[float] = None,
-        base_qty: Optional[float] = None,
-    ) -> Dict[str, Any]:
+        quote_qty: float | None = None,
+        base_qty: float | None = None,
+    ) -> dict[str, Any]:
         return await self._client.place_market_order(symbol, side, quote_qty, base_qty)
 
     async def place_oco_order(
@@ -53,7 +54,7 @@ class BinanceAdapter:
         take_profit_price: float,
         stop_price: float,
         stop_limit_price: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return await self._client.place_oco_order(
             symbol, side, quantity, take_profit_price, stop_price, stop_limit_price
         )
@@ -63,16 +64,16 @@ class BinanceAdapter:
 
     async def place_limit_order(
         self, symbol: str, side: str, price: float, quantity: float
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return await self._client.place_limit_order(symbol, side, price, quantity)
 
-    async def get_order(self, symbol: str, order_id: str) -> Dict[str, Any]:
+    async def get_order(self, symbol: str, order_id: str) -> dict[str, Any]:
         return await self._client.get_order(symbol, order_id)
 
-    async def cancel_order(self, symbol: str, order_id: str) -> Dict[str, Any]:
+    async def cancel_order(self, symbol: str, order_id: str) -> dict[str, Any]:
         return await self._client.cancel_order(symbol, order_id)
 
-    async def cancel_oco_order(self, symbol: str, order_list_id: str) -> Dict[str, Any]:
+    async def cancel_oco_order(self, symbol: str, order_list_id: str) -> dict[str, Any]:
         return await self._client.cancel_oco_order(symbol, order_list_id)
 
     async def execute_smart_order(
@@ -82,7 +83,7 @@ class BinanceAdapter:
         result.exchange = self.exchange_name
         return result
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         try:
             start = time.time()
             await self._client.get_symbol_info("BTCUSDT")

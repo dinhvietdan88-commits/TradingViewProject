@@ -1,14 +1,14 @@
 import asyncio
-import sys
 import logging
+import sys
 from pathlib import Path
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import database
-from exchanges.registry import init_registry, get_registry
 from capture_client import PythonCaptureClient
+from exchanges.registry import get_registry, init_registry
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

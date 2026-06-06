@@ -1,8 +1,8 @@
-import aiosqlite
 import json
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
+import aiosqlite
 
 import config
 
@@ -14,13 +14,13 @@ log = logging.getLogger(__name__)
 
 
 async def get_trades(
-    symbol: Optional[str] = None,
+    symbol: str | None = None,
     limit: int = 50,
     offset: int = 0,
-    from_date: Optional[str] = None,
-    to_date: Optional[str] = None,
+    from_date: str | None = None,
+    to_date: str | None = None,
     demo: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Truy van lich su giao dich voi pagination va filter."""
     params = [
         symbol.upper() if symbol else None,
@@ -69,7 +69,7 @@ async def get_trades(
 # ═══════════════════════════════════════════════════════════════
 
 
-async def get_stats(symbol: Optional[str] = None, demo: bool = False) -> Dict[str, Any]:
+async def get_stats(symbol: str | None = None, demo: bool = False) -> dict[str, Any]:
     """Tinh metrics hieu suat: Win Rate, Profit Factor, Drawdown."""
     params = [symbol.upper() if symbol else None, symbol, 1 if demo else 0]
 
@@ -136,7 +136,7 @@ async def get_stats(symbol: Optional[str] = None, demo: bool = False) -> Dict[st
         }
 
 
-def _build_mode_stats(pnl_list: list) -> Dict[str, Any]:
+def _build_mode_stats(pnl_list: list) -> dict[str, Any]:
     """Compute performance metrics for a given list of PnL values."""
     if not pnl_list:
         return {
@@ -173,7 +173,7 @@ def _build_mode_stats(pnl_list: list) -> Dict[str, Any]:
     }
 
 
-async def get_stats_by_mode(demo: bool = False) -> Dict[str, Any]:
+async def get_stats_by_mode(demo: bool = False) -> dict[str, Any]:
     """Performance metrics grouped by strategy mode (MTT vs MIS).
 
     JOINs trades → signals to access the signals.mode column (added Phase 2).
@@ -211,11 +211,11 @@ async def get_stats_by_mode(demo: bool = False) -> Dict[str, Any]:
     overall = _build_mode_stats(all_pnl)
 
     # Per-mode buckets
-    mode_map: Dict[str, list] = {}
+    mode_map: dict[str, list] = {}
     for pnl, mode in all_rows:
         mode_map.setdefault(mode, []).append(pnl)
 
-    by_mode: Dict[str, Any] = {}
+    by_mode: dict[str, Any] = {}
     for mode_key in sorted(mode_map.keys()):
         by_mode[mode_key] = _build_mode_stats(mode_map[mode_key])
 
@@ -234,9 +234,9 @@ async def get_stats_by_mode(demo: bool = False) -> Dict[str, Any]:
 
 async def get_recent_trades(
     limit: int = 10,
-    symbol: Optional[str] = None,
+    symbol: str | None = None,
     demo: bool = False,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Return the last N FILLED trades with signal mode for the /backtest history panel.
 
     Columns returned per trade:
@@ -268,8 +268,8 @@ async def get_recent_trades(
 
 
 async def get_equity_curve(
-    symbol: Optional[str] = None, demo: bool = False
-) -> Dict[str, Any]:
+    symbol: str | None = None, demo: bool = False
+) -> dict[str, Any]:
     """Tra ve equity curve data cho Chart.js."""
     params = [symbol.upper() if symbol else None, symbol, 1 if demo else 0]
 
@@ -328,7 +328,7 @@ async def get_equity_curve(
 async def get_briefs(
     limit: int = 20,
     offset: int = 0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Truy vấn lịch sử morning briefs với pagination."""
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -363,7 +363,7 @@ async def get_briefs(
     return {"briefs": briefs, "total": total, "limit": limit, "offset": offset}
 
 
-async def get_brief_by_id(brief_id: int) -> Optional[Dict[str, Any]]:
+async def get_brief_by_id(brief_id: int) -> dict[str, Any] | None:
     """Lấy chi tiết một brief theo ID."""
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -386,7 +386,7 @@ async def get_brief_by_id(brief_id: int) -> Optional[Dict[str, Any]]:
         return d
 
 
-async def get_db_counts() -> Dict[str, int]:
+async def get_db_counts() -> dict[str, int]:
     """Đếm tổng records trong mỗi bảng cho system status.
 
     SEC-003 fix: Explicit allowlist guard before table name interpolation.

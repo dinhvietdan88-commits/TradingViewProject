@@ -1,7 +1,8 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from core.event_bus import EventBus
 from core.events import TradeApproved, TradeFailed
@@ -30,7 +31,7 @@ class MockOrderResult:
     dry_run: bool = True
     side: str = "BUY"
     symbol: str = "BTCUSDT"
-    entry_order: Dict[str, Any] = field(
+    entry_order: dict[str, Any] = field(
         default_factory=lambda: {
             "orderId": "LIMIT-12345",
             "status": "NEW",  # Start as NEW to test monitoring / cancellation
@@ -38,13 +39,13 @@ class MockOrderResult:
             "cummulativeQuoteQty": "0.00",
         }
     )
-    oco_order: Optional[Dict[str, Any]] = field(
+    oco_order: dict[str, Any] | None = field(
         default_factory=lambda: {
             "orderListId": "OCO-12345",
         }
     )
-    risk: Optional[MockRiskParams] = field(default_factory=MockRiskParams)
-    error: Optional[str] = None
+    risk: MockRiskParams | None = field(default_factory=MockRiskParams)
+    error: str | None = None
 
 
 def _make_mock_adapter(balance=1000.0, ticker_price=100.0):

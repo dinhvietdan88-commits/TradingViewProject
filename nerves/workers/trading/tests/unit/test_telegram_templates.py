@@ -1,6 +1,8 @@
 import json
 import os
+
 import pytest
+
 from utils import telegram_templates
 
 

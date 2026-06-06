@@ -16,7 +16,6 @@ from typing import List
 
 from security import Finding, Severity
 
-
 SCANNER_NAME = "static-analysis"
 
 
@@ -62,7 +61,7 @@ class _DangerousCallVisitor(ast.NodeVisitor):
     def __init__(self, filepath: str, lines: list):
         self.filepath = filepath
         self.lines = lines
-        self.findings: List[Finding] = []
+        self.findings: list[Finding] = []
 
     def _is_nosec(self, lineno: int) -> bool:
         if 0 < lineno <= len(self.lines):
@@ -146,7 +145,7 @@ class _DangerousCallVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
 
-def scan_file(filepath: Path) -> List[Finding]:
+def scan_file(filepath: Path) -> list[Finding]:
     """Run static analysis on a single Python file.
 
     Handles RecursionError for large/complex files (issue #71).
@@ -210,7 +209,7 @@ def scan_file(filepath: Path) -> List[Finding]:
     return findings
 
 
-def scan_directory(target_dir: Path) -> List[Finding]:
+def scan_directory(target_dir: Path) -> list[Finding]:
     """Scan all Python files in the target directory.
 
     Skips: .venv, venv, site-packages, tests, security scanner itself, __pycache__.
@@ -228,7 +227,7 @@ def scan_directory(target_dir: Path) -> List[Finding]:
     return findings
 
 
-def _check_debug_mode(filepath: Path, lines: list) -> List[Finding]:
+def _check_debug_mode(filepath: Path, lines: list) -> list[Finding]:
     """Detect debug mode enabled in production config."""
     findings = []
     for i, line in enumerate(lines, 1):
@@ -251,7 +250,7 @@ def _check_debug_mode(filepath: Path, lines: list) -> List[Finding]:
     return findings
 
 
-def _check_hardcoded_secrets(filepath: Path, lines: list) -> List[Finding]:
+def _check_hardcoded_secrets(filepath: Path, lines: list) -> list[Finding]:
     """Detect potential hardcoded secrets (API keys, tokens, passwords)."""
     findings = []
     secret_pattern = re.compile(

@@ -7,8 +7,9 @@ Tests verify:
 - set_bus() pattern works for test isolation.
 """
 
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from core.event_bus import EventBus
 from core.events import SignalRejected
@@ -85,7 +86,7 @@ async def test_duplicate_rejection_notified():
 @pytest.mark.asyncio
 async def test_bus_isolation():
     """set_bus() should allow independent test instances."""
-    from hub.notification_hub import set_bus, get_bus
+    from hub.notification_hub import get_bus, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)

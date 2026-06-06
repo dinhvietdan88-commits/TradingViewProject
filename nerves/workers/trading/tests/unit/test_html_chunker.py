@@ -5,8 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from utils.html_chunker import truncate_caption_html_safe, chunk_html_message
-
+from utils.html_chunker import chunk_html_message, truncate_caption_html_safe
 
 # ── truncate_caption_html_safe ────────────────────────────
 

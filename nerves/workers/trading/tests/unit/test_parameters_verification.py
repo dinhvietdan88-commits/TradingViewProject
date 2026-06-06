@@ -19,7 +19,7 @@ def test_parameter_matrix_integrity():
     )
     assert os.path.exists(matrix_path), f"Parameters matrix not found at {matrix_path}"
 
-    with open(matrix_path, "r", encoding="utf-8") as f:
+    with open(matrix_path, encoding="utf-8") as f:
         content = f.read()
 
     # Check for BTC parameters
@@ -55,7 +55,7 @@ def test_pine_script_lookahead_free():
     pine_path = os.path.join(root, "pine", "v2", "minervini_strategy.pine")
     assert os.path.exists(pine_path), f"Pine script not found at {pine_path}"
 
-    with open(pine_path, "r", encoding="utf-8") as f:
+    with open(pine_path, encoding="utf-8") as f:
         content = f.read()
 
     # Look for request.security daily calls with lookahead_off and indexing offset [1]

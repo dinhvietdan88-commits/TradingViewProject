@@ -11,14 +11,13 @@ import logging
 from pathlib import Path
 from typing import List, Optional
 
-from security import Finding, Severity, SecurityReport
+from security import Finding, SecurityReport, Severity
 from security.scanners import (
-    trading_rules,
-    static_scanner,
     dependency_scanner,
     secret_scanner,
+    static_scanner,
+    trading_rules,
 )
-
 
 log = logging.getLogger("security.harness")
 
@@ -26,10 +25,10 @@ log = logging.getLogger("security.harness")
 class SecurityHarness:
     """Orchestrates the Mini-MDASH security pipeline."""
 
-    def __init__(self, target_dir: str, exclude_rules: Optional[List[str]] = None):
+    def __init__(self, target_dir: str, exclude_rules: list[str] | None = None):
         self.target_dir = Path(target_dir)
         self.exclude_rules = set(exclude_rules or [])
-        self._findings: List[Finding] = []
+        self._findings: list[Finding] = []
 
     def scan(self) -> "SecurityHarness":
         """Stage 1: Run all scanners against the target directory."""

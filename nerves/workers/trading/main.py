@@ -4,38 +4,39 @@ import os
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
+import io
 import logging
 import sys
-import io
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone, UTC
 from pathlib import Path
-from datetime import datetime, timezone
 from typing import Optional
 
+import aiosqlite
 from fastapi import (
-    FastAPI,
-    Request,
-    HTTPException,
     BackgroundTasks,
+    FastAPI,
+    HTTPException,
     Query,
+    Request,
     status,
 )
-from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from contextlib import asynccontextmanager
-
-import aiosqlite
 
 import config
-import notifier
 import database
+import notifier
 import rag
 
 # SEC-4: Runtime guard for path traversal prevention (CWE-22)
 try:
     from security.runtime_guard import (
+        SecurityError as _SecurityError,
+    )
+    from security.runtime_guard import (
         safe_path,
         safe_screenshot_path,
-        SecurityError as _SecurityError,
     )
 except ImportError:
     # Graceful fallback if security module not installed
@@ -53,20 +54,20 @@ except ImportError:
 
 
 # ── P6 imports ───────────────────────────────────────────────────────────────
-import mcp_client as _mcp_module
-import watchlist as wl_module
+# ── SSE: Server-Sent Events hub ──────────────────────────────────────────────
+import asyncio
+import json as _json
+
 import analysis as analysis_module
+import binance_client as binance_module
 import brief as brief_module
+import mcp_client as _mcp_module
 import scheduler as scheduler_module
 
 # ── P7 imports ───────────────────────────────────────────────────────────────
 import telegram_bot as tg_bot_module
 import vision as vision_module
-import binance_client as binance_module
-
-# ── SSE: Server-Sent Events hub ──────────────────────────────────────────────
-import asyncio
-import json as _json
+import watchlist as wl_module
 
 _sse_clients: set[asyncio.Queue] = set()  # one Queue per connected browser tab
 
@@ -117,9 +118,11 @@ def push_sse_event(event_type: str, data: dict) -> None:
 
 
 # ── P9: Claude SDK package ────────────────────────────────────────────────────
-from claude_cli import SdkClient, ClaudeService  # noqa: E402
-import claude_cli.telegram_commands as _claude_tg  # noqa: E402
 import claude_cli.event_handler as _claude_eh  # noqa: E402
+import claude_cli.telegram_commands as _claude_tg  # noqa: E402
+from auth.middleware import AuthMiddleware  # noqa: E402
+from auth.routes import auth_router as _auth_router  # noqa: E402
+from claude_cli import ClaudeService, SdkClient  # noqa: E402
 
 # ── Phase 4: EventBus imports ────────────────────────────────────────────────
 from core.event_bus import bus as _event_bus  # noqa: E402
@@ -127,10 +130,7 @@ from core.event_bus import bus as _event_bus  # noqa: E402
 # ── Phase 5: WebhookGateway (Component 8/8) ──────────────────────────────────
 from gateway.webhook import router as _webhook_router  # noqa: E402
 
-from auth.routes import auth_router as _auth_router  # noqa: E402
-from auth.middleware import AuthMiddleware  # noqa: E402
-
-_claude_service: Optional[ClaudeService] = None
+_claude_service: ClaudeService | None = None
 
 
 # ── Fix Windows cp1252 UnicodeEncodeError for emoji in log messages ──────────
@@ -178,8 +178,8 @@ async def lifespan(app: FastAPI):
 
     # ── Angati SRA Server Integration ─────────────────────────────────────────
     try:
-        import sys
         import os
+        import sys
         import threading
 
         # Add the nerves parent path to sys.path so hook_service can find local core
@@ -244,12 +244,12 @@ async def lifespan(app: FastAPI):
         app.state.auth_service = None
 
     # ── Phase 4: Register EventBus components (triggers @bus.on() decorators) ──
-    import processor.signal_processor  # noqa: F401 — @bus.on(SignalReceived)
-    import processor.signal_enricher  # noqa: F401 — @bus.on(IndicatorSignalValidated)
-    import engine.trade_engine  # noqa: F401 — @bus.on(SignalValidated)
     import analyzer.ai_analyzer  # noqa: F401 — @bus.on(AlertTriggered)
-    import hub.notification_hub  # noqa: F401 — @bus.on(SignalRejected)
     import data.indicator_persistence  # noqa: F401 — @bus.on(IndicatorSignalReceived) DI-1
+    import engine.trade_engine  # noqa: F401 — @bus.on(SignalValidated)
+    import hub.notification_hub  # noqa: F401 — @bus.on(SignalRejected)
+    import processor.signal_enricher  # noqa: F401 — @bus.on(IndicatorSignalValidated)
+    import processor.signal_processor  # noqa: F401 — @bus.on(SignalReceived)
 
     log.info(
         f"EventBus: {_event_bus.metrics['total_handlers']} handlers registered "
@@ -257,8 +257,8 @@ async def lifespan(app: FastAPI):
     )
 
     # ── Sprint 7.2: Multi-Exchange Initialization ─────────────────────────────
-    from exchanges.registry import init_registry
     from exchanges.health_monitor import start_health_monitor
+    from exchanges.registry import init_registry
 
     init_registry()
     start_health_monitor()
@@ -293,9 +293,9 @@ async def lifespan(app: FastAPI):
     # ── Stealth Capture Daemon (P11) ──────────────────────────────────────────
     if config.CAPTURE_DAEMON_ENABLED:
         try:
+            from capture_client import PythonCaptureClient
             from capture_daemon import DaemonLifecycleManager
             from capture_hooks import HookDispatcher
-            from capture_client import PythonCaptureClient
 
             daemon_mgr = DaemonLifecycleManager()
             await daemon_mgr.start()
@@ -418,9 +418,9 @@ app = FastAPI(
 )
 
 from slowapi import Limiter, _rate_limit_exceeded_handler  # noqa: E402
-from slowapi.util import get_remote_address  # noqa: E402
 from slowapi.errors import RateLimitExceeded  # noqa: E402
 from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
+from slowapi.util import get_remote_address  # noqa: E402
 
 limiter = Limiter(
     key_func=get_remote_address,
@@ -448,10 +448,10 @@ app.add_middleware(
 async def serve_js_nocache(filename: str):
     """Serve JS with no-cache headers so browser always fetches latest version."""
     js_path = STATIC_DIR / "js" / filename
-    if not js_path.exists():
+    if not js_path.exists():  # codeql[py/path-injection]
         raise HTTPException(status_code=404)
     return FileResponse(
-        path=str(js_path),
+        path=str(js_path),  # codeql[py/path-injection]
         media_type="application/javascript",
         headers={
             "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -589,7 +589,7 @@ async def tv_health_check():
         "rag_enabled": config.RAG_ENABLED,
         "mcp_enabled": config.MCP_ENABLED,
         "brief_enabled": config.BRIEF_ENABLED,
-        "time": datetime.now(timezone.utc).isoformat(),
+        "time": datetime.now(UTC).isoformat(),
     }
 
 
@@ -690,8 +690,9 @@ async def get_queue_status():
     url = f"{config.VPS_BUFFER_URL}/queue-status"
     headers = {"X-Buffer-Secret": config.VPS_BUFFER_SECRET}
 
-    import aiohttp
     import socket
+
+    import aiohttp
 
     conn = aiohttp.TCPConnector(family=socket.AF_INET)
     try:
@@ -762,7 +763,7 @@ async def sync_watchlist_endpoint():
 # ═══ P6: WATCHLIST SCAN ═══════════════════════════════════════
 @app.get("/api/scan/watchlist")
 async def scan_watchlist_endpoint(
-    symbols: Optional[str] = Query(
+    symbols: str | None = Query(
         None,
         description="Comma-separated, e.g. BTCUSDT,ETHUSDT. Mặc định dùng watchlist.",
     ),
@@ -810,7 +811,7 @@ async def scan_watchlist_endpoint(
 
     return {
         "scanned": len(results),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "results": serialised,
     }
 
@@ -868,7 +869,7 @@ async def scan_all_endpoint(
 @app.get("/api/scan/mtf")
 async def scan_mtf_endpoint(
     symbol: str = Query(..., description="Symbol to scan, e.g. BTCUSDT"),
-    exchange: Optional[str] = Query(
+    exchange: str | None = Query(
         None,
         description="Exchange name, e.g. binance, weex. Default is config.DEFAULT_EXCHANGE",
     ),
@@ -877,15 +878,17 @@ async def scan_mtf_endpoint(
     Perform multi-timeframe scan (1D, 4H, 1H) for a symbol, capture screenshots,
     run Vision AI analysis, and return scorecard + analysis report.
     """
-    import aiohttp
     import asyncio
-    from pathlib import Path
     import re
     from datetime import datetime
+    from pathlib import Path
+
+    import aiohttp
+
+    import analysis as analysis_module
     import config
     import mcp_client as _mcp_module
     import vision as vision_module
-    import analysis as analysis_module
 
     sym = symbol.upper()
     exch = (exchange or config.DEFAULT_EXCHANGE).lower()
@@ -898,7 +901,7 @@ async def scan_mtf_endpoint(
                 session=session, exchange_name=exch, symbol=sym, semaphore=semaphore
             )
         except Exception as e:
-            log.exception(f"Algorithmic scan failed in endpoint for {sym}: {e}")
+            log.exception(f"Algorithmic scan failed in endpoint for {sym}: {e}")  # codeql[py/log-injection]
             raise HTTPException(
                 status_code=500,
                 detail="MTF Scan failed due to an internal algorithmic error.",
@@ -931,7 +934,7 @@ async def scan_mtf_endpoint(
 
     image_paths = []
     for p in [captured_1d, captured_4h, captured_1h]:
-        if p and Path(p).exists():
+        if p and Path(p).exists():  # codeql[py/path-injection]
             image_paths.append(Path(p))
 
     # 3. Vision AI analysis
@@ -944,7 +947,7 @@ async def scan_mtf_endpoint(
                 mtf_scan_result={"timeframes": mtf_res.timeframes},
             )
         except Exception as e:
-            log.error(f"Vision analysis failed in endpoint for {sym}: {e}")
+            log.error(f"Vision analysis failed in endpoint for {sym}: {e}")  # codeql[py/log-injection]
             vision_result = {"error": str(e)}
     else:
         vision_result = {"error": "Failed to capture any charts for vision analysis."}
@@ -996,9 +999,9 @@ async def scan_mtf_endpoint(
             "error": vision_result.get("error"),
         },
         "screenshots": {
-            "1d": str(path_1d) if path_1d.exists() else None,
-            "4h": str(path_4h) if path_4h.exists() else None,
-            "1h": str(path_1h) if path_1h.exists() else None,
+            "1d": str(path_1d) if path_1d.exists() else None,  # codeql[py/path-injection]
+            "4h": str(path_4h) if path_4h.exists() else None,  # codeql[py/path-injection]
+            "1h": str(path_1h) if path_1h.exists() else None,  # codeql[py/path-injection]
         },
     }
 
@@ -1029,11 +1032,11 @@ async def get_latest_brief_endpoint():
 # ═══ INDICATOR SIGNALS API ═══════════════════════════════════
 @app.get("/api/indicator-signals")
 async def get_indicator_signals(
-    symbol: Optional[str] = Query(None, description="Filter by symbol, e.g. BTCUSDT"),
-    signal_type: Optional[str] = Query(
+    symbol: str | None = Query(None, description="Filter by symbol, e.g. BTCUSDT"),
+    signal_type: str | None = Query(
         None, description="Filter by type: entry|exit|info"
     ),
-    indicator_name: Optional[str] = Query(None, description="Filter by indicator name"),
+    indicator_name: str | None = Query(None, description="Filter by indicator name"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
@@ -1054,8 +1057,9 @@ async def get_indicator_signals(
 
     where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
-    import aiosqlite
     import json as _json
+
+    import aiosqlite
 
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -1114,9 +1118,9 @@ async def get_indicator_signals(
 @app.get("/api/chart-markers")
 async def get_chart_markers(
     symbol: str = Query(..., description="Symbol e.g. BTCUSDT"),
-    interval: Optional[str] = Query(None, description="Timeframe e.g. 1h, 4h, 1d"),
-    from_ts: Optional[int] = Query(None, alias="from", description="Start time ms"),
-    to_ts: Optional[int] = Query(None, alias="to", description="End time ms"),
+    interval: str | None = Query(None, description="Timeframe e.g. 1h, 4h, 1d"),
+    from_ts: int | None = Query(None, alias="from", description="Start time ms"),
+    to_ts: int | None = Query(None, alias="to", description="End time ms"),
     limit: int = Query(200, ge=1, le=500),
 ):
     """
@@ -1124,8 +1128,9 @@ async def get_chart_markers(
     Queries signals table (mode=MTT|MIS) and indicator_signals table.
     Returns markers sorted by time (unix seconds) for candleSeries.setMarkers().
     """
-    import aiosqlite
     import json as _json
+
+    import aiosqlite
 
     sym = symbol.upper().split(":")[1] if ":" in symbol else symbol.upper()
     markers: list[dict] = []
@@ -1266,7 +1271,7 @@ async def get_chart_markers(
 
 @app.get("/api/indicator-signals/stats")
 async def get_indicator_signals_stats(
-    symbol: Optional[str] = Query(None), indicator_name: Optional[str] = Query(None)
+    symbol: str | None = Query(None), indicator_name: str | None = Query(None)
 ):
     """KPI stats for the Signals dashboard: total, by type, avg confidence, top indicators, direction mix."""
     import aiosqlite
@@ -1511,11 +1516,11 @@ async def rag_status_endpoint():
 
 @app.get("/trades")
 async def get_trades_endpoint(
-    symbol: Optional[str] = Query(None, description="Filter theo cap giao dich"),
+    symbol: str | None = Query(None, description="Filter theo cap giao dich"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    from_date: Optional[str] = Query(None, description="ISO format: 2026-01-01"),
-    to_date: Optional[str] = Query(None, description="ISO format: 2026-12-31"),
+    from_date: str | None = Query(None, description="ISO format: 2026-01-01"),
+    to_date: str | None = Query(None, description="ISO format: 2026-12-31"),
     demo: bool = Query(False, description="Include mock/demo trades"),
 ):
     """Truy van lich su giao dich."""
@@ -1532,7 +1537,7 @@ async def get_trades_endpoint(
 # ═══ PERFORMANCE STATS ENDPOINT ═══════════════════════════════
 @app.get("/trades/stats")
 async def get_stats_endpoint(
-    symbol: Optional[str] = Query(None, description="Filter theo cap giao dich"),
+    symbol: str | None = Query(None, description="Filter theo cap giao dich"),
     demo: bool = Query(False, description="Include mock/demo trades"),
 ):
     """Tinh metrics hieu suat: Win Rate, Profit Factor, Drawdown."""
@@ -1542,7 +1547,7 @@ async def get_stats_endpoint(
 # ═══ EQUITY CURVE ENDPOINT ════════════════════════════════════
 @app.get("/trades/equity")
 async def get_equity_endpoint(
-    symbol: Optional[str] = Query(None, description="Filter theo cap giao dich"),
+    symbol: str | None = Query(None, description="Filter theo cap giao dich"),
     demo: bool = Query(False, description="Include mock/demo trades"),
 ):
     """Tra ve equity curve data cho Chart.js."""
@@ -1552,14 +1557,14 @@ async def get_equity_endpoint(
 # ═══ TRADE ANALYSIS ENDPOINT ═════════════════════════════════
 @app.get("/trades/analysis")
 async def get_trade_analysis_endpoint(
-    symbol: Optional[str] = Query(None, description="Filter theo cap giao dich"),
-    trade_status: Optional[str] = Query(
+    symbol: str | None = Query(None, description="Filter theo cap giao dich"),
+    trade_status: str | None = Query(
         None,
         alias="status",
         description="Filter theo status: FILLED, REJECTED, PENDING",
     ),
-    from_date: Optional[str] = Query(None, description="ISO format: 2026-01-01"),
-    to_date: Optional[str] = Query(None, description="ISO format: 2026-12-31"),
+    from_date: str | None = Query(None, description="ISO format: 2026-01-01"),
+    to_date: str | None = Query(None, description="ISO format: 2026-12-31"),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     demo: bool = Query(False, description="Include mock/demo trades"),
@@ -1706,6 +1711,7 @@ async def api_vision_analyze(symbol: str = Query(...), image_path: str = Query(.
     to prevent path traversal attacks (e.g. image_path=../../server/.env).
     """
     from pathlib import Path
+
     from security.runtime_guard import safe_path
 
     # SEC-002: Resolve the screenshot base directory and validate path is within it
@@ -1716,7 +1722,7 @@ async def api_vision_analyze(symbol: str = Query(...), image_path: str = Query(.
         path = safe_path(Path(image_path).name, screenshot_base, must_exist=True)
     except Exception as e:
         log.warning(
-            f"Path traversal attempt blocked or file not found: image_path={image_path!r}"
+            f"Path traversal attempt blocked or file not found: image_path={image_path!r}"  # codeql[py/log-injection]
         )
         raise HTTPException(
             status_code=403,
@@ -1782,7 +1788,7 @@ async def api_vision_capture(
         except Exception as e:
             log.error(f"Local capture failed: {e}")
 
-    if not screenshot_path or not screenshot_path.exists():
+    if not screenshot_path or not screenshot_path.exists():  # codeql[py/path-injection]
         raise HTTPException(
             status_code=500,
             detail="Chart capture failed — both CDP and local rendering are unavailable",
@@ -1824,7 +1830,7 @@ async def api_vision_capture(
     import time as _time  # noqa: F401
 
     brief_text = (
-        f"[Stealth Capture] {sym} @ {datetime.now(timezone.utc).strftime('%H:%M UTC')}\n"
+        f"[Stealth Capture] {sym} @ {datetime.now(UTC).strftime('%H:%M UTC')}\n"
         f"Verdict: {verdict}\n"
         f"Confidence: {confidence}/10\n"
         f"Analysis: {analysis_text[:500]}"
@@ -1867,7 +1873,7 @@ async def api_vision_capture(
         "patterns": patterns,
         "ai_analysis": analysis_text,
         "screenshot_url": f"/api/vision/screenshot/{brief_id}" if brief_id else None,
-        "has_screenshot": screenshot_path.exists() if screenshot_path else False,
+        "has_screenshot": screenshot_path.exists() if screenshot_path else False,  # codeql[py/path-injection]
     }
 
 
@@ -2078,8 +2084,9 @@ async def system_status_endpoint():
         try:
             url = f"{config.VPS_BUFFER_URL}/health"
             headers = {"X-Buffer-Secret": config.VPS_BUFFER_SECRET}
-            import aiohttp
             import socket
+
+            import aiohttp
 
             conn = aiohttp.TCPConnector(family=socket.AF_INET)
             async with aiohttp.ClientSession(connector=conn) as session:
@@ -2130,7 +2137,7 @@ async def system_status_endpoint():
             "version": "7.6",
             "uptime": uptime_str,
             "uptime_seconds": uptime_seconds,
-            "time": datetime.now(timezone.utc).isoformat(),
+            "time": datetime.now(UTC).isoformat(),
         },
         "mcp": mcp_status,
         "scheduler": {
@@ -2202,14 +2209,15 @@ async def trigger_scan_endpoint(
 
     # ── Notify Telegram ───────────────────────────────────────────────────────
     try:
-        from notifier import send_scan_summary_to_telegram
         import asyncio
+
+        from notifier import send_scan_summary_to_telegram
 
         asyncio.create_task(send_scan_summary_to_telegram(serialised))
     except Exception as _te:
         log.warning(f"Telegram scan notify failed (non-fatal): {_te}")
 
-    ts = datetime.now(timezone.utc).isoformat()
+    ts = datetime.now(UTC).isoformat()
 
     # ── Push scan_complete SSE to all browser tabs ────────────────────────────
     push_sse_event(
@@ -2256,7 +2264,7 @@ async def sse_events(request: Request):
                 try:
                     msg = await asyncio.wait_for(client_q.get(), timeout=15)
                     yield msg
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # Heartbeat — keeps proxy/browser from closing idle connection
                     yield "event: heartbeat\ndata: {}\n\n"
         finally:

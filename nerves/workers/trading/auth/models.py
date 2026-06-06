@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-
 # ═══════════════════════════════════════════════════════════════
 # DATA MODELS
 # ═══════════════════════════════════════════════════════════════
@@ -20,8 +19,8 @@ class UserIdentity:
     """Authenticated user info extracted from session token or bearer context."""
 
     telegram_id: int
-    username: Optional[str] = None
-    display_name: Optional[str] = None
+    username: str | None = None
+    display_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -30,7 +29,7 @@ class OneTimeCode:
 
     code: str  # 32+ char hex string
     telegram_id: int
-    username: Optional[str]
+    username: str | None
     created_at: datetime
     expires_at: datetime
     used: bool = False
@@ -51,9 +50,9 @@ class SessionData:
 
     session_id: str
     telegram_id: int
-    username: Optional[str]
+    username: str | None
     created_at: datetime
-    expires_at: Optional[datetime]
+    expires_at: datetime | None
     never_expires: bool = False
 
 

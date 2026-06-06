@@ -1,6 +1,6 @@
-import sys
 import asyncio
-from unittest.mock import MagicMock, AsyncMock, patch
+import sys
+from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path.insert(0, "nerves/workers/trading")
 

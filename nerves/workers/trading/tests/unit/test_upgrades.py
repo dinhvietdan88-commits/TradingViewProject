@@ -1,10 +1,11 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from core.event_bus import EventBus
-from core.events import SignalReceived, SignalValidated, SignalRejected, TradeApproved
+from core.events import SignalReceived, SignalRejected, SignalValidated, TradeApproved
 
 # ═══════════════════════════════════════════════════════════════
 # MOCKS & HELPERS FOR TESTING
@@ -32,7 +33,7 @@ class MockOrderResult:
     dry_run: bool = True
     side: str = "BUY"
     symbol: str = "BTCUSDT"
-    entry_order: Dict[str, Any] = field(
+    entry_order: dict[str, Any] = field(
         default_factory=lambda: {
             "orderId": "DRY-TEST-999",
             "status": "FILLED",
@@ -40,13 +41,13 @@ class MockOrderResult:
             "cummulativeQuoteQty": "100.00",
         }
     )
-    oco_order: Optional[Dict[str, Any]] = field(
+    oco_order: dict[str, Any] | None = field(
         default_factory=lambda: {
             "orderListId": "DRY-OCO-999",
         }
     )
-    risk: Optional[MockRiskParams] = field(default_factory=MockRiskParams)
-    error: Optional[str] = None
+    risk: MockRiskParams | None = field(default_factory=MockRiskParams)
+    error: str | None = None
 
 
 def _make_mock_client(balance=10000.0):
@@ -131,7 +132,7 @@ async def test_regime_switcher_chop_ema_converge():
 @pytest.mark.asyncio
 async def test_signal_processor_blocking_during_chop():
     """SignalProcessor must reject Daily MTT signals during a CHOP regime."""
-    from processor.signal_processor import process_signal, set_bus, reset_dedup_cache
+    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -171,7 +172,7 @@ async def test_signal_processor_blocking_during_chop():
 @pytest.mark.asyncio
 async def test_signal_processor_allow_during_trending():
     """SignalProcessor must allow Daily MTT signals during a TRENDING regime."""
-    from processor.signal_processor import process_signal, set_bus, reset_dedup_cache
+    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)

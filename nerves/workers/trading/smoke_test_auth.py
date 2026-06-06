@@ -1,9 +1,9 @@
 """Live smoke test for P10 Auth endpoints."""
 
-import sys
 import io
-import urllib.request
+import sys
 import urllib.error
+import urllib.request
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 

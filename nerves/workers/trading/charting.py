@@ -23,11 +23,10 @@ from typing import Any, Dict, List, Optional
 import matplotlib
 
 matplotlib.use("Agg")  # Non-interactive backend — safe for server threads
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 from matplotlib.gridspec import GridSpec
-
 
 # ── Design Tokens ─────────────────────────────────────────────────────────────
 BG_DARK = "#0f0f1a"
@@ -68,9 +67,9 @@ def _fmt_date(ts: str) -> str:
 
 
 def generate_backtest_chart(
-    equity_data: Dict[str, Any],
+    equity_data: dict[str, Any],
     title: str = "Backtest Performance",
-    symbol: Optional[str] = None,
+    symbol: str | None = None,
 ) -> io.BytesIO:
     """Generate a 3-panel backtest chart.
 
@@ -260,7 +259,7 @@ def generate_backtest_chart(
 # ── Mode Comparison Chart ─────────────────────────────────────────────────────
 
 
-def generate_mode_chart(stats_by_mode: Dict[str, Any]) -> io.BytesIO:
+def generate_mode_chart(stats_by_mode: dict[str, Any]) -> io.BytesIO:
     """Generate a 2-panel MTT vs MIS bar comparison chart.
 
     Args:
@@ -389,7 +388,7 @@ def _no_data_chart(title: str) -> io.BytesIO:
 
 
 def generate_history_chart(
-    recent_trades: List[Dict[str, Any]],
+    recent_trades: list[dict[str, Any]],
     title: str = "Trade History (Last 10)",
 ) -> io.BytesIO:
     """Generate a styled table PNG of recent trade history.

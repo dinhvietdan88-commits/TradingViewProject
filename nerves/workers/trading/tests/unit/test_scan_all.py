@@ -1,16 +1,17 @@
 import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+import analysis as analysis_module
 from analysis import (
-    fetch_candles_with_retry,
-    scan_single_symbol_rest,
-    scan_all_configured_exchanges,
     ScanResult,
     TrendTemplateResult,
     VCPResult,
+    fetch_candles_with_retry,
+    scan_all_configured_exchanges,
+    scan_single_symbol_rest,
 )
-import analysis as analysis_module
 
 
 @pytest.mark.asyncio

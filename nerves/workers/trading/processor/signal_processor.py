@@ -16,13 +16,13 @@ from typing import Dict, Tuple
 
 from core.event_bus import bus as _default_bus
 from core.events import (
-    SignalReceived,
-    SignalValidated,
-    SignalRejected,
     AlertTriggered,
     IndicatorSignalReceived,
-    IndicatorSignalValidated,
     IndicatorSignalRejected,
+    IndicatorSignalValidated,
+    SignalReceived,
+    SignalRejected,
+    SignalValidated,
 )
 
 log = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ def get_bus():
 # ═══════════════════════════════════════════════════════════════
 
 # In-memory dedup: key = (symbol, action), value = timestamp
-_dedup_cache: Dict[Tuple[str, str], float] = {}
+_dedup_cache: dict[tuple[str, str], float] = {}
 DEDUP_TTL_SEC = 60  # Ignore identical signals within 60s
 
 
@@ -64,7 +64,7 @@ def _is_duplicate(symbol: str, action: str) -> bool:
     return False
 
 
-_indicator_dedup_cache: Dict[Tuple[str, str, str], float] = {}
+_indicator_dedup_cache: dict[tuple[str, str, str], float] = {}
 
 
 def _is_indicator_duplicate(symbol: str, indicator_name: str, signal_type: str) -> bool:
@@ -148,8 +148,8 @@ async def process_signal(event: SignalReceived) -> None:
         return
 
     # ── Timeframe & Regime Circuit Breaker ───────────────────
-    from engine.regime_switcher import get_market_regime
     import database
+    from engine.regime_switcher import get_market_regime
 
     regime = await get_market_regime(event.symbol, event.exchange)
     await database.set_setting("market_regime", regime)
@@ -283,8 +283,8 @@ async def process_indicator_signal(event: IndicatorSignalReceived) -> None:
         )
         return
 
-    from engine.regime_switcher import get_market_regime
     import database
+    from engine.regime_switcher import get_market_regime
 
     regime = await get_market_regime(event.symbol, event.exchange)
     await database.set_setting("market_regime", regime)

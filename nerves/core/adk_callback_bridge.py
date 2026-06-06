@@ -22,7 +22,6 @@ import time
 import uuid
 from typing import Optional
 
-
 # ---------------------------------------------------------------------------
 # ADK Event Representation (Simplified for interop)
 # ---------------------------------------------------------------------------
@@ -207,7 +206,7 @@ class ADKTelemetryExporter:
     a local JSONL file for offline analysis.
     """
 
-    def __init__(self, output_path: Optional[str] = None):
+    def __init__(self, output_path: str | None = None):
         self.output_path = output_path
         self._events: list[dict] = []
 

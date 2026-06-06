@@ -1,13 +1,14 @@
 import logging
 import sys
-import uvicorn
 from contextlib import asynccontextmanager
+
+import uvicorn
 from fastapi import FastAPI
+from router import router
 
 import config
 import database
 import scheduler
-from router import router
 
 # Configure logging
 logging.basicConfig(

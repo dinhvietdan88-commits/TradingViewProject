@@ -5,9 +5,10 @@ Tests all methods of the VPS Analyzer Worker with mocked HTTP calls
 and mocked RAG functions. No real network or AI calls are made.
 """
 
-import pytest
 import asyncio
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 import config
 
@@ -757,8 +758,8 @@ async def test_poll_and_analyze_multiple_signals():
 @pytest.mark.asyncio
 async def test_forward_to_local_success():
     """If LOCAL_EXECUTE_URL is configured and succeeds, we use Local and don't call Server B."""
-    from workers.vps_analyzer import VpsAnalyzerWorker
     import config
+    from workers.vps_analyzer import VpsAnalyzerWorker
 
     original_local_url = config.LOCAL_EXECUTE_URL
     original_local_secret = config.LOCAL_EXECUTE_SECRET
@@ -801,9 +802,10 @@ async def test_forward_to_local_success():
 @pytest.mark.asyncio
 async def test_forward_to_local_fails_fallback_to_server_b_success():
     """If Local fails (connection error or timeout), we log warning, send Telegram, and try Server B."""
-    from workers.vps_analyzer import VpsAnalyzerWorker
-    import config
     from unittest.mock import patch
+
+    import config
+    from workers.vps_analyzer import VpsAnalyzerWorker
 
     original_local_url = config.LOCAL_EXECUTE_URL
     original_local_secret = config.LOCAL_EXECUTE_SECRET
@@ -969,9 +971,10 @@ async def test_calculate_position_size_with_atr():
 @pytest.mark.asyncio
 async def test_health_endpoint_healthy():
     """/health endpoint returns correct JSON structure and values."""
-    from workers.vps_analyzer import app
     from httpx import AsyncClient
+
     from workers.liveness_monitor import ServerHealth
+    from workers.vps_analyzer import app
 
     servers_mock = [
         ServerHealth(name="SERVER_A", url="", is_healthy=True),
@@ -1004,9 +1007,10 @@ async def test_health_endpoint_healthy():
 @pytest.mark.asyncio
 async def test_health_endpoint_unhealthy_servers():
     """/health endpoint correctly reports unhealthy status for Server A/B."""
-    from workers.vps_analyzer import app
     from httpx import AsyncClient
+
     from workers.liveness_monitor import ServerHealth
+    from workers.vps_analyzer import app
 
     servers_mock = [
         ServerHealth(name="SERVER_A", url="", is_healthy=False),
@@ -1035,9 +1039,10 @@ async def test_health_endpoint_unhealthy_servers():
 @pytest.mark.asyncio
 async def test_metrics_endpoint_json():
     """/metrics returns JSON data if Accept header requests application/json."""
-    from workers.vps_analyzer import app
     from httpx import AsyncClient
+
     from workers.liveness_monitor import ServerHealth
+    from workers.vps_analyzer import app
 
     servers_mock = [
         ServerHealth(name="SERVER_A", url="", is_healthy=True),
@@ -1069,9 +1074,10 @@ async def test_metrics_endpoint_json():
 @pytest.mark.asyncio
 async def test_metrics_endpoint_prometheus_text():
     """/metrics returns Prometheus gauge format by default."""
-    from workers.vps_analyzer import app
     from httpx import AsyncClient
+
     from workers.liveness_monitor import ServerHealth
+    from workers.vps_analyzer import app
 
     servers_mock = [
         ServerHealth(name="SERVER_A", url="", is_healthy=True),

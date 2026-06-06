@@ -1,12 +1,15 @@
-import pytest
-import pytest_asyncio
-import aiosqlite
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
-from core.event_bus import EventBus
-from core.events import TradeApproved, TradeFailed, TradeExecuted
-import database
+
+import aiosqlite
+import pytest
+import pytest_asyncio
+
 import config
+import database
+from core.event_bus import EventBus
+from core.events import TradeApproved, TradeExecuted, TradeFailed
+from datetime import UTC
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -259,8 +262,8 @@ async def test_trade_engine_half_open_halves_position_size():
 @pytest.mark.asyncio
 async def test_trade_engine_tripping_event_emitted():
     """Verify that TradeEngine emits CircuitBreakerTripped when circuit breaker is tripped."""
-    from engine.trade_engine import execute_trade, set_bus
     from core.events import CircuitBreakerTripped
+    from engine.trade_engine import execute_trade, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -321,8 +324,9 @@ async def test_trade_engine_tripping_event_emitted():
 @pytest.mark.asyncio
 async def test_trade_engine_respects_bypass_setting():
     """Verify that TradeEngine does NOT trip if a valid bypass timestamp is active."""
+    from datetime import datetime, timedelta, timezone
+
     from engine.trade_engine import execute_trade, set_bus
-    from datetime import datetime, timezone, timedelta
     from tests.unit.test_trade_engine import MockOrderResult
 
     test_bus = EventBus()
@@ -356,7 +360,7 @@ async def test_trade_engine_respects_bypass_setting():
     )
 
     # Active bypass until 30 minutes in the future
-    future_bypass = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+    future_bypass = (datetime.now(UTC) + timedelta(minutes=30)).isoformat()
 
     with (
         patch("exchanges.router.get_router") as mock_get_router,

@@ -238,7 +238,7 @@ def edit_commit_message(initial_msg):
 
     try:
         subprocess.run([editor, temp_name], check=True)
-        with open(temp_name, "r", encoding="utf-8") as f:
+        with open(temp_name, encoding="utf-8") as f:
             edited_msg = f.read().strip()
         return edited_msg
     except Exception as e:

@@ -3,18 +3,19 @@ test_decentralized_approval.py — Verification tests for Telegram Bot signal sy
 Tests low, medium, and high confidence payloads, hold_for_approval, and callback query simulation.
 """
 
+import asyncio
+import os
+import pathlib
+import sys
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 import pytest_asyncio
-import os
-import sys
-import pathlib
-import asyncio
-from unittest.mock import AsyncMock, patch, MagicMock
 
 # Ensure server/ is on path
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 VALID_HEADERS = {"X-Server-B-Secret": "test-exec-secret"}
 

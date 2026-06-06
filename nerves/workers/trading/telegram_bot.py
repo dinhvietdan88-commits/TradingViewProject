@@ -20,13 +20,12 @@ Kiến trúc:
     Bot gọi trực tiếp vào các module: watchlist, analysis, brief, mcp_client.
 """
 
-import logging
 import asyncio
+import logging
 import threading
-from datetime import datetime
 from dataclasses import dataclass
-from typing import Optional, List, Tuple, Dict
-
+from datetime import datetime, UTC
+from typing import Dict, List, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
@@ -42,11 +41,11 @@ active_commands = set()
 
 def _get_imports():
     """Lazy import python-telegram-bot to avoid crash if not installed."""
-    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
     from telegram.ext import (
         ApplicationBuilder,
-        CommandHandler,
         CallbackQueryHandler,
+        CommandHandler,
         ContextTypes,
     )
 
@@ -65,7 +64,7 @@ def _get_imports():
 
 
 async def send_interactive_trade_approval(
-    signal_id: int, message: str, photo_path: Optional[str] = None
+    signal_id: int, message: str, photo_path: str | None = None
 ) -> list:
     """Send interactive trade approval message with Approve/Reject buttons.
 
@@ -86,6 +85,7 @@ async def send_interactive_trade_approval(
     results = []
     try:
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
         import config
         from notifier import sanitize_for_telegram_html
 
@@ -108,6 +108,7 @@ async def send_interactive_trade_approval(
                 if photo_path:
                     try:
                         from pathlib import Path
+
                         from notifier import prepare_telegram_photo
 
                         photo_file_path = Path(photo_path)
@@ -146,7 +147,7 @@ async def send_interactive_trade_approval(
 
 
 async def send_interactive_indicator_alert(
-    signal_id: int, symbol: str, message: str, photo_path: Optional[str] = None
+    signal_id: int, symbol: str, message: str, photo_path: str | None = None
 ) -> list:
     """Send interactive indicator alert with AI Scan and Dismiss buttons.
 
@@ -163,6 +164,7 @@ async def send_interactive_indicator_alert(
     results = []
     try:
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
         import config
         from notifier import sanitize_for_telegram_html
 
@@ -187,6 +189,7 @@ async def send_interactive_indicator_alert(
                 if photo_path:
                     try:
                         from pathlib import Path
+
                         from notifier import prepare_telegram_photo
 
                         photo_file_path = Path(photo_path)
@@ -228,7 +231,7 @@ async def send_interactive_indicator_alert(
 
 
 async def send_circuit_breaker_alert(
-    exchange: str, symbol: str, message: str, photo_path: Optional[str] = None
+    exchange: str, symbol: str, message: str, photo_path: str | None = None
 ) -> list:
     """Send interactive circuit breaker alert with Reset Closed and Bypass 1h buttons."""
     global _bot_app
@@ -238,6 +241,7 @@ async def send_circuit_breaker_alert(
     results = []
     try:
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
         import config
         from notifier import sanitize_for_telegram_html
 
@@ -260,6 +264,7 @@ async def send_circuit_breaker_alert(
                 if photo_path:
                     try:
                         from pathlib import Path
+
                         from notifier import prepare_telegram_photo
 
                         photo_file_path = Path(photo_path)
@@ -550,8 +555,8 @@ async def cmd_scan(update, context):
 
     async def process_task():
         try:
-            from watchlist import get_watchlist
             from analysis import scan_symbols
+            from watchlist import get_watchlist
 
             symbols = get_watchlist()
             if not symbols:
@@ -734,8 +739,9 @@ async def cmd_vision(update, context):
             )
 
             try:
-                import config
                 from pathlib import Path
+
+                import config
 
                 # Check for existing screenshot
                 screenshots_dir = Path(__file__).parent / "screenshots"
@@ -749,8 +755,8 @@ async def cmd_vision(update, context):
                         mcp = get_mcp_client()
                         health = await mcp.health_check()
                         if health.get("connected"):
-                            from datetime import datetime as dt
                             import re
+                            from datetime import datetime as dt
 
                             safe_symbol = re.sub(r"[^A-Za-z0-9_\-]", "", symbol)
                             screenshot_path = await mcp.capture_screenshot(
@@ -840,8 +846,9 @@ async def cmd_grade(update, context):
                 parse_mode="HTML",
             )
 
-            import config
             from pathlib import Path
+
+            import config
 
             if not config.MCP_ENABLED:
                 await context.bot.send_message(
@@ -1031,7 +1038,7 @@ async def cmd_rag(update, context):
     )
 
     try:
-        from rag import query_knowledge, generate_trading_advice
+        from rag import generate_trading_advice, query_knowledge
 
         chunks = await query_knowledge(query)
         if not chunks:
@@ -1129,13 +1136,14 @@ async def _run_backtest_charts(
         symbol:      Optional symbol filter (e.g. 'BTCUSDT')
     """
     import asyncio
-    from notifier import sanitize_for_telegram_html
+
     import database
     from charting import (
         generate_backtest_chart,
-        generate_mode_chart,
         generate_history_chart,
+        generate_mode_chart,
     )
+    from notifier import sanitize_for_telegram_html
 
     # ── Fetch all data in parallel ────────────────────────────────────────────
     equity_data, stats_data, recent_trades = await asyncio.gather(
@@ -1444,9 +1452,9 @@ async def cmd_scan_enhanced(update, context):
 
     async def process_task():
         try:
-            from watchlist import get_watchlist
-            from analysis import scan_symbols
             import config
+            from analysis import scan_symbols
+            from watchlist import get_watchlist
 
             symbols = get_watchlist()
             if not symbols:
@@ -1668,7 +1676,7 @@ async def cmd_scan_all(update, context):
 
 def parse_mtf_trade_params(
     text: str, current_price: float
-) -> Tuple[Optional[float], Optional[float], Optional[float], str]:
+) -> tuple[float | None, float | None, float | None, str]:
     import re
 
     entry, sl, tp = None, None, None
@@ -1826,8 +1834,10 @@ async def cmd_scan_mtf(update, context):
         )
 
         try:
-            import aiohttp
             import asyncio
+
+            import aiohttp
+
             from analysis import scan_symbol_multi_timeframe
             from mcp_client import get_mcp_client
 
@@ -1846,9 +1856,9 @@ async def cmd_scan_mtf(update, context):
             )
 
             # 3. Capture screenshots
-            from pathlib import Path
             import re
             from datetime import datetime
+            from pathlib import Path
 
             screenshots_dir = (
                 Path(config.CHROMA_DB_PATH).parent.resolve() / "screenshots"
@@ -2012,8 +2022,9 @@ async def cmd_scan_mtf(update, context):
 
             reply_markup = InlineKeyboardMarkup(keyboard)
 
-            from notifier import sanitize_for_telegram_html
             import re
+
+            from notifier import sanitize_for_telegram_html
 
             clean_analysis = vision_result["analysis"].strip()
             # Remove any leading header line starting with "👁️ MULTI-TIMEFRAME ANALYSIS" (case-insensitive) recursively
@@ -2084,10 +2095,11 @@ async def cmd_recommend(update, context):
                 chat_id=chat_id,
                 text="🔄 Đang quét danh sách Watchlist để tìm điểm đồng thuận đa khung thời gian (1D → 4H → 1H)...",
             )
-            from watchlist import get_watchlist
-            from analysis import scan_symbol_multi_timeframe
-            import config
             import aiohttp
+
+            import config
+            from analysis import scan_symbol_multi_timeframe
+            from watchlist import get_watchlist
 
             symbols = get_watchlist()
             if not symbols:
@@ -2249,9 +2261,10 @@ async def button_callback(update, context):
         if signal_id in PENDING_TRADES:
             event = PENDING_TRADES.pop(signal_id)
             user = query.from_user.username or query.from_user.first_name
+            import asyncio
+
             from core.event_bus import bus as _default_bus
             from core.events import TradeFailed
-            import asyncio
 
             asyncio.create_task(
                 _default_bus.emit_background(
@@ -2317,15 +2330,16 @@ async def button_callback(update, context):
     elif data.startswith("cbbypass_"):
         exchange = data.split("_")[1].lower()
         user = query.from_user.username or query.from_user.first_name
+        from datetime import datetime, timedelta, timezone
+
         import database
-        from datetime import datetime, timezone, timedelta
 
         try:
             prev_status = await database.get_risk_settings(exchange)
             prev_state = prev_status.get("state", "CLOSED")
 
             # Set bypass for 1 hour
-            bypass_until = datetime.now(timezone.utc) + timedelta(hours=1)
+            bypass_until = datetime.now(UTC) + timedelta(hours=1)
             await database.set_setting(
                 f"bypass_until_{exchange}", bypass_until.isoformat()
             )
@@ -2427,16 +2441,18 @@ async def button_callback(update, context):
             parse_mode="HTML",
         )
         try:
-            import config
             from pathlib import Path
+
+            import config
 
             screenshots_dir = Path(__file__).parent / "screenshots"
             screenshot_path = None
 
             if config.MCP_ENABLED:
                 try:
-                    from mcp_client import get_mcp_client
                     from datetime import datetime as dt
+
+                    from mcp_client import get_mcp_client
 
                     mcp = get_mcp_client()
                     health = await mcp.health_check()
@@ -2546,9 +2562,9 @@ async def cmd_watchlist_inline(message):
 async def cmd_scan_inline(message):
     """Scan handler for inline buttons."""
     try:
-        from watchlist import get_watchlist
-        from analysis import scan_symbols
         import config
+        from analysis import scan_symbols
+        from watchlist import get_watchlist
 
         symbols = get_watchlist()
         if not symbols:
@@ -2610,8 +2626,8 @@ class PositionSnapshot:
     side: str
     entry_price: float
     quantity: float
-    stop_loss_price: Optional[float]
-    take_profit_price: Optional[float]
+    stop_loss_price: float | None
+    take_profit_price: float | None
     exchange: str
     last_seen: "datetime"
 
@@ -2651,8 +2667,8 @@ class TradeRecord:
     symbol: str
     side: str
     entry_price: float
-    exit_price: Optional[float]
-    pnl: Optional[float]
+    exit_price: float | None
+    pnl: float | None
     status: str
     exchange: str
     created_at: str
@@ -2680,7 +2696,7 @@ class ExchangeHealthInfo:
     healthy: bool
     is_testnet: bool
     is_dry_run: bool
-    latency_ms: Optional[float]
+    latency_ms: float | None
 
 
 # ── P8 TelegramSender (singleton) ─────────────────────────────────────────
@@ -2702,14 +2718,14 @@ class TelegramSender:
         text: str,
         parse_mode: str = "HTML",
         reply_markup=None,
-    ) -> List[Tuple[int, int]]:
+    ) -> list[tuple[int, int]]:
         """Send message to all TELEGRAM_CHAT_IDS.
         Returns list of (chat_id, message_id) tuples for later editing.
         """
         import config
         from notifier import sanitize_for_telegram_html
 
-        results: List[Tuple[int, int]] = []
+        results: list[tuple[int, int]] = []
         safe_text = sanitize_for_telegram_html(text)
         for chat_id in config.TELEGRAM_CHAT_IDS:
             try:
@@ -2762,10 +2778,10 @@ class TelegramSender:
             log.debug(f"Typing action failed: {e}")
 
 
-_sender: Optional[TelegramSender] = None
+_sender: TelegramSender | None = None
 
 
-def get_sender() -> Optional[TelegramSender]:
+def get_sender() -> TelegramSender | None:
     """Get the global TelegramSender singleton (None if bot not started)."""
     return _sender
 
@@ -2781,7 +2797,7 @@ class ExchangeQueryFacade:
 
     async def get_balance(
         self,
-        exchange_id: Optional[str] = None,
+        exchange_id: str | None = None,
         asset: str = "USDT",
     ) -> BalanceInfo:
         """Get balance from specified or default exchange."""
@@ -2826,10 +2842,10 @@ class ExchangeQueryFacade:
 
     async def get_open_positions(
         self,
-        exchange_id: Optional[str] = None,
-    ) -> List[PositionInfo]:
+        exchange_id: str | None = None,
+    ) -> list[PositionInfo]:
         """Get open positions from specified or all exchanges."""
-        results: List[PositionInfo] = []
+        results: list[PositionInfo] = []
         try:
             from exchange_registry import ExchangeRegistry
 
@@ -2864,9 +2880,9 @@ class ExchangeQueryFacade:
             log.warning("ExchangeQueryFacade: ExchangeRegistry not available")
         return results
 
-    async def get_exchange_health(self) -> List[ExchangeHealthInfo]:
+    async def get_exchange_health(self) -> list[ExchangeHealthInfo]:
         """Get health status of all registered exchanges."""
-        results: List[ExchangeHealthInfo] = []
+        results: list[ExchangeHealthInfo] = []
         try:
             from exchange_registry import ExchangeRegistry
 
@@ -2902,7 +2918,7 @@ class ExchangeQueryFacade:
             pass
         return results
 
-    def list_available_exchanges(self) -> List[str]:
+    def list_available_exchanges(self) -> list[str]:
         """Return list of registered exchange IDs."""
         try:
             from exchange_registry import ExchangeRegistry
@@ -2924,9 +2940,9 @@ class DataQueryFacade:
     async def get_recent_trades(
         self,
         limit: int = 10,
-        from_date: Optional[str] = None,
-        to_date: Optional[str] = None,
-    ) -> List[TradeRecord]:
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> list[TradeRecord]:
         """Get recent closed trades from Trades_DB.
 
         P9-C1: Schema guard — if 'exchange' column missing in older DB, falls back
@@ -2934,6 +2950,7 @@ class DataQueryFacade:
         """
         try:
             import aiosqlite
+
             import config
 
             async with aiosqlite.connect(config.DB_PATH) as db:
@@ -2990,13 +3007,15 @@ class DataQueryFacade:
             log.error(f"DataQueryFacade.get_recent_trades: {e}")
             return []
 
-    async def get_daily_stats(self, date: Optional[str] = None) -> DailyStats:
+    async def get_daily_stats(self, date: str | None = None) -> DailyStats:
         """Get aggregated performance stats for a given date (YYYY-MM-DD, default today UTC)."""
-        from datetime import datetime as dt, timezone
+        from datetime import datetime as dt
+        from datetime import timezone
 
-        target = date or dt.now(timezone.utc).strftime("%Y-%m-%d")
+        target = date or dt.now(UTC).strftime("%Y-%m-%d")
         try:
             import aiosqlite
+
             import config
 
             async with aiosqlite.connect(config.DB_PATH) as db:
@@ -3060,7 +3079,7 @@ def _register_trade_lifecycle_handlers():
     Called from start_bot() AFTER _sender is initialised.
     """
     from core.event_bus import bus as _bus
-    from core.events import TradeExecuted, TradeFailed, PositionClosed
+    from core.events import PositionClosed, TradeExecuted, TradeFailed
 
     @_bus.on(TradeExecuted)
     async def on_trade_executed(event: TradeExecuted) -> None:
@@ -3142,7 +3161,7 @@ class PositionMonitor:
         import config
 
         self._poll_interval = poll_interval or config.POSITION_POLL_INTERVAL
-        self._tracked: Dict[str, PositionSnapshot] = {}
+        self._tracked: dict[str, PositionSnapshot] = {}
         self._running = False
         self._task = None
 
@@ -3209,12 +3228,12 @@ class PositionMonitor:
             )
 
     async def get_open_positions(
-        self, exchange_id: Optional[str] = None
-    ) -> List[PositionInfo]:
+        self, exchange_id: str | None = None
+    ) -> list[PositionInfo]:
         return await _exchange_facade.get_open_positions(exchange_id)
 
 
-_position_monitor: Optional[PositionMonitor] = None
+_position_monitor: PositionMonitor | None = None
 
 
 # ── P8 ApprovalTimeoutManager ─────────────────────────────────────────────
@@ -3234,7 +3253,7 @@ class ApprovalTimeoutManager:
         self._timeout_minutes = timeout_minutes or config.APPROVAL_TIMEOUT_MINUTES
         self._check_interval = check_interval
         # signal_id -> list of (chat_id, message_id, sent_at_timestamp)
-        self._tracked: Dict[int, List[Tuple[int, int, float]]] = {}
+        self._tracked: dict[int, list[tuple[int, int, float]]] = {}
         self._running = False
         self._task = None
 
@@ -3269,6 +3288,7 @@ class ApprovalTimeoutManager:
     async def _check_cycle(self) -> None:
         """Find expired entries, remove from PENDING_TRADES, notify, edit msgs."""
         import time
+
         from hub.notification_hub import PENDING_TRADES
 
         sender = get_sender()
@@ -3322,10 +3342,10 @@ class ApprovalTimeoutManager:
             del self._tracked[signal_id]
 
 
-_approval_timeout_mgr: Optional[ApprovalTimeoutManager] = None
+_approval_timeout_mgr: ApprovalTimeoutManager | None = None
 
 
-def get_approval_timeout_mgr() -> Optional[ApprovalTimeoutManager]:
+def get_approval_timeout_mgr() -> ApprovalTimeoutManager | None:
     """Get the global ApprovalTimeoutManager singleton."""
     return _approval_timeout_mgr
 
@@ -3345,9 +3365,10 @@ async def _report_auto_send_loop() -> None:
     ICT = UTC+7. Runs once per day at the configured wall-clock time.
     Singleton guard: task name 'report-auto-send' prevents duplicates on reload.
     """
-    import config
-    from datetime import timezone, timedelta
     from datetime import datetime as _dt
+    from datetime import timedelta, timezone
+
+    import config
 
     ICT = timezone(timedelta(hours=7))
     log.info(
@@ -3375,7 +3396,7 @@ async def _report_auto_send_loop() -> None:
         await asyncio.sleep(wait_seconds)
 
         # Send report for today (UTC date, which is ICT-1 day at 22:00)
-        utc_date = _dt.now(timezone.utc).strftime("%Y-%m-%d")
+        utc_date = _dt.now(UTC).strftime("%Y-%m-%d")
         try:
             sender = get_sender()
             if sender is None:
@@ -3419,9 +3440,9 @@ async def cmd_login(update, context):
         return
 
     try:
+        import database as db
         from auth.auth_config import AuthConfig
         from auth.service import AuthService
-        import database as db
 
         auth_cfg = AuthConfig()
         auth_svc = AuthService(auth_cfg)
@@ -3559,8 +3580,8 @@ def start_bot():
 
         from telegram.ext import (
             ApplicationBuilder,
-            CommandHandler,
             CallbackQueryHandler,
+            CommandHandler,
         )
 
         def _run_bot():
@@ -3576,8 +3597,8 @@ def start_bot():
             _bot_loop = loop
 
             # Build bot — force IPv4 to fix async httpx ConnectError on Windows
-            from telegram.request import HTTPXRequest
             import httpx as _httpx
+            from telegram.request import HTTPXRequest
 
             _proxy = config.TELEGRAM_PROXY_URL or None
             request = HTTPXRequest(proxy=_proxy)

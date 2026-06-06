@@ -7,7 +7,7 @@ Verifies that the Chandelier trailing stop multiplier is:
   - Correctly scaled between BTC, ETH, and SOL
 """
 
-from symbol_config import get_symbol_config, SYMBOL_PARAMS
+from symbol_config import SYMBOL_PARAMS, get_symbol_config
 
 
 def test_trail_atr_mul_present_in_all_symbols():

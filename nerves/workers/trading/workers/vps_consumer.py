@@ -1,19 +1,20 @@
 import asyncio
 import logging
-import aiohttp
 import socket
 import sqlite3
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
+import aiohttp
 
 import config
 import database
 from core.event_bus import bus as _event_bus
 from core.events import (
-    SignalReceived,
     IndicatorSignalReceived,
+    SignalReceived,
+    SignalRejected,
     TradeExecuted,
     TradeFailed,
-    SignalRejected,
 )
 
 log = logging.getLogger(__name__)
@@ -26,7 +27,7 @@ class VpsSignalConsumer:
     """
 
     def __init__(self):
-        self.pending_acks: Dict[int, int] = {}  # local_signal_id -> vbs_queue_id
+        self.pending_acks: dict[int, int] = {}  # local_signal_id -> vbs_queue_id
         self._session = None
 
         # Register EventBus listeners for execution outcomes
@@ -46,7 +47,7 @@ class VpsSignalConsumer:
         if self._session and not self._session.closed:
             await self._session.close()
 
-    async def pull_signals(self, limit: int = 5) -> List[Dict[str, Any]]:
+    async def pull_signals(self, limit: int = 5) -> list[dict[str, Any]]:
         """Fetch pending signals from VBS consume-long endpoint."""
         url = f"{config.VPS_BUFFER_URL}/consume-long"
         params = {"consumer_id": config.VPS_CONSUMER_ID, "limit": limit, "timeout": 30}
@@ -82,7 +83,7 @@ class VpsSignalConsumer:
             log.warning(f"[VpsConsumer] Connection error pulling signals from VBS: {e}")
             raise
 
-    async def send_acks(self, acks: List[Dict[str, Any]]) -> bool:
+    async def send_acks(self, acks: list[dict[str, Any]]) -> bool:
         """Send confirmations back to VBS."""
         if not acks:
             return True
@@ -201,7 +202,7 @@ class VpsSignalConsumer:
                 )
                 await asyncio.sleep(_backoff)
 
-    async def _process_signal(self, signal: Dict[str, Any]):
+    async def _process_signal(self, signal: dict[str, Any]):
         """Processes a single signal pulled from VPS."""
         queue_id = signal["queue_id"]
         age_minutes = signal["age_minutes"]

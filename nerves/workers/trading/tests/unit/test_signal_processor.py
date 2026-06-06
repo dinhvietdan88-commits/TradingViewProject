@@ -14,16 +14,16 @@ Tests verify:
 """
 
 import time
+
 import pytest
 
 from core.event_bus import EventBus
 from core.events import (
-    SignalReceived,
-    SignalValidated,
-    SignalRejected,
     AlertTriggered,
+    SignalReceived,
+    SignalRejected,
+    SignalValidated,
 )
-
 
 # ═══════════════════════════════════════════════════════════════
 # HELPERS
@@ -54,7 +54,7 @@ def _make_event(**kwargs):
 @pytest.mark.asyncio
 async def test_alert_action_emits_alert_triggered():
     """Action='alert' must emit AlertTriggered and skip dedup / timeframe checks."""
-    from processor.signal_processor import process_signal, set_bus, reset_dedup_cache
+    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -82,7 +82,7 @@ async def test_alert_action_emits_alert_triggered():
 @pytest.mark.asyncio
 async def test_alert_carries_exchange_context():
     """AlertTriggered should preserve exchange from original SignalReceived."""
-    from processor.signal_processor import process_signal, set_bus, reset_dedup_cache
+    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -113,7 +113,7 @@ async def test_alert_carries_exchange_context():
 @pytest.mark.asyncio
 async def test_dedup_rejects_duplicate_within_ttl():
     """Second identical (symbol, action) within 60s → SignalRejected(reason=duplicate_signal)."""
-    from processor.signal_processor import process_signal, set_bus, reset_dedup_cache
+    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -151,7 +151,7 @@ async def test_dedup_rejects_duplicate_within_ttl():
 @pytest.mark.asyncio
 async def test_dedup_allows_different_actions():
     """buy and sell for the same symbol are different cache keys — both should pass."""
-    from processor.signal_processor import process_signal, set_bus, reset_dedup_cache
+    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -180,7 +180,7 @@ async def test_dedup_allows_different_actions():
 @pytest.mark.asyncio
 async def test_dedup_allows_different_symbols():
     """Same action on different symbols are independent cache keys — both should pass."""
-    from processor.signal_processor import process_signal, set_bus, reset_dedup_cache
+    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -209,7 +209,7 @@ async def test_dedup_allows_different_symbols():
 @pytest.mark.asyncio
 async def test_dedup_cache_is_symbol_case_insensitive():
     """Dedup key normalizes symbol to uppercase — 'btcusdt' == 'BTCUSDT'."""
-    from processor.signal_processor import process_signal, set_bus, reset_dedup_cache
+    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -240,11 +240,11 @@ async def test_dedup_cache_is_symbol_case_insensitive():
 async def test_dedup_allows_signal_after_ttl_expires():
     """After the 60s TTL, the same (symbol, action) should be accepted."""
     from processor.signal_processor import (
-        process_signal,
-        set_bus,
-        reset_dedup_cache,
-        _dedup_cache,
         DEDUP_TTL_SEC,
+        _dedup_cache,
+        process_signal,
+        reset_dedup_cache,
+        set_bus,
     )
 
     test_bus = EventBus()
@@ -280,7 +280,7 @@ async def test_dedup_allows_signal_after_ttl_expires():
 @pytest.mark.asyncio
 async def test_valid_timeframes_pass(valid_interval):
     """Intervals '60', '1h', '60m' should all produce SignalValidated."""
-    from processor.signal_processor import process_signal, set_bus, reset_dedup_cache
+    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -306,7 +306,7 @@ async def test_valid_timeframes_pass(valid_interval):
 @pytest.mark.asyncio
 async def test_invalid_timeframes_rejected(bad_interval):
     """Intervals that are not 1h/60/60m should produce SignalRejected(invalid_timeframe)."""
-    from processor.signal_processor import process_signal, set_bus, reset_dedup_cache
+    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -337,7 +337,7 @@ async def test_invalid_timeframes_rejected(bad_interval):
 @pytest.mark.asyncio
 async def test_unknown_action_rejected():
     """An unrecognized action (not buy/sell/alert) should be rejected."""
-    from processor.signal_processor import process_signal, set_bus, reset_dedup_cache
+    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -368,7 +368,7 @@ async def test_unknown_action_rejected():
 @pytest.mark.asyncio
 async def test_signal_validated_preserves_exchange():
     """SignalValidated must carry the exchange field from the original SignalReceived."""
-    from processor.signal_processor import process_signal, set_bus, reset_dedup_cache
+    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -393,7 +393,7 @@ async def test_signal_validated_preserves_exchange():
 @pytest.mark.asyncio
 async def test_signal_rejected_preserves_exchange():
     """SignalRejected must carry the exchange field (for logging/notifications)."""
-    from processor.signal_processor import process_signal, set_bus, reset_dedup_cache
+    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -424,7 +424,7 @@ async def test_signal_rejected_preserves_exchange():
 
 def test_reset_dedup_cache_clears_state():
     """reset_dedup_cache() should empty the in-memory dedup store."""
-    from processor.signal_processor import reset_dedup_cache, _dedup_cache
+    from processor.signal_processor import _dedup_cache, reset_dedup_cache
 
     _dedup_cache[("BTCUSDT", "buy")] = time.time()
     assert len(_dedup_cache) > 0

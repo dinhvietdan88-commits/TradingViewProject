@@ -93,14 +93,14 @@ MOCK_KEYS = {
     "fallback_action_desc": "Retry in 60s",
 }
 
-_templates_cache: Dict[str, str] = {}
+_templates_cache: dict[str, str] = {}
 
 
 def get_templates_file_path() -> str:
     return TEMPLATE_FILE
 
 
-def load_templates() -> Dict[str, str]:
+def load_templates() -> dict[str, str]:
     """Load templates from json file, falling back to defaults if not exists or corrupted."""
     global _templates_cache
     if _templates_cache:
@@ -109,7 +109,7 @@ def load_templates() -> Dict[str, str]:
     templates = DEFAULT_TEMPLATES.copy()
     if os.path.exists(TEMPLATE_FILE):
         try:
-            with open(TEMPLATE_FILE, "r", encoding="utf-8") as f:
+            with open(TEMPLATE_FILE, encoding="utf-8") as f:
                 data = json.load(f)
                 for k in ["A", "B", "C", "D"]:
                     if k in data and isinstance(data[k], str):
@@ -172,7 +172,7 @@ def validate_template_syntax(template_id: str, content: str) -> None:
         ) from err
 
 
-def save_templates(templates: Dict[str, str]) -> None:
+def save_templates(templates: dict[str, str]) -> None:
     """Validate and write templates to config file, updating the runtime cache."""
     global _templates_cache
 

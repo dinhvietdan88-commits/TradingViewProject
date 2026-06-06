@@ -1,7 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from exchanges.base import ExchangeError, ExchangeErrorCategory
 from exchanges.weex_adapter import WeexAdapter
-from exchanges.base import ExchangeErrorCategory, ExchangeError
 
 
 @pytest.mark.asyncio

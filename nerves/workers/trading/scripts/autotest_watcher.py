@@ -1,11 +1,11 @@
-import sys
-import os
 import asyncio
-import logging
 import json
+import logging
+import os
 import subprocess
+import sys
 from datetime import datetime
-from typing import Tuple, Set
+from typing import Set, Tuple
 
 # Add parent directory to sys.path
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -110,7 +110,7 @@ def parse_pytest_failures(stdout: str) -> list[dict]:
     return failures
 
 
-def extract_failure_details(stdout: str, stderr: str) -> Tuple[str, str]:
+def extract_failure_details(stdout: str, stderr: str) -> tuple[str, str]:
     failures = parse_pytest_failures(stdout)
     if failures:
         first_fail = failures[0]
@@ -130,7 +130,7 @@ def extract_failure_details(stdout: str, stderr: str) -> Tuple[str, str]:
     return "pytest", tb_short
 
 
-async def run_test_suite(changed_files: Set[str]):
+async def run_test_suite(changed_files: set[str]):
     logger.info(f"Triggering test suite run due to changes in: {changed_files}")
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -209,7 +209,7 @@ async def debounce_consumer(queue: asyncio.Queue):
                 changed_files.add(file_event)
                 queue.task_done()
                 last_event_time = asyncio.get_event_loop().time()
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 break
 
         await run_test_suite(changed_files)
@@ -259,8 +259,9 @@ async def health_check_loop():
             db_status = "OK"
             db_err = ""
             try:
-                import database
                 import time
+
+                import database
 
                 ts = str(time.time())
                 await database.set_setting("health_check_ping", ts)

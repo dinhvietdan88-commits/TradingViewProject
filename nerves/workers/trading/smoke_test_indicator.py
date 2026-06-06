@@ -7,9 +7,10 @@ Tests:
 """
 
 import asyncio
+import io
 import os
 import sys
-import io
+
 import httpx
 
 # Force UTF-8 output on Windows standard terminal
@@ -25,7 +26,7 @@ BASE_URL = os.getenv("SMOKE_BASE_URL", f"http://127.0.0.1:{_PORT}")
 for env_file in [".env", "../.env", "../../.env"]:
     if os.path.exists(env_file):
         try:
-            with open(env_file, "r", encoding="utf-8") as f:
+            with open(env_file, encoding="utf-8") as f:
                 for line in f:
                     if line.strip().startswith("WEBHOOK_SECRET="):
                         val = line.split("=")[1].strip()

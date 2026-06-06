@@ -23,11 +23,11 @@ Tests:
 """
 
 import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 
 import config
-
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -965,9 +965,10 @@ async def test_pipeline_forward_sends_correct_headers():
 @pytest.mark.asyncio
 async def test_pipeline_failover_local_to_server_b():
     """Verify that when Local is configured but offline, the pipeline fails over to Server B."""
-    from workers.vps_analyzer import VpsAnalyzerWorker
-    import config
     from unittest.mock import patch
+
+    import config
+    from workers.vps_analyzer import VpsAnalyzerWorker
 
     original_local_url = config.LOCAL_EXECUTE_URL
     original_local_secret = config.LOCAL_EXECUTE_SECRET

@@ -7,9 +7,10 @@ Tests the actual implementation where:
 """
 
 import sys
-import pytest
 from pathlib import Path
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 

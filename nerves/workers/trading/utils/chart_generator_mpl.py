@@ -1,8 +1,9 @@
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Union
-import pandas as pd
+from typing import Any, Dict, List, Optional, Union
+
 import matplotlib
+import pandas as pd
 
 # Use non-interactive backend for headless execution
 matplotlib.use("Agg")
@@ -15,13 +16,13 @@ log = logging.getLogger(__name__)
 def generate_chart_mpl(
     symbol: str,
     timeframe: str,
-    ohlcv_data: Union[List[List[Any]], List[Dict[str, Any]]],
-    drawings: Optional[List[Dict[str, Any]]] = None,
-    strategy_table: Optional[Dict[str, Any]] = None,
-    save_path: Optional[Union[str, Path]] = None,
-    parent_timeframe: Optional[str] = None,
-    parent_ohlcv: Optional[Union[List[List[Any]], List[Dict[str, Any]]]] = None,
-    pattern_overlays: Optional[Any] = None,
+    ohlcv_data: list[list[Any]] | list[dict[str, Any]],
+    drawings: list[dict[str, Any]] | None = None,
+    strategy_table: dict[str, Any] | None = None,
+    save_path: str | Path | None = None,
+    parent_timeframe: str | None = None,
+    parent_ohlcv: list[list[Any]] | list[dict[str, Any]] | None = None,
+    pattern_overlays: Any | None = None,
 ) -> Path:
     """
     Renders a candlestick chart locally using mplfinance/matplotlib.
@@ -220,10 +221,10 @@ def generate_chart_mpl(
     if pattern_overlays:
         try:
             from utils.pattern_overlay import (
-                VCPOverlay,
                 CupHandleOverlay,
                 DoubleBottomOverlay,
                 PatternOverlayResult,
+                VCPOverlay,
             )
 
             overlays = pattern_overlays

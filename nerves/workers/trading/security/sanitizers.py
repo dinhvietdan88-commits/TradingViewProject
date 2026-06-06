@@ -24,7 +24,7 @@ def sanitize_log(message: str) -> str:
 
 
 # ── CWE-22: Path Injection Prevention ────────────────────────────────
-def sanitize_path(input_path: str, allowed_roots: List[str]) -> Optional[str]:
+def sanitize_path(input_path: str, allowed_roots: list[str]) -> str | None:
     """
     Sanitize a file path to prevent Path Traversal (CWE-22) and directory traversal.
     Returns the resolved, safe absolute path, or None if the path is invalid or escape is detected.

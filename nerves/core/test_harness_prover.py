@@ -14,10 +14,10 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from nerves.core.harness_prover import (
-    HarnessProver,
-    ProofResult,
     POC_TEMPLATES,
     SAFE_SKIP_RULES,
+    HarnessProver,
+    ProofResult,
 )
 
 

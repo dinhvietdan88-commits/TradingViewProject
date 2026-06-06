@@ -1,19 +1,20 @@
+import asyncio
+import json
+import logging
 import os
 import sys
-import json
-import asyncio
-import logging
-import pytest
-import aiosqlite
-from unittest.mock import AsyncMock, patch, MagicMock
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import aiosqlite
+import pytest
 
 # Add the project root to sys.path to ensure absolute imports work
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
+import alert_manager
 import config
 import database
-import alert_manager
 from scripts import autotest_watcher
 
 
@@ -152,7 +153,7 @@ async def test_health_check_failures_and_transitions(temp_db, temp_log):
         assert "cdp" in alerts_sent[1]
 
         # Verify failures are logged to temp_log
-        with open(temp_log, "r", encoding="utf-8") as f:
+        with open(temp_log, encoding="utf-8") as f:
             log_content = f.read()
             assert (
                 "Health check 'api_server' failed: Connection refused on port 5000"
@@ -243,7 +244,7 @@ FAILED tests/unit/test_database.py::test_database_connection_loss - AssertionErr
                 assert "AssertionError" in last_run["error_log"]
 
         # Verify shortened traceback is logged in test_runs.log
-        with open(temp_log, "r", encoding="utf-8") as f:
+        with open(temp_log, encoding="utf-8") as f:
             log_content = f.read()
             assert "Test Run FAILED:" in log_content
             # Check for traceback elements

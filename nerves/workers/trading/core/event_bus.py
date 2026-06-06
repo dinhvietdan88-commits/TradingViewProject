@@ -24,7 +24,9 @@ Usage:
 
 import asyncio
 import logging
-from typing import Dict, List, Callable, Awaitable, Type
+from typing import Dict, List, Type
+from collections.abc import Awaitable, Callable
+
 from core.events import Event
 
 log = logging.getLogger(__name__)
@@ -45,7 +47,7 @@ class EventBus:
     """
 
     def __init__(self):
-        self._handlers: Dict[Type[Event], List[EventHandler]] = {}
+        self._handlers: dict[type[Event], list[EventHandler]] = {}
         self._metrics = {
             "events_emitted": 0,
             "handler_errors": 0,
@@ -54,7 +56,7 @@ class EventBus:
         # CPython GC from collecting them before completion.
         self._background_tasks: set = set()
 
-    def on(self, event_type: Type[Event]):
+    def on(self, event_type: type[Event]):
         """
         Decorator to register a handler for a specific event type.
 
@@ -70,7 +72,7 @@ class EventBus:
 
         return decorator
 
-    def subscribe(self, event_type: Type[Event], handler: EventHandler) -> None:
+    def subscribe(self, event_type: type[Event], handler: EventHandler) -> None:
         """Register a handler for the given event type."""
         if event_type not in self._handlers:
             self._handlers[event_type] = []
@@ -123,7 +125,7 @@ class EventBus:
         self._background_tasks.add(task)
         task.add_done_callback(self._background_tasks.discard)
 
-    def handler_count(self, event_type: Type[Event] = None) -> int:
+    def handler_count(self, event_type: type[Event] = None) -> int:
         """Return number of registered handlers (total or per event type)."""
         if event_type:
             return len(self._handlers.get(event_type, []))

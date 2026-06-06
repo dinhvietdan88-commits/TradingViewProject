@@ -9,7 +9,7 @@ import hmac
 import logging
 import time
 import uuid
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 import aiohttp
 
@@ -18,8 +18,7 @@ import config
 log = logging.getLogger(__name__)
 
 
-from exchanges.base import RiskParams, OrderResult  # noqa: E402
-
+from exchanges.base import OrderResult, RiskParams  # noqa: E402
 
 # ═══════════════════════════════════════════════════════════════
 # BINANCE CLIENT
@@ -53,7 +52,7 @@ class BinanceClient:
 
     # ═══ SIGNING ═══════════════════════════════════════════════
 
-    def _sign_params(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _sign_params(self, params: dict[str, Any]) -> dict[str, Any]:
         """Add timestamp + HMAC-SHA256 signature to params."""
         params["timestamp"] = int(time.time() * 1000)
         query = "&".join(f"{k}={v}" for k, v in params.items())
@@ -66,8 +65,8 @@ class BinanceClient:
     # ═══ HTTP ══════════════════════════════════════════════════
 
     async def _request(
-        self, method: str, endpoint: str, params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, method: str, endpoint: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
         """Send signed request to Binance API."""
         signed = self._sign_params(params)
         headers = {"X-MBX-APIKEY": self.api_key}
@@ -93,7 +92,7 @@ class BinanceClient:
     async def get_account_balance(self, asset: str = "USDT") -> float:
         """Get free balance for a specific asset."""
         if self.dry_run:
-            log.info(f"[DRY-RUN] get_account_balance({asset}) → $10,000.00")
+            log.info(f"[DRY-RUN] get_account_balance({asset}) → $10,000.00")  # codeql[py/log-injection]
             return 10000.0
 
         data = await self._request("GET", "/api/v3/account", {})
@@ -102,7 +101,7 @@ class BinanceClient:
                 return float(b["free"])
         return 0.0
 
-    async def get_symbol_info(self, symbol: str) -> Dict[str, Any]:
+    async def get_symbol_info(self, symbol: str) -> dict[str, Any]:
         """Get exchange info for symbol (LOT_SIZE, PRICE_FILTER, etc.)."""
         if self.dry_run:
             return {
@@ -152,7 +151,7 @@ class BinanceClient:
         side: str,
         sl_pct: float = None,
         tp_pct: float = None,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Calculate Stop-Loss and Take-Profit prices.
 
         BUY side:  SL = entry × (1 - sl_pct), TP = entry × (1 + tp_pct)
@@ -202,7 +201,7 @@ class BinanceClient:
         side: str,
         quote_qty: float = None,
         base_qty: float = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Place a MARKET order. Use quote_qty (USDT) OR base_qty (BTC)."""
         symbol_clean = symbol.replace("/", "").upper()
         side_upper = side.upper()
@@ -268,7 +267,7 @@ class BinanceClient:
 
     async def place_limit_order(
         self, symbol: str, side: str, price: float, quantity: float
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Place a LIMIT order."""
         symbol_clean = symbol.replace("/", "").upper()
         side_upper = side.upper()
@@ -298,7 +297,7 @@ class BinanceClient:
             return mock
         return await self._request("POST", "/api/v3/order", params)
 
-    async def get_order(self, symbol: str, order_id: str) -> Dict[str, Any]:
+    async def get_order(self, symbol: str, order_id: str) -> dict[str, Any]:
         """Get order status."""
         if self.dry_run:
             return {"status": "NEW", "executedQty": "0.0", "origQty": "1.0"}
@@ -309,7 +308,7 @@ class BinanceClient:
         status = data.get("status", "NEW").upper()
         return {"status": "FILLED" if status == "FILLED" else "NEW"}
 
-    async def cancel_order(self, symbol: str, order_id: str) -> Dict[str, Any]:
+    async def cancel_order(self, symbol: str, order_id: str) -> dict[str, Any]:
         """Cancel an active order."""
         if self.dry_run:
             return {"status": "CANCELED"}
@@ -317,7 +316,7 @@ class BinanceClient:
         params = {"symbol": symbol_clean, "orderId": order_id}
         return await self._request("DELETE", "/api/v3/order", params)
 
-    async def cancel_oco_order(self, symbol: str, order_list_id: str) -> Dict[str, Any]:
+    async def cancel_oco_order(self, symbol: str, order_list_id: str) -> dict[str, Any]:
         """Cancel an active OCO order list."""
         if self.dry_run:
             return {"status": "CANCELED"}
@@ -333,7 +332,7 @@ class BinanceClient:
         take_profit_price: float,
         stop_price: float,
         stop_limit_price: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Place an OCO order (one-cancels-other) for SL + TP exit."""
         symbol_clean = symbol.replace("/", "").upper()
         side_upper = side.upper()
@@ -557,7 +556,7 @@ class BinanceClient:
 # MODULE-LEVEL CLIENT (singleton)
 # ═══════════════════════════════════════════════════════════════
 
-_client: Optional[BinanceClient] = None
+_client: BinanceClient | None = None
 
 
 def get_client() -> BinanceClient:

@@ -5,18 +5,18 @@ Uses httpx AsyncClient + ASGITransport pattern (no running server needed).
 Mocks TradeEngine internals to isolate the endpoint logic.
 """
 
+import os
+import pathlib
+import sys
+from unittest.mock import AsyncMock, patch
+
 import pytest
 import pytest_asyncio
-import os
-import sys
-import pathlib
-from unittest.mock import AsyncMock, patch
 
 # Ensure server/ is on path
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
-from httpx import AsyncClient, ASGITransport
-
+from httpx import ASGITransport, AsyncClient
 
 # ─────────────────────────────────────────────────────────────────
 # Fixture: exec_client — isolated test DB + configured secret
@@ -215,6 +215,7 @@ async def test_valid_trade_persists_signal_to_db(exec_client):
 
     # Verify signal was persisted
     import aiosqlite
+
     import config
 
     async with aiosqlite.connect(config.DB_PATH) as db:

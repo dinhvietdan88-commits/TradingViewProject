@@ -24,7 +24,7 @@ Properties tested:
 import os
 import re
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from unittest.mock import patch
 
 import pytest
@@ -33,7 +33,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
 try:
-    from hypothesis import given, settings, assume, HealthCheck
+    from hypothesis import HealthCheck, assume, given, settings
     from hypothesis import strategies as st
 
     HAS_HYPOTHESIS = True
@@ -143,7 +143,7 @@ def test_p2_valid_exchange(telegram_id):
     session = svc.exchange_code(code_record, code.code)
     assert session.telegram_id == telegram_id
     assert session.session_id  # Non-empty
-    assert session.created_at <= datetime.now(timezone.utc)
+    assert session.created_at <= datetime.now(UTC)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -161,7 +161,7 @@ def test_p2_valid_exchange(telegram_id):
 def test_p3_expired_code(telegram_id):
     """P3: An expired code must raise CodeExpiredError (before authorization check)."""
     svc = _make_service(allowed_users=[telegram_id])
-    past = datetime.now(timezone.utc) - timedelta(minutes=10)
+    past = datetime.now(UTC) - timedelta(minutes=10)
 
     code_record = {
         "code": "a" * 32,
@@ -191,13 +191,13 @@ def test_p3_expired_code(telegram_id):
 def test_p4_used_code(telegram_id):
     """P4: A used code must raise CodeUsedError."""
     svc = _make_service(allowed_users=[telegram_id])
-    future = datetime.now(timezone.utc) + timedelta(minutes=5)
+    future = datetime.now(UTC) + timedelta(minutes=5)
 
     code_record = {
         "code": "b" * 32,
         "telegram_id": telegram_id,
         "username": None,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "expires_at": future.isoformat(),
         "used": 1,  # Already used
     }
@@ -225,13 +225,13 @@ def test_p5_unauthorized_user(allowed_id, unauthorized_id):
     """P5: Unauthorized user raises UserNotAllowedError."""
     assume(allowed_id != unauthorized_id)
     svc = _make_service(allowed_users=[allowed_id])
-    future = datetime.now(timezone.utc) + timedelta(minutes=5)
+    future = datetime.now(UTC) + timedelta(minutes=5)
 
     code_record = {
         "code": "c" * 32,
         "telegram_id": unauthorized_id,
         "username": None,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "expires_at": future.isoformat(),
         "used": 0,
     }
@@ -255,7 +255,7 @@ def test_p5_unauthorized_user(allowed_id, unauthorized_id):
 def test_p6_validation_ordering(unauthorized_id):
     """P6: Expired code for unauthorized user → CodeExpiredError (NOT UserNotAllowedError)."""
     svc = _make_service(allowed_users=[99999])  # Different user
-    past = datetime.now(timezone.utc) - timedelta(minutes=10)
+    past = datetime.now(UTC) - timedelta(minutes=10)
 
     code_record = {
         "code": "d" * 32,
@@ -289,7 +289,7 @@ def test_p6_validation_ordering(unauthorized_id):
 def test_p7_token_roundtrip(telegram_id, username):
     """P7: create_session_token → verify_session_token preserves all fields."""
     svc = _make_service(allowed_users=[telegram_id])
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     session = SessionData(
         session_id="test-sid",
@@ -324,7 +324,7 @@ def test_p7_token_roundtrip(telegram_id, username):
 def test_p8_tampered_token(telegram_id):
     """P8: Any modification to token must cause TokenInvalidError."""
     svc = _make_service(allowed_users=[telegram_id])
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     session = SessionData(
         session_id="test-sid",
@@ -349,7 +349,7 @@ def test_p8_tampered_token(telegram_id):
 def test_p9_expired_session_token():
     """P9: Token past its expires_at raises TokenExpiredError."""
     svc = _make_service()
-    past = datetime.now(timezone.utc) - timedelta(hours=25)
+    past = datetime.now(UTC) - timedelta(hours=25)
 
     session = SessionData(
         session_id="test-sid",
@@ -373,7 +373,7 @@ def test_p9_expired_session_token():
 def test_p10_absolute_lifetime():
     """P10: Session older than 7 days raises SessionMaxLifetimeError."""
     svc = _make_service(session_expiry=0)  # Never expire
-    old_creation = datetime.now(timezone.utc) - timedelta(days=8)
+    old_creation = datetime.now(UTC) - timedelta(days=8)
 
     session = SessionData(
         session_id="test-sid",
@@ -398,14 +398,14 @@ def test_p10_absolute_lifetime():
 def test_p11_refresh_preserves_created_at():
     """P11: Refresh must keep original created_at for absolute lifetime tracking."""
     svc = _make_service()
-    original_created = datetime.now(timezone.utc) - timedelta(hours=20)
+    original_created = datetime.now(UTC) - timedelta(hours=20)
 
     session = SessionData(
         session_id="test-sid",
         telegram_id=12345,
         username="user",
         created_at=original_created,
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),  # Within 1hr
+        expires_at=datetime.now(UTC) + timedelta(minutes=30),  # Within 1hr
     )
 
     refreshed = svc.refresh_session(session)
@@ -421,7 +421,7 @@ def test_p11_refresh_preserves_created_at():
 def test_p12_never_expire_no_refresh():
     """P12: Never-expire sessions return False for should_refresh."""
     svc = _make_service(session_expiry=0)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     session = SessionData(
         session_id="test-sid",

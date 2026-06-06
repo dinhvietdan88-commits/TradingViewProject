@@ -11,14 +11,14 @@ Tests verify gaps from the original test_trade_engine.py:
 - exchange field is propagated in all emitted events.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from core.event_bus import EventBus
 from core.events import TradeApproved, TradeExecuted, TradeFailed
-
 
 # ═══════════════════════════════════════════════════════════════
 # MOCK FIXTURES
@@ -46,7 +46,7 @@ class MockOrderResult:
     dry_run: bool = True
     side: str = "BUY"
     symbol: str = "BTCUSDT"
-    entry_order: Dict[str, Any] = field(
+    entry_order: dict[str, Any] = field(
         default_factory=lambda: {
             "orderId": "DRY-001",
             "status": "FILLED",
@@ -54,13 +54,13 @@ class MockOrderResult:
             "cummulativeQuoteQty": "68.00",
         }
     )
-    oco_order: Optional[Dict[str, Any]] = field(
+    oco_order: dict[str, Any] | None = field(
         default_factory=lambda: {
             "orderListId": "OCO-001",
         }
     )
-    risk: Optional[MockRiskParams] = field(default_factory=MockRiskParams)
-    error: Optional[str] = None
+    risk: MockRiskParams | None = field(default_factory=MockRiskParams)
+    error: str | None = None
 
 
 def _make_adapter(order_result=None, exchange_id="binance"):
@@ -494,8 +494,8 @@ async def test_invalid_sl_tp_gracefully_becomes_none():
 @pytest.mark.asyncio
 async def test_invalid_entry_price_fails_trade_gracefully():
     """If entry price is <= 0.0 or non-numeric, TradeEngine must fail the trade and emit TradeFailed."""
-    from engine.trade_engine import execute_trade, set_bus
     from core.events import TradeFailed
+    from engine.trade_engine import execute_trade, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)

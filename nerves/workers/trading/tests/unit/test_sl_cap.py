@@ -11,10 +11,11 @@ Test strategy: mock the full execute_trade() pipeline and assert:
   - sl_price within the cap passes through unchanged
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from core.event_bus import EventBus
 from core.events import TradeApproved
@@ -41,7 +42,7 @@ class MockOrderResult:
     dry_run: bool = True
     side: str = "BUY"
     symbol: str = "BTCUSDT"
-    entry_order: Dict[str, Any] = field(
+    entry_order: dict[str, Any] = field(
         default_factory=lambda: {
             "orderId": "LIMIT-SL-CAP-TEST",
             "status": "FILLED",
@@ -49,13 +50,13 @@ class MockOrderResult:
             "cummulativeQuoteQty": "100.00",
         }
     )
-    oco_order: Optional[Dict[str, Any]] = field(
+    oco_order: dict[str, Any] | None = field(
         default_factory=lambda: {
             "orderListId": "OCO-SL-CAP-TEST",
         }
     )
-    risk: Optional[MockRiskParams] = field(default_factory=MockRiskParams)
-    error: Optional[str] = None
+    risk: MockRiskParams | None = field(default_factory=MockRiskParams)
+    error: str | None = None
 
 
 def _make_adapter(ticker=100.0, balance=1000.0):

@@ -1,14 +1,15 @@
 import logging
-import httpx
 import re
 from typing import List
+
+import httpx
 
 import config
 
 log = logging.getLogger(__name__)
 
 # Parse multiple chat IDs
-TELEGRAM_CHAT_IDS: List[str] = [
+TELEGRAM_CHAT_IDS: list[str] = [
     c.strip() for c in config.TELEGRAM_CHAT_ID.split(",") if c.strip()
 ]
 

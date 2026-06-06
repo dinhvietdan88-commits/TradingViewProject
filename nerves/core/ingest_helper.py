@@ -1,8 +1,8 @@
-import subprocess
-import os
 import logging
-from pathlib import Path
+import os
+import subprocess
 import threading
+from pathlib import Path
 
 log = logging.getLogger(__name__)
 
@@ -61,8 +61,8 @@ def ingest_semantic_event_bg(text: str, category: str = "knowledge"):
 
             if run_fallback:
                 try:
-                    import sqlite3
                     import json
+                    import sqlite3
                     import time
                     import uuid
 

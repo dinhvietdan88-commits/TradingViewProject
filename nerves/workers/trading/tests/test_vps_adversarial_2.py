@@ -3,16 +3,17 @@ test_vps_adversarial_2.py — Adversarial unit/integration tests for Server C VP
 Focuses on concurrent requests (idempotency race conditions), Server B execute endpoint failure modes (500, 404, invalid JSON), and webhook payloads with invalid types for ATR.
 """
 
-import pytest
 import asyncio
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from aiohttp import ContentTypeError
 
 import config
 import database
 from core.events import SignalReceived
-from workers.vps_consumer import VpsSignalConsumer
 from workers.vps_analyzer import VpsAnalyzerWorker
+from workers.vps_consumer import VpsSignalConsumer
 
 
 def _make_vbs_signal(queue_id=1, symbol="BTCUSDT", action="buy", price=100.0, atr=None):

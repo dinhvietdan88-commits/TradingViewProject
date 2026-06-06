@@ -11,17 +11,17 @@ v6.0: AIAnalyzer no longer imports notifier — all notifications
       are delegated to NotificationHub via events.
 """
 
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from core.event_bus import EventBus
 from core.events import (
-    SignalReceived,
     AlertTriggered,
     AnalysisComplete,
+    SignalReceived,
     SignalValidated,
 )
-
 
 # ═══════════════════════════════════════════════════════════════
 # AI ANALYZER TESTS
@@ -31,8 +31,9 @@ from core.events import (
 @pytest.mark.asyncio
 async def test_cooldown_rejects_duplicate():
     """A second capture within COOLDOWN_SEC should be silently rejected."""
-    from analyzer.ai_analyzer import set_bus, reset_capture_state, LAST_CAPTURE_TIME
     import time
+
+    from analyzer.ai_analyzer import LAST_CAPTURE_TIME, reset_capture_state, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -77,6 +78,8 @@ async def test_signal_processor_emits_alert_triggered():
     from processor.signal_processor import (
         process_signal,
         reset_dedup_cache,
+    )
+    from processor.signal_processor import (
         set_bus as sp_set_bus,
     )
 
@@ -118,12 +121,13 @@ async def test_high_confidence_triggers_trade():
     v6.0: Vision confidence is used directly (1-10 scale).
     A vision confidence of 9 → should_trade=True, interactive_required=False.
     """
+    from pathlib import Path
+
     from analyzer.ai_analyzer import (
         process_validated_signal,
-        set_bus,
         reset_capture_state,
+        set_bus,
     )
-    from pathlib import Path
 
     test_bus = EventBus()
     set_bus(test_bus)

@@ -15,10 +15,10 @@ from typing import Tuple
 import notifier as _notifier
 from core.event_bus import bus
 from core.events import (
-    IndicatorSignalValidated,
-    SignalValidated,
-    SignalRejected,
     IndicatorSignalRejected,
+    IndicatorSignalValidated,
+    SignalRejected,
+    SignalValidated,
 )
 
 log = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ def set_bus(bus_instance) -> None:
     _bus = bus_instance
 
 
-def _compute_sl_tp(price: float, metadata: dict) -> Tuple[str, str]:
+def _compute_sl_tp(price: float, metadata: dict) -> tuple[str, str]:
     """
     Compute SL/TP based on ATR or percentage defaults.
 
@@ -99,8 +99,8 @@ async def _validate_vision_and_route(
             )
 
         import re
-        from pathlib import Path
         from datetime import datetime
+        from pathlib import Path
 
         ts_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         safe_symbol = re.sub(r"[^A-Za-z0-9_\-]", "", event.symbol)

@@ -21,13 +21,15 @@ Design Invariants (v6.0 INV-5/6):
   - Uses set_bus() pattern for test isolation.
 """
 
-import logging
 import json
+import logging
 from typing import Optional
+
 import aiosqlite
 
 import config
 import notifier
+from datetime import UTC
 
 try:
     from database import format_vn_time
@@ -37,7 +39,7 @@ except ImportError:
         from datetime import datetime, timedelta, timezone
 
         try:
-            dt = datetime.strptime(s, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+            dt = datetime.strptime(s, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC)
             vn = dt.astimezone(timezone(timedelta(hours=7)))
             return vn.strftime("%Y-%m-%d %H:%M:%S") + " (ICT)"
         except Exception:
@@ -46,16 +48,16 @@ except ImportError:
 
 from core.event_bus import bus as _default_bus
 from core.events import (
-    SignalRejected,
     AnalysisComplete,
+    CircuitBreakerTripped,
+    IndicatorSignalReceived,
+    IndicatorSignalRejected,
+    PositionClosed,
+    SignalRejected,
+    TradeApprovalTimeout,
     TradeApproved,
     TradeExecuted,
     TradeFailed,
-    PositionClosed,
-    TradeApprovalTimeout,
-    IndicatorSignalReceived,
-    IndicatorSignalRejected,
-    CircuitBreakerTripped,
 )
 
 log = logging.getLogger(__name__)
@@ -116,7 +118,7 @@ async def _get_vbs_metadata(signal_id: int) -> dict:
     return {}
 
 
-async def _render_chart_for_event(event: AnalysisComplete) -> Optional[str]:
+async def _render_chart_for_event(event: AnalysisComplete) -> str | None:
     """Render a Matplotlib chart with Entry/SL/TP overlay for an AnalysisComplete event.
 
     Returns the file path to the generated PNG, or None on failure.
@@ -202,7 +204,7 @@ async def _render_chart_for_event(event: AnalysisComplete) -> Optional[str]:
     return None
 
 
-async def _render_chart_for_indicator(event: IndicatorSignalReceived) -> Optional[str]:
+async def _render_chart_for_indicator(event: IndicatorSignalReceived) -> str | None:
     """Render a Matplotlib chart for an IndicatorSignalReceived event.
 
     Uses the indicator's symbol and interval to fetch OHLCV and render a

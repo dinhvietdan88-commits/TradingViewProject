@@ -12,9 +12,9 @@ All tests are fully isolated — no network, no real DB, no real Telegram.
 """
 
 import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -318,7 +318,7 @@ async def test_poll_timeout_returns_empty():
     # Simulate timeout: session.get raises asyncio.TimeoutError
     mock_session = MagicMock()
     mock_session.get = MagicMock(
-        side_effect=asyncio.TimeoutError("VBS poll timed out after 35s")
+        side_effect=TimeoutError("VBS poll timed out after 35s")
     )
     worker.get_session = AsyncMock(return_value=mock_session)
 

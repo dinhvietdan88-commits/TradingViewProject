@@ -6,8 +6,9 @@ trong config.py, và không có os.getenv() nào thiếu fallback nguy hiểm.
 """
 
 import re
-import pytest
 from pathlib import Path
+
+import pytest
 
 # ── Paths ──────────────────────────────────────────────────────────────
 

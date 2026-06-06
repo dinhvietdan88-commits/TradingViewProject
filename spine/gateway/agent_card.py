@@ -19,7 +19,7 @@ References:
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 
 # ---------------------------------------------------------------------------
 # Agent Card Schema (A2A v1.0 compliant)
@@ -127,7 +127,7 @@ def build_agent_card(*, host: str = "localhost", port: int = 9108) -> dict:
             "angati_epoch": "V10.0",
             "brain_architecture": "7-Zone Modular (V9)",
             "sovereignty": "ISOLATED (TradingViewProject satellite)",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         },
     }
 

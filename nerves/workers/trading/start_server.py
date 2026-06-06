@@ -11,9 +11,9 @@ SCAR-TVP-002: Always kill existing process on port before binding.
 
 import io
 import os
-import sys
 import socket
 import subprocess
+import sys
 
 # ── Force UTF-8 output BEFORE any imports that might log with emoji ──────────
 os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -123,11 +123,12 @@ if kill_only:
     print("[Sovereign Launcher] --kill done. Exiting.", flush=True)
     sys.exit(0)
 
-import uvicorn  # noqa: E402 — must come after encoding fix
 import asyncio  # noqa: E402
 
 # Pre-create socket with SO_REUSEADDR to bypass zombie socket on Windows
 import time as _time  # noqa: E402
+
+import uvicorn  # noqa: E402 — must come after encoding fix
 
 _time.sleep(0.5)  # brief pause after kill for OS to release port
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

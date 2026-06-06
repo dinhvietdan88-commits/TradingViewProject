@@ -194,7 +194,7 @@ class CliHealthTracker:
 
 cb = CircuitBreaker()
 cli_health = CliHealthTracker()
-AGY_PATH: Optional[str] = None
+AGY_PATH: str | None = None
 PTY_MODE: str = "direct"  # "pty" or "direct"
 BIND_HOST = os.environ.get("AGY_BRIDGE_HOST", "127.0.0.1")
 BIND_PORT = int(os.environ.get("AGY_BRIDGE_PORT", "9100"))
@@ -211,7 +211,7 @@ _stats = {
 }
 
 
-def _detect_agy() -> Optional[str]:
+def _detect_agy() -> str | None:
     """Find agy binary on PATH."""
     for name in ("agy", "localharness"):
         path = shutil.which(name)
@@ -255,7 +255,7 @@ def _cache_key(prompt: str) -> str:
     return hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:16]
 
 
-def _get_cached(prompt: str) -> Optional[dict]:
+def _get_cached(prompt: str) -> dict | None:
     """Return cached response if within TTL."""
     key = _cache_key(prompt)
     if key in _response_cache:
@@ -338,7 +338,7 @@ async def _run_cli(prompt: str, timeout_sec: int) -> dict:
             proc.communicate(input=constrained_prompt.encode("utf-8")),
             timeout=timeout_sec + 5,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         try:
             proc.kill()
         except (ProcessLookupError, NameError):
@@ -554,7 +554,7 @@ async def _run_parallel(
                     )
                 log.info(f"[parallel] late winner ({result['latency_ms']:.0f}ms)")
                 return result
-        except (asyncio.TimeoutError, asyncio.CancelledError):
+        except (TimeoutError, asyncio.CancelledError):
             pass
         except Exception as e:
             log.warning(f"Error waiting for task: {e}")
@@ -804,9 +804,9 @@ async def admin_verify(
 
     # ── Primary: call analyzer /admin/rag-verify via HTTP ────────────────────
     try:
-        import urllib.request
-        import urllib.error
         import json as _json
+        import urllib.error
+        import urllib.request
 
         url = f"{ANALYZER_BASE_URL}/admin/rag-verify"
         req = urllib.request.Request(  # noqa: S310
@@ -855,8 +855,8 @@ async def admin_verify(
     )
     result.source = "chromadb_direct"
 
-    import urllib.request as _req
     import json as _json
+    import urllib.request as _req
 
     CHROMA_URL = os.environ.get("CHROMA_URL", "http://localhost:8001")
     COLLECTION = "minervini_knowledge"
@@ -904,8 +904,8 @@ async def admin_verify_quick(authorization: str = Header(default="")):
     _require_admin_auth(authorization)
 
     try:
-        import urllib.request
         import json as _json
+        import urllib.request
 
         url = f"{ANALYZER_BASE_URL}/health"
         with urllib.request.urlopen(url, timeout=10) as resp:  # noqa: S310

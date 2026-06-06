@@ -1,9 +1,9 @@
 import asyncio
+import logging
 import os
 import sys
-import logging
 from pathlib import Path
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 # 1. Setup isolated database and config environment BEFORE imports
 os.environ["DB_PATH"] = "test_trades.db"
@@ -18,9 +18,9 @@ import database
 from core.event_bus import EventBus
 from core.events import TradeApproved, TradeExecuted, TradeFailed
 from engine.trade_engine import execute_trade, set_bus
+from exchanges.base import ExchangeError, ExchangeErrorCategory
 from exchanges.registry import init_registry
 from exchanges.weex_adapter import WeexAdapter
-from exchanges.base import ExchangeError, ExchangeErrorCategory
 
 # Setup logging to console and file
 logging.basicConfig(

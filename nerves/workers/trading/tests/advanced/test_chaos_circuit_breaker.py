@@ -1,9 +1,10 @@
-import pytest
 import asyncio
 
-from core.events import SignalReceived
-from core.event_bus import bus
+import pytest
+
 import config
+from core.event_bus import bus
+from core.events import SignalReceived
 
 pytestmark = pytest.mark.asyncio
 

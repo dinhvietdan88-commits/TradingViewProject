@@ -6,7 +6,7 @@ Example-based tests for scenarios that are hard to express as properties.
 
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from unittest.mock import patch
 
 import pytest
@@ -16,11 +16,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 from auth.auth_config import AuthConfig
 from auth.models import (
     CodeInvalidError,
-    TokenInvalidError,
     SessionData,
+    TokenInvalidError,
 )
 from auth.service import AuthService
-
 
 # ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -131,8 +130,8 @@ class TestAuthService:
             session_id="sid",
             telegram_id=12345,
             username="u",
-            created_at=datetime.now(timezone.utc),
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+            created_at=datetime.now(UTC),
+            expires_at=datetime.now(UTC) + timedelta(hours=24),
         )
 
         token = svc_a.create_session_token(session)
@@ -147,8 +146,8 @@ class TestAuthService:
             session_id="sid",
             telegram_id=12345,
             username="u",
-            created_at=datetime.now(timezone.utc) - timedelta(hours=23),
-            expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+            created_at=datetime.now(UTC) - timedelta(hours=23),
+            expires_at=datetime.now(UTC) + timedelta(minutes=30),
         )
         assert svc.should_refresh(session) is True
 
@@ -159,21 +158,21 @@ class TestAuthService:
             session_id="sid",
             telegram_id=12345,
             username="u",
-            created_at=datetime.now(timezone.utc),
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=2),
+            created_at=datetime.now(UTC),
+            expires_at=datetime.now(UTC) + timedelta(hours=2),
         )
         assert svc.should_refresh(session) is False
 
     def test_refresh_caps_at_max_lifetime(self):
         """Refreshed expiry cannot exceed 7-day absolute max."""
         svc = _svc()
-        created = datetime.now(timezone.utc) - timedelta(days=6, hours=23)
+        created = datetime.now(UTC) - timedelta(days=6, hours=23)
         session = SessionData(
             session_id="sid",
             telegram_id=12345,
             username="u",
             created_at=created,
-            expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
+            expires_at=datetime.now(UTC) + timedelta(minutes=30),
         )
         refreshed = svc.refresh_session(session)
         max_allowed = created + timedelta(days=7)

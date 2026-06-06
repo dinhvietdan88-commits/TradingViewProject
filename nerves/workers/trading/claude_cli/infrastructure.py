@@ -137,7 +137,7 @@ class CliInfrastructure:
         except FileNotFoundError:
             log.warning(f"Claude CLI binary not found at '{self._cli_path}'")
             self._available = False
-        except asyncio.TimeoutError:
+        except TimeoutError:
             log.warning(f"Claude CLI version check timed out for '{self._cli_path}'")
             self._available = False
         except Exception as exc:
@@ -154,7 +154,7 @@ class CliInfrastructure:
         self,
         prompt: str,
         system_prompt: str = "",
-        image_path: Optional[str] = None,
+        image_path: str | None = None,
     ) -> CliResult:
         """
         Execute Claude CLI with the given prompt.
@@ -205,7 +205,7 @@ class CliInfrastructure:
                     proc.communicate(input=full_prompt.encode("utf-8")),
                     timeout=self._timeout,
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 proc.kill()
                 await proc.wait()
                 duration = time.monotonic() - t_start
@@ -260,7 +260,7 @@ class CliInfrastructure:
 
     # ── Helpers ────────────────────────────────────────────────────────────────
 
-    def _build_args(self, image_path: Optional[str] = None) -> list[str]:
+    def _build_args(self, image_path: str | None = None) -> list[str]:
         """Build the subprocess argument list."""
         args = [self._cli_path, "-p", "--output-format", "text"]
         if self._model:

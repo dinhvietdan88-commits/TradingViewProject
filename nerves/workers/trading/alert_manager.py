@@ -2,6 +2,7 @@ import logging
 import os
 import sqlite3
 from typing import Optional
+
 import config
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ def log_test_run(success: bool, summary: str, error_log: str = ""):
     test_runs_logger.log(log_level, msg)
 
 
-def get_setting_sync(key: str, default: Optional[str] = None) -> Optional[str]:
+def get_setting_sync(key: str, default: str | None = None) -> str | None:
     """Synchronously get setting from the DB."""
     try:
         with sqlite3.connect(config.DB_PATH) as conn:
@@ -71,7 +72,7 @@ async def set_setting_async(key: str, value: str) -> None:
         logger.error(f"Error setting setting {key} async to {value}: {e}")
 
 
-async def get_setting_async(key: str, default: Optional[str] = None) -> Optional[str]:
+async def get_setting_async(key: str, default: str | None = None) -> str | None:
     """Asynchronously get setting from the DB."""
     import aiosqlite
 

@@ -9,7 +9,6 @@ Property 2: action=buy/sell/alert (no source=indicator) → SignalReceived, NOT 
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-
 # ── Helper: simulate the detection logic from webhook.py ─────────────────────
 
 

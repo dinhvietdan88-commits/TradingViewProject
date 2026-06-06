@@ -52,8 +52,9 @@ _monitor = None
 
 
 def start_health_monitor() -> None:
-    from .registry import get_registry
     import config
+
+    from .registry import get_registry
 
     global _monitor
     if _monitor is None:

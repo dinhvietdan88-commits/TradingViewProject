@@ -23,12 +23,11 @@ References:
 """
 
 import json
-import uuid
-import time
 import threading
+import time
+import uuid
 from enum import Enum
 from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Task State Machine
@@ -101,7 +100,7 @@ class TaskStore:
             self._tasks[task_id] = task
             return task
 
-    def get(self, task_id: str) -> Optional[dict]:
+    def get(self, task_id: str) -> dict | None:
         """Retrieve a task by ID."""
         with self._lock:
             return self._tasks.get(task_id)

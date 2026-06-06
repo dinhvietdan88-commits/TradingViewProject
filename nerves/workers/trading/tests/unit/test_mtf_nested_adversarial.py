@@ -1,9 +1,10 @@
-import pytest
 import asyncio
-from unittest.mock import patch
-from pathlib import Path
 import shutil
 import time
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 from capture_client import PythonCaptureClient
 

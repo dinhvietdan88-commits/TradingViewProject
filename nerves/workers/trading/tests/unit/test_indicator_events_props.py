@@ -7,8 +7,8 @@ Property 19: JSON serialization round-trip for conditions_met and metadata
 """
 
 import json
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
@@ -16,7 +16,6 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from core.events import IndicatorSignalReceived
-
 
 # ── Property 18: Event immutability and unique event_id ──────────────────────
 

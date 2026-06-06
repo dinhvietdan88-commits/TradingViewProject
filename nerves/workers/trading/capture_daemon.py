@@ -7,10 +7,10 @@ Design ref: design.md § "DaemonLifecycleManager"
 
 import asyncio
 import logging
-import time
 import os
 import signal
 import sys
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -33,9 +33,9 @@ class DaemonLifecycleManager:
 
     def __init__(
         self,
-        node_path: Optional[str] = None,
-        port: Optional[int] = None,
-        host: Optional[str] = None,
+        node_path: str | None = None,
+        port: int | None = None,
+        host: str | None = None,
         max_restarts: int = 3,
         restart_window_sec: int = 300,  # 5 minutes
         health_poll_interval: int = 10,  # seconds
@@ -47,9 +47,9 @@ class DaemonLifecycleManager:
         self._restart_window_sec = restart_window_sec
         self._health_poll_interval = health_poll_interval
 
-        self._process: Optional[asyncio.subprocess.Process] = None
+        self._process: asyncio.subprocess.Process | None = None
         self._restart_times: list[float] = []
-        self._monitor_task: Optional[asyncio.Task] = None
+        self._monitor_task: asyncio.Task | None = None
         self._stopping = False
 
     @property
@@ -145,7 +145,7 @@ class DaemonLifecycleManager:
             # Wait up to 5s for graceful exit
             try:
                 await asyncio.wait_for(self._process.wait(), timeout=5)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning("Daemon did not exit gracefully, killing...")
                 self._process.kill()
                 await self._process.wait()

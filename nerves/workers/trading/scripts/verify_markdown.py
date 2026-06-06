@@ -5,9 +5,9 @@ Checks valid markdown structure (header nesting, local links, tables) and
 ensures no placeholder text exists.
 """
 
+import json
 import os
 import re
-import json
 import sys
 
 KI_DIR = r"c:/Users/pesil/working/mj_trading/TradingViewProject/lobes/knowledge/weex"
@@ -32,7 +32,7 @@ def verify_file(filepath):
         errors.append(f"File {filepath} does not exist")
         return errors
 
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         content = f.read()
 
     # 1. Placeholders check (case-insensitive)

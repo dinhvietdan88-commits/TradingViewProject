@@ -11,9 +11,9 @@ Tests cover:
 """
 
 import time
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 
 # ═══════════════════════════════════════════════════════════════
 # G2 REGRESSION GUARD — send_interactive_trade_approval signature
@@ -345,8 +345,9 @@ async def test_exchange_facade_get_open_positions_empty_registry():
 @pytest.mark.asyncio
 async def test_send_circuit_breaker_alert_broadcasts():
     """send_circuit_breaker_alert should send to all TELEGRAM_CHAT_IDS and return tuples."""
-    from telegram_bot import send_circuit_breaker_alert
     from telegram import InlineKeyboardMarkup
+
+    from telegram_bot import send_circuit_breaker_alert
 
     mock_msg = MagicMock()
     mock_msg.message_id = 101

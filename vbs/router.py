@@ -3,13 +3,14 @@ import logging
 import platform
 import secrets
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import Optional
-from fastapi import APIRouter, Header, HTTPException, Query, status, Request
+
+import models
+from fastapi import APIRouter, Header, HTTPException, Query, Request, status
 
 import config
 import database
-import models
 import notifier
 
 log = logging.getLogger(__name__)
@@ -26,7 +27,7 @@ _new_signal_event: asyncio.Event = asyncio.Event()
 
 def verify_buffer_secret(
     x_buffer_secret: str = Header(None, alias="X-Buffer-Secret"),
-    secret_query: Optional[str] = Query(None, alias="secret"),
+    secret_query: str | None = Query(None, alias="secret"),
 ):
     """Verify buffer secret via header or query parameter."""
     if not config.BUFFER_SECRET:
@@ -46,7 +47,7 @@ def verify_buffer_secret(
 @router.post("/ingest", response_model=models.IngestResponse)
 async def ingest_signal(
     request: Request,
-    x_buffer_secret: Optional[str] = Header(None, alias="X-Buffer-Secret"),
+    x_buffer_secret: str | None = Header(None, alias="X-Buffer-Secret"),
 ):
     """
     Ingest endpoint to receive webhook signals from TradingView.
@@ -149,13 +150,13 @@ async def consume_long_poll(
     consumer_id: str = Query(..., description="Unique client worker identifier"),
     limit: int = Query(10, ge=1, le=100),
     timeout: int = Query(30, ge=5, le=60),
-    source: Optional[str] = Query(
+    source: str | None = Query(
         None, description="Include only signals from this source"
     ),
-    exclude_source: Optional[str] = Query(
+    exclude_source: str | None = Query(
         None, description="Exclude signals from this source"
     ),
-    x_buffer_secret: Optional[str] = Header(None, alias="X-Buffer-Secret"),
+    x_buffer_secret: str | None = Header(None, alias="X-Buffer-Secret"),
 ):
     """
     Long Polling endpoint — SERVER C's VpsAnalyzerWorker calls this.
@@ -188,7 +189,7 @@ async def consume_long_poll(
         )
         waited = round(time.time() - t_start, 2)
         return {"signals": signals, "count": len(signals), "waited_seconds": waited}
-    except asyncio.TimeoutError:
+    except TimeoutError:
         # Timeout expired with no new signal — return empty (normal)
         return {"signals": [], "count": 0, "waited_seconds": timeout}
 
@@ -197,13 +198,13 @@ async def consume_long_poll(
 async def consume_signals(
     consumer_id: str = Query(..., description="Unique client worker identifier"),
     limit: int = Query(10, ge=1, le=100),
-    source: Optional[str] = Query(
+    source: str | None = Query(
         None, description="Include only signals from this source"
     ),
-    exclude_source: Optional[str] = Query(
+    exclude_source: str | None = Query(
         None, description="Exclude signals from this source"
     ),
-    x_buffer_secret: Optional[str] = Header(None, alias="X-Buffer-Secret"),
+    x_buffer_secret: str | None = Header(None, alias="X-Buffer-Secret"),
 ):
     """Local Bot polls this endpoint to pull pending signals."""
     verify_buffer_secret(x_buffer_secret)
@@ -219,7 +220,7 @@ async def consume_signals(
 @router.post("/ack", response_model=models.AckResponse)
 async def ack_signals(
     body: models.AckRequest,
-    x_buffer_secret: Optional[str] = Header(None, alias="X-Buffer-Secret"),
+    x_buffer_secret: str | None = Header(None, alias="X-Buffer-Secret"),
 ):
     """Local Bot calls this endpoint to confirm receipt and outcome of signals."""
     verify_buffer_secret(x_buffer_secret)
@@ -230,7 +231,7 @@ async def ack_signals(
 
 @router.get("/queue-status", response_model=models.QueueStatusResponse)
 async def queue_status(
-    x_buffer_secret: Optional[str] = Header(None, alias="X-Buffer-Secret"),
+    x_buffer_secret: str | None = Header(None, alias="X-Buffer-Secret"),
 ):
     """Dashboard proxy reads queue metadata through this endpoint."""
     verify_buffer_secret(x_buffer_secret)
@@ -254,7 +255,7 @@ async def health():
         "status": "healthy",
         "uptime_seconds": uptime_s,
         "server_time_epoch": now,
-        "server_time_iso": datetime.now(timezone.utc).isoformat(),
+        "server_time_iso": datetime.now(UTC).isoformat(),
         "hostname": platform.node(),
     }
 

@@ -1,10 +1,10 @@
-import sys
 import json
 import os
-import subprocess
 import re
-import time
 import signal
+import subprocess
+import sys
+import time
 
 # Ensure stdout and stdin are treated as utf-8 or binary
 sys.stdout.reconfigure(encoding="utf-8")
@@ -29,7 +29,7 @@ def get_running_tunnel_url():
         return None
     try:
         # Search backward or parse logs for the trycloudflare URL
-        with open(LOG_FILE, "r", encoding="utf-8", errors="ignore") as f:
+        with open(LOG_FILE, encoding="utf-8", errors="ignore") as f:
             content = f.read()
         matches = re.findall(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com", content)
         if matches:
@@ -43,7 +43,7 @@ def is_tunnel_running():
     if not os.path.exists(PID_FILE):
         return False
     try:
-        with open(PID_FILE, "r") as f:
+        with open(PID_FILE) as f:
             pid = int(f.read().strip())
         # Check if process exists on Windows/Linux
         if os.name == "nt":
@@ -63,7 +63,7 @@ def is_tunnel_running():
 def stop_tunnel_process():
     if os.path.exists(PID_FILE):
         try:
-            with open(PID_FILE, "r") as f:
+            with open(PID_FILE) as f:
                 pid = int(f.read().strip())
             log_debug(f"Killing process {pid}...")
             if os.name == "nt":

@@ -9,11 +9,11 @@ Thread/asyncio-safe: plain dict + lock-free (GIL protects simple assignments).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import Any, Dict, List, Optional
 
 # ── Singleton store ───────────────────────────────────────────────────────────
-_store: Dict[str, Any] = {
+_store: dict[str, Any] = {
     "results": [],  # List[dict] — last scan rows
     "scanned": 0,  # int — number of symbols
     "timestamp": None,  # ISO string (UTC)
@@ -23,9 +23,9 @@ _store: Dict[str, Any] = {
 
 
 def save_scan_results(
-    results: List[Dict[str, Any]],
+    results: list[dict[str, Any]],
     source: str = "web",
-    symbol_list: Optional[List[str]] = None,
+    symbol_list: list[str] | None = None,
 ) -> None:
     """Persist a completed scan into the shared cache.
 
@@ -36,12 +36,12 @@ def save_scan_results(
     """
     _store["results"] = results
     _store["scanned"] = len(results)
-    _store["timestamp"] = datetime.now(timezone.utc).isoformat()
+    _store["timestamp"] = datetime.now(UTC).isoformat()
     _store["source"] = source
     _store["symbol_list"] = symbol_list or [r.get("symbol") for r in results]
 
 
-def get_last_scan() -> Dict[str, Any]:
+def get_last_scan() -> dict[str, Any]:
     """Return the cached scan payload (same shape as /api/scan/trigger response)."""
     return {
         "scanned": _store["scanned"],

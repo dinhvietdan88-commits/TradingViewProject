@@ -29,10 +29,10 @@ if sys.stdout.encoding != "utf-8":
         logging.getLogger(__name__).warning("Ignored: %s", e)
 
 import json
-import time as _time
 import threading
-from pathlib import Path
+import time as _time
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 from socketserver import ThreadingTCPServer
 
 AGENTS_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -41,8 +41,8 @@ sys.path.insert(0, str(AGENTS_ROOT / "nerves" / "core"))
 
 # ── Eagerly load core libraries ──────────────────────────────
 try:
-    import core_scar_memory as scar_memory
     import core_reflex as reflex
+    import core_scar_memory as scar_memory
 
     if scar_memory:
         print(
@@ -66,7 +66,7 @@ except Exception as e:
 
 # ── Load ADK telemetry exporter ───────────────────────────────
 try:
-    from adk_callback_bridge import AngatiCallbackContext, ADKTelemetryExporter
+    from adk_callback_bridge import ADKTelemetryExporter, AngatiCallbackContext
 
     _telemetry = ADKTelemetryExporter(
         output_path=str(AGENTS_ROOT / "memory" / "hook_events.jsonl")
@@ -479,8 +479,8 @@ def check_angati_version_async():
     """Runs asynchronously in a daemon thread to check version compatibility of local and brain angati.exe."""
 
     def run_check():
-        import os
         import hashlib
+        import os
 
         # 1. Resolve local path
         local_path = None

@@ -1,6 +1,6 @@
-import sys
 import os
 import re
+import sys
 from unittest.mock import patch
 
 # Add scripts directory to sys.path

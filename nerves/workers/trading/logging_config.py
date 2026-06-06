@@ -24,7 +24,7 @@ import json
 import logging
 import logging.handlers
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 _LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -45,7 +45,7 @@ class StructuredFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         entry: dict = {
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "msg": record.getMessage(),

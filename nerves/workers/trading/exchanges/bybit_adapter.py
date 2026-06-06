@@ -1,14 +1,16 @@
-import time
-import json
-import hmac
 import hashlib
+import hmac
+import json
 import logging
-import aiohttp
+import time
 import uuid
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
-from .base import OrderResult, RiskParams, ExchangeError, ExchangeErrorCategory
+import aiohttp
+
 import config
+
+from .base import ExchangeError, ExchangeErrorCategory, OrderResult, RiskParams
 
 log = logging.getLogger(__name__)
 
@@ -45,10 +47,10 @@ class BybitAdapter:
         return self.dry_run
 
     @property
-    def supported_order_types(self) -> List[str]:
+    def supported_order_types(self) -> list[str]:
         return ["MARKET", "LIMIT", "CONDITIONAL"]
 
-    def _sign_request(self, params: Dict[str, Any]) -> Dict[str, str]:
+    def _sign_request(self, params: dict[str, Any]) -> dict[str, str]:
         """Bybit V5 HMAC-SHA256 signing."""
         timestamp = str(int(time.time() * 1000))
         recv_window = "5000"
@@ -65,8 +67,8 @@ class BybitAdapter:
         }
 
     async def _request(
-        self, method: str, endpoint: str, params: Dict[str, Any] = None
-    ) -> Dict[str, Any]:
+        self, method: str, endpoint: str, params: dict[str, Any] = None
+    ) -> dict[str, Any]:
         params = params or {}
         # Simple retry logic for demonstration, a real exponential backoff could be added here
         headers = (
@@ -146,7 +148,7 @@ class BybitAdapter:
                     return float(c.get("walletBalance", 0))
         return 0.0
 
-    async def get_symbol_info(self, symbol: str) -> Dict[str, Any]:
+    async def get_symbol_info(self, symbol: str) -> dict[str, Any]:
         if self.dry_run:
             return {"symbol": symbol, "status": "Trading"}
 
@@ -155,7 +157,7 @@ class BybitAdapter:
         )
         return data.get("result", {}).get("list", [{}])[0]
 
-    async def get_active_symbols(self) -> List[str]:
+    async def get_active_symbols(self) -> list[str]:
         if self.dry_run:
             return ["BTCUSDT", "ETHUSDT", "SOLUSDT", "ADAUSDT", "XRPUSDT"]
         try:
@@ -178,9 +180,9 @@ class BybitAdapter:
         self,
         symbol: str,
         side: str,
-        quote_qty: Optional[float] = None,
-        base_qty: Optional[float] = None,
-    ) -> Dict[str, Any]:
+        quote_qty: float | None = None,
+        base_qty: float | None = None,
+    ) -> dict[str, Any]:
         params = {
             "category": "spot",
             "symbol": symbol,
@@ -220,7 +222,7 @@ class BybitAdapter:
         take_profit_price: float,
         stop_price: float,
         stop_limit_price: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         # Bybit SPOT OCO is not strictly OCO natively via v5 in the same way, but it supports TP/SL on spot orders using specific categories.
         # For simplicity, we create conditional orders or mock them.
         if self.dry_run:
@@ -278,7 +280,7 @@ class BybitAdapter:
 
     async def place_limit_order(
         self, symbol: str, side: str, price: float, quantity: float
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         params = {
             "category": "spot",
             "symbol": symbol.replace("/", "").upper(),
@@ -300,7 +302,7 @@ class BybitAdapter:
         res = data.get("result", {})
         return {"orderId": res.get("orderId"), "status": "NEW"}
 
-    async def get_order(self, symbol: str, order_id: str) -> Dict[str, Any]:
+    async def get_order(self, symbol: str, order_id: str) -> dict[str, Any]:
         if self.dry_run:
             return {"status": "NEW"}
         try:
@@ -319,7 +321,7 @@ class BybitAdapter:
         except Exception:
             return {"status": "NEW"}
 
-    async def cancel_order(self, symbol: str, order_id: str) -> Dict[str, Any]:
+    async def cancel_order(self, symbol: str, order_id: str) -> dict[str, Any]:
         if self.dry_run:
             return {"status": "CANCELED"}
         await self._request(
@@ -333,20 +335,20 @@ class BybitAdapter:
         )
         return {"status": "CANCELED"}
 
-    async def cancel_oco_order(self, symbol: str, order_list_id: str) -> Dict[str, Any]:
+    async def cancel_oco_order(self, symbol: str, order_list_id: str) -> dict[str, Any]:
         return await self.cancel_order(symbol, order_list_id)
 
     async def execute_smart_order(
         self,
         symbol: str,
         side: str,
-        entry_price: Optional[float] = None,
-        quote_qty: Optional[float] = None,
-        sl_pct: Optional[float] = None,
-        tp_pct: Optional[float] = None,
-        risk_pct: Optional[float] = None,
-        sl_price: Optional[float] = None,
-        tp_price: Optional[float] = None,
+        entry_price: float | None = None,
+        quote_qty: float | None = None,
+        sl_pct: float | None = None,
+        tp_pct: float | None = None,
+        risk_pct: float | None = None,
+        sl_price: float | None = None,
+        tp_price: float | None = None,
         asset: str = "USDT",
         order_type: str = "MARKET",
     ) -> OrderResult:
@@ -462,7 +464,7 @@ class BybitAdapter:
                 error_category=ExchangeErrorCategory.UNKNOWN,
             )
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         try:
             start = time.time()
             if not self.dry_run:

@@ -1,4 +1,5 @@
 import sqlite3
+
 import config
 
 db = sqlite3.connect(config.DB_PATH)

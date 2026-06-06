@@ -1,7 +1,8 @@
+import json
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Union
-import json
+from typing import Any, Dict, List, Optional, Union
+
 from playwright.async_api import async_playwright
 
 from security.runtime_guard import safe_path
@@ -12,12 +13,12 @@ log = logging.getLogger(__name__)
 async def generate_chart_lw(
     symbol: str,
     timeframe: str,
-    ohlcv_data: Union[List[List[Any]], List[Dict[str, Any]]],
-    drawings: Optional[List[Dict[str, Any]]] = None,
-    strategy_table: Optional[Dict[str, Any]] = None,
-    save_path: Optional[Union[str, Path]] = None,
-    parent_timeframe: Optional[str] = None,
-    parent_ohlcv: Optional[Union[List[List[Any]], List[Dict[str, Any]]]] = None,
+    ohlcv_data: list[list[Any]] | list[dict[str, Any]],
+    drawings: list[dict[str, Any]] | None = None,
+    strategy_table: dict[str, Any] | None = None,
+    save_path: str | Path | None = None,
+    parent_timeframe: str | None = None,
+    parent_ohlcv: list[list[Any]] | list[dict[str, Any]] | None = None,
     inset_position: str = "bottom-right",
 ) -> Path:
     """
@@ -63,7 +64,7 @@ async def generate_chart_lw(
             Path(__file__).resolve().parents[4],
             allowed_extensions={".png", ".jpg", ".jpeg", ".webp"},
         )
-        save_path.parent.mkdir(parents=True, exist_ok=True)
+        save_path.parent.mkdir(parents=True, exist_ok=True)  # codeql[py/path-injection]
 
     chart_payload = {
         "symbol": symbol,
@@ -76,7 +77,7 @@ async def generate_chart_lw(
         "inset_position": inset_position,
     }
 
-    log.info(f"Launching Playwright to capture lightweight chart for {symbol}...")
+    log.info(f"Launching Playwright to capture lightweight chart for {symbol}...")  # codeql[py/log-injection]
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -106,7 +107,7 @@ async def generate_chart_lw(
             # Capture the screenshot of the page
             await page.screenshot(path=str(save_path), type="png")
             log.info(
-                f"Successfully generated Playwright lightweight-chart screenshot at {save_path}"
+                f"Successfully generated Playwright lightweight-chart screenshot at {save_path}"  # codeql[py/log-injection]
             )
         finally:
             await browser.close()

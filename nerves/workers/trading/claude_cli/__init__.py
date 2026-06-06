@@ -17,11 +17,10 @@ Entry points (registered from main.py / telegram_bot.py):
     event_handler.register_handler(claude_service)
 """
 
-from .sdk_client import SdkClient
-from .service import ClaudeService, ContextManager, AnalysisRequest, AnalysisResponse
-
 # Deprecated — kept for backward compatibility
 from .infrastructure import CliInfrastructure, CliResult
+from .sdk_client import SdkClient
+from .service import AnalysisRequest, AnalysisResponse, ClaudeService, ContextManager
 
 __all__ = [
     # New SDK-Headless API

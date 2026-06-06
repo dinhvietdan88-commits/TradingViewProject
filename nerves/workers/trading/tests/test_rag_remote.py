@@ -8,15 +8,15 @@ Verifies:
   4. query_knowledge() works after remote init
 """
 
-import sys
 import pathlib
+import sys
 
 # Ensure server/ is on sys.path so `import config` / `import rag` work
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
+import pytest
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -67,8 +67,8 @@ def _make_mock_persistent_client(collection: MagicMock):
 async def test_remote_mode_uses_http_client():
     """When CHROMA_REMOTE=true, init_vector_db should use chromadb.HttpClient
     with the configured CHROMA_SERVER_HOST and CHROMA_SERVER_PORT."""
-    import rag
     import config
+    import rag
 
     mock_collection = _make_mock_collection()
     mock_client = _make_mock_http_client(mock_collection)
@@ -122,8 +122,8 @@ async def test_remote_mode_uses_http_client():
 async def test_local_mode_uses_persistent_client(tmp_path):
     """When CHROMA_REMOTE=false (default), init_vector_db should use
     chromadb.PersistentClient — verifying backward compatibility."""
-    import rag
     import config
+    import rag
 
     mock_collection = _make_mock_collection(doc_count=50)
     mock_client = _make_mock_persistent_client(mock_collection)
@@ -178,8 +178,8 @@ async def test_local_mode_uses_persistent_client(tmp_path):
 async def test_remote_mode_collection_initialized():
     """After init_vector_db in remote mode, the module-level _collection
     should be set to the collection returned by the HttpClient."""
-    import rag
     import config
+    import rag
 
     mock_collection = _make_mock_collection()
     mock_client = _make_mock_http_client(mock_collection)
@@ -226,8 +226,8 @@ async def test_remote_mode_collection_initialized():
 @pytest.mark.asyncio
 async def test_query_knowledge_after_remote_init():
     """query_knowledge() should return results after remote init_vector_db."""
-    import rag
     import config
+    import rag
 
     mock_collection = _make_mock_collection()
     mock_client = _make_mock_http_client(mock_collection)
@@ -283,8 +283,8 @@ async def test_query_knowledge_after_remote_init():
 async def test_remote_mode_skips_knowledge_dir_check():
     """In remote mode, init_vector_db should succeed even if KNOWLEDGE_DIR
     does not exist, since the remote server manages storage."""
-    import rag
     import config
+    import rag
 
     mock_collection = _make_mock_collection()
     mock_client = _make_mock_http_client(mock_collection)
@@ -332,8 +332,8 @@ async def test_remote_mode_skips_knowledge_dir_check():
 async def test_remote_mode_no_local_dir_created(tmp_path):
     """In remote mode, init_vector_db should NOT create a local chroma_db
     directory — the remote server manages its own storage."""
-    import rag
     import config
+    import rag
 
     mock_collection = _make_mock_collection()
     mock_client = _make_mock_http_client(mock_collection)
@@ -402,8 +402,8 @@ def test_config_remote_defaults():
 @pytest.mark.asyncio
 async def test_http_client_not_called_in_local_mode(tmp_path):
     """When CHROMA_REMOTE=false, HttpClient must NOT be instantiated."""
-    import rag
     import config
+    import rag
 
     mock_collection = _make_mock_collection(doc_count=50)
     mock_persist_client = _make_mock_persistent_client(mock_collection)

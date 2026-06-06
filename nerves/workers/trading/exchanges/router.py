@@ -1,5 +1,5 @@
-from typing import Dict, Any, Optional
 import json
+from typing import Any, Dict, Optional
 
 from .base import ExchangeAdapter, ExchangeUnavailableError
 from .registry import ExchangeRegistry
@@ -8,11 +8,11 @@ from .registry import ExchangeRegistry
 class ExchangeRouter:
     """Routes trade signals to the appropriate exchange adapter."""
 
-    def __init__(self, registry: ExchangeRegistry, strategy_config: Dict[str, Dict]):
+    def __init__(self, registry: ExchangeRegistry, strategy_config: dict[str, dict]):
         self._registry = registry
         self._strategy_config = strategy_config  # {strategy_id: {exchange, fallback}}
 
-    def resolve_exchange(self, payload: Dict[str, Any]) -> ExchangeAdapter:
+    def resolve_exchange(self, payload: dict[str, Any]) -> ExchangeAdapter:
         """Determine target exchange from payload or strategy config."""
         # 1. Explicit exchange in payload
         exchange_id = payload.get("exchange")
@@ -45,7 +45,7 @@ class ExchangeRouter:
 
         return self._registry.get_adapter(exchange_id)
 
-    def _get_fallback(self, primary_id: str, payload: Dict) -> Optional[str]:
+    def _get_fallback(self, primary_id: str, payload: dict) -> str | None:
         strategy = payload.get("strategy", "")
         if strategy in self._strategy_config:
             fallback = self._strategy_config[strategy].get("fallback")
@@ -54,12 +54,13 @@ class ExchangeRouter:
 
 
 # Singleton initialization
-_router: Optional[ExchangeRouter] = None
+_router: ExchangeRouter | None = None
 
 
 def get_router() -> ExchangeRouter:
-    from .registry import get_registry
     import config
+
+    from .registry import get_registry
 
     global _router
     if _router is None:

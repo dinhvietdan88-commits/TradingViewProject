@@ -4,19 +4,18 @@ Dependency Scanner — Checks requirements.txt for known CVEs.
 Uses pip-audit if available, falls back to manual requirements parsing.
 """
 
-import subprocess
 import json
 import re
+import subprocess
 from pathlib import Path
 from typing import List
 
 from security import Finding, Severity
 
-
 SCANNER_NAME = "dependency-audit"
 
 
-def scan_requirements(target_dir: Path) -> List[Finding]:
+def scan_requirements(target_dir: Path) -> list[Finding]:
     """Scan requirements.txt for known vulnerabilities."""
     findings = []
 
@@ -61,7 +60,7 @@ def scan_requirements(target_dir: Path) -> List[Finding]:
     return findings
 
 
-def _parse_pip_audit_output(output: str, req_path: str) -> List[Finding]:
+def _parse_pip_audit_output(output: str, req_path: str) -> list[Finding]:
     """Parse pip-audit JSON output into Findings."""
     findings = []
     try:
@@ -96,7 +95,7 @@ def _parse_pip_audit_output(output: str, req_path: str) -> List[Finding]:
     return findings
 
 
-def _check_version_pinning(req_file: Path) -> List[Finding]:
+def _check_version_pinning(req_file: Path) -> list[Finding]:
     """Check if dependencies are pinned to specific versions."""
     findings = []
     try:

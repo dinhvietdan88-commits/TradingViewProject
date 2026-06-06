@@ -13,13 +13,13 @@ Tests verify gaps from original test_ai_analyzer.py:
 - reset_capture_state clears LAST_CAPTURE_TIME.
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from core.event_bus import EventBus
-from core.events import AlertTriggered, SignalValidated, AnalysisComplete
-
+from core.events import AlertTriggered, AnalysisComplete, SignalValidated
 
 # ═══════════════════════════════════════════════════════════════
 # ALERT → SIGNAL VALIDATED ROUTING
@@ -29,7 +29,7 @@ from core.events import AlertTriggered, SignalValidated, AnalysisComplete
 @pytest.mark.asyncio
 async def test_alert_triggered_re_emits_as_signal_validated():
     """process_alert should re-emit AlertTriggered as SignalValidated(action='alert')."""
-    from analyzer.ai_analyzer import process_alert, set_bus, reset_capture_state
+    from analyzer.ai_analyzer import process_alert, reset_capture_state, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -65,7 +65,7 @@ async def test_alert_triggered_re_emits_as_signal_validated():
 @pytest.mark.asyncio
 async def test_alert_triggered_with_numeric_price():
     """process_alert should convert non-empty price string to float in SignalValidated."""
-    from analyzer.ai_analyzer import process_alert, set_bus, reset_capture_state
+    from analyzer.ai_analyzer import process_alert, reset_capture_state, set_bus
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -100,8 +100,8 @@ async def test_mcp_not_connected_emits_analysis_complete_with_default_confidence
     """When MCP is not connected, AIAnalyzer emits AnalysisComplete with default confidence 5."""
     from analyzer.ai_analyzer import (
         process_validated_signal,
-        set_bus,
         reset_capture_state,
+        set_bus,
     )
 
     test_bus = EventBus()
@@ -156,8 +156,8 @@ async def test_vision_error_reduces_confidence_to_3():
     """When vision returns an error result, confidence should drop to 3."""
     from analyzer.ai_analyzer import (
         process_validated_signal,
-        set_bus,
         reset_capture_state,
+        set_bus,
     )
 
     test_bus = EventBus()
@@ -220,13 +220,14 @@ async def test_vision_error_reduces_confidence_to_3():
 @pytest.mark.asyncio
 async def test_rag_warning_keyword_reduces_confidence():
     """RAG advice containing WARNING keyword should reduce confidence by 2 (floor 1)."""
-    from analyzer.ai_analyzer import (
-        process_validated_signal,
-        set_bus,
-        reset_capture_state,
-    )
     import sys
     from unittest.mock import AsyncMock
+
+    from analyzer.ai_analyzer import (
+        process_validated_signal,
+        reset_capture_state,
+        set_bus,
+    )
 
     test_bus = EventBus()
     set_bus(test_bus)
@@ -305,8 +306,8 @@ async def test_sl_tp_extracted_from_analysis_text():
     """When event.sl/tp are empty, SL/TP should be regex-extracted from analysis text."""
     from analyzer.ai_analyzer import (
         process_validated_signal,
-        set_bus,
         reset_capture_state,
+        set_bus,
     )
 
     test_bus = EventBus()
@@ -373,8 +374,8 @@ async def test_sl_tp_from_event_take_priority():
     """When event.sl/tp are set, they should NOT be overridden by regex."""
     from analyzer.ai_analyzer import (
         process_validated_signal,
-        set_bus,
         reset_capture_state,
+        set_bus,
     )
 
     test_bus = EventBus()
@@ -457,8 +458,8 @@ async def test_confidence_threshold_flags(confidence, should_trade, interactive)
     """Verify should_trade and interactive_required based on confidence thresholds."""
     from analyzer.ai_analyzer import (
         process_validated_signal,
-        set_bus,
         reset_capture_state,
+        set_bus,
     )
 
     test_bus = EventBus()
@@ -527,7 +528,8 @@ async def test_confidence_threshold_flags(confidence, should_trade, interactive)
 def test_reset_capture_state_clears_last_capture_time():
     """reset_capture_state() should clear LAST_CAPTURE_TIME completely."""
     import time
-    from analyzer.ai_analyzer import reset_capture_state, LAST_CAPTURE_TIME
+
+    from analyzer.ai_analyzer import LAST_CAPTURE_TIME, reset_capture_state
 
     LAST_CAPTURE_TIME["BTCUSDT"] = time.time()
     LAST_CAPTURE_TIME["ETHUSDT"] = time.time()

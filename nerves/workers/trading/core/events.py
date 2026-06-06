@@ -7,14 +7,14 @@ Design Invariant:
 - Events do NOT carry references to mutable state.
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Optional, Dict, Any
 import uuid
+from dataclasses import dataclass, field
+from datetime import datetime, timezone, UTC
+from typing import Any, Dict, Optional
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _uid() -> str:
@@ -46,13 +46,13 @@ class SignalReceived(Event):
     signal_id: int = 0
     symbol: str = ""
     action: str = ""
-    price: Optional[float] = None
+    price: float | None = None
     quote_qty: float = 10.0
     interval: str = ""
     sl: str = ""
     tp: str = ""
     source_ip: str = ""
-    payload: Optional[Dict[str, Any]] = None
+    payload: dict[str, Any] | None = None
     exchange: str = "binance"
     rag_advice: str = ""
     mode: str = ""  # "MTT" | "MIS" | "" (empty = not specified)
@@ -69,10 +69,10 @@ class IndicatorSignalReceived(Event):
     indicator_name: str = ""
     signal_type: str = "info"  # "entry" | "exit" | "info"
     interval: str = ""
-    price: Optional[float] = None
+    price: float | None = None
     conditions_met: tuple = ()  # Immutable tuple of condition strings
     confidence_score: int = 0  # 0-100
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
     source_ip: str = ""
     exchange: str = "binance"
     is_recovered: bool = False
@@ -87,10 +87,10 @@ class IndicatorSignalValidated(Event):
     symbol: str = ""
     indicator_name: str = ""
     signal_type: str = "info"
-    price: Optional[float] = None
+    price: float | None = None
     conditions_met: tuple = ()
     confidence_score: int = 0
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
     exchange: str = "binance"
 
 
@@ -115,7 +115,7 @@ class SignalValidated(Event):
     signal_id: int = 0
     symbol: str = ""
     action: str = ""
-    price: Optional[float] = None
+    price: float | None = None
     quote_qty: float = 10.0
     sl: str = ""
     tp: str = ""
@@ -150,7 +150,7 @@ class TradeApproved(Event):
     signal_id: int = 0
     symbol: str = ""
     action: str = ""
-    price: Optional[float] = None
+    price: float | None = None
     quote_qty: float = 10.0
     sl: str = ""
     tp: str = ""
@@ -173,14 +173,14 @@ class TradeExecuted(Event):
     order_id: str = ""
     status: str = "FILLED"
     executed_qty: float = 0.0
-    executed_price: Optional[float] = None
+    executed_price: float | None = None
     quote_qty: float = 0.0
-    stop_loss_price: Optional[float] = None
-    take_profit_price: Optional[float] = None
-    oco_order_id: Optional[str] = None
+    stop_loss_price: float | None = None
+    take_profit_price: float | None = None
+    oco_order_id: str | None = None
     order_type: str = "MARKET"
     exchange: str = "binance"
-    combined_score: Optional[str] = None
+    combined_score: str | None = None
     rag_advice: str = ""
     telegram_message: str = ""
 
@@ -195,7 +195,7 @@ class TradeFailed(Event):
     error: str = ""
     quote_qty: float = 0.0
     exchange: str = "binance"
-    combined_score: Optional[str] = None
+    combined_score: str | None = None
 
 
 @dataclass(frozen=True)
@@ -207,7 +207,7 @@ class CircuitBreakerTripped(Event):
     prev_state: str = ""
     new_state: str = "OPEN"
     reason: str = ""
-    metrics: Optional[Dict[str, Any]] = None
+    metrics: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -264,7 +264,7 @@ class AnalysisComplete(Event):
     signal_id: int = 0
     symbol: str = ""
     action: str = ""
-    price: Optional[float] = None
+    price: float | None = None
     quote_qty: float = 10.0
     sl: str = ""
     tp: str = ""
@@ -272,8 +272,8 @@ class AnalysisComplete(Event):
     confidence: int = 0
     analysis_text: str = ""
     screenshot_path: str = ""
-    combined_score: Optional[str] = None
-    vision_result: Optional[Dict[str, Any]] = None
+    combined_score: str | None = None
+    vision_result: dict[str, Any] | None = None
     should_trade: bool = False  # confidence >= 8
     interactive_required: bool = False  # True if Human approval is needed
     is_recovered: bool = False

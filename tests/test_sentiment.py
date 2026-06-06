@@ -1,7 +1,8 @@
 import asyncio
-import pytest
 import os
 import sys
+
+import pytest
 
 # Add 'server' path to sys.path so we can import modules directly
 sys.path.insert(
@@ -10,7 +11,7 @@ sys.path.insert(
 
 import config
 import database
-from analyzer.sentiment_analyzer import analyze_text_sentiment, SentimentAnalyzer
+from analyzer.sentiment_analyzer import SentimentAnalyzer, analyze_text_sentiment
 
 
 @pytest.mark.asyncio

@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from workers.liveness_monitor import (
     ServerHealth,
     _handle_failure,

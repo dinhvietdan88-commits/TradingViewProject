@@ -5,13 +5,14 @@ conftest.py — Shared fixtures for entire test suite.
 - WEBHOOK_SECRET overridden to "test-secret" for all tests.
 """
 
+import os
+import pathlib
+import sys
+from unittest.mock import AsyncMock, patch
+
 import pytest
 import pytest_asyncio
-import os
-import sys
-import pathlib
-from unittest.mock import patch, AsyncMock
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 # Override env BEFORE importing any app modules
 os.environ["WEBHOOK_SECRET"] = "test-secret"  # noqa: S105

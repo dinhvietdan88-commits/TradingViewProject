@@ -1,7 +1,8 @@
 import json
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Any, Tuple, Optional
+from datetime import datetime, timedelta, timezone, UTC
+from typing import Any, Dict, List, Optional, Tuple
+
 import aiosqlite
 
 import config
@@ -22,7 +23,7 @@ def format_vn_time(utc_str: str) -> str:
     """
     try:
         dt = datetime.strptime(utc_str, "%Y-%m-%d %H:%M:%S").replace(
-            tzinfo=timezone.utc
+            tzinfo=UTC
         )
         vn_dt = dt.astimezone(VN_TZ)
         return vn_dt.strftime("%Y-%m-%d %H:%M:%S") + " (ICT)"
@@ -75,7 +76,7 @@ CREATE INDEX IF NOT EXISTS idx_sal_event_at ON signal_audit_log(event_at);
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def utc_now_str() -> str:
@@ -94,8 +95,8 @@ async def write_audit_log(
     db: aiosqlite.Connection,
     queue_id: int,
     event: str,
-    consumer_id: Optional[str] = None,
-    detail: Optional[str] = None,
+    consumer_id: str | None = None,
+    detail: str | None = None,
 ):
     """Write an entry to the audit log (expects an open database connection)."""
     await db.execute(
@@ -107,7 +108,7 @@ async def write_audit_log(
 
 async def check_duplicate(
     symbol: str, action: str, price: float, window_seconds: int = 10
-) -> Optional[int]:
+) -> int | None:
     """Check if a signal with same symbol+action+price exists within the dedup window.
 
     Uses a fingerprint of (symbol_upper, action_lower, rounded_price) within
@@ -134,7 +135,7 @@ async def check_duplicate(
             return row[0] if row else None
 
 
-async def insert_signal(payload: Dict[str, Any]) -> Tuple[int, str]:
+async def insert_signal(payload: dict[str, Any]) -> tuple[int, str]:
     """Insert a new signal into the queue.
 
     Returns:
@@ -253,9 +254,9 @@ async def get_pending_count() -> int:
 async def consume_signals(
     consumer_id: str,
     limit: int,
-    source: Optional[str] = None,
-    exclude_source: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    source: str | None = None,
+    exclude_source: str | None = None,
+) -> list[dict[str, Any]]:
     """Retrieve and dispatch pending signals, marking them as DISPATCHED."""
     now_str = utc_now_str()
     signals = []
@@ -304,7 +305,7 @@ async def consume_signals(
             # calculate age
             rec_time = datetime.strptime(
                 row["received_at"], "%Y-%m-%d %H:%M:%S"
-            ).replace(tzinfo=timezone.utc)
+            ).replace(tzinfo=UTC)
             now = utc_now()
             age_min = (now - rec_time).total_seconds() / 60.0
 
@@ -329,7 +330,7 @@ async def consume_signals(
     return signals
 
 
-async def ack_signals(acks: List[Any]) -> Tuple[int, List[Dict[str, Any]]]:
+async def ack_signals(acks: list[Any]) -> tuple[int, list[dict[str, Any]]]:
     """Process confirmations for consumed signals."""
     acked_count = 0
     results = []
@@ -412,7 +413,7 @@ async def stale_cleanup() -> int:
         return alert_count
 
 
-async def requeue_timeouts(timeout_minutes: float) -> Tuple[int, List[Dict[str, Any]]]:
+async def requeue_timeouts(timeout_minutes: float) -> tuple[int, list[dict[str, Any]]]:
     """Requeue signals that were dispatched but never ACKed within the timeout period."""
     cutoff_time = (utc_now() - timedelta(minutes=timeout_minutes)).strftime(
         "%Y-%m-%d %H:%M:%S"
@@ -484,7 +485,7 @@ async def audit_cleanup(days: int) -> int:
         return cursor.rowcount
 
 
-async def get_queue_status() -> Dict[str, Any]:
+async def get_queue_status() -> dict[str, Any]:
     """Retrieve queue statistics and pending items."""
     today_start = (
         utc_now()
@@ -534,7 +535,7 @@ async def get_queue_status() -> Dict[str, Any]:
             if row:
                 rec_time = datetime.strptime(
                     row["received_at"], "%Y-%m-%d %H:%M:%S"
-                ).replace(tzinfo=timezone.utc)
+                ).replace(tzinfo=UTC)
                 oldest_pending_age = (utc_now() - rec_time).total_seconds() / 60.0
 
         # Retrieve detailed pending list
@@ -546,7 +547,7 @@ async def get_queue_status() -> Dict[str, Any]:
         pending_signals = []
         for r in pending_rows:
             exp_time = datetime.strptime(r["expires_at"], "%Y-%m-%d %H:%M:%S").replace(
-                tzinfo=timezone.utc
+                tzinfo=UTC
             )
             remaining = (exp_time - utc_now()).total_seconds() / 60.0
 
@@ -574,7 +575,7 @@ async def get_queue_status() -> Dict[str, Any]:
     }
 
 
-async def update_signal_payload(queue_id: int, extra_data: Dict[str, Any]) -> bool:
+async def update_signal_payload(queue_id: int, extra_data: dict[str, Any]) -> bool:
     """Updates payload_json in the queue by merging in new keys."""
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row

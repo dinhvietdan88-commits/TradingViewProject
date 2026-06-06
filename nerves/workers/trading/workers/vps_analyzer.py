@@ -24,23 +24,24 @@ import asyncio
 import logging
 import os
 import re
-import aiohttp
 import socket
-from typing import Dict, Any, List, Optional, Tuple
-
 import sys
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import aiohttp
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from fastapi import FastAPI, Request, Response
+
 import config
 import rag
+from logging_config import setup_logging
 
 # V2: Import Circuit Breaker singleton
 # The module lives in server/workers/ alongside this file.
 from workers.ai_circuit_breaker import llm_breaker  # noqa: E402
-from logging_config import setup_logging
-from fastapi import FastAPI, Request, Response
 from workers.liveness_monitor import _get_servers
 
 app = FastAPI(title="Server C Health Server")
@@ -374,7 +375,7 @@ class VpsAnalyzerWorker:
     BACKOFF_ON_ERROR_SEC = 5  # sleep after unexpected poll errors
 
     def __init__(self):
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: aiohttp.ClientSession | None = None
         self.consumer_id = "server-c-analyzer"
         # poll_interval is kept for compatibility but only used as error back-off
         self.poll_interval = config.VPS_POLL_INTERVAL_SECONDS
@@ -398,7 +399,7 @@ class VpsAnalyzerWorker:
 
     # ── Long Polling ──────────────────────────────────────────────────────────
 
-    async def _long_poll(self) -> List[Dict[str, Any]]:
+    async def _long_poll(self) -> list[dict[str, Any]]:
         """Call SERVER A's /consume-long.
 
         The HTTP connection is held for up to LONG_POLL_TIMEOUT + HTTP_TIMEOUT_MARGIN
@@ -450,7 +451,7 @@ class VpsAnalyzerWorker:
         except aiohttp.ServerDisconnectedError:
             log.warning("[VpsAnalyzer] Long-poll: server disconnected (reconnect)")
             return []
-        except asyncio.TimeoutError:
+        except TimeoutError:
             log.warning("[VpsAnalyzer] Long-poll: client-side timeout (reconnect)")
             return []
         except Exception as exc:
@@ -568,7 +569,7 @@ class VpsAnalyzerWorker:
                 if poll_task in done:
                     analyzed_list = poll_task.result()
 
-                    async def process_analyzed(analyzed: Dict[str, Any]):
+                    async def process_analyzed(analyzed: dict[str, Any]):
                         queue_id = analyzed.get("queue_id")
                         dry_run = (
                             os.getenv("ANALYZER_DRY_RUN", "false").lower() == "true"
@@ -676,7 +677,7 @@ class VpsAnalyzerWorker:
 
     # ── Signal analysis ───────────────────────────────────────────────────────
 
-    async def _analyze_signal(self, signal: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def _analyze_signal(self, signal: dict[str, Any]) -> dict[str, Any] | None:
         """V1-compatible wrapper around _analyze_signal_v2.
 
         Returns the trade_payload dict directly (approved) or None (rejected),
@@ -689,7 +690,7 @@ class VpsAnalyzerWorker:
             return result["trade_payload"]
         return None
 
-    async def _analyze_signal_v2(self, signal: Dict[str, Any]) -> Dict[str, Any]:
+    async def _analyze_signal_v2(self, signal: dict[str, Any]) -> dict[str, Any]:
         """Run AI or Algorithmic analysis on a single VBS signal.
 
         Returns:
@@ -729,8 +730,8 @@ class VpsAnalyzerWorker:
         if llm_breaker.is_available():
             # Calculate and inject VCP Pattern & Trend Template scorecards into prompt context
             try:
-                from capture_client import get_capture_client
                 from analysis import score_trend_template
+                from capture_client import get_capture_client
                 from utils.pattern_overlay import detect_all_patterns
 
                 # Fetch daily OHLCV candles (limit to 365 to calculate SMA200 and 52-week High/Low)
@@ -852,7 +853,7 @@ class VpsAnalyzerWorker:
                     f"[VpsAnalyzer] AI advice #{queue_id} "
                     f"(conf={ai_conf}%): {advice[:80]}..."
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 llm_breaker.record_failure(
                     f"LLM timeout (>{llm_breaker.call_timeout_sec}s)"
                 )
@@ -1026,7 +1027,7 @@ class VpsAnalyzerWorker:
 
     # ── Telegram notification for AI analysis ──────────────────────────────────
 
-    async def _render_chart_for_signal(self, analyzed: Dict[str, Any]) -> Optional[str]:
+    async def _render_chart_for_signal(self, analyzed: dict[str, Any]) -> str | None:
         """Render a Matplotlib chart with Entry/SL/TP overlay for a signal.
 
         Returns the file path to the generated PNG, or None on failure.
@@ -1136,7 +1137,7 @@ class VpsAnalyzerWorker:
 
         return None
 
-    async def _notify_analysis_telegram(self, analyzed: Dict[str, Any]):
+    async def _notify_analysis_telegram(self, analyzed: dict[str, Any]):
         """Send AI analysis result to Telegram.
 
         Fire-and-forget: Telegram errors won't block the trade pipeline.
@@ -1269,7 +1270,7 @@ class VpsAnalyzerWorker:
 
     # ── Algorithmic analysis (Minervini SEPA) ─────────────────────────────────
 
-    def _algorithmic_analysis(self, signal: Dict[str, Any]) -> Tuple[str, int]:
+    def _algorithmic_analysis(self, signal: dict[str, Any]) -> tuple[str, int]:
         """Score signal against 5 Minervini Trend Template criteria.
 
         Returns:
@@ -1279,7 +1280,7 @@ class VpsAnalyzerWorker:
         action = signal.get("action", "")
         price = float(signal.get("price") or 0)
 
-        checks: List[str] = []
+        checks: list[str] = []
         score = 0
         total = 5
 
@@ -1348,7 +1349,7 @@ class VpsAnalyzerWorker:
 
     # ── Multi-Strategy Router (V3) ────────────────────────────────────────────
 
-    def _detect_strategy_group(self, signal: Dict[str, Any]) -> str:
+    def _detect_strategy_group(self, signal: dict[str, Any]) -> str:
         """Detect which strategy group a signal belongs to.
 
         Returns a human-readable group name for logging/rejection messages.
@@ -1393,7 +1394,7 @@ class VpsAnalyzerWorker:
         # Group E: Default = Minervini SEPA
         return "Minervini SEPA"
 
-    def _route_algorithmic_analysis(self, signal: Dict[str, Any]) -> Tuple[str, int]:
+    def _route_algorithmic_analysis(self, signal: dict[str, Any]) -> tuple[str, int]:
         """Route to the correct algorithmic criteria based on signal source.
 
         V3 Multi-Strategy Router: Instead of always applying 5 Minervini
@@ -1415,7 +1416,7 @@ class VpsAnalyzerWorker:
         # Default: Minervini SEPA (original logic)
         return self._algorithmic_analysis(signal)
 
-    def _algo_a007(self, signal: Dict[str, Any]) -> Tuple[str, int]:
+    def _algo_a007(self, signal: dict[str, Any]) -> tuple[str, int]:
         """A.007 (MA Crossover + ADX): Strategy-level sanity check.
 
         The Pine strategy already enforces MA cross + ADX > threshold + BB
@@ -1439,7 +1440,7 @@ class VpsAnalyzerWorker:
         interval = str(signal.get("interval", "") or payload.get("interval", "") or "")
         position_size = payload.get("position_size", payload.get("quoteQty"))
 
-        checks: List[str] = []
+        checks: list[str] = []
         score = 0
         total = 4
 
@@ -1487,7 +1488,7 @@ class VpsAnalyzerWorker:
         )
         return advice, confidence
 
-    def _algo_supertrend(self, signal: Dict[str, Any]) -> Tuple[str, int]:
+    def _algo_supertrend(self, signal: dict[str, Any]) -> tuple[str, int]:
         """SuperTrend: Strategy-level sanity check.
 
         SuperTrend Flip signals are generated by indicator with VBS_Webhook_Lib.
@@ -1517,7 +1518,7 @@ class VpsAnalyzerWorker:
             except Exception:
                 metadata = {}
 
-        checks: List[str] = []
+        checks: list[str] = []
         score = 0
         total = 4
 
@@ -1582,7 +1583,7 @@ class VpsAnalyzerWorker:
         )
         return advice, confidence
 
-    def _algo_indicator_passthrough(self, signal: Dict[str, Any]) -> Tuple[str, int]:
+    def _algo_indicator_passthrough(self, signal: dict[str, Any]) -> tuple[str, int]:
         """Indicator signals: pass-through with source confidence.
 
         Indicator alerts (source='indicator') are monitor-only signals that
@@ -1630,7 +1631,7 @@ class VpsAnalyzerWorker:
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     def _calculate_position_size(
-        self, price: float, action: str, signal: Optional[Dict[str, Any]] = None
+        self, price: float, action: str, signal: dict[str, Any] | None = None
     ) -> float:
         """Minervini SEPA risk-based position sizing."""
         if price <= 0:
@@ -1677,8 +1678,8 @@ class VpsAnalyzerWorker:
         return round(qty, 8)
 
     def _calculate_sl_tp(
-        self, price: float, action: str, signal: Optional[Dict[str, Any]] = None
-    ) -> Tuple[float, float]:
+        self, price: float, action: str, signal: dict[str, Any] | None = None
+    ) -> tuple[float, float]:
         """Compute SL and TP based on ATR if present, otherwise configured percentages."""
         atr = None
         if isinstance(signal, dict):
@@ -1733,8 +1734,8 @@ class VpsAnalyzerWorker:
     # ── Forward to execution ──────────────────────────────────────────────────
 
     async def forward_to_server_b(
-        self, trade_payload: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, trade_payload: dict[str, Any]
+    ) -> dict[str, Any]:
         """Forward approved trade payload: Local first, then SERVER B fallback.
 
         Args:
@@ -1875,7 +1876,7 @@ class VpsAnalyzerWorker:
 
     # ── Legacy compatibility: poll + analyze (kept for tests) ─────────────────
 
-    async def poll_and_analyze(self) -> List[Dict[str, Any]]:
+    async def poll_and_analyze(self) -> list[dict[str, Any]]:
         """Poll VBS and analyse all signals. Returns analyzed result dicts.
 
         V1-compatible interface — the test suite mocks _analyze_signal with V1
@@ -1894,7 +1895,7 @@ class VpsAnalyzerWorker:
         if not raw_signals:
             return []
 
-        async def analyze_single(signal: Dict[str, Any]) -> Dict[str, Any]:
+        async def analyze_single(signal: dict[str, Any]) -> dict[str, Any]:
             queue_id = signal.get("queue_id")
             try:
                 # Check if _analyze_signal is mocked or overwritten

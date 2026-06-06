@@ -6,7 +6,6 @@ import json
 
 from security import SecurityReport, Severity
 
-
 SEVERITY_EMOJI = {
     Severity.CRITICAL: "🔴",
     Severity.HIGH: "🟠",

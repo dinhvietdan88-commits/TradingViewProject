@@ -1,12 +1,13 @@
-import sys
 import asyncio
-import pytest
 import logging
-import sqlite3
-from unittest.mock import AsyncMock, patch, MagicMock
 
 # Ensure nerves/workers/trading is in path
 import pathlib
+import sqlite3
+import sys
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 trading_dir = pathlib.Path(__file__).parent.parent.parent
 sys.path.insert(0, str(trading_dir))
@@ -14,9 +15,9 @@ sys.path.insert(0, str(trading_dir))
 import alert_manager  # noqa: E402
 import config  # noqa: E402
 from scripts.autotest_watcher import (  # noqa: E402
+    debounce_consumer,
     health_check_loop,
     run_test_suite,
-    debounce_consumer,
 )
 
 
@@ -200,7 +201,7 @@ async def test_pytest_failure_capturing(tmp_path):
 
             # 3. Logged to test_runs.log
             assert temp_log_file.exists()
-            with open(temp_log_file, "r", encoding="utf-8") as lf:
+            with open(temp_log_file, encoding="utf-8") as lf:
                 log_content = lf.read()
                 assert "FAILED" in log_content
                 assert "test_forced_fail" in log_content

@@ -1,8 +1,9 @@
-import os
-import sys
 import asyncio
 import logging
+import os
+import sys
 from pathlib import Path
+
 from aiohttp import web
 
 # Set up paths so we can import workers and config
@@ -150,7 +151,7 @@ async def main():
         analyzer.LONG_POLL_TIMEOUT = 5  # short timeout for simulation
 
         # Force Algorithmic Mode by setting the LLM circuit breaker state to OPEN
-        from workers.ai_circuit_breaker import llm_breaker, CircuitState
+        from workers.ai_circuit_breaker import CircuitState, llm_breaker
 
         llm_breaker.state = CircuitState.OPEN
         llm_breaker.is_available = lambda: False

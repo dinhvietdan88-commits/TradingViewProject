@@ -33,13 +33,13 @@ Usage:
 """
 
 import asyncio
-import time
 import logging
-from enum import Enum
-from dataclasses import dataclass, field
-from typing import Optional, Callable, Awaitable
-
 import os
+import time
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Optional
+from collections.abc import Awaitable, Callable
 
 log = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ class LLMCircuitBreaker:
 
     # Optional Telegram alert hook — set externally to avoid circular imports
     # Signature: async (message: str) -> None
-    alert_hook: Optional[Callable[[str], Awaitable[None]]] = field(
+    alert_hook: Callable[[str], Awaitable[None]] | None = field(
         default=None, init=False, repr=False
     )
 

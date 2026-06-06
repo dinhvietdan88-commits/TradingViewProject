@@ -109,7 +109,7 @@ class HarnessVerdict:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_server_path() -> Optional[Path]:
+def _resolve_server_path() -> Path | None:
     """Resolve the server/ module path (handles Junction symlink)."""
     candidates = [
         Path.cwd() / "nerves" / "workers" / "trading",
@@ -174,7 +174,7 @@ def scan_files_full(files: list) -> list:
         return []
 
     try:
-        from security.scanners import trading_rules, static_scanner, secret_scanner
+        from security.scanners import secret_scanner, static_scanner, trading_rules
     except ImportError:
         log.warning("[SCAN-FULL] Cannot import security.scanners. Skipping.")
         return []
@@ -268,7 +268,7 @@ def run_scar_gate(test_output: str, config_path: str = None) -> dict:
         config_path = str(Path.cwd() / "nerves" / "core" / "test_config.json")
 
     try:
-        with open(config_path, "r", encoding="utf-8") as f:
+        with open(config_path, encoding="utf-8") as f:
             config = json.load(f)
             scar_patterns = config.get(
                 "known_scar_patterns", config.get("scar_patterns", [])

@@ -12,20 +12,20 @@ Tests verify (gaps from original test_notification_hub.py):
 - PENDING_TRADES state: get/remove helpers work correctly.
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 
 from core.event_bus import EventBus
 from core.events import (
-    SignalRejected,
     AnalysisComplete,
+    PositionClosed,
+    SignalRejected,
+    TradeApprovalTimeout,
     TradeApproved,
     TradeExecuted,
     TradeFailed,
-    PositionClosed,
-    TradeApprovalTimeout,
 )
-
 
 # ═══════════════════════════════════════════════════════════════
 # HELPERS
@@ -132,12 +132,13 @@ async def test_max_confidence_auto_approves():
 async def test_medium_confidence_stores_pending_trade():
     """Confidence 5-7 → trade stored in PENDING_TRADES for interactive approval."""
     import sys
+
     from hub.notification_hub import (
-        process_analysis_complete,
-        set_bus,
-        get_pending_trade,
-        remove_pending_trade,
         PENDING_TRADES,
+        get_pending_trade,
+        process_analysis_complete,
+        remove_pending_trade,
+        set_bus,
     )
 
     PENDING_TRADES.clear()
@@ -187,7 +188,8 @@ async def test_medium_confidence_stores_pending_trade():
 async def test_human_gate_fallback_when_bot_not_running():
     """When interactive bot fails (returns no pairs), notifier.notify_all fallback is used."""
     import sys
-    from hub.notification_hub import process_analysis_complete, set_bus, PENDING_TRADES
+
+    from hub.notification_hub import PENDING_TRADES, process_analysis_complete, set_bus
 
     PENDING_TRADES.clear()
 
@@ -228,10 +230,10 @@ async def test_human_gate_fallback_when_bot_not_running():
 async def test_low_confidence_auto_rejects():
     """Confidence < 5 → notification sent but NO TradeApproved emitted."""
     from hub.notification_hub import (
-        process_analysis_complete,
-        set_bus,
         PENDING_TRADES,
         notify_signal_rejected,
+        process_analysis_complete,
+        set_bus,
     )
 
     PENDING_TRADES.clear()
@@ -272,10 +274,10 @@ async def test_low_confidence_auto_rejects():
 async def test_zero_confidence_auto_rejects():
     """Confidence = 0 (edge case) should also auto-reject."""
     from hub.notification_hub import (
-        process_analysis_complete,
-        set_bus,
         PENDING_TRADES,
         notify_signal_rejected,
+        process_analysis_complete,
+        set_bus,
     )
 
     PENDING_TRADES.clear()
@@ -316,10 +318,10 @@ async def test_zero_confidence_auto_rejects():
 async def test_approval_timeout_removes_pending_trade():
     """TradeApprovalTimeout should remove trade from PENDING_TRADES and notify."""
     from hub.notification_hub import (
-        handle_approval_timeout,
-        set_bus,
         PENDING_TRADES,
         get_pending_trade,
+        handle_approval_timeout,
+        set_bus,
     )
 
     PENDING_TRADES.clear()
@@ -356,7 +358,7 @@ async def test_approval_timeout_removes_pending_trade():
 @pytest.mark.asyncio
 async def test_approval_timeout_noop_if_no_pending():
     """TradeApprovalTimeout for unknown signal_id should log debug but NOT notify."""
-    from hub.notification_hub import handle_approval_timeout, set_bus, PENDING_TRADES
+    from hub.notification_hub import PENDING_TRADES, handle_approval_timeout, set_bus
 
     PENDING_TRADES.clear()
 
@@ -577,7 +579,7 @@ async def test_position_closed_loss_uses_red_emoji():
 
 def test_get_pending_trade_returns_none_for_unknown():
     """get_pending_trade should return None for untracked signal IDs."""
-    from hub.notification_hub import get_pending_trade, PENDING_TRADES
+    from hub.notification_hub import PENDING_TRADES, get_pending_trade
 
     PENDING_TRADES.clear()
     assert get_pending_trade(9999) is None
@@ -586,9 +588,9 @@ def test_get_pending_trade_returns_none_for_unknown():
 def test_remove_pending_trade_returns_event_and_cleans_up():
     """remove_pending_trade should return the stored event and remove it from the dict."""
     from hub.notification_hub import (
+        PENDING_TRADES,
         get_pending_trade,
         remove_pending_trade,
-        PENDING_TRADES,
     )
 
     PENDING_TRADES.clear()
@@ -603,7 +605,7 @@ def test_remove_pending_trade_returns_event_and_cleans_up():
 
 def test_remove_pending_trade_noop_on_missing():
     """remove_pending_trade on missing signal_id should return None gracefully."""
-    from hub.notification_hub import remove_pending_trade, PENDING_TRADES
+    from hub.notification_hub import PENDING_TRADES, remove_pending_trade
 
     PENDING_TRADES.clear()
     result = remove_pending_trade(7777)

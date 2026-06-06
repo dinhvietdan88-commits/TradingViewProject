@@ -109,8 +109,8 @@ async def test_vision_capture_endpoint(client):
     Mocks the internal `capture_chart_and_analyze` function to prevent actual
     external calls (e.g., CDP, AI API).
     """
-    from unittest.mock import patch, AsyncMock
     from pathlib import Path
+    from unittest.mock import AsyncMock, patch
 
     mock_vision_result = {
         "status": "ok",
@@ -154,7 +154,7 @@ async def test_scanner_trigger_endpoint(client):
     Mocks the internal `run_scanner_full` function to prevent actual
     scanner execution against MCP.
     """
-    from unittest.mock import patch, AsyncMock
+    from unittest.mock import AsyncMock, patch
 
     with (
         patch("config.MCP_ENABLED", True),
@@ -177,7 +177,7 @@ async def test_watchlist_sync_endpoint(client):
     watchlist synchronization feature.
     Mocks the internal `sync_watchlist_with_tradingview` function.
     """
-    from unittest.mock import patch, AsyncMock
+    from unittest.mock import AsyncMock, patch
 
     mock_sync_result = {
         "synced": True,

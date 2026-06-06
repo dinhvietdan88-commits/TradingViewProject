@@ -14,20 +14,19 @@ Design Invariants (v6.0):
   by NotificationHub, NOT here. AIAnalyzer only computes the score.
 """
 
+import json
 import logging
 import re
-import json
+from datetime import datetime, timezone, UTC
 from pathlib import Path
-from datetime import datetime, timezone
 from typing import Dict, Optional
 
 import config
 import database
 import vision as vision_module
-from mcp_client import get_mcp_client
-
 from core.event_bus import bus as _default_bus
 from core.events import AlertTriggered, AnalysisComplete, SignalValidated
+from mcp_client import get_mcp_client
 
 log = logging.getLogger(__name__)
 
@@ -50,7 +49,7 @@ def get_bus():
 # OWNED STATE — Stealth Capture Cooldown
 # ═══════════════════════════════════════════════════════════════
 
-LAST_CAPTURE_TIME: Dict[str, float] = {}
+LAST_CAPTURE_TIME: dict[str, float] = {}
 CAPTURE_COOLDOWN_SEC = 300  # 5 minutes per symbol
 
 
@@ -112,7 +111,7 @@ async def process_validated_signal(event: SignalValidated) -> None:
     )
 
     symbol = event.symbol
-    now = datetime.now(timezone.utc).timestamp()
+    now = datetime.now(UTC).timestamp()
 
     # ── Cooldown check (only for 'alert' actions) ────────────
     if event.action == "alert":
@@ -126,7 +125,7 @@ async def process_validated_signal(event: SignalValidated) -> None:
     vision_result = {}
     analysis_text = ""
     confidence = 5  # v6.0: Neutral default — forces human gate unless Vision raises it
-    combined_score_str: Optional[str] = None
+    combined_score_str: str | None = None
 
     # ── Step 1: Screenshot + Vision AI ───────────────────────
     try:
@@ -239,8 +238,8 @@ async def process_validated_signal(event: SignalValidated) -> None:
     # ── Step 1.5: Pattern Detection (VCP/Cup/DoubleBottom) ─────
     pattern_summary = ""
     try:
-        from utils.pattern_overlay import detect_all_patterns
         from capture_client import get_capture_client
+        from utils.pattern_overlay import detect_all_patterns
 
         capture = get_capture_client()
 

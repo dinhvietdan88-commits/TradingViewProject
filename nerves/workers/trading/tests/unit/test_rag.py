@@ -3,14 +3,15 @@ Unit tests: test_rag.py
 Tests for RAG (Retrieval-Augmented Generation) knowledge base functionality.
 """
 
-import unittest
 import sys
+import unittest
 
 
 class TestRAGSystem(unittest.TestCase):
     def test_rag_context_retrieval_empty(self):
         """Should gracefully handle queries with no matches in the vector database."""
         from unittest.mock import MagicMock, patch
+
         import rag
 
         # 1. Test when _collection is None
@@ -30,6 +31,7 @@ class TestRAGSystem(unittest.TestCase):
     def test_rag_context_retrieval_success(self):
         """Should retrieve relevant documents based on semantic similarity."""
         from unittest.mock import MagicMock, patch
+
         import rag
 
         mock_collection = MagicMock()
@@ -58,8 +60,8 @@ class TestRAGSystem(unittest.TestCase):
 
     def test_generate_trading_advice_antigravity_success(self):
         """Should call Antigravity SDK to generate advice when AI_PROVIDER is 'antigravity'."""
-        from unittest.mock import MagicMock, patch
         import asyncio
+        from unittest.mock import MagicMock, patch
 
         # 1. Define Mock classes for google.antigravity
         class MockLocalAgentConfig:
@@ -122,8 +124,8 @@ class TestRAGSystem(unittest.TestCase):
 
     def test_generate_trading_advice_antigravity_missing_sdk(self):
         """Should return error message when AI_PROVIDER is 'antigravity' but SDK is not available."""
-        from unittest.mock import patch
         import asyncio
+        from unittest.mock import patch
 
         with (
             patch("rag.ANTIGRAVITY_AVAILABLE", False),

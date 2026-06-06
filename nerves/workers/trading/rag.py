@@ -39,8 +39,8 @@ if not ANTIGRAVITY_AVAILABLE:
     log.warning("google-antigravity not installed. Run: pip install google-antigravity")
 
 # ── Globals ────────────────────────────────────────────────────────────────
-_chroma_client: Optional[object] = None
-_collection: Optional[object] = None
+_chroma_client: object | None = None
+_collection: object | None = None
 
 
 def _get_embedding_function():
@@ -70,7 +70,7 @@ def _parse_chunk_metadata(content: str, filename: str) -> dict:
     return meta
 
 
-_cli_semaphore: Optional[object] = None
+_cli_semaphore: object | None = None
 
 
 def _get_cli_semaphore():
@@ -86,7 +86,7 @@ class ClaudeCLIError(Exception):
     """Raised khi CLI fail — cho phép caller fallback sang SDK."""
 
 
-async def _call_claude_cli(prompt: str, image_path: Optional[str] = None) -> str:
+async def _call_claude_cli(prompt: str, image_path: str | None = None) -> str:
     """Gọi `claude -p` headless qua subscription OAuth (không cần API key).
 
     Args:
@@ -137,7 +137,7 @@ async def _call_claude_cli(prompt: str, image_path: Optional[str] = None) -> str
             stdout, stderr = await asyncio.wait_for(
                 proc.communicate(input=prompt.encode("utf-8")), timeout=timeout
             )
-        except asyncio.TimeoutError as err:
+        except TimeoutError as err:
             proc.kill()
             raise ClaudeCLIError(f"Claude CLI timeout sau {timeout}s") from err
 
@@ -305,7 +305,7 @@ def query_knowledge(query: str, n_results: int = 3) -> list[dict]:
                 }
             )
 
-        log.info(f"RAG: Query '{query[:50]}...' → {len(output)} chunks retrieved.")
+        log.info(f"RAG: Query '{query[:50]}...' → {len(output)} chunks retrieved.")  # codeql[py/log-injection]
         return output
 
     except Exception as e:

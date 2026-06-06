@@ -7,8 +7,7 @@ and that the mode field is properly propagated through the event chain.
 
 import dataclasses
 
-from symbol_config import get_symbol_config, DEFAULT_PARAMS
-
+from symbol_config import DEFAULT_PARAMS, get_symbol_config
 
 # ── Symbol Config Value Tests ─────────────────────────────────────────────────
 

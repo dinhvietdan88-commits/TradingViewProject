@@ -8,11 +8,11 @@ Design ref: design.md § "HookDispatcher"
 
 import logging
 import time
-from typing import Optional, Dict
+from typing import Dict, Optional
 
 import config
 from core.event_bus import bus
-from core.events import SignalValidated, CaptureTriggered
+from core.events import CaptureTriggered, SignalValidated
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class HookDispatcher:
         """
         self._client = capture_client
         self._active_hooks: list[str] = []
-        self._last_capture_time: Dict[str, float] = {}
+        self._last_capture_time: dict[str, float] = {}
         self._cooldown_sec = config.CAPTURE_COOLDOWN_SEC
 
     def register_hooks(self, active_hooks: list[str]) -> None:
@@ -125,7 +125,7 @@ class HookDispatcher:
         logger.info("HookDispatcher: on_schedule triggered")
         # Future: iterate watchlist and capture each symbol
 
-    async def on_command(self, symbol: str) -> Optional[object]:
+    async def on_command(self, symbol: str) -> object | None:
         """
         Trigger manual capture from Telegram /capture command.
         Bypasses cooldown — user explicitly requested this.

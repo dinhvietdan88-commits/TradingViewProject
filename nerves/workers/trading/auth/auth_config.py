@@ -5,9 +5,9 @@ Handles secret key generation, allowed user parsing, and session
 expiry configuration with graceful degradation.
 """
 
+import logging
 import os
 import secrets
-import logging
 
 log = logging.getLogger(__name__)
 

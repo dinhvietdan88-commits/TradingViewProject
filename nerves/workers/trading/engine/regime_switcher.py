@@ -1,14 +1,15 @@
-import math
 import logging
-import aiohttp
+import math
 from typing import List
+
+import aiohttp
 
 from analysis import fetch_candles_with_retry
 
 log = logging.getLogger(__name__)
 
 
-def _calculate_ema(prices: List[float], span: int) -> List[float]:
+def _calculate_ema(prices: list[float], span: int) -> list[float]:
     """Calculate Exponential Moving Average (EMA) for a list of prices."""
     if not prices:
         return []
@@ -19,7 +20,7 @@ def _calculate_ema(prices: List[float], span: int) -> List[float]:
     return ema
 
 
-def _calculate_std_dev(values: List[float]) -> float:
+def _calculate_std_dev(values: list[float]) -> float:
     """Calculate standard deviation of a list of values."""
     if len(values) < 2:
         return 0.0

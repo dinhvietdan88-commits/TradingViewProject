@@ -1,9 +1,11 @@
 import io
 import logging
-import aiohttp
-import config
 import re
 from typing import Optional
+
+import aiohttp
+
+import config
 
 # SEC-4: Import runtime guard for ReDoS prevention
 try:
@@ -279,8 +281,9 @@ def send_telegram_photo(photo_path, caption: str = ""):
     if not config.TELEGRAM_BOT_TOKEN or not config.TELEGRAM_CHAT_IDS:
         return
 
-    import requests
     from pathlib import Path
+
+    import requests
 
     url = f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendPhoto"
     photo_path = Path(photo_path)
@@ -339,6 +342,7 @@ async def send_scan_summary_to_telegram(serialised_results: list) -> None:
         return
 
     from datetime import datetime
+
     from utils.telegram_templates import render_template
 
     results_lines = []
