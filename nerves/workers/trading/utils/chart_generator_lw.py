@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from playwright.async_api import async_playwright
 
@@ -56,6 +56,7 @@ async def generate_chart_lw(
     if not save_path:
         # Default save path from config
         import config
+
         screenshots_dir = Path(config.SCREENSHOTS_DIR)
         screenshots_dir.mkdir(parents=True, exist_ok=True)
         save_path = screenshots_dir / f"chart_lw_{symbol}_{timeframe}.png"
@@ -78,7 +79,9 @@ async def generate_chart_lw(
         "inset_position": inset_position,
     }
 
-    log.info(f"Launching Playwright to capture lightweight chart for {symbol}...")  # codeql[py/log-injection]
+    log.info(
+        f"Launching Playwright to capture lightweight chart for {symbol}..."
+    )  # codeql[py/log-injection]
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)

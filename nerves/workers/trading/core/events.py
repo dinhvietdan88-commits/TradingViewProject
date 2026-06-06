@@ -9,8 +9,8 @@ Design Invariant:
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, UTC
-from typing import Any, Dict, Optional
+from datetime import datetime, UTC
+from typing import Any
 
 
 def _now() -> str:

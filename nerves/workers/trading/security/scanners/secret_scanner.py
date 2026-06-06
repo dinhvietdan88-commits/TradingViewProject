@@ -7,7 +7,6 @@ tokens, and passwords.
 
 import re
 from pathlib import Path
-from typing import List
 
 from security import Finding, Severity
 

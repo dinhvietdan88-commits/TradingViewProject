@@ -27,7 +27,7 @@ import re
 import socket
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import aiohttp
 
@@ -509,7 +509,12 @@ class VpsAnalyzerWorker:
         # Start uvicorn health server in background
         import uvicorn
 
-        config_uv = uvicorn.Config(app, host=os.getenv("HOST", "0.0.0.0"), port=8000, log_level="info")
+        config_uv = uvicorn.Config(
+            app,
+            host=os.getenv("HOST", "0.0.0.0"),  # noqa: S104
+            port=8000,
+            log_level="info",
+        )
         server = uvicorn.Server(config_uv)
         server_task = asyncio.create_task(server.serve())
         log.info("[VpsAnalyzer] Health and metrics server started on port 8000.")
@@ -888,6 +893,14 @@ class VpsAnalyzerWorker:
                     "symbol": symbol,
                     "action": action,
                     "price": price_val,
+                    "trade_payload": {
+                        "symbol": symbol,
+                        "action": action,
+                        "price": price_val,
+                        "analysis": advice,
+                        "ai_confidence": ai_conf,
+                        "analysis_mode": analysis_mode,
+                    },
                 }
 
         # ── Parse AI approval if in AI mode ───────────────────────────────────
@@ -902,6 +915,14 @@ class VpsAnalyzerWorker:
                     "symbol": symbol,
                     "action": action,
                     "price": price_val,
+                    "trade_payload": {
+                        "symbol": symbol,
+                        "action": action,
+                        "price": price_val,
+                        "analysis": advice,
+                        "ai_confidence": ai_conf,
+                        "analysis_mode": analysis_mode,
+                    },
                 }
 
             # Hard reject if AI confidence is too low (< 30)
@@ -913,6 +934,14 @@ class VpsAnalyzerWorker:
                     "symbol": symbol,
                     "action": action,
                     "price": price_val,
+                    "trade_payload": {
+                        "symbol": symbol,
+                        "action": action,
+                        "price": price_val,
+                        "analysis": advice,
+                        "ai_confidence": ai_conf,
+                        "analysis_mode": analysis_mode,
+                    },
                 }
 
             # 1. Prefix-based checks (high priority)
@@ -974,6 +1003,14 @@ class VpsAnalyzerWorker:
                     "symbol": symbol,
                     "action": action,
                     "price": price_val,
+                    "trade_payload": {
+                        "symbol": symbol,
+                        "action": action,
+                        "price": price_val,
+                        "analysis": advice,
+                        "ai_confidence": ai_conf,
+                        "analysis_mode": analysis_mode,
+                    },
                 }
 
         # ── Position sizing ────────────────────────────────────────────────────
@@ -991,6 +1028,17 @@ class VpsAnalyzerWorker:
                 "symbol": symbol,
                 "action": action,
                 "price": price_val,
+                "trade_payload": {
+                    "symbol": symbol,
+                    "action": action,
+                    "price": price_val,
+                    "qty": qty,
+                    "sl": sl_price,
+                    "tp": tp_price,
+                    "analysis": advice,
+                    "ai_confidence": ai_conf,
+                    "analysis_mode": analysis_mode,
+                },
             }
 
         # 2. Stop-Loss > 8%
@@ -1004,6 +1052,17 @@ class VpsAnalyzerWorker:
                     "symbol": symbol,
                     "action": action,
                     "price": price_val,
+                    "trade_payload": {
+                        "symbol": symbol,
+                        "action": action,
+                        "price": price_val,
+                        "qty": qty,
+                        "sl": sl_price,
+                        "tp": tp_price,
+                        "analysis": advice,
+                        "ai_confidence": ai_conf,
+                        "analysis_mode": analysis_mode,
+                    },
                 }
 
         trade_payload = {
@@ -1963,6 +2022,9 @@ class VpsAnalyzerWorker:
                         or getattr(config, "DEFAULT_EXCHANGE", "BINANCE"),
                         "analysis_mode": mode,
                         "payload": payload,
+                        "trade_payload": v2_res.get("trade_payload")
+                        if v2_res
+                        else None,
                     }
                 elif isinstance(analyzed, dict) and "approved" in analyzed:
                     # V2 dict returned by a test mock or V2-aware caller
@@ -1992,6 +2054,7 @@ class VpsAnalyzerWorker:
                             or getattr(config, "DEFAULT_EXCHANGE", "BINANCE"),
                             "analysis_mode": analyzed.get("analysis_mode", "ai"),
                             "payload": analyzed.get("payload") or payload,
+                            "trade_payload": analyzed.get("trade_payload"),
                         }
                 else:
                     # V1: plain trade_payload dict → approved

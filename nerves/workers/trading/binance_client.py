@@ -9,7 +9,7 @@ import hmac
 import logging
 import time
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any
 
 import aiohttp
 
@@ -92,7 +92,9 @@ class BinanceClient:
     async def get_account_balance(self, asset: str = "USDT") -> float:
         """Get free balance for a specific asset."""
         if self.dry_run:
-            log.info(f"[DRY-RUN] get_account_balance({asset}) → $10,000.00")  # codeql[py/log-injection]
+            log.info(
+                f"[DRY-RUN] get_account_balance({asset}) → $10,000.00"
+            )  # codeql[py/log-injection]
             return 10000.0
 
         data = await self._request("GET", "/api/v3/account", {})

@@ -10,7 +10,6 @@ Ensures HTML tags are never broken mid-tag when truncating/chunking.
 
 import logging
 import re
-from typing import List
 
 log = logging.getLogger(__name__)
 

@@ -15,7 +15,6 @@ Design Invariants (v6.0):
 
 import asyncio
 import logging
-from typing import Optional
 
 import database
 from core.event_bus import bus as _default_bus
@@ -450,7 +449,7 @@ async def execute_trade(event: TradeApproved) -> None:
 
             if bypass_until_str:
                 try:
-                    from datetime import datetime, timezone
+                    from datetime import datetime
 
                     bypass_until = datetime.fromisoformat(bypass_until_str)
                     if datetime.now(UTC) < bypass_until:

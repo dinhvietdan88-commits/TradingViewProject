@@ -10,7 +10,6 @@ REQ 6: Informational signals notify only, no trade trigger
 """
 
 import logging
-from typing import Tuple
 
 import notifier as _notifier
 from core.event_bus import bus

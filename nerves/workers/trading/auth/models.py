@@ -7,7 +7,6 @@ Custom exceptions for precise error handling in the auth flow.
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 # ═══════════════════════════════════════════════════════════════
 # DATA MODELS

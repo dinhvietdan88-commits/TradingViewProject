@@ -1,101 +1,101 @@
 {
-  "timestamp": "2026-06-03T16:21:33Z",
+  "timestamp": "2026-06-06T19:17:26Z",
   "summary": {
-    "passed": 0,
-    "failed": 12,
-    "skipped": 31,
-    "total": 43
+    "passed": 8,
+    "failed": 36,
+    "skipped": 0,
+    "total": 44
   },
   "details": {
     "11.1.1": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "Debian 12 Minimal \u0111\u00e3 c\u00e0i",
-      "msg": "Skipped (target server constraint)"
+      "msg": "OS mismatch: Paramiko connection failed: [Errno None] Unable to connect to port 22 on 100.92.13.100"
     },
     "11.1.2": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "apt update && apt upgrade",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Apt upgrade check failed: SSH connection failed: cached connection failure for Server A."
     },
     "11.1.3": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "User botuser t\u1ea1o, kh\u00f4ng d\u00f9ng root",
-      "msg": "Skipped (target server constraint)"
+      "msg": "User botuser not found."
     },
     "11.1.4": {
-      "passed": false,
-      "status": "SKIP",
+      "passed": true,
+      "status": "PASS",
       "description": "SSH key-only auth, PasswordAuthentication no",
-      "msg": "Skipped (target server constraint)"
+      "msg": "SSH hardened (root disallowed or password authentication disabled)."
     },
     "11.1.5": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "Fail2ban c\u1ea5u h\u00ecnh v\u00e0 ch\u1ea1y",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Fail2ban is inactive."
     },
     "11.1.6": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "UFW firewall b\u1eadt, ch\u1ec9 allow SSH + Tailscale",
-      "msg": "Skipped (target server constraint)"
+      "msg": "UFW is inactive."
     },
     "11.1.7": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "NTP chrony \u0111\u1ed3ng b\u1ed9 (drift < 50ms)",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Chrony NTP sync inactive."
     },
     "11.1.8": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "Swap 2GB t\u1ea1o",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Swap not found."
     },
     "11.1.9": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "Docker CE + Compose V2 c\u00e0i",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Docker/Compose not found."
     },
     "11.1.10": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "Docker log limit (10m x 3) c\u1ea5u h\u00ecnh",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Docker configuration not found."
     },
     "11.1.11": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "Tailscale VPN k\u1ebft n\u1ed1i, IP 100.x.x.1",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Tailscale not connected."
     },
     "11.1.12": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "Cloudflare Tunnel -> bot.yourdomain.com",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Cloudflare tunnel is inactive."
     },
     "11.1.13": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "VBS container ch\u1ea1y, /health tr\u1ea3 healthy",
-      "msg": "Skipped (target server constraint)"
+      "msg": "VBS container not running."
     },
     "11.1.14": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "BUFFER_SECRET sinh ng\u1eabu nhi\u00ean (>=32 bytes)",
-      "msg": "Skipped (target server constraint)"
+      "msg": "BUFFER_SECRET not found in env configuration files."
     },
     "11.1.15": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "Telegram notification test th\u00e0nh c\u00f4ng",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Telegram credentials missing."
     },
     "11.2.1": {
       "passed": false,
@@ -137,7 +137,7 @@
       "passed": false,
       "status": "FAIL",
       "description": "Analyzer Worker container ch\u1ea1y",
-      "msg": "Analyzer container not found."
+      "msg": "Analyzer container not found or not running."
     },
     "11.2.8": {
       "passed": false,
@@ -169,101 +169,107 @@
       "description": "Circuit Breaker LLM c\u1ea5u h\u00ecnh",
       "msg": "Circuit Breaker not configured."
     },
-    "11.3.1": {
+    "11.2.13": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
+      "description": "AI smoke test: agy-bridge + RAG vectors",
+      "msg": "AGY_BRIDGE_SECRET not found \u2014 cannot run AI smoke test."
+    },
+    "11.3.1": {
+      "passed": true,
+      "status": "PASS",
       "description": "Windows Server 2022 c\u1eadp nh\u1eadt",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Windows OS: Microsoft Windows 11 Pro Insider Preview"
     },
     "11.3.2": {
-      "passed": false,
-      "status": "SKIP",
+      "passed": true,
+      "status": "PASS",
       "description": "Python 3.11+ c\u00e0i",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Python 3.11.9 installed."
     },
     "11.3.3": {
-      "passed": false,
-      "status": "SKIP",
+      "passed": true,
+      "status": "PASS",
       "description": "NTP w32time \u0111\u1ed3ng b\u1ed9",
-      "msg": "Skipped (target server constraint)"
+      "msg": "w32time is active and synchronizing."
     },
     "11.3.4": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "Tailscale VPN k\u1ebft n\u1ed1i, IP 100.x.x.2",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Tailscale IP starts with 100. not found."
     },
     "11.3.5": {
-      "passed": false,
-      "status": "SKIP",
+      "passed": true,
+      "status": "PASS",
       "description": "Firewall: port 5002 ch\u1ec9 allow 100.0.0.0/8",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Firewall checked (no explicit rule blocking port 5002 found)."
     },
     "11.3.6": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "Execution Server ch\u1ea1y",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Connection failed: HTTPConnectionPool(host='localhost', port=5002): Max retries exceeded with url: /health (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=5002): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
     },
     "11.3.7": {
-      "passed": false,
-      "status": "SKIP",
+      "passed": true,
+      "status": "PASS",
       "description": "SERVER_B_SECRET c\u1ea5u h\u00ecnh",
-      "msg": "Skipped (target server constraint)"
+      "msg": "SERVER_B_SECRET configured."
     },
     "11.3.8": {
-      "passed": false,
-      "status": "SKIP",
+      "passed": true,
+      "status": "PASS",
       "description": "Exchange API Keys c\u1ea5u h\u00ecnh (Binance/Bybit/Weex)",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Keys configured for: Weex."
     },
     "11.3.9": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "Test: POST /api/execute-trade t\u1eeb SERVER C",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Connection failed: HTTPConnectionPool(host='localhost', port=5002): Max retries exceeded with url: /api/execute-trade (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=5002): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
     },
     "11.3.10": {
-      "passed": false,
-      "status": "SKIP",
+      "passed": true,
+      "status": "PASS",
       "description": "Telegram notification test",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Telegram configured."
     },
     "11.4.1": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "SERVER C ping SERVER A qua Tailscale",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Ping failed."
     },
     "11.4.2": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "SERVER C ping SERVER B qua Tailscale",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Ping failed."
     },
     "11.4.3": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "Clock drift < 50ms gi\u1eefa c\u1ea3 3 server",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Clock drift check failed."
     },
     "11.4.4": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "E2E: TradingView -> A -> C -> B",
-      "msg": "Skipped (target server constraint)"
+      "msg": "One or more pipeline nodes inactive."
     },
     "11.4.5": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "Telegram nh\u1eadn \u0111\u1ee7 notification t\u1eeb c\u1ea3 3 server",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Telegram not configured on all nodes."
     },
     "11.4.6": {
       "passed": false,
-      "status": "SKIP",
+      "status": "FAIL",
       "description": "UptimeRobot/Cloudflare monitor \u0111ang active",
-      "msg": "Skipped (target server constraint)"
+      "msg": "Cloudflare ingress is inactive."
     }
   }
 }

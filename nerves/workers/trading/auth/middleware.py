@@ -6,7 +6,6 @@ Bearer token → Session cookie → Redirect authentication cascade.
 """
 
 import logging
-from typing import Optional
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request

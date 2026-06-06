@@ -1,0 +1,16 @@
+rules:
+  - id: python-eval
+    pattern: eval(...)
+    message: "Avoid using eval() due to remote code execution risks."
+    languages: [python]
+    severity: ERROR
+  - id: python-insecure-subprocess
+    pattern: subprocess.run(..., shell=True)
+    message: "Avoid using shell=True in subprocess calls to prevent command injection."
+    languages: [python]
+    severity: ERROR
+  - id: python-hardcoded-credentials
+    pattern: password = "..."
+    message: "Avoid hardcoding passwords or sensitive credentials."
+    languages: [python]
+    severity: ERROR

@@ -161,12 +161,14 @@ async def test_weex_ohlcv_fetch():
         # We pass BTCUSDT_UMCBL and it should fetch using 'weex' logic
         ohlcv = await client._fetch_ohlcv_from_exchange("BTCUSDT_UMCBL", "1h", limit=2)
 
-        # Verify call URL matches expected format
+        # Verify call URL and params match expected format
         mock_session_instance.get.assert_called_once()
         call_url = mock_session_instance.get.call_args[0][0]
-        assert "symbol=cmt_btcusdt" in call_url
-        assert "granularity=1h" in call_url
-        assert "limit=2" in call_url
+        call_kwargs = mock_session_instance.get.call_args[1]
+        assert call_url == "https://api-contract.weex.com/capi/v2/market/candles"
+        assert call_kwargs["params"]["symbol"] == "cmt_btcusdt"
+        assert call_kwargs["params"]["granularity"] == "1h"
+        assert call_kwargs["params"]["limit"] == 2
 
         # Verify reversing and float conversion
         assert len(ohlcv) == 2

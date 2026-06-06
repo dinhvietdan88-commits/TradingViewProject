@@ -23,7 +23,6 @@ Design Invariants (v6.0 INV-5/6):
 
 import json
 import logging
-from typing import Optional
 
 import aiosqlite
 

@@ -53,18 +53,50 @@ def main():
         sys.exit(0)
 
     print(
-        f"[Pre-commit Security] Staged Python files detected ({len(py_files)} files). Running security scan..."
+        f"[Pre-commit Security] Staged Python files detected ({len(py_files)} files). Running checks..."
     )
 
-    # Determine paths
+    # 1. Run ruff check on staged files
+    print("[Pre-commit Security] Running Ruff check on staged files...")
+    ruff_cmd = ["ruff", "check"] + py_files
+    res_ruff = subprocess.run(
+        ruff_cmd, capture_output=True, text=True, encoding="utf-8"
+    )
+    if res_ruff.returncode != 0:
+        print("\n❌ [Pre-commit Security] Ruff check failed!\n", file=sys.stderr)
+        print(res_ruff.stdout)
+        print(res_ruff.stderr, file=sys.stderr)
+        sys.exit(res_ruff.returncode)
+
+    # 2. Run ruff format --check on staged files
+    print("[Pre-commit Security] Running Ruff format check on staged files...")
+    fmt_cmd = ["ruff", "format", "--check"] + py_files
+    res_fmt = subprocess.run(fmt_cmd, capture_output=True, text=True, encoding="utf-8")
+    if res_fmt.returncode != 0:
+        print("\n❌ [Pre-commit Security] Ruff format check failed!\n", file=sys.stderr)
+        print(res_fmt.stdout)
+        print(res_fmt.stderr, file=sys.stderr)
+        sys.exit(res_fmt.returncode)
+
+    # 3. Run Mini-MDASH scan on staged files
+    print("[Pre-commit Security] Running Mini-MDASH security scan on staged files...")
     repo_root = os.getcwd()
     server_dir = os.path.join(repo_root, "server")
 
-    # We want to run: python -m security.cli scan --ci --fail-on high
-    cmd = [sys.executable, "-m", "security.cli", "scan", "--ci", "--fail-on", "high"]
-
-    # Run from the server folder if it exists, otherwise from repo root
+    # Run security.cli from the server folder (if it exists) to scan, format as json
     cwd = server_dir if os.path.exists(server_dir) else repo_root
+    target = "."  # Since we are running in the target directory (server)
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "security.cli",
+        "scan",
+        "--format",
+        "json",
+        "--target",
+        target,
+    ]
 
     try:
         # Run the security scanner CLI
@@ -77,13 +109,63 @@ def main():
             encoding="utf-8",
         )
 
-        if process.returncode != 0:
+        if process.returncode != 0 and not process.stdout:
             print(
-                "\n❌ [Pre-commit Security] SCAN FAILED: Security issues found or scan errored!\n",
+                "❌ [Pre-commit Security] Scanner command failed to execute:",
                 file=sys.stderr,
             )
-            print(process.stdout)
             print(process.stderr, file=sys.stderr)
+            sys.exit(1)
+
+        import json
+
+        try:
+            report_data = json.loads(process.stdout)
+            findings = report_data.get("findings", [])
+        except json.JSONDecodeError as e:
+            print(
+                f"❌ [Pre-commit Security] Failed to parse scanner output: {e}",
+                file=sys.stderr,
+            )
+            print("Output was:", file=sys.stderr)
+            print(process.stdout, file=sys.stderr)
+            print(process.stderr, file=sys.stderr)
+            sys.exit(1)
+
+        # Filter findings that correspond to the staged python files.
+        # staged files in py_files are relative to repo root (e.g. server/config.py)
+        # findings files might be relative to server_dir or absolute.
+        # Let's resolve both to absolute paths for robust comparison.
+        staged_abs_paths = {os.path.abspath(f) for f in py_files}
+
+        failing_findings = []
+        for f in findings:
+            severity = f.get("severity", "").lower()
+            if severity in ("critical", "high"):
+                # The file path in finding could be relative to cwd (server) or absolute.
+                f_file = f.get("file", "")
+                f_abs_path = os.path.abspath(os.path.join(cwd, f_file))
+                if f_abs_path in staged_abs_paths:
+                    failing_findings.append(f)
+
+        if failing_findings:
+            print(
+                f"\n❌ [Pre-commit Security] SCAN FAILED: {len(failing_findings)} HIGH/CRITICAL security issues found in staged files!\n",
+                file=sys.stderr,
+            )
+            for f in failing_findings:
+                f_file = f.get("file", "")
+                f_abs_path = os.path.abspath(os.path.join(cwd, f_file))
+                rel_path = os.path.relpath(f_abs_path, repo_root)
+                print(
+                    f"  [{f.get('rule_id', '?')}] {f.get('severity', '').upper()} in {rel_path}:line {f.get('line', '?')} — {f.get('title', '?')}",
+                    file=sys.stderr,
+                )
+                print(
+                    f"      Description: {f.get('description', '?')}", file=sys.stderr
+                )
+                if f.get("evidence"):
+                    print(f"      Evidence: {f.get('evidence', '')}", file=sys.stderr)
             print(
                 "\n⚠️ Commit blocked. Please resolve the security findings above or use git commit --no-verify if intentional.",
                 file=sys.stderr,
@@ -91,7 +173,7 @@ def main():
             sys.exit(1)
         else:
             print(
-                "[Pre-commit Security] SCAN PASSED: No HIGH/CRITICAL security issues found."
+                "[Pre-commit Security] SCAN PASSED: No HIGH/CRITICAL security issues found in staged files."
             )
             sys.exit(0)
 

@@ -9,8 +9,8 @@ Thread/asyncio-safe: plain dict + lock-free (GIL protects simple assignments).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone, UTC
-from typing import Any, Dict, List, Optional
+from datetime import datetime, UTC
+from typing import Any
 
 # ── Singleton store ───────────────────────────────────────────────────────────
 _store: dict[str, Any] = {
