@@ -23,10 +23,13 @@ async def get_trades(
 ) -> Dict[str, Any]:
     """Truy van lich su giao dich voi pagination va filter."""
     params = [
-        symbol.upper() if symbol else None, symbol,
-        from_date, from_date,
-        to_date, to_date,
-        1 if demo else 0
+        symbol.upper() if symbol else None,
+        symbol,
+        from_date,
+        from_date,
+        to_date,
+        to_date,
+        1 if demo else 0,
     ]
 
     async with aiosqlite.connect(config.DB_PATH) as db:
@@ -68,10 +71,7 @@ async def get_trades(
 
 async def get_stats(symbol: Optional[str] = None, demo: bool = False) -> Dict[str, Any]:
     """Tinh metrics hieu suat: Win Rate, Profit Factor, Drawdown."""
-    params = [
-        symbol.upper() if symbol else None, symbol,
-        1 if demo else 0
-    ]
+    params = [symbol.upper() if symbol else None, symbol, 1 if demo else 0]
 
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -243,11 +243,7 @@ async def get_recent_trades(
         id, created_at, symbol, side, mode, executed_price,
         stop_loss_price, take_profit_price, pnl, status, exchange
     """
-    params = [
-        symbol.upper() if symbol else None, symbol,
-        1 if demo else 0,
-        limit
-    ]
+    params = [symbol.upper() if symbol else None, symbol, 1 if demo else 0, limit]
 
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -275,10 +271,7 @@ async def get_equity_curve(
     symbol: Optional[str] = None, demo: bool = False
 ) -> Dict[str, Any]:
     """Tra ve equity curve data cho Chart.js."""
-    params = [
-        symbol.upper() if symbol else None, symbol,
-        1 if demo else 0
-    ]
+    params = [symbol.upper() if symbol else None, symbol, 1 if demo else 0]
 
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row

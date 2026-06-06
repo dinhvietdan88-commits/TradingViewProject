@@ -661,13 +661,15 @@ async def update_telegram_templates(body: dict):
             "status": "success",
             "message": "Telegram templates updated successfully.",
         }
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid template configuration.")
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400, detail="Invalid template configuration."
+        ) from e
     except Exception as e:
         log.error(f"Failed to update telegram templates: {e}")
         raise HTTPException(
             status_code=500, detail="Internal server error saving templates."
-        )
+        ) from e
 
 
 # ── VPS Buffer Queue Status ───────────────────────────────────
@@ -900,7 +902,7 @@ async def scan_mtf_endpoint(
             raise HTTPException(
                 status_code=500,
                 detail="MTF Scan failed due to an internal algorithmic error.",
-            )
+            ) from e
 
     # 2. Capture screenshots
     screenshots_dir = Path(config.CHROMA_DB_PATH).parent.resolve() / "screenshots"
@@ -1704,21 +1706,22 @@ async def api_vision_analyze(symbol: str = Query(...), image_path: str = Query(.
     to prevent path traversal attacks (e.g. image_path=../../server/.env).
     """
     from pathlib import Path
+    from security.runtime_guard import safe_path
 
     # SEC-002: Resolve the screenshot base directory and validate path is within it
     screenshot_base = Path(config.CHROMA_DB_PATH).parent.resolve() / "screenshots"
     screenshot_base.mkdir(parents=True, exist_ok=True)
-    # Accept only the filename portion — strip any directory components from input
-    safe_filename = Path(image_path).name
-    path = (screenshot_base / safe_filename).resolve()
-    # Double-check the resolved path is still inside screenshot_base (symlink guard)
-    if not str(path).startswith(str(screenshot_base)):
-        log.warning(f"Path traversal attempt blocked: image_path={image_path!r}")
-        raise HTTPException(
-            status_code=403, detail="Access denied: path traversal detected"
+
+    try:
+        path = safe_path(Path(image_path).name, screenshot_base, must_exist=True)
+    except Exception as e:
+        log.warning(
+            f"Path traversal attempt blocked or file not found: image_path={image_path!r}"
         )
-    if not path.exists():
-        raise HTTPException(status_code=404, detail=f"Image not found: {safe_filename}")
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: path traversal detected or file not found",
+        ) from e
 
     result = await vision_module.analyze_chart_vision(
         image_path=path,
@@ -2297,7 +2300,7 @@ async def get_risk_status():
         raise HTTPException(
             status_code=500,
             detail="An internal server error occurred while retrieving settings.",
-        )
+        ) from e
 
 
 @app.get("/api/risk/logs")
@@ -2310,7 +2313,7 @@ async def get_risk_logs(limit: int = Query(10, ge=1, le=50)):
         raise HTTPException(
             status_code=500,
             detail="An internal server error occurred while updating settings.",
-        )
+        ) from e
 
 
 @app.post("/api/risk/override")
@@ -2361,7 +2364,7 @@ async def post_risk_override(req: OverrideRequest):
         raise HTTPException(
             status_code=500,
             detail="An internal server error occurred while updating overrides.",
-        )
+        ) from e
 
 
 @app.get("/api/risk/settings")
@@ -2374,7 +2377,7 @@ async def get_risk_settings_endpoint(exchange: str = Query(...)):
         raise HTTPException(
             status_code=500,
             detail="An internal server error occurred while retrieving risk settings.",
-        )
+        ) from e
 
 
 @app.post("/api/risk/settings")
@@ -2398,7 +2401,7 @@ async def update_risk_settings_endpoint(req: RiskSettingsUpdateRequest):
         raise HTTPException(
             status_code=500,
             detail="An internal server error occurred while updating risk settings.",
-        )
+        ) from e
 
 
 if __name__ == "__main__":

@@ -129,9 +129,9 @@ async def test_sl_cap_enforced_buy():
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
         mock_db.get_setting = AsyncMock(
-            side_effect=lambda key, default: "false"
-            if key == "safe_mode_active"
-            else default
+            side_effect=lambda key, default: (
+                "false" if key == "safe_mode_active" else default
+            )
         )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=901)
@@ -195,9 +195,9 @@ async def test_sl_cap_enforced_sell():
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
         mock_db.get_setting = AsyncMock(
-            side_effect=lambda key, default: "false"
-            if key == "safe_mode_active"
-            else default
+            side_effect=lambda key, default: (
+                "false" if key == "safe_mode_active" else default
+            )
         )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=902)
@@ -260,9 +260,9 @@ async def test_sl_within_cap_unchanged():
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
         mock_db.get_setting = AsyncMock(
-            side_effect=lambda key, default: "false"
-            if key == "safe_mode_active"
-            else default
+            side_effect=lambda key, default: (
+                "false" if key == "safe_mode_active" else default
+            )
         )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=903)

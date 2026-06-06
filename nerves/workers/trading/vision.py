@@ -143,66 +143,37 @@ Bắt đầu bằng: 👁️ MULTI-TIMEFRAME ANALYSIS — {symbol}"""
 
 
 def _validate_and_read_image(image_path: Path) -> Optional[bytes]:
-    """Validate that image_path is within allowed dirs, then read bytes.
-
-    Security Architecture (CodeQL CWE-22 safe):
-      1. Resolve and normalize the caller-supplied path.
-      2. Verify the resolved path falls under an allowed root directory.
-      3. Extract relative path components and reject any '..' traversal.
-      4. Construct a FRESH path from the allowed root + validated
-         components — this new string has **no data-flow link** to
-         the original parameter, breaking the CodeQL taint chain.
-      5. Open ONLY the freshly-constructed path for reading.
-    """
-    import os
+    """Validate that image_path is within allowed dirs, then read bytes."""
     import tempfile
+    from security.runtime_guard import safe_path, SecurityError
 
-    # Step 1 — Resolve and normalize
-    resolved = os.path.realpath(os.path.normpath(str(image_path)))
-
-    # Allowed root directories (constant, trusted strings)
+    # Allowed root directories
     allowed_roots = [
-        os.path.realpath(tempfile.gettempdir()),
-        os.path.realpath(os.path.expanduser("~")),
-        os.path.realpath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)),
+        Path(tempfile.gettempdir()).resolve(),
+        Path.home().resolve(),
+        Path(__file__).resolve().parent.parent.parent,
     ]
 
-    # Step 2 — Validate: resolved path MUST be under an allowed root
-    matched_root: Optional[str] = None
+    clean_path = None
     for root in allowed_roots:
-        root_prefix = root if root.endswith(os.sep) else root + os.sep
-        if resolved == root or resolved.startswith(root_prefix):
-            matched_root = root
+        try:
+            clean_path = safe_path(image_path, root, must_exist=True)
             break
+        except SecurityError:
+            continue
 
-    if matched_root is None:
-        sanitized = resolved.replace("\r", "").replace("\n", "")
+    if clean_path is None:
+        sanitized = str(image_path).replace("\r", "").replace("\n", "")
         log.error(
-            f"Security Rejection: Path is outside allowed directories: {sanitized}"
+            f"Security Rejection: Path traversal detected or outside allowed roots: {sanitized}"
         )
         return None
 
-    # Step 3 — Extract and validate relative path components
-    relative = os.path.relpath(resolved, matched_root)
-    parts = relative.replace("\\", "/").split("/")
-    if ".." in parts:
-        sanitized = resolved.replace("\r", "").replace("\n", "")
-        log.error(f"Security Rejection: Path traversal detected: {sanitized}")
-        return None
-
-    # Step 4 — Construct a FRESH path from trusted root + clean parts.
-    # Each part is a plain directory/filename string validated above.
-    # This creates a new str object with NO data-flow from `image_path`.
-    clean_path = matched_root
-    for part in parts:
-        clean_path = os.path.join(clean_path, part)
-
-    # Step 5 — Read file using the freshly-constructed path
     try:
         with open(clean_path, "rb") as fh:
             return fh.read()
     except OSError as exc:
-        safe_log = clean_path.replace("\r", "").replace("\n", "")
+        safe_log = str(clean_path).replace("\r", "").replace("\n", "")
         log.error(f"Failed to read image file {safe_log}: {exc}")
         return None
 

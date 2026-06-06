@@ -112,9 +112,9 @@ async def test_r1_slippage_greater_than_05_percent_switches_to_limit():
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
         mock_db.get_setting = AsyncMock(
-            side_effect=lambda key, default: "false"
-            if key == "safe_mode_active"
-            else default
+            side_effect=lambda key, default: (
+                "false" if key == "safe_mode_active" else default
+            )
         )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=201)
@@ -189,9 +189,9 @@ async def test_r1_slippage_less_than_05_percent_stays_market():
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
         mock_db.get_setting = AsyncMock(
-            side_effect=lambda key, default: "false"
-            if key == "safe_mode_active"
-            else default
+            side_effect=lambda key, default: (
+                "false" if key == "safe_mode_active" else default
+            )
         )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=202)
@@ -296,9 +296,9 @@ async def test_r2_atr_based_sl_tp_and_sizing():
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
         mock_db.get_setting = AsyncMock(
-            side_effect=lambda key, default: "false"
-            if key == "safe_mode_active"
-            else default
+            side_effect=lambda key, default: (
+                "false" if key == "safe_mode_active" else default
+            )
         )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=203)
@@ -425,9 +425,9 @@ async def test_r4_chop_regime_halves_normal_signals():
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
         mock_db.get_setting = AsyncMock(
-            side_effect=lambda key, default: "false"
-            if key == "safe_mode_active"
-            else default
+            side_effect=lambda key, default: (
+                "false" if key == "safe_mode_active" else default
+            )
         )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=204)
@@ -500,9 +500,9 @@ async def test_r4_chop_regime_skips_breakout_signals():
         mock_db.get_rolling_drawdown = AsyncMock(return_value=0.0)
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
         mock_db.get_setting = AsyncMock(
-            side_effect=lambda key, default: "false"
-            if key == "safe_mode_active"
-            else default
+            side_effect=lambda key, default: (
+                "false" if key == "safe_mode_active" else default
+            )
         )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=205)

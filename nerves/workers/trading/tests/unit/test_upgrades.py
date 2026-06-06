@@ -283,9 +283,9 @@ async def test_bear_end_tactical_sizing_breakout():
         )
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.2)
         mock_db.get_setting = AsyncMock(
-            side_effect=lambda key, default: "false"
-            if key == "safe_mode_active"
-            else default
+            side_effect=lambda key, default: (
+                "false" if key == "safe_mode_active" else default
+            )
         )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=123)
@@ -366,9 +366,9 @@ async def test_safe_mode_halves_sizing():
         )
         mock_db.get_recent_profit_factor = AsyncMock(return_value=1.0)
         mock_db.get_setting = AsyncMock(
-            side_effect=lambda key, default: "false"
-            if key == "safe_mode_active"
-            else default
+            side_effect=lambda key, default: (
+                "false" if key == "safe_mode_active" else default
+            )
         )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=124)
@@ -445,9 +445,9 @@ async def test_safe_mode_deactivation():
         )
         mock_db.get_recent_profit_factor = AsyncMock(return_value=2.1)
         mock_db.get_setting = AsyncMock(
-            side_effect=lambda key, default: "true"
-            if key == "safe_mode_active"
-            else default
+            side_effect=lambda key, default: (
+                "true" if key == "safe_mode_active" else default
+            )
         )
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=125)

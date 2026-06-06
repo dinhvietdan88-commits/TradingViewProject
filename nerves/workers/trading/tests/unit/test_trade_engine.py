@@ -402,12 +402,15 @@ async def test_weex_failed_execution_triggers_fallback():
 
             # Setup registry mocks to hold bybit
             mock_registry = MagicMock()
-            mock_registry.is_available.side_effect = lambda name: name in [
-                "bybit",
-                "weex",
-            ]
-            mock_registry.get_adapter.side_effect = (
-                lambda name: bybit_client if name == "bybit" else weex_client
+            mock_registry.is_available.side_effect = lambda name: (
+                name
+                in [
+                    "bybit",
+                    "weex",
+                ]
+            )
+            mock_registry.get_adapter.side_effect = lambda name: (
+                bybit_client if name == "bybit" else weex_client
             )
             mock_router._registry = mock_registry
 
