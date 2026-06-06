@@ -6,7 +6,7 @@ load_dotenv()
 
 # Server Settings
 PORT = int(os.getenv("PORT", "5000"))
-HOST = os.getenv("HOST", "0.0.0.0")
+HOST = os.getenv("HOST", "127.0.0.1")
 
 # Security
 # This secret MUST match the VPS_BUFFER_SECRET set in the Local Bot

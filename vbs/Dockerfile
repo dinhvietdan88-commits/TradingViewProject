@@ -28,6 +28,6 @@ ENV PORT=5000 \
     DB_PATH=/app/data/signal_queue.db
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
+    CMD python -c "import requests; requests.get('http://127.0.0.1:5000/health', timeout=5)" || exit 1
 
 CMD ["python", "main.py"]

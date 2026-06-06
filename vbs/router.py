@@ -5,7 +5,7 @@ import secrets
 import time
 from datetime import datetime, timezone
 from typing import Optional
-from fastapi import APIRouter, Header, HTTPException, Query, status, Request, Body
+from fastapi import APIRouter, Header, HTTPException, Query, status, Request
 
 import config
 import database
@@ -56,8 +56,8 @@ async def ingest_signal(
         payload = await request.json()
         if not isinstance(payload, dict):
             raise ValueError()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload") from e
 
     # Resolve secret from header, query param, or JSON body
     secret = (
@@ -218,7 +218,7 @@ async def consume_signals(
 
 @router.post("/ack", response_model=models.AckResponse)
 async def ack_signals(
-    body: models.AckRequest = Body(...),
+    body: models.AckRequest,
     x_buffer_secret: Optional[str] = Header(None, alias="X-Buffer-Secret"),
 ):
     """Local Bot calls this endpoint to confirm receipt and outcome of signals."""
@@ -277,7 +277,10 @@ async def health():
             "memory_percent": psutil.virtual_memory().percent,
             "disk_percent": psutil.disk_usage("/").percent,
         }
-    except Exception:
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored psutil error: %s", e)
         pass  # psutil not installed or platform unsupported
 
     return status_data

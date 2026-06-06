@@ -287,10 +287,9 @@ async def consume_signals(
         queue_ids = [row["id"] for row in rows]
 
         # Mark as DISPATCHED
-        placeholders = ",".join("?" for _ in queue_ids)
-        await db.execute(
-            f"UPDATE signal_queue SET status = 'DISPATCHED', dispatched_at = ?, consumer_id = ? WHERE id IN ({placeholders})",
-            [now_str, consumer_id] + queue_ids,
+        await db.executemany(
+            "UPDATE signal_queue SET status = 'DISPATCHED', dispatched_at = ?, consumer_id = ? WHERE id = ?",
+            [(now_str, consumer_id, q_id) for q_id in queue_ids],
         )
 
         for q_id in queue_ids:
@@ -398,11 +397,9 @@ async def stale_cleanup() -> int:
         # Count non-indicator signals for alerting
         alert_count = sum(1 for row in rows if row[1] != "indicator")
 
-        placeholders = ",".join("?" for _ in ids)
-
-        await db.execute(
-            f"UPDATE signal_queue SET status = 'STALE', error_msg = 'Expired via TTL scheduler' WHERE id IN ({placeholders})",
-            ids,
+        await db.executemany(
+            "UPDATE signal_queue SET status = 'STALE', error_msg = 'Expired via TTL scheduler' WHERE id = ?",
+            [(q_id,) for q_id in ids],
         )
 
         for q_id in ids:
