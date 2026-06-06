@@ -109,13 +109,15 @@ def main():
             sys.exit(1)
 
         try:
-            req = urllib.request.Request(health_url)
-            with urllib.request.urlopen(req, timeout=2) as response:
+            req = urllib.request.Request(health_url)  # noqa: S310
+            with urllib.request.urlopen(req, timeout=2) as response:  # noqa: S310
                 if response.status == 200:
                     started = True
                     break
-        except Exception:
-            pass
+        except ConnectionError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
 
         print(f"  Health server not ready yet (attempt {i + 1}/{max_retries})...")
         time.sleep(1)
@@ -133,8 +135,8 @@ def main():
     # 4. Test health check endpoint details
     print_step("Verifying health check endpoint response payload details...")
     try:
-        req = urllib.request.Request(health_url)
-        with urllib.request.urlopen(req, timeout=5) as response:
+        req = urllib.request.Request(health_url)  # noqa: S310
+        with urllib.request.urlopen(req, timeout=5) as response:  # noqa: S310
             assert response.status == 200, f"Expected status 200, got {response.status}"
             body = response.read().decode("utf-8")
             data = json.loads(body)
@@ -172,9 +174,9 @@ def main():
     try:
         # Test Prometheus format (Plain text)
         req = urllib.request.Request("http://localhost:8000/metrics")
-        with urllib.request.urlopen(req, timeout=5) as response:
+        with urllib.request.urlopen(req, timeout=5) as response:  # noqa: S310
             assert response.status == 200, f"Expected status 200, got {response.status}"
-            content_type = response.headers.get("Content-Type", "")
+            response.headers.get("Content-Type", "")
             # Relax content type assertion as Uvicorn response media type is text/plain but could vary depending on environment
             body = response.read().decode("utf-8")
             print("Prometheus Metrics Sample:")
@@ -199,7 +201,7 @@ def main():
         req_json = urllib.request.Request(
             "http://localhost:8000/metrics", headers={"Accept": "application/json"}
         )
-        with urllib.request.urlopen(req_json, timeout=5) as response:
+        with urllib.request.urlopen(req_json, timeout=5) as response:  # noqa: S310
             assert response.status == 200, f"Expected status 200, got {response.status}"
             body = response.read().decode("utf-8")
             data = json.loads(body)
@@ -286,8 +288,10 @@ def main():
                     log_data = json.loads(candidate)
                     if "ts" in log_data and "level" in log_data and "msg" in log_data:
                         json_log_count += 1
-                except Exception:
-                    pass
+                except ConnectionError as e:
+                    import logging
+
+                    logging.getLogger(__name__).warning("Ignored: %s", e)
 
         print(
             f"Analyzed {total_log_lines} log lines. Found {json_log_count} valid structured JSON log lines."

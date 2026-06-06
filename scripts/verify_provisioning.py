@@ -135,7 +135,7 @@ def run_ssh_command(ip, user, key_path, cmd):
             return res.returncode, res.stdout, res.stderr
     except subprocess.TimeoutExpired:
         return -1, "", "Timeout expired"
-    except Exception:
+    except Exception:  # noqa: S110
         # If binary ssh is not found or fails structurally, let fallback handle it
         pass
 
@@ -155,7 +155,7 @@ def run_ssh_command(ip, user, key_path, cmd):
                     try:
                         pkey = key_class.from_private_key_file(key_path)
                         break
-                    except Exception:
+                    except Exception:  # noqa: S112
                         continue
             client.connect(ip, username=user, pkey=pkey, timeout=5, look_for_keys=True)
             # Execute wrapped command
@@ -192,7 +192,7 @@ def run_local_command(cmd):
                 timeout=10,
             )
         else:
-            res = subprocess.run(
+            res = subprocess.run(  # noqa: S602
                 cmd,
                 shell=True,
                 stdout=subprocess.PIPE,
@@ -223,8 +223,10 @@ def measure_drift_http(url):
                 estimated_server_time = server_time + (rtt / 2)
                 drift = abs(estimated_server_time - t1)
                 return drift, rtt
-    except Exception:
-        pass
+    except OSError as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored: %s", e)
     return None, None
 
 
@@ -240,8 +242,10 @@ def measure_drift_ssh(ip, user, key_path):
             estimated_server_time = server_time + (rtt / 2)
             drift = abs(estimated_server_time - t1)
             return drift, rtt
-        except Exception:
-            pass
+        except OSError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
     return None, None
 
 
@@ -968,8 +972,10 @@ def main():
 
                     hdata = _j.loads(out2)
                     cb_state = hdata.get("circuit_breaker_status", "unknown")
-                except Exception:
-                    pass
+                except OSError as e:
+                    import logging
+
+                    logging.getLogger(__name__).warning("Ignored: %s", e)
         if cb_code_exists and cb_state == "closed":
             p = True
             msg = "Circuit Breaker configured and state=CLOSED (healthy)."

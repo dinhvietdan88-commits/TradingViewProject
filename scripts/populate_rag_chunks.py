@@ -21,7 +21,7 @@ def main():
     sections = re.split(r"\n## ", content)
 
     # First section is the intro, skip it or combine it
-    intro = sections[0]
+    sections[0]
 
     for i, section in enumerate(sections[1:], 1):
         # The section content will have the title on the first line

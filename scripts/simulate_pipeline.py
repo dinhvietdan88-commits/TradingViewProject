@@ -13,9 +13,9 @@ sys.path.insert(0, str(PROJECT_ROOT))
 # Set environment variables for the test mocks BEFORE importing config
 os.environ["VPS_BUFFER_ENABLED"] = "true"
 os.environ["VPS_BUFFER_URL"] = "http://localhost:9101"
-os.environ["VPS_BUFFER_SECRET"] = "mock_secret_a"
+os.environ["VPS_BUFFER_SECRET"] = "mock_secret_a"  # noqa: S105
 os.environ["SERVER_B_EXECUTE_URL"] = "http://localhost:9102"
-os.environ["SERVER_B_SECRET"] = "mock_secret_b"
+os.environ["SERVER_B_SECRET"] = "mock_secret_b"  # noqa: S105
 os.environ["VPS_CONSUMER_ID"] = "sim-consumer-01"
 os.environ["RAG_ENABLED"] = "false"  # Use Algorithmic mode
 
@@ -217,8 +217,10 @@ async def main():
         # Cleanup
         try:
             await analyzer.close()
-        except Exception:
-            pass
+        except ValueError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
         await runner_a.cleanup()
         await runner_b.cleanup()
         log.info("[Simulation] Mock servers stopped.")

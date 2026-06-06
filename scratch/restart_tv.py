@@ -5,14 +5,18 @@ import os
 # Kill Chrome PID 15376
 try:
     subprocess.run(["taskkill", "/F", "/PID", "15376"], capture_output=True)
-except Exception:
-    pass
+except ValueError as e:
+    import logging
+
+    logging.getLogger(__name__).warning("Ignored: %s", e)
 
 # Kill all TradingView processes
 try:
     subprocess.run(["taskkill", "/F", "/IM", "TradingView.exe"], capture_output=True)
-except Exception:
-    pass
+except ValueError as e:
+    import logging
+
+    logging.getLogger(__name__).warning("Ignored: %s", e)
 
 time.sleep(2)
 

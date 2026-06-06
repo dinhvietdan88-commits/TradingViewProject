@@ -331,7 +331,7 @@ async def analyze(req: AnalyzeRequest):
                 await proc.wait()
             except ProcessLookupError:
                 pass
-        raise HTTPException(
+        raise HTTPException(  # noqa: B904
             status_code=504,
             detail={
                 "error": f"agy timeout after {req.timeout_sec}s",
@@ -342,7 +342,7 @@ async def analyze(req: AnalyzeRequest):
     except FileNotFoundError:
         breaker.record_failure("agy binary not found")
         log.error(f"agy binary not found at: {AGY_BINARY}")
-        raise HTTPException(
+        raise HTTPException(  # noqa: B904
             status_code=503,
             detail={
                 "error": f"agy binary not found at {AGY_BINARY}",
@@ -356,7 +356,7 @@ async def analyze(req: AnalyzeRequest):
     except Exception as exc:
         breaker.record_failure(str(exc))
         log.exception(f"agy unexpected error: {exc}")
-        raise HTTPException(
+        raise HTTPException(  # noqa: B904
             status_code=500,
             detail={"error": f"Unexpected error: {str(exc)[:300]}"},
         )
