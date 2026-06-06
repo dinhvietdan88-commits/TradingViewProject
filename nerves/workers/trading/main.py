@@ -661,13 +661,13 @@ async def update_telegram_templates(body: dict):
             "status": "success",
             "message": "Telegram templates updated successfully.",
         }
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid template configuration.")
     except Exception as e:
         log.error(f"Failed to update telegram templates: {e}")
         raise HTTPException(
             status_code=500, detail="Internal server error saving templates."
-        ) from e
+        )
 
 
 # ── VPS Buffer Queue Status ───────────────────────────────────
@@ -896,8 +896,11 @@ async def scan_mtf_endpoint(
                 session=session, exchange_name=exch, symbol=sym, semaphore=semaphore
             )
         except Exception as e:
-            log.exception(f"Algorithmic scan failed in endpoint for {sym}")
-            raise HTTPException(status_code=500, detail=f"MTF Scan failed: {e}") from e
+            log.exception(f"Algorithmic scan failed in endpoint for {sym}: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="MTF Scan failed due to an internal algorithmic error.",
+            )
 
     # 2. Capture screenshots
     screenshots_dir = Path(config.CHROMA_DB_PATH).parent.resolve() / "screenshots"
@@ -1789,8 +1792,9 @@ async def api_vision_capture(
             symbol=sym,
         )
     except Exception as e:
+        log.error(f"Vision analysis failed: {e}")
         vision_result = {
-            "error": str(e),
+            "error": "Internal error during vision analysis.",
             "verdict": "ERROR",
             "confidence": 0,
             "analysis": "",
@@ -2289,7 +2293,11 @@ async def get_risk_status():
     try:
         return await database.get_all_risk_statuses()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        log.exception(f"Settings retrieval error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="An internal server error occurred while retrieving settings.",
+        )
 
 
 @app.get("/api/risk/logs")
@@ -2298,7 +2306,11 @@ async def get_risk_logs(limit: int = Query(10, ge=1, le=50)):
     try:
         return await database.get_recent_circuit_breaker_logs(limit)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        log.exception(f"Settings update error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="An internal server error occurred while updating settings.",
+        )
 
 
 @app.post("/api/risk/override")
@@ -2345,7 +2357,11 @@ async def post_risk_override(req: OverrideRequest):
                 status_code=400, detail=f"Unsupported override action: {act}"
             )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        log.exception(f"Overrides save error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="An internal server error occurred while updating overrides.",
+        )
 
 
 @app.get("/api/risk/settings")
@@ -2354,7 +2370,11 @@ async def get_risk_settings_endpoint(exchange: str = Query(...)):
     try:
         return await database.get_risk_settings(exchange)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        log.exception(f"Risk settings retrieval error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="An internal server error occurred while retrieving risk settings.",
+        )
 
 
 @app.post("/api/risk/settings")
@@ -2374,7 +2394,11 @@ async def update_risk_settings_endpoint(req: RiskSettingsUpdateRequest):
             "message": f"Risk settings updated for {req.exchange}",
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        log.exception(f"Risk settings update error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="An internal server error occurred while updating risk settings.",
+        )
 
 
 if __name__ == "__main__":

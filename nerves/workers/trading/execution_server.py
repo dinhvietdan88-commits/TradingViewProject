@@ -375,7 +375,7 @@ async def execute_trade(request: Request):
     except Exception as e:
         log.exception(f"Execute trade error: {e}")
         return JSONResponse(
-            status_code=500, content={"success": False, "error": str(e)}
+            status_code=500, content={"success": False, "error": "Internal server error during trade execution"}
         )
 
 

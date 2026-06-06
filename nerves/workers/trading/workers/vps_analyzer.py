@@ -114,7 +114,8 @@ async def get_health():
         else:
             rag_status = "not_initialized"
     except Exception as e:
-        rag_status = f"error: {str(e)[:60]}"
+        log.error(f"Error checking RAG status: {e}")
+        rag_status = "error"
 
     return {
         "liveness_status_server_a": liveness_status_server_a,
@@ -193,7 +194,7 @@ async def rag_verify():
 
     except Exception as e:
         result["status"] = "error"
-        result["error"] = str(e)[:200]
+        result["error"] = "An internal error occurred during verification."
         log.exception(f"[rag-verify] Exception: {e}")
 
     return result
