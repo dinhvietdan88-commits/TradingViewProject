@@ -277,7 +277,7 @@ async def test_trade_engine_exception_returns_500(exec_client):
     assert resp.status_code == 500
     data = resp.json()
     assert data["success"] is False
-    assert "Exchange connection timeout" in data["error"]
+    assert "Internal server error during trade execution" in data["error"]
 
 
 # ═══════════════════════════════════════════════════════════════

@@ -59,7 +59,7 @@ def test_api_post_templates_invalid_syntax(client, monkeypatch, tmp_path):
 
     response = client.post("/api/telegram/templates", json=invalid_payload)
     assert response.status_code == 400
-    assert "syntax error" in response.json()["detail"]
+    assert "Invalid template configuration." in response.json()["detail"]
 
 
 def test_api_post_templates_unsupported_key(client, monkeypatch, tmp_path):
