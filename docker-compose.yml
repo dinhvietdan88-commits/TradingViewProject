@@ -28,6 +28,7 @@ services:
       - trading-data:/app/data          # SQLite DB + ChromaDB
       - trading-logs:/app/logs          # Application logs
       - trading-screenshots:/app/screenshots  # Chart screenshots
+      - ./docs/knowledge:/app/knowledge:ro  # Mount knowledge chunks for RAG ingestion
 
     # Docker native health check
     healthcheck:
