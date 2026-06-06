@@ -10,7 +10,7 @@
 |---|------|-------|-------------|--------|
 | 1 | R1: Review & Package | Run Ruff, CodeQL, and git-commit-organizer | none | REWORK |
 | 2 | R2: Update SCARs | Update global security_scars_report.md | none | DONE |
-| 3 | R3: Deep Report | Analyze runtime_guard.py and write sec4_deep_report.md | none | REWORK |
+| 3 | R3: Deep Report | Analyze runtime_guard.py and write sec4_deep_report.md | none | DONE |
 
 ## Interface Contracts
 - Task 1 will ensure working tree is clean.
