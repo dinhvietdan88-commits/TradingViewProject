@@ -701,7 +701,7 @@ async def process_analysis_complete(event: AnalysisComplete) -> None:
                     tp_pct = (
                         f"{((float(event.tp) - event.price) / event.price) * 100:+.1f}"
                     )
-        except Exception:
+        except (ValueError, TypeError):
             pass
 
         from utils.html_chunker import truncate_caption_html_safe

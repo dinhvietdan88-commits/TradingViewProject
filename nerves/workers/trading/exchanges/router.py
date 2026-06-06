@@ -65,7 +65,7 @@ def get_router() -> ExchangeRouter:
     if _router is None:
         try:
             strategy_config = json.loads(getattr(config, "STRATEGY_EXCHANGE_MAP", "{}"))
-        except:
+        except (json.JSONDecodeError, TypeError):
             strategy_config = {}
         _router = ExchangeRouter(get_registry(), strategy_config)
     return _router

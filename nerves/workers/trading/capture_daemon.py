@@ -258,8 +258,10 @@ class DaemonLifecycleManager:
                     text = line.decode("utf-8", errors="replace").rstrip()
                     if text:
                         logger.log(level, f"[daemon] {text}")
-            except Exception:
-                pass
+            except ConnectionError as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
         # Read both streams concurrently
         if self._process.stdout:

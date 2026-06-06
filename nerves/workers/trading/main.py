@@ -18,7 +18,6 @@ from fastapi import (
     BackgroundTasks,
     Query,
     status,
-    Body,
 )
 from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -43,7 +42,7 @@ except ImportError:
     def safe_screenshot_path(raw_path) -> Path:  # type: ignore[misc]
         p = Path(raw_path)
         if not p.exists():
-            raise FileNotFoundError(f"Not found: {p}")
+            raise FileNotFoundError(f"Not found: {p}") from None
         return p
 
     def safe_path(raw_path, base_dir: Path, **kwargs) -> Path:  # type: ignore[misc]
@@ -72,7 +71,7 @@ import json as _json
 _sse_clients: set[asyncio.Queue] = set()  # one Queue per connected browser tab
 
 # ── Stats TTL cache (30s) — avoids repeated full-table GROUP BY scans ─────────
-import time as _time
+import time as _time  # noqa: E402
 
 _stats_cache: dict[tuple, tuple] = {}  # key=(symbol,ind_name) → (result, expire_at)
 _STATS_TTL = 30.0  # seconds
@@ -118,18 +117,18 @@ def push_sse_event(event_type: str, data: dict) -> None:
 
 
 # ── P9: Claude SDK package ────────────────────────────────────────────────────
-from claude_cli import SdkClient, ClaudeService
-import claude_cli.telegram_commands as _claude_tg
-import claude_cli.event_handler as _claude_eh
+from claude_cli import SdkClient, ClaudeService  # noqa: E402
+import claude_cli.telegram_commands as _claude_tg  # noqa: E402
+import claude_cli.event_handler as _claude_eh  # noqa: E402
 
 # ── Phase 4: EventBus imports ────────────────────────────────────────────────
-from core.event_bus import bus as _event_bus
+from core.event_bus import bus as _event_bus  # noqa: E402
 
 # ── Phase 5: WebhookGateway (Component 8/8) ──────────────────────────────────
-from gateway.webhook import router as _webhook_router
+from gateway.webhook import router as _webhook_router  # noqa: E402
 
-from auth.routes import auth_router as _auth_router
-from auth.middleware import AuthMiddleware
+from auth.routes import auth_router as _auth_router  # noqa: E402
+from auth.middleware import AuthMiddleware  # noqa: E402
 
 _claude_service: Optional[ClaudeService] = None
 
@@ -201,8 +200,10 @@ async def lifespan(app: FastAPI):
             if ":" in bind_addr:
                 try:
                     port = int(bind_addr.split(":")[-1])
-                except Exception:
-                    pass
+                except ValueError as e:
+                    import logging
+
+                    logging.getLogger(__name__).warning("Ignored: %s", e)
             server_address = ("", port)
             try:
                 hook_service.AGENTS_ROOT = project_root
@@ -416,10 +417,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler  # noqa: E402
+from slowapi.util import get_remote_address  # noqa: E402
+from slowapi.errors import RateLimitExceeded  # noqa: E402
+from slowapi.middleware import SlowAPIMiddleware  # noqa: E402
 
 limiter = Limiter(
     key_func=get_remote_address,
@@ -605,7 +606,7 @@ async def mcp_status():
 
 # ═══ V3: SERVER HEALTH ANNOUNCE ═══════════════════════════════
 @app.post("/api/server-announce")
-async def server_announce(body: dict = Body(...)):
+async def server_announce(body: dict):
     """Server B calls this when it starts up to resume health monitoring.
 
     Body: {"server": "SERVER_B"} or {"server": "Execution"}
@@ -626,8 +627,10 @@ async def server_announce(body: dict = Body(...)):
                 f"Server: <b>{result['server']}</b>\n"
                 f"Health monitoring resumed."
             )
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
     return result
 
 
@@ -648,7 +651,7 @@ async def get_telegram_templates():
 
 
 @app.post("/api/telegram/templates")
-async def update_telegram_templates(body: dict = Body(...)):
+async def update_telegram_templates(body: dict):
     """Save custom Telegram message templates after validating syntax."""
     from utils.telegram_templates import save_templates
 
@@ -659,12 +662,12 @@ async def update_telegram_templates(body: dict = Body(...)):
             "message": "Telegram templates updated successfully.",
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         log.error(f"Failed to update telegram templates: {e}")
         raise HTTPException(
             status_code=500, detail="Internal server error saving templates."
-        )
+        ) from e
 
 
 # ── VPS Buffer Queue Status ───────────────────────────────────
@@ -728,7 +731,7 @@ async def get_watchlist_endpoint():
 
 
 @app.post("/api/watchlist")
-async def add_watchlist_endpoint(body: dict = Body(...)):
+async def add_watchlist_endpoint(body: dict):
     """Thêm symbol vào watchlist. Body: {\"symbol\": \"BTCUSDT\"}"""
     symbol = body.get("symbol", "").strip()
     if not symbol:
@@ -894,7 +897,7 @@ async def scan_mtf_endpoint(
             )
         except Exception as e:
             log.exception(f"Algorithmic scan failed in endpoint for {sym}")
-            raise HTTPException(status_code=500, detail=f"MTF Scan failed: {e}")
+            raise HTTPException(status_code=500, detail=f"MTF Scan failed: {e}") from e
 
     # 2. Capture screenshots
     screenshots_dir = Path(config.CHROMA_DB_PATH).parent.resolve() / "screenshots"
@@ -1052,18 +1055,19 @@ async def get_indicator_signals(
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
 
+        query = (
+            "SELECT id, signal_id, created_at, symbol, indicator_name, "
+            "signal_type, interval, price, confidence_score, "
+            "conditions_met, metadata, source_ip, exchange, "
+            "COUNT(*) OVER() AS _total "
+            "FROM indicator_signals\n"
+        )
+        query += where_clause + "\n"
+        query += "ORDER BY created_at DESC\nLIMIT ? OFFSET ?"
+
         # Single query: window function gives total count + paginated rows in one pass
         rows = await db.execute_fetchall(
-            f"""
-            SELECT id, signal_id, created_at, symbol, indicator_name,
-                   signal_type, interval, price, confidence_score,
-                   conditions_met, metadata, source_ip, exchange,
-                   COUNT(*) OVER() AS _total
-            FROM indicator_signals
-            {where_clause}
-            ORDER BY created_at DESC
-            LIMIT ? OFFSET ?
-            """,
+            query,
             params + [limit, offset],
         )
 
@@ -1136,14 +1140,11 @@ async def get_chart_markers(
             sig_params.append(to_ts // 1000)
 
         sig_where = "WHERE " + " AND ".join(sig_conds) + " AND mode IN ('MTT','MIS')"
+        query = "SELECT created_at, action, mode, price, payload\nFROM signals\n"
+        query += sig_where + "\n"
+        query += "ORDER BY created_at DESC\nLIMIT ?"
         rows = await db.execute_fetchall(
-            f"""
-            SELECT created_at, action, mode, price, payload
-            FROM signals
-            {sig_where}
-            ORDER BY created_at DESC
-            LIMIT ?
-            """,
+            query,
             tuple(sig_params) + (limit,),
         )
         for r in rows:
@@ -1154,7 +1155,10 @@ async def get_chart_markers(
 
                 dt = datetime.fromisoformat(ts_str)
                 unix_ts = int(dt.timestamp())
-            except Exception:
+            except ValueError as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
                 continue
 
             action = (r["action"] or "").lower()
@@ -1166,8 +1170,10 @@ async def get_chart_markers(
             try:
                 payload = _json.loads(r["payload"]) if r["payload"] else {}
                 conf = int(payload.get("confidence_score", 0))
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
             markers.append(
                 {
@@ -1200,14 +1206,14 @@ async def get_chart_markers(
         ind_conds.append("signal_type IN ('entry','exit')")
         ind_where = "WHERE " + " AND ".join(ind_conds)
 
+        query = (
+            "SELECT created_at, signal_type, price, confidence_score, metadata\n"
+            "FROM indicator_signals\n"
+        )
+        query += ind_where + "\n"
+        query += "ORDER BY created_at DESC\nLIMIT ?"
         ind_rows = await db.execute_fetchall(
-            f"""
-            SELECT created_at, signal_type, price, confidence_score, metadata
-            FROM indicator_signals
-            {ind_where}
-            ORDER BY created_at DESC
-            LIMIT ?
-            """,
+            query,
             tuple(ind_params) + (limit,),
         )
         for r in ind_rows:
@@ -1216,7 +1222,10 @@ async def get_chart_markers(
 
                 dt = datetime.fromisoformat(r["created_at"])
                 unix_ts = int(dt.timestamp())
-            except Exception:
+            except ValueError as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
                 continue
 
             # Derive action from metadata
@@ -1325,15 +1334,17 @@ async def get_indicator_signals_stats(
         # ── All queries in ONE connection, executed sequentially but without
         #    re-opening the connection (aiosqlite overhead is connection open) ──
 
+        query_totals = "SELECT signal_type, COUNT(*) AS cnt, AVG(confidence_score) AS avg_conf FROM indicator_signals"
+        query_totals += where_str + " GROUP BY signal_type"
         totals = await db.execute_fetchall(
-            f"SELECT signal_type, COUNT(*) AS cnt, AVG(confidence_score) AS avg_conf "
-            f"FROM indicator_signals{where_str} GROUP BY signal_type",
+            query_totals,
             params,
         )
 
+        query_top = "SELECT indicator_name, COUNT(*) AS cnt FROM indicator_signals"
+        query_top += where_str + " GROUP BY indicator_name ORDER BY cnt DESC LIMIT 5"
         top_indicators = await db.execute_fetchall(
-            f"SELECT indicator_name, COUNT(*) AS cnt FROM indicator_signals"
-            f"{where_str} GROUP BY indicator_name ORDER BY cnt DESC LIMIT 5",
+            query_top,
             params,
         )
 
@@ -1341,8 +1352,11 @@ async def get_indicator_signals_stats(
         hp_where = (
             where_str + " AND" if where_str else " WHERE"
         ) + " confidence_score > 80 AND created_at >= datetime('now', '-24 hours')"
+        query_high = "".join(
+            ["SELECT COUNT(*) AS cnt FROM indicator_signals", hp_where]
+        )
         recent_high = await db.execute_fetchall(
-            f"SELECT COUNT(*) AS cnt FROM indicator_signals{hp_where}",
+            query_high,
             params,
         )
 
@@ -1573,27 +1587,35 @@ async def get_trade_analysis_endpoint(
         db.row_factory = aiosqlite.Row
 
         # Total count
-        row = await db.execute_fetchall(
-            f"SELECT COUNT(*) as cnt FROM trades t {where}", params
-        )
+        query_count = "".join(["SELECT COUNT(*) as cnt FROM trades t ", where])
+        row = await db.execute_fetchall(query_count, params)
         total = row[0][0] if row else 0
 
         # Fetch trades
+        query_fetch = (
+            "SELECT t.*, s.action as signal_action\n"
+            "FROM trades t\n"
+            "LEFT JOIN signals s ON s.id = t.signal_id\n"
+        )
+        query_fetch += where + "\n"
+        query_fetch += "ORDER BY t.created_at DESC\nLIMIT ? OFFSET ?"
         rows = await db.execute_fetchall(
-            f"""SELECT t.*, s.action as signal_action
-                FROM trades t
-                LEFT JOIN signals s ON s.id = t.signal_id
-                {where}
-                ORDER BY t.created_at DESC
-                LIMIT ? OFFSET ?""",
+            query_fetch,
             params + [min(limit, 500), offset],
         )
         trades = [dict(r) for r in rows]
 
         # Compute analysis stats from FILLED trades in the filter set
         filled_where = f"{where} AND" if where else "WHERE"
+        query_stats = "".join(
+            [
+                "SELECT pnl, symbol FROM trades t ",
+                filled_where,
+                " t.status = 'FILLED' AND t.pnl IS NOT NULL",
+            ]
+        )
         stats_rows = await db.execute_fetchall(
-            f"SELECT pnl, symbol FROM trades t {filled_where} t.status = 'FILLED' AND t.pnl IS NOT NULL",
+            query_stats,
             params,
         )
         pnl_list = [r[0] for r in stats_rows]
@@ -1724,14 +1746,12 @@ async def api_vision_capture(
 
     # ── Step 1: Screenshot Capture ───────────────────────────────
     screenshot_path = None
-    mcp_connected = False
 
     if config.MCP_ENABLED:
         try:
             mcp = _mcp_module.get_mcp_client()
             health = await mcp.health_check()
             if health.get("connected"):
-                mcp_connected = True
                 screenshot_path = await mcp.capture_screenshot(symbol=sym, timeframe=tf)
         except Exception as e:
             log.warning(f"MCP CDP capture failed, attempting fallback: {e}")
@@ -1861,8 +1881,10 @@ async def get_vision_stats():
                 c = vd.get("confidence", 0)
                 if c:
                     confidences.append(c)
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
     avg_conf = round(sum(confidences) / len(confidences), 1) if confidences else 0
     last_capture = items[0]["created_at"] if items else None
     return {
@@ -1914,8 +1936,10 @@ async def get_vision_history(
         if b.get("vision_data"):
             try:
                 vision_data = _json.loads(b["vision_data"])
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
         screenshot = b.get("screenshot", "")
         # Determine if screenshot is accessible (serve from /api/vision/screenshot/<id>)
@@ -1955,11 +1979,11 @@ async def get_vision_screenshot(brief_id: int):
     try:
         img_path = safe_screenshot_path(brief["screenshot"])
     except _SecurityError as e:
-        raise HTTPException(status_code=403, detail=f"Access denied: {e}")
-    except FileNotFoundError:
+        raise HTTPException(status_code=403, detail=f"Access denied: {e}") from e
+    except FileNotFoundError as e:
         raise HTTPException(
             status_code=404, detail=f"Screenshot file not found: {brief['screenshot']}"
-        )
+        ) from e
 
     return FileResponse(img_path, media_type="image/png")
 
@@ -2036,8 +2060,10 @@ async def system_status_endpoint():
         last_test_run_str = await database.get_setting("last_test_run")
         if last_test_run_str:
             last_test_run = _json.loads(last_test_run_str)
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored: %s", e)
 
     # VBS status
     vbs_status = {"enabled": False, "connected": False, "pending_count": 0}
@@ -2240,7 +2266,7 @@ async def sse_events(request: Request):
     )
 
 
-from pydantic import BaseModel
+from pydantic import BaseModel  # noqa: E402
 
 
 class OverrideRequest(BaseModel):
@@ -2263,7 +2289,7 @@ async def get_risk_status():
     try:
         return await database.get_all_risk_statuses()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/api/risk/logs")
@@ -2272,7 +2298,7 @@ async def get_risk_logs(limit: int = Query(10, ge=1, le=50)):
     try:
         return await database.get_recent_circuit_breaker_logs(limit)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/api/risk/override")
@@ -2319,7 +2345,7 @@ async def post_risk_override(req: OverrideRequest):
                 status_code=400, detail=f"Unsupported override action: {act}"
             )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/api/risk/settings")
@@ -2328,7 +2354,7 @@ async def get_risk_settings_endpoint(exchange: str = Query(...)):
     try:
         return await database.get_risk_settings(exchange)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/api/risk/settings")
@@ -2348,7 +2374,7 @@ async def update_risk_settings_endpoint(req: RiskSettingsUpdateRequest):
             "message": f"Risk settings updated for {req.exchange}",
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 if __name__ == "__main__":

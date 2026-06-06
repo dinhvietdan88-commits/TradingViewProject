@@ -205,8 +205,12 @@ async def init_db():
             try:
                 await db.execute(col_def)
                 await db.commit()
-            except Exception:
-                pass  # Column already exists
+            except sqlite3.OperationalError as e:
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "Ignored: %s", e
+                )  # Column already exists
 
         # v6.1: Extend indicator_signals table (backward-compatible, REQ 7.1)
         for col_def in [
@@ -218,30 +222,42 @@ async def init_db():
             try:
                 await db.execute(col_def)
                 await db.commit()
-            except Exception:
-                pass  # Column already exists
+            except sqlite3.OperationalError as e:
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "Ignored: %s", e
+                )  # Column already exists
 
         # v7.0: Add mode column to signals (backward-compatible — Phase 2 MTT/MIS tracking)
         try:
             await db.execute("ALTER TABLE signals ADD COLUMN mode TEXT")
             await db.commit()
-        except Exception:
-            pass  # Column already exists
+        except sqlite3.OperationalError as e:
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "Ignored: %s", e
+            )  # Column already exists
 
         # VPS Buffer: Add vbs_queue_id column to signals
         try:
             await db.execute("ALTER TABLE signals ADD COLUMN vbs_queue_id INTEGER")
             await db.commit()
-        except Exception:
-            pass
+        except sqlite3.OperationalError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
 
         try:
             await db.execute(
                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_signals_vbs_queue_id ON signals(vbs_queue_id)"
             )
             await db.commit()
-        except Exception:
-            pass
+        except sqlite3.OperationalError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
 
     log.info(f"Database initialized: {config.DB_PATH}")
 
@@ -693,8 +709,12 @@ async def get_recent_circuit_breaker_logs(limit: int = 10) -> list:
                             row_dict["current_metrics"] = json.loads(
                                 row_dict["current_metrics"]
                             )
-                        except Exception:
-                            pass  # JSON parse of metrics is best-effort; keep raw string on failure
+                        except ValueError as e:
+                            import logging
+
+                            logging.getLogger(__name__).warning(
+                                "Ignored: %s", e
+                            )  # JSON parse of metrics is best-effort; keep raw string on failure
                     logs.append(row_dict)
                 return logs
     except Exception as e:

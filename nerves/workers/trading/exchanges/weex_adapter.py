@@ -160,7 +160,7 @@ class WeexAdapter:
                     str(e),
                     None,
                     self.exchange_name,
-                )
+                ) from e
 
     async def get_account_balance(self, asset: str = "USDT") -> float:
         if self.dry_run:
@@ -231,8 +231,10 @@ class WeexAdapter:
                 return float(ticker_data.get("last", 0.0))
             elif isinstance(ticker_data, list) and len(ticker_data) > 0:
                 return float(ticker_data[0].get("last", 0.0))
-        except Exception:
-            pass
+        except ValueError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
         return 67500.0
 
     async def place_market_order(
@@ -524,7 +526,7 @@ class WeexAdapter:
                     f"OCO placement failed: {oco_err}. Entry order cancelled.",
                     None,
                     self.exchange_name,
-                )
+                ) from oco_err
 
             return OrderResult(
                 success=True,

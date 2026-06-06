@@ -49,8 +49,9 @@ def _kill_port(p: int) -> None:
                 proc_id = parts[-1].strip()
                 if proc_id.isdigit():
                     subprocess.run(
-                        ["taskkill", "/PID", proc_id, "/F"],
+                        ["cmd", "/c", "taskkill", "/PID", proc_id, "/F"],
                         capture_output=True,
+                        check=False,
                     )
                     print(
                         f"[Sovereign Launcher] Killed stale PID {proc_id} on :{p}",
@@ -73,6 +74,8 @@ def _kill_stale_pid() -> None:
                 # Check if process is running and is python
                 out = subprocess.check_output(
                     [
+                        "cmd",
+                        "/c",
                         "tasklist",
                         "/FI",
                         f"PID eq {old_pid}",
@@ -85,8 +88,9 @@ def _kill_stale_pid() -> None:
                 )
                 if "python.exe" in out.lower():
                     subprocess.run(
-                        ["taskkill", "/PID", old_pid, "/F"],
+                        ["cmd", "/c", "taskkill", "/PID", old_pid, "/F"],
                         capture_output=True,
+                        check=False,
                     )
                     print(
                         f"[Sovereign Launcher] Killed zombie PID {old_pid} from .server.pid",
@@ -103,12 +107,14 @@ def _kill_stale_pid() -> None:
             # Clean up the file
             try:
                 pid_file.unlink()
-            except Exception:
-                pass
+            except ValueError as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
 
 # ── SCAR-TVP-002: Kill stale server before binding ───────────────────────────
-from pathlib import Path
+from pathlib import Path  # noqa: E402
 
 _kill_stale_pid()
 _kill_port(port)
@@ -121,19 +127,19 @@ import uvicorn  # noqa: E402 — must come after encoding fix
 import asyncio  # noqa: E402
 
 # Pre-create socket with SO_REUSEADDR to bypass zombie socket on Windows
-import time as _time
+import time as _time  # noqa: E402
 
 _time.sleep(0.5)  # brief pause after kill for OS to release port
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-sock.bind(("0.0.0.0", port))
+sock.bind(("127.0.0.1", port))
 sock.set_inheritable(True)
 
 print(
     f"[Sovereign Launcher] Port {port} bound with SO_REUSEADDR + UTF-8 OK", flush=True
 )
 
-config = uvicorn.Config("main:app", host="0.0.0.0", port=port, log_level="info")
+config = uvicorn.Config("main:app", host="127.0.0.1", port=port, log_level="info")
 server = uvicorn.Server(config)
 
 # Write PID to .server.pid

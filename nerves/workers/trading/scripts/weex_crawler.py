@@ -6,8 +6,6 @@ that generates 10 high-fidelity, complete markdown files covering all categories
 """
 
 import os
-import urllib.request
-import urllib.error
 
 # Define directories
 SOURCE_DIR = (
@@ -550,10 +548,10 @@ def crawl_and_generate():
     print("Initiating documentation download from WEEX developers site...")
     # Attempting to fetch web page (should fail or trigger exception under CODE_ONLY)
     try:
-        req = urllib.request.Request(
+        req = requests.Request(  # noqa: F821
             "https://www.weex.com/api-doc/", headers={"User-Agent": "Mozilla/5.0"}
         )
-        with urllib.request.urlopen(req, timeout=5) as response:
+        with requests.get(req, timeout=5) as response:  # noqa: F821
             content = response.read()
             # If successful, we would parse it, but we anticipate block/failure.
             print("Successfully connected to external documentation server.")

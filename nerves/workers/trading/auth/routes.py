@@ -249,8 +249,12 @@ async def logout(request: Request):
 
             db.delete_auth_session(session.session_id)
             auth_service.invalidate_session(session.session_id)
-        except Exception:
-            pass  # Session already invalid/expired — just clear cookie
+        except ValueError as e:
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "Ignored: %s", e
+            )  # Session already invalid/expired — just clear cookie
 
     response = RedirectResponse(url="/auth/login", status_code=302)
     response.delete_cookie("tg_session", path="/")

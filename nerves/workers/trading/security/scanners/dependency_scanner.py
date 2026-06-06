@@ -29,19 +29,24 @@ def scan_requirements(target_dir: Path) -> List[Finding]:
 
     # Try pip-audit first (best results)
     try:
+        import os
+
+        cmd = [
+            "pip-audit",
+            "-r",
+            str(req_file),
+            "--format",
+            "json",
+            "--progress-spinner",
+            "off",
+        ]
+        if os.name == "nt":
+            cmd = ["cmd", "/c"] + cmd
+        else:
+            cmd = ["bash", "-c", " ".join(cmd)]
+
         result = subprocess.run(
-            [
-                "pip-audit",
-                "-r",
-                str(req_file),
-                "--format",
-                "json",
-                "--progress-spinner",
-                "off",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=60,
+            cmd, capture_output=True, text=True, timeout=60, check=False
         )
         if result.returncode == 0 or result.stdout:
             return _parse_pip_audit_output(result.stdout, str(req_file))

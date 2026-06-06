@@ -48,8 +48,8 @@ async def webhook(request: Request):
         payload = await request.json()
         if not isinstance(payload, dict):
             raise ValueError("Payload must be a JSON object")
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON")
+    except Exception as err:
+        raise HTTPException(status_code=400, detail="Invalid JSON") from err
 
     # Xac thuc bao mat
     # BUG-06 fix: Use .get() instead of .pop() — do NOT mutate payload before the
@@ -63,7 +63,6 @@ async def webhook(request: Request):
         or ""
     )
     # Strip secret from payload after auth so it isn't stored in DB
-    payload.pop("secret", None)
 
     # Allow dashboard users (authenticated via DASHBOARD_TOKEN) to bypass webhook secret
     dashboard_auth = request.headers.get("Authorization", "")
@@ -83,6 +82,8 @@ async def webhook(request: Request):
 
     if not payload:
         raise HTTPException(status_code=400, detail="Empty payload")
+
+    payload.pop("secret", None)
 
     # Parse with Pydantic for validation and structured access
     try:
@@ -151,15 +152,19 @@ async def webhook(request: Request):
         indicator_name and action not in {"buy", "sell", "alert"}
     )
 
-    # Guard before DB write (Prop 4): invalid indicator payloads must not persist
+    # Guard before DB write (Prop 4): invalid payloads must not persist
+    if not symbol:
+        raise HTTPException(status_code=400, detail="Missing required field: symbol")
+
     if is_indicator:
-        if not symbol:
-            raise HTTPException(
-                status_code=400, detail="Missing required field: symbol"
-            )
         if not indicator_name:
             raise HTTPException(
                 status_code=400, detail="Missing required field: indicator_name"
+            )
+    else:
+        if not action:
+            raise HTTPException(
+                status_code=400, detail="Missing required field: action"
             )
 
     # Luu signal vao database

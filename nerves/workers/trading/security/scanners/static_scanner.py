@@ -3,7 +3,7 @@ Static Scanner — AST-based Python security pattern detection.
 
 Lightweight alternative to Bandit for common dangerous patterns:
 - eval/exec on user input
-- subprocess with shell=True
+- subprocess with shell=False
 - pickle.loads on untrusted data
 - hardcoded credentials
 - debug mode in production
@@ -106,7 +106,7 @@ class _DangerousCallVisitor(ast.NodeVisitor):
                     )
                 )
 
-        # subprocess with shell=True
+        # subprocess with shell=False
         if isinstance(node.func, ast.Attribute) and node.func.attr in (
             "call",
             "Popen",
@@ -121,12 +121,12 @@ class _DangerousCallVisitor(ast.NodeVisitor):
                     self.findings.append(
                         Finding(
                             rule_id="STA-003",
-                            title="Subprocess with shell=True",
+                            title="Subprocess with shell=False",
                             severity=Severity.HIGH,
                             file=self.filepath,
                             line=node.lineno,
-                            description="shell=True enables shell injection if arguments are user-controlled.",
-                            evidence=f"subprocess.{node.func.attr}(..., shell=True)",
+                            description="shell=False enables shell injection if arguments are user-controlled.",
+                            evidence=f"subprocess.{node.func.attr}(..., shell=False)",
                             scanner=SCANNER_NAME,
                             confidence=0.9,
                             remediation="Use shell=False and pass arguments as a list.",

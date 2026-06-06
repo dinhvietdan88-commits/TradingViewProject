@@ -259,6 +259,8 @@ def _gather_trading_context(symbol: str = "") -> dict:
             ctx["symbol"] = symbol
         ctx["ai_provider"] = getattr(config, "AI_PROVIDER", "unknown")
         ctx["environment"] = getattr(config, "ENVIRONMENT", "development")
-    except Exception:
-        pass
+    except ValueError as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored: %s", e)
     return ctx

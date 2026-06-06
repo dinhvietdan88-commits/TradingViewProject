@@ -23,7 +23,7 @@ ANTHROPIC_AVAILABLE = True
 VERTEXAI_AVAILABLE = True
 GENAI_AVAILABLE = True
 
-import config
+import config  # noqa: E402
 
 # SEC-4: Runtime guard for path traversal prevention (CWE-22)
 try:
@@ -58,7 +58,10 @@ def _validate_image_path(raw_path: str) -> Optional[Path]:
         try:
             resolved = _safe_path(raw_path, base, must_exist=True)
             return resolved
-        except (_SecurityError, FileNotFoundError, Exception):
+        except (_SecurityError, FileNotFoundError, Exception) as err:
+            import logging
+
+            logging.getLogger(__name__).debug("Path check failed: %s", err)
             continue
     return None  # path not allowed or doesn't exist
 
@@ -673,7 +676,7 @@ async def analyze_chart_vision(
                     # try Anthropic SDK logic
                     image_data, mime_type = _encode_image(image_path)
                     if not image_data:
-                        raise ValueError("Failed to encode image")
+                        raise ValueError("Failed to encode image") from cli_err
                     import anthropic
 
                     client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
@@ -737,7 +740,10 @@ async def analyze_chart_vision(
 
                             google.auth.default()  # raises if no ADC
                             _use_vertex = True
-                        except Exception:
+                        except Exception as e:
+                            import logging
+
+                            logging.getLogger(__name__).warning("Ignored error: %s", e)
                             log.warning(
                                 "Vertex AI ADC not found — falling back to GEMINI_API_KEY"
                             )
@@ -1147,8 +1153,10 @@ async def analyze_chart_vision_mtf(
 
                             google.auth.default()
                             _use_vertex = True
-                        except Exception:
-                            pass
+                        except ValueError as e:
+                            import logging
+
+                            logging.getLogger(__name__).warning("Ignored: %s", e)
 
                     if _use_vertex:
                         import vertexai

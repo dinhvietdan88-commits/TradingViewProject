@@ -4,14 +4,14 @@ from __future__ import annotations
 P6 — APScheduler
 Cron job: Morning Brief tự động lúc 07:00 ICT (UTC+7) mỗi ngày.
 """
-import logging
+import logging  # noqa: E402
 
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
-from zoneinfo import ZoneInfo
+from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
+from apscheduler.triggers.cron import CronTrigger  # noqa: E402
+from zoneinfo import ZoneInfo  # noqa: E402
 
-import config
+import config  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

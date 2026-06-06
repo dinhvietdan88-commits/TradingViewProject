@@ -48,7 +48,7 @@ def is_tunnel_running():
         # Check if process exists on Windows/Linux
         if os.name == "nt":
             # Windows check
-            out = subprocess.check_output(
+            out = subprocess.check_output(  # noqa: S602
                 f'tasklist /FI "PID eq {pid}"', shell=True, text=True
             )
             return str(pid) in out
@@ -77,8 +77,10 @@ def stop_tunnel_process():
             log_debug(f"Error killing process: {e}")
         try:
             os.remove(PID_FILE)
-        except Exception:
-            pass
+        except ConnectionError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
 
     # Extra cleanup: kill any lingering cloudflared processes on Windows
     if os.name == "nt":
@@ -86,8 +88,10 @@ def stop_tunnel_process():
             subprocess.run(
                 ["taskkill", "/IM", "cloudflared.exe", "/F"], capture_output=True
             )
-        except Exception:
-            pass
+        except ConnectionError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
 
 
 def start_tunnel_process(port=5000):
@@ -97,8 +101,10 @@ def start_tunnel_process(port=5000):
     if os.path.exists(LOG_FILE):
         try:
             os.remove(LOG_FILE)
-        except Exception:
-            pass
+        except (OSError, FileNotFoundError) as err:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", err)
 
     log_debug(f"Starting cloudflared tunnel for port {port}...")
     cmd = ["cloudflared", "tunnel", "--url", f"http://localhost:{port}"]

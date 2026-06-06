@@ -143,8 +143,10 @@ def validate_template_syntax(template_id: str, content: str) -> None:
             for _, field_name, _, _ in string.Formatter().parse(content)
             if field_name is not None
         ]
-    except ValueError as e:
-        raise ValueError(f"Template {template_id} contains syntax error: {str(e)}")
+    except ValueError as err:
+        raise ValueError(
+            f"Template {template_id} contains syntax error: {str(err)}"
+        ) from err
 
     # 2. Try dry-run rendering with mock keys to check for missing/unsupported tags
     # We build a dictionary containing only the fields specified in the string.
@@ -164,10 +166,10 @@ def validate_template_syntax(template_id: str, content: str) -> None:
 
     try:
         content.format(**mock_payload)
-    except Exception as e:
+    except Exception as err:
         raise ValueError(
-            f"Template {template_id} failed dry-run format validation: {str(e)}"
-        )
+            f"Template {template_id} failed dry-run format validation: {str(err)}"
+        ) from err
 
 
 def save_templates(templates: Dict[str, str]) -> None:
@@ -185,9 +187,9 @@ def save_templates(templates: Dict[str, str]) -> None:
         with open(TEMPLATE_FILE, "w", encoding="utf-8") as f:
             json.dump(templates, f, indent=4, ensure_ascii=False)
         log.info(f"Saved custom Telegram templates to {TEMPLATE_FILE}")
-    except Exception as e:
-        log.error(f"Failed to save Telegram templates to file: {e}")
-        raise ValueError(f"Could not write templates to file: {str(e)}")
+    except Exception as err:
+        log.error(f"Failed to save Telegram templates to file: {err}")
+        raise ValueError(f"Could not write templates to file: {str(err)}") from err
 
     # 3. Update cache
     _templates_cache = templates.copy()

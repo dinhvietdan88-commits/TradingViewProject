@@ -98,10 +98,12 @@ class MCPClient:
                             return json.loads(line)
                         except json.JSONDecodeError:
                             continue
-                raise RuntimeError(f"MCP CLI returned non-JSON output: {raw[:200]}")
+                raise RuntimeError(
+                    f"MCP CLI returned non-JSON output: {raw[:200]}"
+                ) from None
 
-            except asyncio.TimeoutError:
-                raise RuntimeError(f"MCP CLI timeout after {timeout}s")
+            except asyncio.TimeoutError as err:
+                raise RuntimeError(f"MCP CLI timeout after {timeout}s") from err
             finally:
                 if proc is not None and proc.returncode is None:
                     try:

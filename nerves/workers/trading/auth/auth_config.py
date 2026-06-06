@@ -61,8 +61,12 @@ class AuthConfig:
                     f"AUTH_SECRET_KEY generation failed: {gen_err}. "
                     "Auth system will operate in partial compliance mode."
                 )
-            except Exception:
-                pass  # Both failed — allow startup with partial compliance
+            except ValueError as e:
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "Ignored: %s", e
+                )  # Both failed — allow startup with partial compliance
             return secrets.token_hex(16)  # Minimal fallback
 
         # Generation succeeded — must log warning

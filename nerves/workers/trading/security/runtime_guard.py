@@ -82,7 +82,7 @@ _SAFE_INTERVAL_RE = re.compile(r"^[0-9]{1,4}[mhd wM]?[wM]?$")
 
 # RFC 1918 + loopback + link-local ranges (SSRF INTERNAL TARGET DETECTION)
 _PRIVATE_NETWORKS = [
-    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("127.0.0.0/8"),
     ipaddress.ip_network("172.16.0.0/12"),
     ipaddress.ip_network("192.168.0.0/16"),
     ipaddress.ip_network("127.0.0.0/8"),
@@ -235,6 +235,7 @@ def safe_path(
     """
     # Detect Windows absolute path (e.g. C:\... or C:/... or \\...) on non-Windows OS
     import os
+
     if os.name != "nt":
         raw_path_str = str(raw_path)
         if re.match(r"^[a-zA-Z]:[\\/]", raw_path_str) or raw_path_str.startswith(r"\\"):
@@ -260,13 +261,13 @@ def safe_path(
     # Check containment (is_relative_to available in Python 3.9+)
     try:
         resolved.relative_to(base_resolved)
-    except ValueError:
+    except ValueError as err:
         raise SecurityError(
             f"Path '{resolved}' escapes allowed base directory '{base_resolved}' — "
             "path traversal blocked",
             rule="PATH-01",
             evidence=str(raw_path)[:200],
-        )
+        ) from err
 
     if must_exist and not resolved.exists():
         raise SecurityError(

@@ -1,16 +1,17 @@
 import os
+import time as _time
 from dotenv import load_dotenv
 from pathlib import Path
 
 load_dotenv()
 
 # Server
-HOST = os.getenv("HOST", "0.0.0.0")
+HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT", 5000))
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 # Security
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "change_me_in_dotenv")
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
 
 # Logging
 LOG_FILE = os.getenv("LOG_FILE", "trades.log")
@@ -279,6 +280,4 @@ GLASSNODE_API_KEY = os.getenv("GLASSNODE_API_KEY", "")
 
 
 # Server start time (for uptime calculation)
-import time as _time  # noqa: E402
-
 SERVER_START_TIME = _time.time()

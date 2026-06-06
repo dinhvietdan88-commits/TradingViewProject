@@ -134,7 +134,7 @@ class VpsSignalConsumer:
     async def poll_loop(self):
         """Continuous polling background task using long-polling."""
         log.info("[VpsConsumer] Starting background long-poll loop...")
-        import random
+        import secrets
 
         _backoff = 0  # current backoff in seconds (0 = no backoff)
         _MAX_BACKOFF = 60
@@ -170,7 +170,8 @@ class VpsSignalConsumer:
                 else:
                     # Other HTTP errors — standard backoff
                     _backoff = min(
-                        _MAX_BACKOFF, max(5, _backoff * 2) + random.uniform(0, 2)
+                        _MAX_BACKOFF,
+                        max(5, _backoff * 2) + secrets.SystemRandom().uniform(0, 2),
                     )
                     log.error(
                         f"[VpsConsumer] HTTP {e.status} from VBS. Sleeping {_backoff:.0f}s: {e}"
@@ -180,7 +181,8 @@ class VpsSignalConsumer:
                 # Network/connection errors — exponential backoff with jitter
                 _consecutive_errors += 1
                 _backoff = min(
-                    _MAX_BACKOFF, max(5, _backoff * 2) + random.uniform(0, 2)
+                    _MAX_BACKOFF,
+                    max(5, _backoff * 2) + secrets.SystemRandom().uniform(0, 2),
                 )
                 if _consecutive_errors <= 5 or _consecutive_errors % 20 == 0:
                     log.warning(
@@ -191,7 +193,8 @@ class VpsSignalConsumer:
             except Exception as e:
                 _consecutive_errors += 1
                 _backoff = min(
-                    _MAX_BACKOFF, max(5, _backoff * 2) + random.uniform(0, 2)
+                    _MAX_BACKOFF,
+                    max(5, _backoff * 2) + secrets.SystemRandom().uniform(0, 2),
                 )
                 log.exception(
                     f"[VpsConsumer] Unexpected error in poll loop. Sleeping {_backoff:.0f}s: {e}"

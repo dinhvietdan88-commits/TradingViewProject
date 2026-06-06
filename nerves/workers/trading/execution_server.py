@@ -163,7 +163,7 @@ async def execute_trade(request: Request):
             action=action,
             price=price,
             quote_qty=quote_qty,
-            source_ip=request.client.host if request.client else "0.0.0.0",
+            source_ip=request.client.host if request.client else "127.0.0.1",
             payload=body,
         )
 
@@ -253,8 +253,10 @@ async def execute_trade(request: Request):
                         sl_pct = f"{((float(sl) - price) / price) * 100:+.1f}"
                     if tp and float(tp) > 0:
                         tp_pct = f"{((float(tp) - price) / price) * 100:+.1f}"
-            except Exception:
-                pass
+            except (ValueError, TypeError) as err:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", err)
 
             msg_text = render_template(
                 "A",

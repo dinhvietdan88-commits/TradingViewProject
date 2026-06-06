@@ -127,7 +127,7 @@ class BybitAdapter:
                     str(e),
                     None,
                     self.exchange_name,
-                )
+                ) from e
 
     async def get_account_balance(self, asset: str = "USDT") -> float:
         if self.dry_run:

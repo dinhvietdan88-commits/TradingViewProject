@@ -18,7 +18,7 @@ import config
 log = logging.getLogger(__name__)
 
 
-from exchanges.base import RiskParams, OrderResult
+from exchanges.base import RiskParams, OrderResult  # noqa: E402
 
 
 # ═══════════════════════════════════════════════════════════════

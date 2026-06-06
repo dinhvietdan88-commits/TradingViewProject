@@ -219,8 +219,8 @@ class AuthService:
         # Step 2: Signature check (TECHNICAL — before any data interpretation)
         try:
             payload_bytes = base64.urlsafe_b64decode(payload_b64)
-        except Exception:
-            raise TokenInvalidError("Invalid token encoding")
+        except Exception as err:
+            raise TokenInvalidError("Invalid token encoding") from err
 
         expected_sig = hmac.new(
             self._signing_key, payload_bytes, hashlib.sha256
@@ -232,8 +232,8 @@ class AuthService:
         # Step 3: Parse payload (signature validated, safe to decode)
         try:
             payload = json.loads(payload_bytes)
-        except json.JSONDecodeError:
-            raise TokenInvalidError("Corrupted token payload")
+        except json.JSONDecodeError as err:
+            raise TokenInvalidError("Corrupted token payload") from err
 
         created_at = datetime.fromisoformat(payload["cat"])
         if created_at.tzinfo is None:

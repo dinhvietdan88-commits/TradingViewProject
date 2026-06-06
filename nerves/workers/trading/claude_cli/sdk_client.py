@@ -128,7 +128,7 @@ class SdkClient:
         self,
         prompt: str,
         system_prompt: str = "",
-    ) -> "AnalysisResponse":
+    ) -> "AnalysisResponse":  # noqa: F821
         """Execute Claude SDK call with the given prompt.
 
         - Checks rate limit before calling SDK

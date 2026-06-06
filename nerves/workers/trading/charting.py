@@ -94,7 +94,7 @@ def generate_backtest_chart(
 
     # ── X axis: use integer indices, set date labels manually ─────────────────
     x = list(range(n))
-    date_labels = [_fmt_date(str(l)) for l in labels]
+    date_labels = [_fmt_date(str(l)) for l in labels]  # noqa: E741
 
     # ── Per-trade PnL bar colors ───────────────────────────────────────────────
     pnl_values = [t["pnl"] for t in trades]

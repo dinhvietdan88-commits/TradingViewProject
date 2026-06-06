@@ -170,8 +170,10 @@ class PythonCaptureClient:
                 import database
 
                 capture_method = await database.get_setting("CHART_CAPTURE_METHOD")
-            except Exception:
-                pass
+            except ConnectionError as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
         if not capture_method:
             capture_method = config.CHART_CAPTURE_METHOD
 
@@ -717,8 +719,10 @@ class PythonCaptureClient:
                         finally:
                             try:
                                 inst.close()
-                            except Exception:
-                                pass
+                            except ConnectionError as e:
+                                import logging
+
+                                logging.getLogger(__name__).warning("Ignored: %s", e)
 
                     ohlcv = await loop.run_in_executor(None, sync_fetch)
                     if ohlcv:

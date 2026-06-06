@@ -312,8 +312,8 @@ def detect_cup_handle(
     3. Handle: shallow pullback after cup right rim recovery
     """
     closes = _extract_closes(ohlcv)
-    highs = _extract_highs(ohlcv)
-    lows_data = _extract_lows(ohlcv)
+    _extract_highs(ohlcv)
+    _extract_lows(ohlcv)
 
     if len(closes) < min_cup_bars + 10:
         return CupHandleOverlay(detected=False)

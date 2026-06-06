@@ -127,20 +127,22 @@ async def _call_claude_cli(prompt: str, image_path: Optional[str] = None) -> str
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-        except FileNotFoundError:
-            raise ClaudeCLIError(f"Không tìm thấy Claude CLI tại '{claude_path}'")
+        except FileNotFoundError as err:
+            raise ClaudeCLIError(
+                f"Không tìm thấy Claude CLI tại '{claude_path}'"
+            ) from err
 
         try:
             stdout, stderr = await asyncio.wait_for(
                 proc.communicate(input=prompt.encode("utf-8")), timeout=timeout
             )
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as err:
             proc.kill()
-            raise ClaudeCLIError(f"Claude CLI timeout sau {timeout}s")
+            raise ClaudeCLIError(f"Claude CLI timeout sau {timeout}s") from err
 
     if proc.returncode != 0:
         err = stderr.decode("utf-8", errors="replace")[:300]
-        raise ClaudeCLIError(f"Claude CLI rc={proc.returncode}: {err}")
+        raise ClaudeCLIError(f"Claude CLI rc={proc.returncode}: {err}") from err
 
     return stdout.decode("utf-8", errors="replace").strip()
 

@@ -1,21 +1,20 @@
 import sys
 from pathlib import Path
-import datetime
 
 # Add project root to sys.path so 'auth' and 'config' can be imported
 project_root = Path(__file__).resolve().parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv()  # Explicitly load .env file
 
-import config
-from auth.service import AuthService
-from auth.auth_config import AuthConfig
-import sqlite3
-from datetime import datetime, timezone, timedelta
+import config  # noqa: E402
+from auth.service import AuthService  # noqa: E402
+from auth.auth_config import AuthConfig  # noqa: E402
+import sqlite3  # noqa: E402
+from datetime import datetime, timezone, timedelta  # noqa: E402
 
 db_path = config.DB_PATH
 conn = sqlite3.connect(db_path)
@@ -44,7 +43,7 @@ if not row:
     row = cursor.fetchone()
 
 # Parse row into SessionData
-from auth.models import SessionData
+from auth.models import SessionData  # noqa: E402
 
 created_at_dt = datetime.fromisoformat(row["created_at"])
 if created_at_dt.tzinfo is None:

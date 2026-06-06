@@ -22,45 +22,39 @@ async def get_trades(
     demo: bool = False,
 ) -> Dict[str, Any]:
     """Truy van lich su giao dich voi pagination va filter."""
-    conditions = []
-    params: list = []
-
-    if symbol:
-        conditions.append("t.symbol = ?")
-        params.append(symbol.upper())
-    if from_date:
-        conditions.append("t.created_at >= ?")
-        params.append(from_date)
-    if to_date:
-        conditions.append("t.created_at <= ?")
-        params.append(to_date)
-    if not demo:
-        conditions.append(
-            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
-        )
-
-    where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+    params = [
+        symbol.upper() if symbol else None, symbol,
+        from_date, from_date,
+        to_date, to_date,
+        1 if demo else 0
+    ]
 
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
 
         # Count total
-        row = await db.execute_fetchall(
-            f"SELECT COUNT(*) as cnt FROM trades t {where}", params
-        )
+        sql_count = """
+            SELECT COUNT(*) as cnt FROM trades t
+            WHERE (t.symbol = ? OR ? IS NULL)
+              AND (t.created_at >= ? OR ? IS NULL)
+              AND (t.created_at <= ? OR ? IS NULL)
+              AND (? = 1 OR (LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%')))
+        """
+        row = await db.execute_fetchall(sql_count, params)
         total = row[0][0] if row else 0
 
         # Fetch page
         limit = min(limit, 200)
-        rows = await db.execute_fetchall(
-            f"""SELECT t.*, s.action as signal_action, s.payload as signal_payload
-                FROM trades t
-                LEFT JOIN signals s ON s.id = t.signal_id
-                {where}
-                ORDER BY t.created_at DESC
-                LIMIT ? OFFSET ?""",
-            params + [limit, offset],
-        )
+        sql_fetch = """
+            SELECT t.*, s.action as signal_action, s.payload as signal_payload
+            FROM trades t LEFT JOIN signals s ON s.id = t.signal_id
+            WHERE (t.symbol = ? OR ? IS NULL)
+              AND (t.created_at >= ? OR ? IS NULL)
+              AND (t.created_at <= ? OR ? IS NULL)
+              AND (? = 1 OR (LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%')))
+            ORDER BY t.created_at DESC LIMIT ? OFFSET ?
+        """
+        rows = await db.execute_fetchall(sql_fetch, params + [limit, offset])
 
         trades = [dict(r) for r in rows]
 
@@ -74,25 +68,21 @@ async def get_trades(
 
 async def get_stats(symbol: Optional[str] = None, demo: bool = False) -> Dict[str, Any]:
     """Tinh metrics hieu suat: Win Rate, Profit Factor, Drawdown."""
-    conditions = ["t.status = 'FILLED'"]
-    params: list = []
-
-    if symbol:
-        conditions.append("t.symbol = ?")
-        params.append(symbol.upper())
-    if not demo:
-        conditions.append(
-            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
-        )
-
-    where = f"WHERE {' AND '.join(conditions)}"
+    params = [
+        symbol.upper() if symbol else None, symbol,
+        1 if demo else 0
+    ]
 
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
 
-        rows = await db.execute_fetchall(
-            f"SELECT pnl FROM trades t {where} AND pnl IS NOT NULL", params
-        )
+        sql = """
+            SELECT pnl FROM trades t
+            WHERE t.status = 'FILLED' AND t.pnl IS NOT NULL
+              AND (t.symbol = ? OR ? IS NULL)
+              AND (? = 1 OR (LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%')))
+        """
+        rows = await db.execute_fetchall(sql, params)
 
         pnl_list = [r[0] for r in rows]
 
@@ -197,27 +187,22 @@ async def get_stats_by_mode(demo: bool = False) -> Dict[str, Any]:
             }
         }
     """
-    where_conds = ["t.status = 'FILLED'", "t.pnl IS NOT NULL"]
-    if not demo:
-        where_conds.append(
-            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
-        )
-    where_clause = " AND ".join(where_conds)
+    params = [1 if demo else 0]
 
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        rows = await db.execute_fetchall(
-            f"""
+        sql = """
             SELECT t.pnl,
-                   CASE
-                     WHEN s.mode IS NULL OR TRIM(s.mode) = '' THEN 'OTHER'
-                     ELSE UPPER(TRIM(s.mode))
-                   END AS mode
+            CASE
+              WHEN s.mode IS NULL OR TRIM(s.mode) = '' THEN 'OTHER'
+              ELSE UPPER(TRIM(s.mode))
+            END AS mode
             FROM trades t
             LEFT JOIN signals s ON s.id = t.signal_id
-            WHERE {where_clause}
-            """,
-        )
+            WHERE t.status = 'FILLED' AND t.pnl IS NOT NULL
+              AND (? = 1 OR (LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%')))
+        """
+        rows = await db.execute_fetchall(sql, params)
 
     all_rows = [(float(r["pnl"]), r["mode"]) for r in rows]
 
@@ -258,42 +243,26 @@ async def get_recent_trades(
         id, created_at, symbol, side, mode, executed_price,
         stop_loss_price, take_profit_price, pnl, status, exchange
     """
-    conditions = ["t.status = 'FILLED'", "t.pnl IS NOT NULL"]
-    params: list = []
-    if symbol:
-        conditions.append("t.symbol = ?")
-        params.append(symbol.upper())
-    if not demo:
-        conditions.append(
-            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
-        )
-
-    where = f"WHERE {' AND '.join(conditions)}"
-    params.append(limit)
+    params = [
+        symbol.upper() if symbol else None, symbol,
+        1 if demo else 0,
+        limit
+    ]
 
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        rows = await db.execute_fetchall(
-            f"""
-            SELECT t.id,
-                   t.created_at,
-                   t.symbol,
-                   t.side,
-                   COALESCE(NULLIF(TRIM(s.mode), ''), 'OTHER') AS mode,
-                   t.executed_price,
-                   t.stop_loss_price,
-                   t.take_profit_price,
-                   t.pnl,
-                   t.status,
-                   t.exchange
-            FROM trades t
-            LEFT JOIN signals s ON s.id = t.signal_id
-            {where}
-            ORDER BY t.created_at DESC
-            LIMIT ?
-            """,
-            params,
-        )
+        sql = """
+            SELECT t.id, t.created_at, t.symbol, t.side,
+            COALESCE(NULLIF(TRIM(s.mode), ''), 'OTHER') AS mode,
+            t.executed_price, t.stop_loss_price, t.take_profit_price,
+            t.pnl, t.status, t.exchange
+            FROM trades t LEFT JOIN signals s ON s.id = t.signal_id
+            WHERE t.status = 'FILLED' AND t.pnl IS NOT NULL
+              AND (t.symbol = ? OR ? IS NULL)
+              AND (? = 1 OR (LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%')))
+            ORDER BY t.created_at DESC LIMIT ?
+        """
+        rows = await db.execute_fetchall(sql, params)
     return [dict(r) for r in rows]
 
 
@@ -306,28 +275,23 @@ async def get_equity_curve(
     symbol: Optional[str] = None, demo: bool = False
 ) -> Dict[str, Any]:
     """Tra ve equity curve data cho Chart.js."""
-    conditions = ["t.status = 'FILLED'", "t.pnl IS NOT NULL"]
-    params: list = []
-
-    if symbol:
-        conditions.append("t.symbol = ?")
-        params.append(symbol.upper())
-    if not demo:
-        conditions.append(
-            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
-        )
-
-    where = f"WHERE {' AND '.join(conditions)}"
+    params = [
+        symbol.upper() if symbol else None, symbol,
+        1 if demo else 0
+    ]
 
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
 
-        rows = await db.execute_fetchall(
-            f"""SELECT t.created_at, t.pnl, t.symbol, t.side
-                FROM trades t {where}
-                ORDER BY t.created_at ASC""",
-            params,
-        )
+        sql = """
+            SELECT t.created_at, t.pnl, t.symbol, t.side
+            FROM trades t
+            WHERE t.status = 'FILLED' AND t.pnl IS NOT NULL
+              AND (t.symbol = ? OR ? IS NULL)
+              AND (? = 1 OR (LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%')))
+            ORDER BY t.created_at ASC
+        """
+        rows = await db.execute_fetchall(sql, params)
 
         labels = []
         cumulative_pnl = []
@@ -394,13 +358,13 @@ async def get_briefs(
             if d.get("scan_data"):
                 try:
                     d["scan_data"] = json.loads(d["scan_data"])
-                except Exception:
-                    pass
+                except ValueError as e:
+                    log.warning("Ignored: %s", e)
             if d.get("vision_data"):
                 try:
                     d["vision_data"] = json.loads(d["vision_data"])
-                except Exception:
-                    pass
+                except ValueError as e:
+                    log.warning("Ignored: %s", e)
             briefs.append(d)
 
     return {"briefs": briefs, "total": total, "limit": limit, "offset": offset}
@@ -419,13 +383,13 @@ async def get_brief_by_id(brief_id: int) -> Optional[Dict[str, Any]]:
         if d.get("scan_data"):
             try:
                 d["scan_data"] = json.loads(d["scan_data"])
-            except Exception:
-                pass
+            except ValueError as e:
+                log.warning("Ignored: %s", e)
         if d.get("vision_data"):
             try:
                 d["vision_data"] = json.loads(d["vision_data"])
-            except Exception:
-                pass
+            except ValueError as e:
+                log.warning("Ignored: %s", e)
         return d
 
 
@@ -440,8 +404,13 @@ async def get_db_counts() -> Dict[str, int]:
     async with aiosqlite.connect(config.DB_PATH) as db:
         counts = {}
         for table in _ALLOWED_TABLES:
-            if table not in _ALLOWED_TABLES:  # explicit guard (defense-in-depth)
+            if table == "signals":
+                rows = await db.execute_fetchall("SELECT COUNT(*) FROM signals")
+            elif table == "trades":
+                rows = await db.execute_fetchall("SELECT COUNT(*) FROM trades")
+            elif table == "briefs":
+                rows = await db.execute_fetchall("SELECT COUNT(*) FROM briefs")
+            else:
                 raise ValueError(f"Disallowed table name: {table!r}")
-            rows = await db.execute_fetchall(f"SELECT COUNT(*) FROM {table}")
             counts[f"{table}_count"] = rows[0][0] if rows else 0
         return counts

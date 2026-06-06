@@ -301,7 +301,7 @@ def generate_chart_mpl(
                 # Draw cup arc (simplified: line from left rim → bottom → right rim)
                 cup_points_x = [cup.cup_start_idx, cup.cup_bottom_idx, cup.cup_end_idx]
                 closes_list = (
-                    _extract_closes(ohlcv_data)
+                    _extract_closes(ohlcv_data)  # noqa: F821
                     if callable(globals().get("_extract_closes", None))
                     else []
                 )

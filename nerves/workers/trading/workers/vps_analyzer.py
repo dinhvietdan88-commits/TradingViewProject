@@ -221,8 +221,10 @@ async def server_announce(request: Request):
                 f"Server: <b>{result['server']}</b>\n"
                 f"Health monitoring resumed."
             )
-        except Exception:
-            pass
+        except ValueError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored error: %s", e)
     return result
 
 
@@ -505,7 +507,7 @@ class VpsAnalyzerWorker:
         # Start uvicorn health server in background
         import uvicorn
 
-        config_uv = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
+        config_uv = uvicorn.Config(app, host="127.0.0.1", port=8000, log_level="info")
         server = uvicorn.Server(config_uv)
         server_task = asyncio.create_task(server.serve())
         log.info("[VpsAnalyzer] Health and metrics server started on port 8000.")
@@ -1038,7 +1040,7 @@ class VpsAnalyzerWorker:
             if not symbol or symbol == "?":
                 return None
 
-            action = analyzed.get("action") or tp.get("action") or "buy"
+            analyzed.get("action") or tp.get("action") or "buy"
             price = analyzed.get("price") or tp.get("price")
 
             # Build drawings from price levels
@@ -1785,8 +1787,10 @@ class VpsAnalyzerWorker:
                         f"Lỗi: <code>{str(exc)[:150]}</code>\n"
                         f"→ Chuyển sang <b>Server B (Cloud Backup)</b>"
                     )
-                except Exception:
-                    pass
+                except ValueError as e:
+                    import logging
+
+                    logging.getLogger(__name__).warning("Ignored error: %s", e)
 
         # ── Fallback: SERVER B ─────────────────────────────────────────────────
         url = f"{config.SERVER_B_EXECUTE_URL}/api/execute-trade"

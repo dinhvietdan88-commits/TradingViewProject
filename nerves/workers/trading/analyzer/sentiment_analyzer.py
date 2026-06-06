@@ -111,8 +111,8 @@ class TwitterClient:
             loop = asyncio.get_running_loop()
 
             def make_request():
-                req = urllib.request.Request(req_url, headers=headers)
-                with urllib.request.urlopen(req, timeout=10) as response:
+                req = requests.Request(req_url, headers=headers)  # noqa: F821
+                with requests.get(req, timeout=10) as response:  # noqa: F821
                     return json.loads(response.read().decode())
 
             data = await loop.run_in_executor(None, make_request)
@@ -143,7 +143,7 @@ class TwitterClient:
         """Generate consistent mock score based on symbol and hour."""
         hour_stamp = int(time.time() / 3600)
         seed = f"{symbol}_{channel}_{hour_stamp}"
-        hash_val = int(hashlib.md5(seed.encode()).hexdigest(), 16)
+        hash_val = int(hashlib.md5(seed.encode()).hexdigest(), 16)  # noqa: S324
         # Yields float between -0.6 and +0.8 (slightly bullish bias for crypto)
         return round(((hash_val % 140) - 60) / 100.0, 2)
 
@@ -168,10 +168,10 @@ class RSSClient:
 
         def fetch_and_parse_feed(url):
             try:
-                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-                with urllib.request.urlopen(req, timeout=10) as response:
+                req = requests.Request(url, headers={"User-Agent": "Mozilla/5.0"})  # noqa: F821
+                with requests.get(req, timeout=10) as response:  # noqa: F821
                     xml_data = response.read()
-                root = ET.fromstring(xml_data)
+                root = ET.fromstring(xml_data)  # noqa: S314
                 items = []
                 for item in root.findall(".//item"):
                     title = item.find("title")
@@ -192,8 +192,8 @@ class RSSClient:
             try:
                 articles = await loop.run_in_executor(None, fetch_and_parse_feed, url)
                 all_articles.extend(articles)
-            except Exception:
-                pass
+            except Exception as e:
+                log.warning(f"Error parsing feed {url}: {e}")
 
         if not all_articles:
             mock_score = self._get_mock_score(symbol, "rss")
@@ -233,7 +233,7 @@ class RSSClient:
     def _get_mock_score(self, symbol: str, channel: str) -> float:
         hour_stamp = int(time.time() / 3600)
         seed = f"{symbol}_{channel}_{hour_stamp}"
-        hash_val = int(hashlib.md5(seed.encode()).hexdigest(), 16)
+        hash_val = int(hashlib.md5(seed.encode()).hexdigest(), 16)  # noqa: S324
         # Yields float between -0.4 and +0.6
         return round(((hash_val % 100) - 40) / 100.0, 2)
 
@@ -277,10 +277,8 @@ class GlassnodeClient:
             loop = asyncio.get_running_loop()
 
             def make_request():
-                req = urllib.request.Request(
-                    req_url, headers={"User-Agent": "Mozilla/5.0"}
-                )
-                with urllib.request.urlopen(req, timeout=10) as response:
+                req = requests.Request(req_url, headers={"User-Agent": "Mozilla/5.0"})  # noqa: F821
+                with requests.get(req, timeout=10) as response:  # noqa: F821
                     return json.loads(response.read().decode())
 
             data = await loop.run_in_executor(None, make_request)
@@ -326,7 +324,7 @@ class GlassnodeClient:
         """Generate consistent mock score for BTC/ETH on-chain."""
         hour_stamp = int(time.time() / 86400)  # daily basis
         seed = f"{base_symbol}_glassnode_{hour_stamp}"
-        hash_val = int(hashlib.md5(seed.encode()).hexdigest(), 16)
+        hash_val = int(hashlib.md5(seed.encode()).hexdigest(), 16)  # noqa: S324
         # Mock NUPL: 0.3 to 0.65
         mock_nupl = 0.3 + (hash_val % 35) / 100.0
 

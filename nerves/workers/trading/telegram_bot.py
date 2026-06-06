@@ -570,8 +570,8 @@ async def cmd_scan(update, context):
                     from mcp_client import get_mcp_client
 
                     mcp = get_mcp_client()
-                except Exception:  # noqa: S110
-                    pass
+                except Exception as e:
+                    log.debug(f"MCP check failed: {e}")
 
             results = await scan_symbols(symbols, mcp)
 
@@ -1462,8 +1462,8 @@ async def cmd_scan_enhanced(update, context):
                     from mcp_client import get_mcp_client
 
                     mcp = get_mcp_client()
-                except Exception:  # noqa: S110
-                    pass
+                except Exception as e:
+                    log.debug(f"MCP check failed: {e}")
 
             results = await scan_symbols(symbols, mcp)
 
@@ -2515,8 +2515,8 @@ async def cmd_status_inline(message):
 
         wl = get_watchlist()
         lines.append(f"📋 Watchlist: {len(wl)} symbols")
-    except Exception:  # noqa: S110
-        pass
+    except Exception as e:
+        log.debug(f"Watchlist check failed: {e}")
 
     from notifier import sanitize_for_telegram_html
 
@@ -2561,8 +2561,8 @@ async def cmd_scan_inline(message):
                 from mcp_client import get_mcp_client
 
                 mcp = get_mcp_client()
-            except Exception:  # noqa: S110
-                pass
+            except Exception as e:
+                log.debug(f"MCP check failed: {e}")
 
         results = await scan_symbols(symbols, mcp)
         if results:
@@ -2758,8 +2758,8 @@ class TelegramSender:
             await self._app.bot.send_chat_action(
                 chat_id=chat_id, action=ChatAction.TYPING
             )
-        except Exception:  # noqa: S110
-            pass
+        except Exception as e:
+            log.debug(f"Typing action failed: {e}")
 
 
 _sender: Optional[TelegramSender] = None
@@ -2947,8 +2947,8 @@ class DataQueryFacade:
                     ) as _probe:
                         await _probe.fetchone()
                     has_exchange_col = True
-                except Exception:  # noqa: S110
-                    pass
+                except Exception as e:
+                    log.debug(f"Exchange column probe failed (schema compat): {e}")
 
                 if has_exchange_col:
                     query = """
@@ -3315,8 +3315,8 @@ class ApprovalTimeoutManager:
                         await sender.edit_message(
                             chat_id, message_id, f"<i>[HẾT HẠN]</i>{expired_suffix}"
                         )
-                    except Exception:  # noqa: S110
-                        pass
+                    except Exception as e:
+                        log.debug(f"Failed to edit expired message: {e}")
                 await sender.send_message(timeout_text)
 
             del self._tracked[signal_id]
@@ -3583,7 +3583,7 @@ def start_bot():
             request = HTTPXRequest(proxy=_proxy)
             # Inject IPv4-only transport (overrides default which allows IPv6)
             request._client_kwargs["transport"] = _httpx.AsyncHTTPTransport(
-                local_address="0.0.0.0",  # noqa: S104
+                local_address="127.0.0.1",
             )
             request._client = request._build_client()
 
@@ -3716,8 +3716,8 @@ def start_bot():
                 _bot_loop = None
                 try:
                     loop.close()
-                except Exception:  # noqa: S110
-                    pass
+                except Exception as e:
+                    log.debug(f"Loop close error: {e}")
 
         _bot_thread = threading.Thread(
             target=_run_bot, daemon=True, name="telegram-bot"

@@ -68,7 +68,7 @@ def verify_file(filepath):
         # Basic check for link syntax (skip comments or code examples if possible)
         if line.strip().startswith("`") or "```" in line:
             continue
-        for text, link in link_pattern.findall(line):
+        for _text, link in link_pattern.findall(line):
             # Skip external web and websocket URLs
             if (
                 link.startswith("http://")

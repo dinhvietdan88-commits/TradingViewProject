@@ -50,8 +50,10 @@ def is_cdp_active() -> bool:
         if response.status_code == 200:
             logger.info("CDP is already listening on port 9222.")
             return True
-    except Exception:
-        pass
+    except ConnectionError as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored: %s", e)
     return False
 
 
