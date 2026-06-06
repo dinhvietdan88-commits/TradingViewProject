@@ -50,7 +50,11 @@ async def test_webhook_auth_success(async_client, mocker):
     mocker.patch("server.database.insert_signal", return_value=1)
     mocker.patch("server.database.update_signal_status", return_value=True)
 
-    payload = {"action": "alert", "symbol": "BTCUSDT", "secret": "test-secret"}  # pragma: allowlist secret
+    payload = {
+        "action": "alert",
+        "symbol": "BTCUSDT",
+        "secret": "test-secret",  # pragma: allowlist secret
+    }
 
     response = await async_client.post("/webhook", json=payload)
     assert response.status_code == 200
@@ -63,7 +67,11 @@ async def test_webhook_rate_limiting(async_client, mocker):
     mocker.patch("server.database.insert_signal", return_value=1)
     mocker.patch("server.database.update_signal_status", return_value=True)
 
-    payload = {"action": "buy", "symbol": "BTCUSDT", "secret": "test-secret"}
+    payload = {
+        "action": "buy",
+        "symbol": "BTCUSDT",
+        "secret": "test-secret",  # pragma: allowlist secret
+    }
 
     # Send 15 allowed requests rapidly
     for _ in range(15):
@@ -87,7 +95,7 @@ async def test_webhook_safe_parsing(async_client, mocker, bad_price, bad_qty):
     payload = {
         "action": "buy",
         "symbol": "BTCUSDT",
-        "secret": "test-secret",
+        "secret": "test-secret",  # pragma: allowlist secret
         "price": bad_price,
         "quoteQty": bad_qty,
     }
