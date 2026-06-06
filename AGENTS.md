@@ -14,3 +14,11 @@
 - Indicator webhook payloads must validate `symbol` and `indicator_name` before `insert_signal` so invalid requests do not create orphan `signals` rows.
 - Stealth `alert` flows must pass `exchange` on `AlertTriggered` through to downstream `SignalValidated` / `AnalysisComplete`.
 - This client project stays isolated from global EAIS; local RAG uses ChromaDB in `server/rag.py` (see `CLAUDE.md`).
+
+## Security SCARs (Prevention Rules)
+
+- [SCAR-SEC-01] KHÔNG BAO GI? N?I CHU?I URL TR?C TI?P T? USER INPUT: Ph?i qua validate_exchange_url().
+- [SCAR-SEC-02] B?T BU?C DÙNG safe_path() KHI Ð?C FILE: Ch?ng Path Traversal CWE-22.
+- [SCAR-SEC-03] KHÔNG S? D?NG TRY-EXCEPT-PASS: Ph?i import logging và log l?i l?i (C?m nu?t l?i S110).
+- [SCAR-SEC-04] QU?N LÝ SECRETS TRONG MÔI TRU?NG TEST: Không hardcode secret k? c? trong test (S105), dùng os.environ ho?c # noqa: S105.
+- [SCAR-SEC-05] AUDIT URLLIB SCHEMES (S310): Validate protocol ho?c dùng requests thay cho urllib.request.urlopen.

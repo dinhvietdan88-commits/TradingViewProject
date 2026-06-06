@@ -232,7 +232,9 @@ async def telegram_widget_callback(request: Request):
         return JSONResponse(status_code=403, content={"detail": "User not authorized"})
     except Exception as e:
         log.error(f"Widget callback error: {e}", exc_info=True)
-        return JSONResponse(status_code=500, content={"detail": "An internal server error occurred"})
+        return JSONResponse(
+            status_code=500, content={"detail": "An internal server error occurred"}
+        )
 
 
 @auth_router.get("/logout")

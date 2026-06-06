@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from typing import Optional
 import os
 
+from security.runtime_guard import safe_path
+
 import config
 
 logger = logging.getLogger(__name__)
@@ -364,6 +366,13 @@ class MCPClient:
         Uses fast local rendering (lightweight-charts/mplfinance) or daemon by default,
         and falls back to legacy subprocess mode on failure.
         """
+        if save_path is not None:
+            save_path = safe_path(
+                save_path,
+                Path(__file__).resolve().parents[3],
+                allowed_extensions={".png", ".jpg", ".jpeg", ".webp"},
+            )
+
         async with self.lock:
             # Resolve active symbol/timeframe dynamically via CDP
             target_symbol = symbol
@@ -433,10 +442,33 @@ class MCPClient:
                     img_data = base64.b64decode(raw["base64"])
                     raw_path = save_path.parent / f"_raw_{save_path.name}"
                     raw_path.write_bytes(img_data)
-                elif "file_path" in raw:
-                    raw_path = Path(raw["file_path"])
-                elif "path" in raw:
-                    raw_path = Path(raw["path"])
+                elif "file_path" in raw or "path" in raw:
+                    raw_str = raw.get("file_path") or raw.get("path")
+                    import tempfile
+                    from security.runtime_guard import SecurityError
+
+                    # Ensure the MCP isn't returning a path outside its domain (e.g. /etc/shadow)
+                    allowed_mcp_bases = [
+                        _MCP_DIR,
+                        Path(__file__).resolve().parent / "screenshots",
+                        Path(tempfile.gettempdir()),
+                    ]
+                    for base in allowed_mcp_bases:
+                        try:
+                            raw_path = safe_path(
+                                raw_str,
+                                base,
+                                must_exist=True,
+                                allowed_extensions={".png", ".jpg", ".jpeg", ".webp"},
+                            )
+                            break
+                        except SecurityError:
+                            continue
+                    else:
+                        logger.warning(
+                            f"MCP returned unsafe path or file not found: {raw_str}"
+                        )
+                        raw_path = None
 
                 if raw_path and raw_path.exists():
                     if crop and region == "chart":

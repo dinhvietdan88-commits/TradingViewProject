@@ -17,7 +17,11 @@ import config
 
 # SEC-4: Runtime guard for SSRF prevention (CWE-918)
 try:
-    from security.runtime_guard import validate_exchange_url, validate_exchange_params
+    from security.runtime_guard import (
+        validate_exchange_url,
+        validate_exchange_params,
+        safe_path,
+    )
 except ImportError:
     # Graceful fallback: passthrough (SEC-4 guard not yet installed)
     def validate_exchange_url(url: str) -> str:  # type: ignore[misc]
@@ -25,6 +29,9 @@ except ImportError:
 
     def validate_exchange_params(symbol: str, interval: str) -> tuple:  # type: ignore[misc]
         return symbol, interval
+
+    def safe_path(raw_path, base_dir: Path, **kwargs) -> Path:  # type: ignore[misc]
+        return Path(raw_path).resolve()
 
 
 logger = logging.getLogger(__name__)
@@ -161,6 +168,13 @@ class PythonCaptureClient:
         If 'daemon' is resolved but unavailable, seamlessly falls back to
         local native rendering.
         """
+        if save_path is not None:
+            save_path = safe_path(
+                save_path,
+                Path(__file__).resolve().parents[3],
+                allowed_extensions={".png", ".jpg", ".jpeg", ".webp"},
+            )
+
         start_time = time.monotonic()
 
         # Resolve capture method
@@ -739,7 +753,8 @@ class PythonCaptureClient:
             if exchange_name == "bybit":
                 # SEC-4 R1: Validate params before URL construction (SSRF prevention CWE-918)
                 symbol, interval = validate_exchange_params(symbol, interval)
-                url = f"https://api.bybit.com/v5/market/kline?category=linear&symbol={symbol}&interval={interval}&limit={limit}"
+                limit_val = int(limit)
+                url = f"https://api.bybit.com/v5/market/kline?category=linear&symbol={symbol}&interval={interval}&limit={limit_val}"
                 validate_exchange_url(url)  # Double-check final URL is on allowlist
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url, timeout=10) as resp:
@@ -769,17 +784,13 @@ class PythonCaptureClient:
                     .replace("_UMCBL", "")
                     .lower()
                 )
-                # SEC-4 R1: Validate clean_symbol and interval for param injection
-                import re as _re
-
-                if not _re.match(r"^[a-z0-9]{1,30}$", clean_symbol):
-                    raise ValueError(
-                        f"Weex symbol contains unsafe characters: {clean_symbol!r}"
-                    )
                 weex_symbol = f"cmt_{clean_symbol}"
+                # SEC-4 R1: Validate clean_symbol and interval for param injection
+                weex_symbol, interval = validate_exchange_params(weex_symbol, interval)
+                limit_val = int(limit)
 
                 # Granularity: Weex contract V2 uses e.g. 1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d, 1w
-                url = f"https://api-contract.weex.com/capi/v2/market/candles?symbol={weex_symbol}&granularity={interval}&limit={limit}"
+                url = f"https://api-contract.weex.com/capi/v2/market/candles?symbol={weex_symbol}&granularity={interval}&limit={limit_val}"
                 validate_exchange_url(url)  # SEC-4 R1: SSRF allowlist check
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url, timeout=10) as resp:
@@ -807,8 +818,9 @@ class PythonCaptureClient:
                 # Default to Binance
                 # SEC-4 R1: Validate params before URL construction (SSRF prevention CWE-918)
                 symbol, interval = validate_exchange_params(symbol, interval)
+                limit_val = int(limit)
                 # Normalize interval mapping for binance (e.g. 1d, 1w)
-                url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}"
+                url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit_val}"
                 validate_exchange_url(url)  # Double-check final URL is on allowlist
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url, timeout=10) as resp:

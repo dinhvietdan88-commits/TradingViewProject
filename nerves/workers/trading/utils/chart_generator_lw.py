@@ -4,6 +4,8 @@ from typing import List, Dict, Any, Optional, Union
 import json
 from playwright.async_api import async_playwright
 
+from security.runtime_guard import safe_path
+
 log = logging.getLogger(__name__)
 
 
@@ -56,7 +58,11 @@ async def generate_chart_lw(
         screenshots_dir.mkdir(parents=True, exist_ok=True)
         save_path = screenshots_dir / f"chart_lw_{symbol}_{timeframe}.png"
     else:
-        save_path = Path(save_path)
+        save_path = safe_path(
+            save_path,
+            Path(__file__).resolve().parents[4],
+            allowed_extensions={".png", ".jpg", ".jpeg", ".webp"},
+        )
         save_path.parent.mkdir(parents=True, exist_ok=True)
 
     chart_payload = {

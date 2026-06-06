@@ -98,7 +98,6 @@ async def _call_claude_cli(prompt: str, image_path: Optional[str] = None) -> str
         ClaudeCLIError: khi binary không tồn tại, timeout, hoặc returncode != 0.
             Caller có thể bắt để fallback sang SDK.
     """
-    from pathlib import Path as _Path
 
     claude_path = getattr(config, "CLAUDE_CLI_PATH", "claude")
     timeout = getattr(config, "CLAUDE_CLI_TIMEOUT", 60)
@@ -109,7 +108,9 @@ async def _call_claude_cli(prompt: str, image_path: Optional[str] = None) -> str
         args += ["--model", model]
 
     if image_path:
-        img = _Path(image_path).resolve()
+        from security.runtime_guard import safe_screenshot_path
+
+        img = safe_screenshot_path(image_path)
         args += [
             "--add-dir",
             str(img.parent),
