@@ -8,7 +8,7 @@
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| 1 | R1: Review & Package | Run Ruff, CodeQL, and git-commit-organizer | none | REWORK |
+| 1 | R1: Review & Package | Run Ruff, CodeQL, and git-commit-organizer | none | DONE |
 | 2 | R2: Update SCARs | Update global security_scars_report.md | none | DONE |
 | 3 | R3: Deep Report | Analyze runtime_guard.py and write sec4_deep_report.md | none | DONE |
 
