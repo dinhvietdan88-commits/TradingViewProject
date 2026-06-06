@@ -4,7 +4,7 @@ TradingView Alert Data Models.
 Defines Pydantic schemas for incoming TradingView webhook payloads.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -30,24 +30,18 @@ class TradingViewAlertPayload(BaseModel):
     price: Any | None = Field(default=None, description="Price at the time of alert")
 
     # Volume and position sizing
-    volume: Any | None = Field(
-        default=None, description="Volume at the time of alert"
-    )
+    volume: Any | None = Field(default=None, description="Volume at the time of alert")
     quoteQty: Any | None = Field(
         default=10.0, alias="size", description="Quote quantity to trade"
     )
 
     # Time and context
     time: str | None = Field(default=None, description="Timestamp of the alert")
-    interval: str | None = Field(
-        default=None, description="Chart interval/timeframe"
-    )
+    interval: str | None = Field(default=None, description="Chart interval/timeframe")
 
     # Risk management
     sl: str | None = Field(default=None, description="Stop Loss price or percentage")
-    tp: str | None = Field(
-        default=None, description="Take Profit price or percentage"
-    )
+    tp: str | None = Field(default=None, description="Take Profit price or percentage")
 
     # Exchange routing
     exchange: str | None = Field(default=None, description="Target exchange")

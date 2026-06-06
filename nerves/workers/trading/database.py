@@ -11,7 +11,7 @@ V8.0 REFACTOR: This module now acts as a backward-compatible facade.
 
 import logging
 import sqlite3
-from typing import Any, Dict, Optional
+from typing import Any
 
 import aiosqlite
 
@@ -540,7 +540,9 @@ async def get_risk_settings(exchange: str, symbol: str = "*") -> dict[str, Any]:
                 if row:
                     return dict(row)
     except Exception as e:
-        log.warning(f"Failed to fetch risk settings for {exchange}: {e}")  # codeql[py/log-injection]
+        log.warning(
+            f"Failed to fetch risk settings for {exchange}: {e}"
+        )  # codeql[py/log-injection]
 
     # Return defaults if not configured
     return {
@@ -585,7 +587,9 @@ async def save_risk_settings(
             )
             await db.commit()
     except Exception as e:
-        log.warning(f"Failed to save risk settings for {exchange}: {e}")  # codeql[py/log-injection]
+        log.warning(
+            f"Failed to save risk settings for {exchange}: {e}"
+        )  # codeql[py/log-injection]
 
 
 async def update_circuit_breaker_state(
@@ -611,7 +615,9 @@ async def update_circuit_breaker_state(
                     )
             await db.commit()
     except Exception as e:
-        log.warning(f"Failed to update circuit breaker state for {exchange}: {e}")  # codeql[py/log-injection]
+        log.warning(
+            f"Failed to update circuit breaker state for {exchange}: {e}"
+        )  # codeql[py/log-injection]
 
 
 async def log_circuit_breaker(

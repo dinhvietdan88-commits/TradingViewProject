@@ -19,8 +19,7 @@ import json
 import logging
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone, UTC
-from typing import Optional
+from datetime import datetime, timedelta, UTC
 
 from auth.auth_config import AuthConfig
 from auth.models import (

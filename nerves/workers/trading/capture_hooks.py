@@ -8,7 +8,6 @@ Design ref: design.md § "HookDispatcher"
 
 import logging
 import time
-from typing import Dict, Optional
 
 import config
 from core.event_bus import bus

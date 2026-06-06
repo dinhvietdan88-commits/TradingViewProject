@@ -25,7 +25,6 @@ import logging
 import threading
 from dataclasses import dataclass
 from datetime import datetime, UTC
-from typing import Dict, List, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
@@ -2330,7 +2329,7 @@ async def button_callback(update, context):
     elif data.startswith("cbbypass_"):
         exchange = data.split("_")[1].lower()
         user = query.from_user.username or query.from_user.first_name
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
         import database
 
@@ -3010,7 +3009,6 @@ class DataQueryFacade:
     async def get_daily_stats(self, date: str | None = None) -> DailyStats:
         """Get aggregated performance stats for a given date (YYYY-MM-DD, default today UTC)."""
         from datetime import datetime as dt
-        from datetime import timezone
 
         target = date or dt.now(UTC).strftime("%Y-%m-%d")
         try:

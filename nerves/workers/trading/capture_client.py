@@ -11,7 +11,7 @@ import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import config
 
@@ -403,7 +403,9 @@ class PythonCaptureClient:
             if save_path and data.get("base64"):
                 import base64 as b64
 
-                save_path.parent.mkdir(parents=True, exist_ok=True)  # codeql[py/path-injection]
+                save_path.parent.mkdir(
+                    parents=True, exist_ok=True
+                )  # codeql[py/path-injection]
                 img_data = b64.b64decode(data["base64"])
                 save_path.write_bytes(img_data)  # codeql[py/path-injection]
                 file_path = str(save_path)
@@ -676,9 +678,7 @@ class PythonCaptureClient:
         weeks = defaultdict(list)
         for c in daily_klines:
             ts_ms = c[0]
-            dt = datetime.datetime.fromtimestamp(
-                ts_ms / 1000.0, tz=datetime.UTC
-            )
+            dt = datetime.datetime.fromtimestamp(ts_ms / 1000.0, tz=datetime.UTC)
             monday = dt - datetime.timedelta(days=dt.weekday())
             monday_00 = monday.replace(hour=0, minute=0, second=0, microsecond=0)
             monday_ts_ms = int(monday_00.timestamp() * 1000)
@@ -755,8 +755,15 @@ class PythonCaptureClient:
                 symbol, interval = validate_exchange_params(symbol, interval)
                 limit_val = int(limit)
                 base_url = "https://api.bybit.com/v5/market/kline"
-                params = {"category": "linear", "symbol": symbol, "interval": interval, "limit": limit_val}
-                validate_exchange_url(base_url)  # Double-check final URL is on allowlist
+                params = {
+                    "category": "linear",
+                    "symbol": symbol,
+                    "interval": interval,
+                    "limit": limit_val,
+                }
+                validate_exchange_url(
+                    base_url
+                )  # Double-check final URL is on allowlist
                 async with aiohttp.ClientSession() as session:
                     async with session.get(base_url, params=params, timeout=10) as resp:
                         res = await resp.json()
@@ -792,7 +799,11 @@ class PythonCaptureClient:
 
                 # Granularity: Weex contract V2 uses e.g. 1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d, 1w
                 base_url = "https://api-contract.weex.com/capi/v2/market/candles"
-                params = {"symbol": weex_symbol, "granularity": interval, "limit": limit_val}
+                params = {
+                    "symbol": weex_symbol,
+                    "granularity": interval,
+                    "limit": limit_val,
+                }
                 validate_exchange_url(base_url)  # SEC-4 R1: SSRF allowlist check
                 async with aiohttp.ClientSession() as session:
                     async with session.get(base_url, params=params, timeout=10) as resp:
@@ -824,7 +835,9 @@ class PythonCaptureClient:
                 # Normalize interval mapping for binance (e.g. 1d, 1w)
                 base_url = "https://api.binance.com/api/v3/klines"
                 params = {"symbol": symbol, "interval": interval, "limit": limit_val}
-                validate_exchange_url(base_url)  # Double-check final URL is on allowlist
+                validate_exchange_url(
+                    base_url
+                )  # Double-check final URL is on allowlist
                 async with aiohttp.ClientSession() as session:
                     async with session.get(base_url, params=params, timeout=10) as resp:
                         list_data = await resp.json()

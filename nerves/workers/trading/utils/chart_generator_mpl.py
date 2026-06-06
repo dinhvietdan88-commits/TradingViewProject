@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import matplotlib
 import pandas as pd
@@ -379,6 +379,7 @@ def generate_chart_mpl(
     if not save_path:
         # Default save path from config
         import config
+
         screenshots_dir = Path(config.SCREENSHOTS_DIR)
         screenshots_dir.mkdir(parents=True, exist_ok=True)
         save_path = screenshots_dir / f"chart_{symbol}_{timeframe}.png"

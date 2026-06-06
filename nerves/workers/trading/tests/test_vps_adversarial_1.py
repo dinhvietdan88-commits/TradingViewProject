@@ -276,9 +276,7 @@ async def test_consumer_pull_signals_timeout():
 
     # Mock get to raise asyncio.TimeoutError
     mock_session = MagicMock()
-    mock_session.get = MagicMock(
-        side_effect=TimeoutError("Connection timed out")
-    )
+    mock_session.get = MagicMock(side_effect=TimeoutError("Connection timed out"))
     consumer.get_session = AsyncMock(return_value=mock_session)
 
     with pytest.raises(asyncio.TimeoutError):

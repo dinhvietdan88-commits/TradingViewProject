@@ -24,7 +24,6 @@ import logging
 import re
 import urllib.parse
 from pathlib import Path
-from typing import Optional
 
 log = logging.getLogger(__name__)
 
@@ -47,7 +46,9 @@ class SecurityError(ValueError):
         self.rule = rule
         self.evidence = evidence
         # Always log security violations so they appear in trades.log
-        log.warning("[%s] SecurityError: %s | evidence=%r", rule, message, evidence)  # codeql[py/log-injection]
+        log.warning(
+            "[%s] SecurityError: %s | evidence=%r", rule, message, evidence
+        )  # codeql[py/log-injection]
 
 
 # ──────────────────────────────────────────────────────────────────────────────

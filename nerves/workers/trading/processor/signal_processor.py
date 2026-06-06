@@ -12,7 +12,6 @@ Design Invariants:
 
 import logging
 import time
-from typing import Dict, Tuple
 
 from core.event_bus import bus as _default_bus
 from core.events import (

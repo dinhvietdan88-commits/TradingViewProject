@@ -12,7 +12,6 @@ Output: dataclasses consumed by chart_generator_mpl for overlay rendering.
 
 import logging
 from dataclasses import dataclass, field
-from typing import List, Tuple
 
 log = logging.getLogger(__name__)
 

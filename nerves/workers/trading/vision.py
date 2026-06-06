@@ -14,7 +14,6 @@ import asyncio
 import base64
 import logging
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 log = logging.getLogger(__name__)
 
@@ -635,7 +634,8 @@ async def analyze_chart_vision(
                     f"{user_prompt}"
                 )
                 analysis_text = await _rag._call_claude_cli(
-                    cli_prompt, image_path=str(image_path.resolve())  # codeql[py/path-injection]
+                    cli_prompt,
+                    image_path=str(image_path.resolve()),  # codeql[py/path-injection]
                 )
             except Exception as cli_err:
                 if (
@@ -739,7 +739,9 @@ async def analyze_chart_vision(
                         g_model = VertexGenerativeModel(
                             model_name, system_instruction=VISION_SYSTEM_PROMPT
                         )
-                        image_data = image_path.read_bytes()  # codeql[py/path-injection]
+                        image_data = (
+                            image_path.read_bytes()
+                        )  # codeql[py/path-injection]
                         mime_type = _get_media_type(image_path)
                         image_part = VertexPart.from_data(
                             data=image_data, mime_type=mime_type
@@ -752,7 +754,9 @@ async def analyze_chart_vision(
                         from google.genai import types as genai_types
 
                         client = genai.Client(api_key=config.GEMINI_API_KEY)
-                        image_bytes = image_path.read_bytes()  # codeql[py/path-injection]
+                        image_bytes = (
+                            image_path.read_bytes()
+                        )  # codeql[py/path-injection]
                         mime_type = _get_media_type(image_path)
                         response = client.models.generate_content(
                             model=model_name,

@@ -24,7 +24,6 @@ Usage:
 
 import asyncio
 import logging
-from typing import Dict, List, Type
 from collections.abc import Awaitable, Callable
 
 from core.events import Event

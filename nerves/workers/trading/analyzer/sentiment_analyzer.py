@@ -7,7 +7,7 @@ import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
-from typing import Any, Dict
+from typing import Any
 
 import config
 import database

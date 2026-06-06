@@ -15,7 +15,7 @@ Usage (from telegram_bot.py setup):
 """
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from telegram import Update
 from telegram.ext import CommandHandler, ContextTypes

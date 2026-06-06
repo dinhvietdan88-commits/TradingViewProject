@@ -18,7 +18,6 @@ import asyncio
 import importlib.util
 import logging
 import time
-from typing import Optional
 
 import config
 

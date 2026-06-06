@@ -324,7 +324,7 @@ async def test_trade_engine_tripping_event_emitted():
 @pytest.mark.asyncio
 async def test_trade_engine_respects_bypass_setting():
     """Verify that TradeEngine does NOT trip if a valid bypass timestamp is active."""
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     from engine.trade_engine import execute_trade, set_bus
     from tests.unit.test_trade_engine import MockOrderResult

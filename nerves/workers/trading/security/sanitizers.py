@@ -8,7 +8,6 @@ vulnerabilities (CWE-22, CWE-117, CWE-78) in python code.
 import os
 import re
 from pathlib import Path
-from typing import List, Optional
 
 
 # ── CWE-117: Log Injection Prevention ────────────────────────────────

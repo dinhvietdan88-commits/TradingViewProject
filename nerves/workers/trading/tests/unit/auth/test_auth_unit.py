@@ -6,7 +6,7 @@ Example-based tests for scenarios that are hard to express as properties.
 
 import os
 import sys
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import datetime, timedelta, UTC
 from unittest.mock import patch
 
 import pytest

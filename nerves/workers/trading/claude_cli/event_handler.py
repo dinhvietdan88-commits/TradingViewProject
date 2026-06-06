@@ -19,7 +19,7 @@ Usage (from main.py lifespan startup):
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import config
 from core.event_bus import bus as _default_bus

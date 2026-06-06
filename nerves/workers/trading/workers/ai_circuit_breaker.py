@@ -38,7 +38,6 @@ import os
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 from collections.abc import Awaitable, Callable
 
 log = logging.getLogger(__name__)

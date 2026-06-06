@@ -12,7 +12,7 @@ Tests verify gaps from the original test_trade_engine.py:
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

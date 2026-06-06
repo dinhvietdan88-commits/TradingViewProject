@@ -11,7 +11,6 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import config
 from security.runtime_guard import safe_path
@@ -433,7 +432,9 @@ class MCPClient:
                         / "screenshots"
                         / f"{safe_symbol}_{timeframe}.png"
                     )
-                save_path.parent.mkdir(parents=True, exist_ok=True)  # codeql[py/path-injection]
+                save_path.parent.mkdir(
+                    parents=True, exist_ok=True
+                )  # codeql[py/path-injection]
 
                 raw_path: Path | None = None
 
@@ -479,7 +480,9 @@ class MCPClient:
                             # Fallback: just copy raw as-is
                             import shutil
 
-                            shutil.copy2(raw_path, save_path)  # codeql[py/path-injection]
+                            shutil.copy2(
+                                raw_path, save_path
+                            )  # codeql[py/path-injection]
                     else:
                         import shutil
 
@@ -492,7 +495,9 @@ class MCPClient:
                     return save_path
 
             except Exception as e:
-                logger.warning(f"Screenshot failed for {symbol}: {e}")  # codeql[py/log-injection]
+                logger.warning(
+                    f"Screenshot failed for {symbol}: {e}"
+                )  # codeql[py/log-injection]
             return None
 
     # ── Chart Control ─────────────────────────────────────────────────────────
@@ -539,7 +544,9 @@ class MCPClient:
                     }
                 )
             except Exception as e:
-                logger.warning(f"batch_run error for {sym}: {e}")  # codeql[py/log-injection]
+                logger.warning(
+                    f"batch_run error for {sym}: {e}"
+                )  # codeql[py/log-injection]
                 results.append({"symbol": sym, "error": str(e)})
 
         return results
