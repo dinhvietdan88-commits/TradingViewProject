@@ -1,18 +1,18 @@
-# Project: Security Remediation & Reporting
+# Project: Security Remediation & Code Quality Hardening (268 Alerts)
 
 ## Architecture
-- `server/runtime_guard.py`: The newly added runtime security module.
-- `docs/security/sec4_deep_report.md`: The deep assessment report.
-- `security_scars_report.md`: Global security scars log.
+- Codebase-wide application of Ruff auto-fixes (SEC-01, SEC-02)
+- `server/security/runtime_guard.py` containing SEC-04 mitigations (`safe_path`, `validate_exchange_params`, `safe_log_input`).
+- Pre-commit hooks for continuous enforcement.
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| 1 | R1: Review & Package | Run Ruff, CodeQL, and git-commit-organizer | none | DONE |
-| 2 | R2: Update SCARs | Update global security_scars_report.md | none | DONE |
-| 3 | R3: Deep Report | Analyze runtime_guard.py and write sec4_deep_report.md | none | DONE |
+| 1 | M1: Linting & Code Quality | Resolve 188 lint alerts (repeated-import, empty-except, etc.) using SEC-01 & SEC-02 | none | PLANNED |
+| 2 | M2: SEC-04 Runtime Guards | Resolve 80 critical alerts (SSRF, Path Traversal, Log Injection, XSS) using SEC-04 | none | PLANNED |
+| 3 | M3: Final Pipeline Audit | Execute SEC-03 to verify 0 open CodeQL alerts | M1, M2 | PLANNED |
 
 ## Interface Contracts
-- Task 1 will ensure working tree is clean.
-- Task 2 will ensure `security_scars_report.md` is updated.
-- Task 3 will ensure `docs/security/sec4_deep_report.md` is written.
+- All file reads/writes must use `safe_path`.
+- All external HTTP calls must use `validate_exchange_params` / URL validators.
+- All logs of user input must be sanitized via `safe_log_input`.
