@@ -241,8 +241,8 @@ def _detect_pty_mode() -> str:
     return "direct"
 
 
-import hashlib
-import re
+import hashlib  # noqa: E402
+import re  # noqa: E402
 
 # ── Response Cache ───────────────────────────────────────────────
 
@@ -510,13 +510,15 @@ async def _run_parallel(
 
     if winner:
         # Cancel remaining tasks
-        for name, task in tasks.items():
+        for name, task in tasks.items():  # noqa: B007
             if task in pending:
                 task.cancel()
                 try:
                     await task
-                except (asyncio.CancelledError, Exception):
+                except asyncio.CancelledError:
                     pass
+                except Exception as e:
+                    log.warning(f"Error cancelling task: {e}")
 
         # Record CLI health if CLI participated
         if "cli" in tasks:
@@ -552,8 +554,10 @@ async def _run_parallel(
                     )
                 log.info(f"[parallel] late winner ({result['latency_ms']:.0f}ms)")
                 return result
-        except (asyncio.TimeoutError, asyncio.CancelledError, Exception):
+        except (asyncio.TimeoutError, asyncio.CancelledError):
             pass
+        except Exception as e:
+            log.warning(f"Error waiting for task: {e}")
 
     # All failed
     cli_health.record(success=False)
@@ -612,8 +616,8 @@ async def _run_agy(prompt: str, model: str, timeout_sec: int) -> dict:
 # ── FastAPI App ──────────────────────────────────────────────────
 
 try:
-    from fastapi import FastAPI, Header, HTTPException
-    from pydantic import BaseModel
+    from fastapi import FastAPI, Header, HTTPException  # noqa: E402
+    from pydantic import BaseModel  # noqa: E402
 except ImportError:
     log.error("FastAPI not installed. Run: pip3 install fastapi uvicorn")
     sys.exit(1)
@@ -695,7 +699,7 @@ async def analyze(req: AnalyzeRequest, authorization: str = Header(default="")):
         import traceback
 
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail={"error": str(exc)})
+        raise HTTPException(status_code=500, detail={"error": str(exc)})  # noqa: B904
 
     log.info(
         f"_run_agy result: success={result.get('success')}, provider={result.get('provider', 'N/A')}"
@@ -805,13 +809,13 @@ async def admin_verify(
         import json as _json
 
         url = f"{ANALYZER_BASE_URL}/admin/rag-verify"
-        req = urllib.request.Request(
+        req = urllib.request.Request(  # noqa: S310
             url,
             method="POST",
             headers={"Content-Type": "application/json"},
             data=b"{}",
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
             body = _json.loads(resp.read().decode("utf-8"))
 
         result.vector_count = body.get("vector_count", -1)
@@ -859,13 +863,13 @@ async def admin_verify(
 
     try:
         # Step 1: heartbeat — is ChromaDB reachable?
-        with _req.urlopen(f"{CHROMA_URL}/api/v2/heartbeat", timeout=5) as r:
+        with _req.urlopen(f"{CHROMA_URL}/api/v2/heartbeat", timeout=5) as r:  # noqa: S310
             if r.status != 200:
                 raise RuntimeError(f"heartbeat HTTP {r.status}")
 
         # Step 2: get vector count for our collection
         count_url = f"{CHROMA_URL}/api/v2/collections/{COLLECTION}/count"
-        with _req.urlopen(count_url, timeout=10) as r:
+        with _req.urlopen(count_url, timeout=10) as r:  # noqa: S310
             raw = r.read().decode("utf-8").strip()
             # ChromaDB returns a plain integer for /count
             count = int(raw)
@@ -904,7 +908,7 @@ async def admin_verify_quick(authorization: str = Header(default="")):
         import json as _json
 
         url = f"{ANALYZER_BASE_URL}/health"
-        with urllib.request.urlopen(url, timeout=10) as resp:
+        with urllib.request.urlopen(url, timeout=10) as resp:  # noqa: S310
             body = _json.loads(resp.read().decode("utf-8"))
 
         return {
@@ -913,7 +917,7 @@ async def admin_verify_quick(authorization: str = Header(default="")):
             "source": "health_endpoint",
         }
     except Exception as e:
-        raise HTTPException(
+        raise HTTPException(  # noqa: B904
             status_code=503,
             detail={"error": f"Analyzer health unreachable: {str(e)[:120]}"},
         )

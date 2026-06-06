@@ -51,5 +51,7 @@ repos:
             \.env\..*|
             .*\.log|
             .*\.db|
-            .*test.*fixture.*
+            .*test.*fixture.*|
+            lobes/.*|
+            \.claude/.*
           )$
