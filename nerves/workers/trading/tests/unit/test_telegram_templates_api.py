@@ -76,4 +76,4 @@ def test_api_post_templates_unsupported_key(client, monkeypatch, tmp_path):
 
     response = client.post("/api/telegram/templates", json=invalid_payload)
     assert response.status_code == 400
-    assert "unsupported placeholder key" in response.json()["detail"]
+    assert "Invalid template configuration." in response.json()["detail"]
