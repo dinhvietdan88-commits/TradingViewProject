@@ -29,8 +29,10 @@ if sys.stdout.encoding != "utf-8":
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="ignore")
         sys.stderr.reconfigure(encoding="utf-8", errors="ignore")
-    except Exception:
-        pass
+    except ValueError as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored: %s", e)
 
 import json
 from pathlib import Path

@@ -220,8 +220,10 @@ class ADKTelemetryExporter:
             try:
                 with open(self.output_path, "a", encoding="utf-8") as f:
                     f.write(json.dumps(event_dict, ensure_ascii=False) + "\n")
-            except Exception:
-                pass  # Offline-first: never crash on telemetry failure
+            except ValueError as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
     def get_events(self) -> list[dict]:
         """Return all recorded events."""

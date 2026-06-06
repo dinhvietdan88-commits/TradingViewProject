@@ -321,7 +321,7 @@ class TestSafeRegexInput:
         adversarial = "*" * 9999 + "x"
 
         start = time.monotonic()
-        result = sanitize_for_telegram_html(adversarial)
+        sanitize_for_telegram_html(adversarial)
         elapsed = time.monotonic() - start
 
         assert elapsed < 1.0, (
@@ -368,7 +368,7 @@ class TestSecurityErrorContract:
         """Existing try/except (ValueError, TypeError) blocks will catch it."""
         caught = False
         try:
-            raise SecurityError("test")
+            raise SecurityError("test") from None
         except (ValueError, TypeError):
             caught = True
         assert caught

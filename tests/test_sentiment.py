@@ -53,8 +53,10 @@ async def test_sentiment_analyzer_mock_flow():
     if os.path.exists(config.DB_PATH):
         try:
             os.remove(config.DB_PATH)
-        except Exception:
-            pass
+        except ValueError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
 
     try:
         await database.init_db()
@@ -90,5 +92,7 @@ async def test_sentiment_analyzer_mock_flow():
             await asyncio.sleep(0.5)
             try:
                 os.remove("test_sentiment_trades.db")
-            except Exception:
-                pass
+            except ValueError as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)

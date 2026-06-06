@@ -28,7 +28,6 @@ def test_weex_signature_generation():
         testnet=True,
         dry_run=True,
     )
-    timestamp = "1684812345000"
     method = "POST"
     request_path = "/api/v2/contract/trade/order"
     body = '{"symbol":"BTCUSDT_UMCBL"}'
@@ -104,7 +103,7 @@ async def test_weex_smart_order_slippage_adjustment():
                 "_dry_run": True,
             }
         ),
-    ) as mock_place_order:
+    ):
         result = await adapter.execute_smart_order(
             symbol="BTCUSDT",
             side="BUY",

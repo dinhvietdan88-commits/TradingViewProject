@@ -151,5 +151,5 @@ async def test_rate_limit_robustness_simulation():
     # Since each task did 4 retries, the mock_sleep should be called 4 times per task.
     # Total simulated sleep for each task should be 9.625 seconds.
     # Total time for a task should be 9.625 + 5 * 0.05 = 9.875 seconds.
-    for task, clock in task_clocks.items():
+    for _task, clock in task_clocks.items():
         assert clock >= 9.875, f"Task clock {clock} is less than expected 9.875"

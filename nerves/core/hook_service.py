@@ -23,8 +23,10 @@ if sys.stdout.encoding != "utf-8":
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="ignore")
         sys.stderr.reconfigure(encoding="utf-8", errors="ignore")
-    except Exception:
-        pass
+    except ValueError as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored: %s", e)
 
 import json
 import time as _time
@@ -370,8 +372,10 @@ class SRAHookHandler(BaseHTTPRequestHandler):
                     )
                     event = ctx.to_guardrail_event(result)
                     _telemetry.record(event)
-                except Exception:
-                    pass
+                except ValueError as e:
+                    import logging
+
+                    logging.getLogger(__name__).warning("Ignored: %s", e)
 
             # Log verdicts
             for v in result.get("verdicts", []):
@@ -455,8 +459,10 @@ class SRAHookHandler(BaseHTTPRequestHandler):
                     )
                     event = ctx.to_guardrail_event(result)
                     _telemetry.record(event)
-                except Exception:
-                    pass
+                except ValueError as e:
+                    import logging
+
+                    logging.getLogger(__name__).warning("Ignored: %s", e)
 
             for v in result.get("verdicts", []):
                 action = v.get("action", "")

@@ -139,7 +139,7 @@ async def test_morning_brief_trigger_and_persistence(client, mocker):
 
     # 4. Mock Telegram sends to avoid network calls inside brief namespace
     mock_send_photo = mocker.patch("brief.send_telegram_photo")
-    mock_send_message = mocker.patch("brief.send_telegram_message")
+    mocker.patch("brief.send_telegram_message")
 
     # Mock watchlist inside brief namespace
     mocker.patch("brief.get_watchlist", return_value=["BTCUSDT"])

@@ -18,7 +18,7 @@ async def async_client():
     config.BRIEF_ENABLED = False
     config.MCP_ENABLED = False
     config.RAG_ENABLED = False
-    config.WEBHOOK_SECRET = "test-secret"
+    config.WEBHOOK_SECRET = "test-secret"  # noqa: S105 # pragma: allowlist secret
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -36,7 +36,9 @@ async def test_webhook_auth_failure(async_client):
 
     # Invalid secret passed via headers
     response = await async_client.post(
-        "/webhook", json=payload, headers={"X-TV-Secret": "wrong-secret"}
+        "/webhook",
+        json=payload,
+        headers={"X-TV-Secret": "wrong-secret"},  # pragma: allowlist secret
     )
     assert response.status_code == 401
 
@@ -48,7 +50,7 @@ async def test_webhook_auth_success(async_client, mocker):
     mocker.patch("server.database.insert_signal", return_value=1)
     mocker.patch("server.database.update_signal_status", return_value=True)
 
-    payload = {"action": "alert", "symbol": "BTCUSDT", "secret": "test-secret"}
+    payload = {"action": "alert", "symbol": "BTCUSDT", "secret": "test-secret"}  # pragma: allowlist secret
 
     response = await async_client.post("/webhook", json=payload)
     assert response.status_code == 200

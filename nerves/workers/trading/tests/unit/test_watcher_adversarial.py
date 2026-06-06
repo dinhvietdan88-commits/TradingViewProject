@@ -11,9 +11,9 @@ import pathlib
 trading_dir = pathlib.Path(__file__).parent.parent.parent
 sys.path.insert(0, str(trading_dir))
 
-import alert_manager
-import config
-from scripts.autotest_watcher import (
+import alert_manager  # noqa: E402
+import config  # noqa: E402
+from scripts.autotest_watcher import (  # noqa: E402
     health_check_loop,
     run_test_suite,
     debounce_consumer,

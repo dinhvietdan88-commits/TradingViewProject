@@ -24,11 +24,11 @@ vbs_path = str(Path(__file__).resolve().parents[5] / "vbs")
 if vbs_path not in sys.path:
     sys.path.insert(0, vbs_path)
 
-import config as vbs_config
-import database as vbs_db
-import notifier as vbs_notifier
-import scheduler as vbs_scheduler
-from main import app as vbs_app
+import config as vbs_config  # noqa: E402
+import database as vbs_db  # noqa: E402
+import notifier as vbs_notifier  # noqa: E402
+import scheduler as vbs_scheduler  # noqa: E402
+from main import app as vbs_app  # noqa: E402
 
 # Cleanup sys.path & restore original server modules to sys.modules
 if vbs_path in sys.path:
@@ -106,8 +106,10 @@ class MockResponseContext:
         if response.status_code == 200:
             try:
                 json_val = response.json()
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
         return FakeResponse(
             status=response.status_code, json_data=json_val, text_data=response.text
         )
@@ -173,7 +175,7 @@ async def test_db(tmp_path):
     original_db = vbs_config.DB_PATH
     test_db_path = str(tmp_path / "test_vbs.db")
     vbs_config.DB_PATH = test_db_path
-    vbs_config.BUFFER_SECRET = "test-secret"
+    vbs_config.BUFFER_SECRET = "test-secret"  # noqa: S105
 
     await vbs_db.init_db()
     yield test_db_path
@@ -189,7 +191,7 @@ async def worker(test_db):
 
     # Configure Server C config keys to align with the mock VBS settings
     server_config.VPS_BUFFER_URL = "http://vbs-mock"
-    server_config.VPS_BUFFER_SECRET = "test-secret"
+    server_config.VPS_BUFFER_SECRET = "test-secret"  # noqa: S105
     server_config.LOCAL_EXECUTE_URL = "http://server-b-mock"
     server_config.SERVER_B_EXECUTE_URL = "http://server-b-real-mock"
 
@@ -409,8 +411,8 @@ async def test_fallback_routing_and_recovery(test_db):
     # Configure mock execution URLs
     server_config.LOCAL_EXECUTE_URL = "http://local-execute"
     server_config.SERVER_B_EXECUTE_URL = "http://server-b-execute"
-    server_config.LOCAL_EXECUTE_SECRET = "local-sec"
-    server_config.SERVER_B_SECRET = "b-sec"
+    server_config.LOCAL_EXECUTE_SECRET = "local-sec"  # noqa: S105
+    server_config.SERVER_B_SECRET = "b-sec"  # noqa: S105
 
     worker = VpsAnalyzerWorker()
     session = MockAiohttpSession(vbs_app)

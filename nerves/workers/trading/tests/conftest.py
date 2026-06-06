@@ -14,7 +14,7 @@ from unittest.mock import patch, AsyncMock
 from httpx import AsyncClient, ASGITransport
 
 # Override env BEFORE importing any app modules
-os.environ["WEBHOOK_SECRET"] = "test-secret"
+os.environ["WEBHOOK_SECRET"] = "test-secret"  # noqa: S105
 os.environ["BINANCE_API_KEY"] = ""
 os.environ["BINANCE_API_SECRET"] = ""
 os.environ["TELEGRAM_BOT_TOKEN"] = ""
@@ -51,7 +51,7 @@ async def client(tmp_path):
 
     # Point to per-test temp DB file
     config.DB_PATH = str(tmp_path / "test.db")
-    config.WEBHOOK_SECRET = "test-secret"
+    config.WEBHOOK_SECRET = "test-secret"  # noqa: S105
     config.TELEGRAM_BOT_ENABLED = False
     config.BRIEF_ENABLED = False
     config.MCP_ENABLED = False

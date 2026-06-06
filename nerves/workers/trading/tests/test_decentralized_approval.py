@@ -37,7 +37,7 @@ async def exec_client(tmp_path):
     import database
 
     config.DB_PATH = str(tmp_path / "test_exec.db")
-    config.SERVER_B_SECRET = "test-exec-secret"
+    config.SERVER_B_SECRET = "test-exec-secret"  # noqa: S105
     config.DEFAULT_EXCHANGE = "binance"
     config.TELEGRAM_BOT_ENABLED = True
     config.BRIEF_ENABLED = False

@@ -71,8 +71,8 @@ class TestChartGenerators(unittest.TestCase):
         self.assertGreater(os.path.getsize(result_path), 1000)
 
 
-import pytest
-from utils.chart_generator_lw import generate_chart_lw
+import pytest  # noqa: E402
+from utils.chart_generator_lw import generate_chart_lw  # noqa: E402
 
 
 # SCAR-003: Playwright tests must not run in non-browser CI runners
@@ -80,7 +80,7 @@ def _playwright_available():
     try:
         import subprocess
 
-        result = subprocess.run(
+        subprocess.run(
             ["python", "-m", "playwright", "install", "--dry-run"],
             capture_output=True,
             timeout=5,

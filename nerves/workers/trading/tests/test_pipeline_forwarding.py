@@ -146,7 +146,6 @@ def _setup_ack(mock_session, status=200):
     """
     # The mock_session.post is already set for Server B.
     # We now need it to handle both calls. We use side_effect list.
-    existing_post = mock_session.post
     # If post is already a MagicMock with a return_value (for Server B),
     # we keep it and let the ACK also succeed.
     # Since both forward_to_server_b and _ack_signal use session.post,
@@ -180,7 +179,7 @@ async def test_full_pipeline_signal_flow():
     # Phase 1: Poll and analyze with RAG approval
     patches = _rag_patches_approved()
     with patches[0], patches[1], patches[2]:
-        mock_session = _setup_vbs_poll(worker, [signal])
+        _setup_vbs_poll(worker, [signal])
         results = await worker.poll_and_analyze()
 
     assert len(results) == 1
@@ -235,7 +234,7 @@ async def test_pipeline_handles_rejected_signal():
 
     patches = _rag_patches_rejected()
     with patches[0], patches[1], patches[2]:
-        mock_session = _setup_vbs_poll(worker, [signal])
+        _setup_vbs_poll(worker, [signal])
         results = await worker.poll_and_analyze()
 
     assert len(results) == 1
@@ -268,7 +267,7 @@ async def test_pipeline_handles_execution_failure():
     signal = _make_vbs_signal(queue_id=303, symbol="SOLUSDT", action="buy", price=150.0)
     patches = _rag_patches_approved()
     with patches[0], patches[1], patches[2]:
-        mock_session = _setup_vbs_poll(worker, [signal])
+        _setup_vbs_poll(worker, [signal])
         results = await worker.poll_and_analyze()
 
     assert results[0]["approved"] is True
@@ -422,7 +421,7 @@ async def test_remote_chromadb_config_integration():
                         HttpClient=MagicMock(return_value=mock_http_client)
                     )
                 },
-            ) as mock_modules,
+            ),
             patch.object(rag, "_get_embedding_function", return_value=MagicMock()),
         ):
             result = await rag.init_vector_db()
@@ -479,7 +478,7 @@ async def test_full_pipeline_with_position_sizing():
 
     patches = _rag_patches_approved()
     with patches[0], patches[1], patches[2]:
-        mock_session = _setup_vbs_poll(worker, [signal])
+        _setup_vbs_poll(worker, [signal])
         results = await worker.poll_and_analyze()
 
     assert len(results) == 1
@@ -816,7 +815,7 @@ async def test_pipeline_sell_signal_position_sizing():
     ]
 
     with sell_patches[0], sell_patches[1], sell_patches[2]:
-        mock_session = _setup_vbs_poll(worker, [signal])
+        _setup_vbs_poll(worker, [signal])
         results = await worker.poll_and_analyze()
 
     assert len(results) == 1
@@ -976,7 +975,7 @@ async def test_pipeline_failover_local_to_server_b():
 
     try:
         config.LOCAL_EXECUTE_URL = "http://local-windows:5000"
-        config.LOCAL_EXECUTE_SECRET = "local-sec"
+        config.LOCAL_EXECUTE_SECRET = "local-sec"  # noqa: S105
         config.SERVER_B_EXECUTE_URL = "http://server-b:5000"
 
         worker = VpsAnalyzerWorker()

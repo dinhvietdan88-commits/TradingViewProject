@@ -186,12 +186,16 @@ def scan_files_full(files: list) -> list:
             continue
         try:
             findings.extend(trading_rules.scan_file(p))
-        except Exception:
-            pass
+        except ValueError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
         try:
             findings.extend(static_scanner.scan_file(p))
-        except Exception:
-            pass
+        except ValueError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
         try:
             # secret_scanner uses _scan_file (private)
             scan_fn = getattr(secret_scanner, "scan_file", None) or getattr(
@@ -199,8 +203,10 @@ def scan_files_full(files: list) -> list:
             )
             if scan_fn:
                 findings.extend(scan_fn(p))
-        except Exception:
-            pass
+        except ValueError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
 
     # Dedup by key
     seen = set()
@@ -420,7 +426,8 @@ def _extract_code_context(finding: dict, file_contents: dict = None) -> str:
     start = max(0, line_num - 10)
     end = min(len(lines), line_num + 10)
     return "\n".join(
-        f"{i + 1}: {l}" for i, l in enumerate(lines[start:end], start=start)
+        f"{i + 1}: {l}"
+        for i, l in enumerate(lines[start:end], start=start)  # noqa: E741
     )
 
 
@@ -704,7 +711,7 @@ def run_harness_light(
         lint_errors, _ = lint_checker(files)
     if ast_auditor:
         audit = ast_auditor(files)
-        for fpath, issues in audit.items():
+        for _fpath, issues in audit.items():
             ast_criticals += sum(1 for _, sev, _ in issues if sev == "CRITICAL")
             ast_highs += sum(1 for _, sev, _ in issues if sev == "HIGH")
 
@@ -821,7 +828,7 @@ def run_harness_full(
         lint_errors, _ = lint_checker(files)
     if ast_auditor:
         audit = ast_auditor(files)
-        for fpath, issues in audit.items():
+        for fpath, issues in audit.items():  # noqa: B007
             ast_criticals += sum(1 for _, sev, _ in issues if sev == "CRITICAL")
             ast_highs += sum(1 for _, sev, _ in issues if sev == "HIGH")
 
@@ -911,8 +918,10 @@ def run_harness_full(
                 file_contents[fpath] = Path(fpath).read_text(
                     encoding="utf-8", errors="ignore"
                 )
-            except Exception:
-                pass
+            except ValueError as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
         debate_results = run_ai_debate(findings, file_contents)
         result.debate_results = debate_results

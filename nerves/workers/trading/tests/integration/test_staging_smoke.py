@@ -24,7 +24,7 @@ SMOKE_BASE_URL = os.getenv(
     "SMOKE_BASE_URL",
     f"http://localhost:{os.getenv('PORT', '5000')}",
 )
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "test-secret")
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "test-secret")  # noqa: S105
 
 pytestmark = pytest.mark.staging
 

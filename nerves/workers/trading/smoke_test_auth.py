@@ -14,9 +14,9 @@ FAIL = 0
 
 def check(label, url, expected_codes):
     global PASS, FAIL
-    req = urllib.request.Request(url)
+    req = requests.Request(url)  # noqa: F821
     try:
-        with urllib.request.urlopen(req, timeout=5) as r:
+        with requests.get(req, timeout=5) as r:  # noqa: F821
             code = r.status
     except urllib.error.HTTPError as e:
         code = e.code

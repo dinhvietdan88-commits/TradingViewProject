@@ -19,7 +19,7 @@ def temp_test_dir():
 
 def test_timeframe_mappings():
     """Verify that mappings exist for nested timeframes and are case-insensitive."""
-    client = PythonCaptureClient()
+    PythonCaptureClient()
 
     # We test the logic used inside _local_capture to resolve parent timeframes
     def get_parent(tf):

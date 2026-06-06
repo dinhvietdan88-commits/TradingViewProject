@@ -28,6 +28,7 @@ References:
 """
 
 import json
+import logging
 import sqlite3
 import time
 import uuid
@@ -129,8 +130,8 @@ class AngatiMemoryBridge:
                             }
                         )
                 return memories[:top_k]
-            except Exception:
-                pass
+            except ValueError as e:
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
         # Strategy 2: SQLite keyword search fallback
         return self._sqlite_search(query, top_k)
@@ -155,13 +156,14 @@ class AngatiMemoryBridge:
                 params.extend([f"%{kw}%", f"%{kw}%"])
 
             if conditions:
-                sql = f"""
-                    SELECT id, symbol, indicator_name, interval, close, timestamp
-                    FROM indicator_signals
-                    WHERE {conditions}
-                    ORDER BY timestamp DESC
-                    LIMIT ?
-                """
+                sql = " ".join(
+                    [
+                        "SELECT id, symbol, indicator_name, interval, close, timestamp",
+                        "FROM indicator_signals WHERE",
+                        conditions,
+                        "ORDER BY timestamp DESC LIMIT ?",
+                    ]
+                )
                 params.append(top_k)
                 cursor.execute(sql, params)
             else:
@@ -190,7 +192,8 @@ class AngatiMemoryBridge:
                 }
                 for row in rows
             ]
-        except Exception:
+        except sqlite3.Error as e:
+            logging.getLogger(__name__).warning("SQLite search fallback error: %s", e)
             return []
 
     # ----- Add Memory (ADK MemoryService.add) -----
@@ -222,8 +225,8 @@ class AngatiMemoryBridge:
                     ids=[memory_id], documents=[content], metadatas=[meta]
                 )
                 return memory_id
-            except Exception:
-                pass
+            except ValueError as e:
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
         # Strategy 2: JSONL ledger fallback (Offline-First per SCAR-012)
         ledger_path = AGENTS_ROOT / "cortex" / "state" / "memory_ledger.jsonl"
@@ -238,7 +241,8 @@ class AngatiMemoryBridge:
             with open(ledger_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
             return memory_id
-        except Exception:
+        except OSError as e:
+            logging.getLogger(__name__).warning("Memory ledger fallback error: %s", e)
             return memory_id
 
     # ----- Session History (ADK SessionService) -----
@@ -299,7 +303,8 @@ class AngatiMemoryBridge:
                 }
                 for row in rows
             ]
-        except Exception:
+        except sqlite3.Error as e:
+            logging.getLogger(__name__).warning("Session history error: %s", e)
             return []
 
     # ----- Health Check -----
@@ -313,8 +318,8 @@ class AngatiMemoryBridge:
         if chroma_ok and self._chroma_collection:
             try:
                 chroma_count = self._chroma_collection.count()
-            except Exception:
-                pass
+            except ValueError as e:
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
         return {
             "status": "healthy" if (chroma_ok or sqlite_ok) else "degraded",
@@ -389,7 +394,7 @@ class MemoryEndpointMixin:
         raw = self.rfile.read(content_length)
         try:
             data = json.loads(raw.decode("utf-8"))
-        except Exception:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             self._send_json(400, {"error": "Invalid JSON"})
             return True
 
@@ -409,7 +414,7 @@ class MemoryEndpointMixin:
         raw = self.rfile.read(content_length)
         try:
             data = json.loads(raw.decode("utf-8"))
-        except Exception:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             self._send_json(400, {"error": "Invalid JSON"})
             return True
 

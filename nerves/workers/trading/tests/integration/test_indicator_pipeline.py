@@ -70,7 +70,7 @@ async def test_indicator_pipeline_entry_signal(indicator_bus):
             "vision.analyze_chart_vision",
             new_callable=AsyncMock,
             return_value={"confidence": 8},
-        ) as mock_vision,
+        ),
     ):
         await indicator_bus.emit(
             IndicatorSignalReceived(

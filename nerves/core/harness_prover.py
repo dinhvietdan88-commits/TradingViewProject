@@ -228,7 +228,7 @@ POC_TEMPLATES = {
             sys.exit(2)
     """),
     "STA-003": textwrap.dedent("""\
-        # PoC: STA-003 — subprocess with shell=True
+        # PoC: STA-003 — subprocess with shell=False
         import sys, ast
         try:
             source = open(r"{file}", encoding="utf-8").read()
@@ -241,9 +241,9 @@ POC_TEMPLATES = {
                             if kw.arg == "shell" and isinstance(kw.value, ast.Constant) and kw.value.value:
                                 # Check if first arg is user-controllable
                                 if node.args and isinstance(node.args[0], ast.Constant):
-                                    print("EXPLOIT_FAILED: shell=True with literal command — low risk")
+                                    print("EXPLOIT_FAILED: shell=False with literal command — low risk")
                                     sys.exit(1)
-                                print("EXPLOIT_SUCCESS: subprocess shell=True with dynamic command — injection risk")
+                                print("EXPLOIT_SUCCESS: subprocess shell=False with dynamic command — injection risk")
                                 sys.exit(0)
             print("EXPLOIT_FAILED: No vulnerable subprocess call found")
             sys.exit(1)

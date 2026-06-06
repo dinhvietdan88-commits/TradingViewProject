@@ -24,9 +24,9 @@ vbs_path = str(Path(__file__).resolve().parents[4] / "vbs")
 if vbs_path not in sys.path:
     sys.path.insert(0, vbs_path)
 
-import config
-import database as vbs_db
-from main import app as vbs_app
+import config  # noqa: E402
+import database as vbs_db  # noqa: E402
+from main import app as vbs_app  # noqa: E402
 
 # Restore the original modules to sys.modules to prevent test pollution
 for name in _VBS_MODULE_NAMES:

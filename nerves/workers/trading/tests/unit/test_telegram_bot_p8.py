@@ -331,8 +331,10 @@ async def test_exchange_facade_get_open_positions_empty_registry():
         try:
             result = await facade.get_open_positions()
             assert result == []
-        except Exception:
-            pass  # ImportError path - acceptable
+        except ValueError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
 
 
 # ═══════════════════════════════════════════════════════════════

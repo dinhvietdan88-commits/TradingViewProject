@@ -51,7 +51,7 @@ async def test_webhook_auth_via_body_secret():
         patch("gateway.webhook.config") as mock_config,
         patch("gateway.webhook._event_bus") as mock_bus,
     ):
-        mock_config.WEBHOOK_SECRET = "test-secret"
+        mock_config.WEBHOOK_SECRET = "test-secret"  # noqa: S105
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 1000.0
         mock_config.DEFAULT_EXCHANGE = "binance"
@@ -61,7 +61,7 @@ async def test_webhook_auth_via_body_secret():
 
         with patch.object(
             _db_module, "insert_signal", new_callable=AsyncMock, return_value=1
-        ) as mock_db:
+        ):
             req = _make_request(
                 payload={
                     "secret": "test-secret",
@@ -86,7 +86,7 @@ async def test_webhook_auth_via_header():
         patch("gateway.webhook.config") as mock_config,
         patch("gateway.webhook._event_bus") as mock_bus,
     ):
-        mock_config.WEBHOOK_SECRET = "header-secret"
+        mock_config.WEBHOOK_SECRET = "header-secret"  # noqa: S105
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 1000.0
         mock_config.DEFAULT_EXCHANGE = "binance"
@@ -116,8 +116,8 @@ async def test_webhook_dashboard_token_bypass():
         patch("gateway.webhook.config") as mock_config,
         patch("gateway.webhook._event_bus") as mock_bus,
     ):
-        mock_config.WEBHOOK_SECRET = "real-secret"
-        mock_config.DASHBOARD_TOKEN = "dashboard-token-xyz"
+        mock_config.WEBHOOK_SECRET = "real-secret"  # noqa: S105
+        mock_config.DASHBOARD_TOKEN = "dashboard-token-xyz"  # noqa: S105
         mock_config.MAX_QUOTE_QTY = 1000.0
         mock_config.DEFAULT_EXCHANGE = "binance"
         mock_bus.emit_background = AsyncMock()
@@ -144,7 +144,7 @@ async def test_webhook_unauthorized_wrong_secret():
     _WEBHOOK_RATE_LIMITS.clear()
 
     with patch("gateway.webhook.config") as mock_config:
-        mock_config.WEBHOOK_SECRET = "correct-secret"
+        mock_config.WEBHOOK_SECRET = "correct-secret"  # noqa: S105
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 1000.0
 
@@ -168,7 +168,7 @@ async def test_indicator_webhook_missing_name_no_db_insert():
         patch("gateway.webhook.config") as mock_config,
         patch("gateway.webhook._event_bus") as mock_bus,
     ):
-        mock_config.WEBHOOK_SECRET = "test-secret"
+        mock_config.WEBHOOK_SECRET = "test-secret"  # noqa: S105
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 1000.0
         mock_config.DEFAULT_EXCHANGE = "binance"
@@ -205,7 +205,7 @@ async def test_webhook_empty_payload_after_secret_stripped():
     _WEBHOOK_RATE_LIMITS.clear()
 
     with patch("gateway.webhook.config") as mock_config:
-        mock_config.WEBHOOK_SECRET = "test-secret"
+        mock_config.WEBHOOK_SECRET = "test-secret"  # noqa: S105
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 1000.0
 
@@ -235,7 +235,7 @@ async def test_rate_limit_blocks_after_15_requests():
     _WEBHOOK_RATE_LIMITS[ip] = (15, time.time())
 
     with patch("gateway.webhook.config") as mock_config:
-        mock_config.WEBHOOK_SECRET = "test-secret"
+        mock_config.WEBHOOK_SECRET = "test-secret"  # noqa: S105
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 1000.0
         mock_config.DISABLE_RATE_LIMIT = False
@@ -265,7 +265,7 @@ async def test_rate_limit_resets_after_window():
         patch("gateway.webhook.config") as mock_config,
         patch("gateway.webhook._event_bus") as mock_bus,
     ):
-        mock_config.WEBHOOK_SECRET = "test-secret"
+        mock_config.WEBHOOK_SECRET = "test-secret"  # noqa: S105
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 1000.0
         mock_config.DISABLE_RATE_LIMIT = False
@@ -309,7 +309,7 @@ async def test_price_parsed_with_comma_separator():
         patch("gateway.webhook.config") as mock_config,
         patch("gateway.webhook._event_bus") as mock_bus,
     ):
-        mock_config.WEBHOOK_SECRET = "test-secret"
+        mock_config.WEBHOOK_SECRET = "test-secret"  # noqa: S105
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 1000.0
         mock_config.DEFAULT_EXCHANGE = "binance"
@@ -349,7 +349,7 @@ async def test_invalid_price_becomes_none():
         patch("gateway.webhook.config") as mock_config,
         patch("gateway.webhook._event_bus") as mock_bus,
     ):
-        mock_config.WEBHOOK_SECRET = "test-secret"
+        mock_config.WEBHOOK_SECRET = "test-secret"  # noqa: S105
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 1000.0
         mock_config.DEFAULT_EXCHANGE = "binance"
@@ -394,7 +394,7 @@ async def test_quote_qty_capped_at_max():
         patch("gateway.webhook.config") as mock_config,
         patch("gateway.webhook._event_bus") as mock_bus,
     ):
-        mock_config.WEBHOOK_SECRET = "test-secret"
+        mock_config.WEBHOOK_SECRET = "test-secret"  # noqa: S105
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 500.0
         mock_config.DEFAULT_EXCHANGE = "binance"
@@ -434,7 +434,7 @@ async def test_quote_qty_defaults_to_10_on_invalid():
         patch("gateway.webhook.config") as mock_config,
         patch("gateway.webhook._event_bus") as mock_bus,
     ):
-        mock_config.WEBHOOK_SECRET = "test-secret"
+        mock_config.WEBHOOK_SECRET = "test-secret"  # noqa: S105
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 500.0
         mock_config.DEFAULT_EXCHANGE = "binance"
@@ -484,7 +484,7 @@ async def test_ip_extracted_from_x_forwarded_for():
         patch("gateway.webhook.config") as mock_config,
         patch("gateway.webhook._event_bus") as mock_bus,
     ):
-        mock_config.WEBHOOK_SECRET = "test-secret"
+        mock_config.WEBHOOK_SECRET = "test-secret"  # noqa: S105
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 1000.0
         mock_config.DEFAULT_EXCHANGE = "binance"
@@ -527,7 +527,7 @@ async def test_signal_received_dispatched_to_event_bus():
         patch("gateway.webhook.config") as mock_config,
         patch("gateway.webhook._event_bus") as mock_bus,
     ):
-        mock_config.WEBHOOK_SECRET = "test-secret"
+        mock_config.WEBHOOK_SECRET = "test-secret"  # noqa: S105
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 1000.0
         mock_config.DEFAULT_EXCHANGE = "binance"
@@ -582,7 +582,7 @@ async def test_secret_stripped_from_stored_payload():
         patch("gateway.webhook.config") as mock_config,
         patch("gateway.webhook._event_bus") as mock_bus,
     ):
-        mock_config.WEBHOOK_SECRET = "test-secret"
+        mock_config.WEBHOOK_SECRET = "test-secret"  # noqa: S105
         mock_config.DASHBOARD_TOKEN = ""
         mock_config.MAX_QUOTE_QTY = 1000.0
         mock_config.DEFAULT_EXCHANGE = "binance"

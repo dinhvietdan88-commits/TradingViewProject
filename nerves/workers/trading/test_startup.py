@@ -23,8 +23,8 @@ except Exception as e:
     print(f"Weex L1 Ingestion failed: {e}")
 
 
-from main import app
-from fastapi.testclient import TestClient
+from main import app  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
 
 print("Starting TestClient...")
 try:

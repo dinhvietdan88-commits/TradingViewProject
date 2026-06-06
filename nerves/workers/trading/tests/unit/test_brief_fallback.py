@@ -33,18 +33,18 @@ async def test_morning_brief_fallback_to_mplfinance():
 
     # 2. Patch dependencies
     with (
-        patch("brief.get_watchlist", return_value=["BTCUSDT"]) as mock_watchlist,
+        patch("brief.get_watchlist", return_value=["BTCUSDT"]),
         patch("brief.get_mcp_client") as mock_get_mcp,
         patch("brief.scan_symbols", new_callable=AsyncMock) as mock_scan_symbols,
-        patch("brief.query_knowledge", return_value=[]) as mock_query,
+        patch("brief.query_knowledge", return_value=[]),
         patch(
             "brief.generate_trading_advice",
             new_callable=AsyncMock,
             return_value="Mock advice",
-        ) as mock_advice,
+        ),
         patch("brief.send_telegram_photo") as mock_send_photo,
-        patch("brief.send_telegram_message") as mock_send_msg,
-        patch("brief.database.insert_brief", new_callable=AsyncMock) as mock_insert_db,
+        patch("brief.send_telegram_message"),
+        patch("brief.database.insert_brief", new_callable=AsyncMock),
     ):
         # Mock MCP client as disconnected
         mock_mcp = MagicMock()

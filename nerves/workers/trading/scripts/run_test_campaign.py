@@ -54,8 +54,8 @@ async def run_case_1():
     log.info("--- TEST CASE 1: Micro-Volume Clamping and Limits ---")
     adapter = WeexAdapter(
         api_key="mock_key",
-        api_secret="mock_secret",
-        passphrase="mock_passphrase",
+        api_secret="mock_secret",  # noqa: S106
+        passphrase="mock_passphrase",  # noqa: S106
         testnet=True,
         dry_run=True,  # Enable dry_run for adapter to avoid real network balance check
     )
@@ -487,8 +487,8 @@ async def run_case_5():
 
     adapter = WeexAdapter(
         api_key="mock_key",
-        api_secret="mock_secret",
-        passphrase="mock_passphrase",
+        api_secret="mock_secret",  # noqa: S106
+        passphrase="mock_passphrase",  # noqa: S106
         testnet=True,
         dry_run=False,  # Disable dry run to trigger real OCO placement try-catch block
     )

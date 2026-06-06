@@ -79,7 +79,7 @@ def test_p2_rate_limit_exactly_n_pass(limit, extra):
 
     # Clear and verify fresh state passes
     sdk._request_timestamps = []
-    for i in range(limit):
+    for _i in range(limit):
         assert sdk._check_rate_limit() is True
         sdk._request_timestamps.append(time.monotonic())
 

@@ -19,8 +19,8 @@ trading_dir = pathlib.Path(__file__).resolve().parent.parent.parent
 if str(trading_dir) not in sys.path:
     sys.path.insert(0, str(trading_dir))
 
-from analysis import scan_all_configured_exchanges, ScanResult
-import analysis as analysis_module
+from analysis import scan_all_configured_exchanges, ScanResult  # noqa: E402
+import analysis as analysis_module  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -163,7 +163,7 @@ async def test_scan_all_concurrency_and_stress():
     # 3. Memory Leak Check: Run scan multiple times and verify memory does not continuously grow
     if psutil:
         mems = []
-        for run_idx in range(4):
+        for _run_idx in range(4):
             analysis_module._scan_status = "idle"
             analysis_module._latest_scan_results = []
 

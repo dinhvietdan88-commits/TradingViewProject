@@ -766,7 +766,7 @@ async def test_forward_to_local_success():
 
     try:
         config.LOCAL_EXECUTE_URL = "http://local-windows:5000"
-        config.LOCAL_EXECUTE_SECRET = "local-sec"
+        config.LOCAL_EXECUTE_SECRET = "local-sec"  # noqa: S105
         config.SERVER_B_EXECUTE_URL = "http://server-b:5000"
 
         worker = VpsAnalyzerWorker()
@@ -812,9 +812,9 @@ async def test_forward_to_local_fails_fallback_to_server_b_success():
 
     try:
         config.LOCAL_EXECUTE_URL = "http://local-windows:5000"
-        config.LOCAL_EXECUTE_SECRET = "local-sec"
+        config.LOCAL_EXECUTE_SECRET = "local-sec"  # noqa: S105
         config.SERVER_B_EXECUTE_URL = "http://server-b:5000"
-        config.SERVER_B_SECRET = "b-sec"
+        config.SERVER_B_SECRET = "b-sec"  # noqa: S105
 
         worker = VpsAnalyzerWorker()
         trade_payload = {"symbol": "BTCUSDT", "action": "buy", "price": 68000.0}

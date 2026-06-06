@@ -40,7 +40,7 @@ class PollingWatcher:
         for path in self.watch_paths:
             if not os.path.exists(path):
                 continue
-            for root, dirs, files in os.walk(path):
+            for root, _dirs, files in os.walk(path):
                 # Skip ignored folders
                 if any(
                     ignored in root
@@ -231,7 +231,7 @@ async def watcher_loop(queue: asyncio.Queue):
         try:
             logger.info("Using watchfiles.awatch as the primary watcher.")
             async for changes in awatch(*watch_dirs):
-                for change_type, path in changes:
+                for _change_type, path in changes:
                     if path.endswith((".py", ".pine")):
                         if any(
                             ignored in path

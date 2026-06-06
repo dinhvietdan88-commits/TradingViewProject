@@ -36,13 +36,15 @@ for env_file in [".env", "../.env", "../../.env"]:
                             val = val[1:-1]
                         os.environ["WEBHOOK_SECRET"] = val
                         break
-        except Exception:
-            pass
+        except ConnectionError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
 
 SECRET = os.getenv("WEBHOOK_SECRET", "test-secret")
 WEBHOOK = f"{BASE_URL}/webhook"
 
-PASS = "[PASS]"
+PASS = "[PASS]"  # noqa: S105
 FAIL = "[FAIL]"
 
 
@@ -54,8 +56,10 @@ async def wait_for_server(timeout: int = 30):
                 r = await client.get(f"{BASE_URL}/health", timeout=2.0)
                 if r.status_code == 200:
                     return True
-            except Exception:
-                pass
+            except ConnectionError as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
             await asyncio.sleep(1)
     return False
 

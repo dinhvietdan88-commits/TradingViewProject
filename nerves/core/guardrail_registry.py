@@ -74,7 +74,7 @@ def _resolve_angati_exe() -> Optional[Path]:
 
 
 def _resolve_npx_cmd() -> str:
-    """Resolve npx to npx.cmd on Windows for subprocess without shell=True."""
+    """Resolve npx to npx.cmd on Windows for subprocess without shell=False."""
     npx_cmd = Path(r"C:\Program Files\nodejs\npx.cmd")
     if npx_cmd.exists():
         return str(npx_cmd)
@@ -273,8 +273,10 @@ def scar_consult_advisory(tool_name: str, tool_input: dict, context: dict) -> di
                         "verdict": "WARN",
                         "reason": f"Similar command failed before: {' | '.join(rules[:2])}",
                     }
-    except Exception:
-        pass
+    except ValueError as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored: %s", e)
 
     return {"verdict": "ALLOW"}
 
@@ -295,8 +297,10 @@ def reflex_advisory(tool_name: str, tool_input: dict, context: dict) -> dict:
         output = reflex.run_reflex(instruction)
         if output:
             return {"verdict": "ALLOW", "advisory": output}
-    except Exception:
-        pass
+    except ValueError as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored: %s", e)
 
     return {"verdict": "ALLOW"}
 

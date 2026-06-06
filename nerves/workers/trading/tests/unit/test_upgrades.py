@@ -71,7 +71,7 @@ async def test_regime_switcher_trending():
     # EMA values will naturally align if prices are monotonically increasing
     mock_candles = []
     base_price = 100.0
-    for i in range(100):
+    for _i in range(100):
         # Stepping price up gradually
         base_price += 0.5
         mock_candles.append([0, 0, 0, 0, base_price, 0])  # close is at index 4
@@ -159,7 +159,7 @@ async def test_signal_processor_blocking_during_chop():
         patch(
             "engine.regime_switcher.get_market_regime", AsyncMock(return_value="CHOP")
         ),
-        patch("database.set_setting", AsyncMock()) as mock_set_setting,
+        patch("database.set_setting", AsyncMock()),
     ):
         await process_signal(event)
 
@@ -200,7 +200,7 @@ async def test_signal_processor_allow_during_trending():
             "engine.regime_switcher.get_market_regime",
             AsyncMock(return_value="TRENDING"),
         ),
-        patch("database.set_setting", AsyncMock()) as mock_set_setting,
+        patch("database.set_setting", AsyncMock()),
     ):
         await process_signal(event)
 

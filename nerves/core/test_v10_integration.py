@@ -285,7 +285,9 @@ class TestGuardrailRegistry(unittest.TestCase):
         from guardrail_registry import evaluate_guardrails
 
         result = evaluate_guardrails(
-            "before_tool", "view_file", {"AbsolutePath": "/tmp/test"}
+            "before_tool",
+            "view_file",
+            {"AbsolutePath": "/tmp/test"},  # noqa: S108
         )
         self.assertEqual(result["decision"], "allow")
 

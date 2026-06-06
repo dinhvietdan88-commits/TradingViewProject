@@ -143,8 +143,10 @@ def test_all_env_keys_have_config_defaults():
             all_python_src += (
                 py_file.read_text(encoding="utf-8", errors="replace") + "\n"
             )
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
 
     # Pattern: os.getenv("KEY") or os.getenv("KEY", ...) or os.getenv(_var)
     # Also handle indirect: _var = "KEY" then os.getenv(_var, ...)

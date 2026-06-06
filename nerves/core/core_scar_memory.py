@@ -32,8 +32,10 @@ if sys.stdout.encoding != "utf-8":
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="ignore")
         sys.stderr.reconfigure(encoding="utf-8", errors="ignore")
-    except Exception:
-        pass
+    except ValueError as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored: %s", e)
 
 import json
 import argparse
@@ -287,8 +289,10 @@ def record_scar(
                     if "\n" in res.stdout.strip()
                     else res.stdout
                 )
-            except Exception:
-                pass
+            except ValueError as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
         return {"status": "error", "error": res.stderr[:100], "severity": "low"}
     except subprocess.TimeoutExpired:
         return {
@@ -322,8 +326,10 @@ def consult(instruction: str, top_k: int = 5) -> list[dict]:
             return json.loads(res.stdout)
     except subprocess.TimeoutExpired:
         pass
-    except Exception:
-        pass
+    except ValueError as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored: %s", e)
     return []
 
 
@@ -351,8 +357,10 @@ def circuit_breaker_check(action_signature: str) -> bool:
             return data.get("circuit_broken", False)
     except subprocess.TimeoutExpired:
         pass
-    except Exception:
-        pass
+    except ValueError as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored: %s", e)
     return False
 
 
@@ -376,8 +384,10 @@ def summary(top_k: int = 10) -> list[dict]:
             return results[:top_k] if isinstance(results, list) else []
     except subprocess.TimeoutExpired:
         pass
-    except Exception:
-        pass
+    except ValueError as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored: %s", e)
     return []
 
 
@@ -410,8 +420,10 @@ def health_check(l1_only: bool = False) -> dict:
             return json.loads(res.stdout)
     except subprocess.TimeoutExpired:
         pass
-    except Exception:
-        pass
+    except ValueError as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored: %s", e)
     return {
         "l1": "OFFLINE",
         "l2": "OFFLINE",
@@ -667,8 +679,10 @@ def check_duplicate(text: str) -> dict:
                     }
     except subprocess.TimeoutExpired:
         pass
-    except Exception:
-        pass
+    except ValueError as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored: %s", e)
     return {"is_duplicate": False}
 
 
@@ -788,8 +802,10 @@ def self_test() -> dict:
                 client.delete(
                     collection_name=COLLECTION_NAME, points_selector=[test_id]
                 )
-            except Exception:
-                pass
+            except ValueError as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
         return {
             "status": "PASS",
@@ -811,8 +827,10 @@ def main():
     if sys.stdout.encoding != "utf-8":
         try:
             sys.stdout.reconfigure(encoding="utf-8", errors="ignore")
-        except Exception:
-            pass
+        except ValueError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
 
     parser = argparse.ArgumentParser(
         description="Scar Memory — Failure-Recovery Pattern Learning (Phase 7)",

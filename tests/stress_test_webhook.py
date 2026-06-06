@@ -27,7 +27,7 @@ async def run_stress_test(num_requests=280):
     config.BRIEF_ENABLED = False
     config.MCP_ENABLED = False
     config.RAG_ENABLED = False
-    config.WEBHOOK_SECRET = "stress-test-secret"
+    config.WEBHOOK_SECRET = "stress-test-secret"  # noqa: S105 # pragma: allowlist secret
 
     # Use a separate test database to avoid polluting live database
     original_db_path = config.DB_PATH
@@ -56,7 +56,7 @@ async def run_stress_test(num_requests=280):
                         "symbol": f"BTCUSDT_{i}",
                         "price": 60000.0 + i,
                         "quoteQty": 100.0 + i,
-                        "secret": "stress-test-secret",
+                        "secret": "stress-test-secret",  # pragma: allowlist secret
                         "vbs_queue_id": i + 1000,  # unique queue ID
                     }
                 )

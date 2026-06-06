@@ -9,8 +9,8 @@ sys.path.append(
     r"C:\Users\pesil\working\mj_trading\TradingViewProject\nerves\workers\trading"
 )
 
-from brief import _format_brief_text
-from analysis import ScanResult, TrendTemplateResult, VCPResult
+from brief import _format_brief_text  # noqa: E402
+from analysis import ScanResult, TrendTemplateResult, VCPResult  # noqa: E402
 
 
 def main():

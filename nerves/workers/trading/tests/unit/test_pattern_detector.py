@@ -69,10 +69,10 @@ def test_vcp_3_contractions_detected():
 
 def test_vcp_random_noise_not_detected():
     """Random flat data should not detect VCP."""
-    import random
+    import secrets
 
-    random.seed(42)
-    prices = [100 + random.uniform(-1, 1) for _ in range(80)]
+    random.seed(42)  # noqa: F821
+    prices = [100 + secrets.SystemRandom().uniform(-1, 1) for _ in range(80)]
     ohlcv = _make_ohlcv(prices)
     result = detect_vcp_contractions(ohlcv, pivot_window=3)
     # Flat noise — either not detected or very low quality
@@ -177,7 +177,7 @@ def test_double_bottom_too_far_apart():
         + list(range(81, 100))
     )
     ohlcv = _make_ohlcv(prices)
-    result = detect_double_bottom(ohlcv, pivot_window=3, max_bars_between=80)
+    detect_double_bottom(ohlcv, pivot_window=3, max_bars_between=80)
     # May or may not detect depending on exact pivot detection
     # The point is: if detected, bottoms should be within max_bars_between
 

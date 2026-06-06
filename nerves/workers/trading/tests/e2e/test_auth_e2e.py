@@ -23,13 +23,13 @@ import pytest
 import pytest_asyncio
 
 # ── Environment setup BEFORE any app imports ─────────────────────────────────
-os.environ["WEBHOOK_SECRET"] = "test-secret"
+os.environ["WEBHOOK_SECRET"] = "test-secret"  # noqa: S105
 os.environ["TELEGRAM_BOT_ENABLED"] = "false"
 os.environ["BRIEF_ENABLED"] = "false"
 os.environ["RAG_ENABLED"] = "false"
 os.environ["MCP_ENABLED"] = "false"
-os.environ["DASHBOARD_TOKEN"] = "legacy-token-abc"  # Enable auth gate
-os.environ["AUTH_SECRET_KEY"] = "e2e-test-secret-key-must-be-32-chars!!"
+os.environ["DASHBOARD_TOKEN"] = "legacy-token-abc"  # Enable auth gate  # noqa: S105
+os.environ["AUTH_SECRET_KEY"] = "e2e-test-secret-key-must-be-32-chars!!"  # noqa: S105
 os.environ["TELEGRAM_ALLOWED_USERS"] = "123456789"  # Plain int string, comma-sep
 os.environ["SESSION_EXPIRY_HOURS"] = "24"
 os.environ["DASHBOARD_URL"] = "http://test"
@@ -53,14 +53,14 @@ async def auth_client(tmp_path):
     import database
 
     config.DB_PATH = str(tmp_path / "e2e_auth.db")
-    config.WEBHOOK_SECRET = "test-secret"
+    config.WEBHOOK_SECRET = "test-secret"  # noqa: S105
     config.TELEGRAM_BOT_ENABLED = False
     config.BRIEF_ENABLED = False
     config.MCP_ENABLED = False
     config.RAG_ENABLED = False
-    config.DASHBOARD_TOKEN = "legacy-token-abc"  # Auth gate ON
+    config.DASHBOARD_TOKEN = "legacy-token-abc"  # Auth gate ON  # noqa: S105
     os.environ["DB_PATH"] = config.DB_PATH
-    os.environ["DASHBOARD_TOKEN"] = "legacy-token-abc"
+    os.environ["DASHBOARD_TOKEN"] = "legacy-token-abc"  # noqa: S105
 
     await database.init_db()
 

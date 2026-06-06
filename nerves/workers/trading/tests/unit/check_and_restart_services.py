@@ -18,8 +18,13 @@ def run_mcp_command():
     env = os.environ.copy()
     env["ANGATI_AGENTS_ROOT"] = r"C:\Users\pesil\EAIS\.agents"
 
+    cmd = (
+        ["bash", "-c", f"{ANGATI_EXE} mcp"]
+        if os.name != "nt"
+        else ["cmd", "/c", ANGATI_EXE, "mcp"]
+    )
     proc = subprocess.Popen(
-        [ANGATI_EXE, "mcp"],
+        cmd,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -48,7 +53,7 @@ def run_mcp_command():
     try:
         # 1. Initialize
         print("Sending initialize...")
-        init_res = send_request(
+        send_request(
             1,
             "initialize",
             {

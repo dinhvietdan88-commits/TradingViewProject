@@ -125,7 +125,7 @@ async def test_health_check_failures_and_transitions(temp_db, temp_log):
     # Step 2: Simulate ports 5000 and 9222 ERROR (Offline)
     async def mock_open_connection_error(host, port):
         if port in (5000, 9222):
-            raise ConnectionRefusedError(f"Connection refused on port {port}")
+            raise ConnectionRefusedError(f"Connection refused on port {port}") from None
         mock_writer = AsyncMock()
         mock_writer.close = MagicMock()
         mock_writer.wait_closed = AsyncMock()
@@ -362,10 +362,10 @@ async def test_liveness_protection(temp_db):
         nonlocal sleeps
         sleeps += 1
         if sleeps >= 2:
-            raise StopLoop()
+            raise StopLoop() from None
 
     async def mock_set_setting_crash(*args, **kwargs):
-        raise ValueError("Critical DB connection failure")
+        raise ValueError("Critical DB connection failure") from None
 
     with (
         patch("database.set_setting", side_effect=mock_set_setting_crash),

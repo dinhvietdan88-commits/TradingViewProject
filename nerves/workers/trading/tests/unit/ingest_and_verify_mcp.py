@@ -83,16 +83,22 @@ class MCPClient:
         if self.proc:
             try:
                 self.proc.stdin.close()
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
             try:
                 self.proc.terminate()
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
             try:
                 self.proc.wait(timeout=2)
-            except Exception:
-                pass
+            except Exception as e:
+                import logging
+
+                logging.getLogger(__name__).warning("Ignored: %s", e)
             log(f"[{self.name}] Process terminated.", self.log_lines)
 
 
@@ -125,7 +131,12 @@ def run_mcp_ingestion():
     # 3. L1 Memory Ingestion (angati.exe mcp)
     env_l1 = os.environ.copy()
     env_l1["ANGATI_AGENTS_ROOT"] = WORK_DIR
-    client_l1 = MCPClient([ANGATI_EXE, "mcp"], env_l1, log_lines, name="L1-Brain")
+    cmd_l1 = (
+        ["bash", "-c", f"{ANGATI_EXE} mcp"]
+        if os.name != "nt"
+        else ["cmd", "/c", ANGATI_EXE, "mcp"]
+    )
+    client_l1 = MCPClient(cmd_l1, env_l1, log_lines, name="L1-Brain")
 
     try:
         client_l1.start()

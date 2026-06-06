@@ -239,7 +239,6 @@ async def test_timeout_expire_removes_and_notifies(_clean_pending_and_bus):
 async def test_double_approve_guard(_clean_pending_and_bus):
     """Nhấn Approve lần 2 trên cùng signal_id → trả về None (đã bị pop),
     message hiển thị 'đã hết hạn hoặc đã được xử lý'."""
-    bus = _clean_pending_and_bus
 
     # Seed and then immediately pop (simulates first approve)
     event = _make_event(confidence=6, signal_id=500)
@@ -271,7 +270,6 @@ async def test_double_approve_guard(_clean_pending_and_bus):
 async def test_bot_offline_fallback(_clean_pending_and_bus):
     """Khi _bot_app is None → send_interactive_trade_approval trả [] và hub
     fallback sang notifier.notify_all."""
-    bus = _clean_pending_and_bus
 
     mock_bot = MagicMock()
     mock_bot.send_interactive_trade_approval = AsyncMock(return_value=[])

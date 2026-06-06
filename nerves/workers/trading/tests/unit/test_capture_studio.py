@@ -35,7 +35,7 @@ def _make_mock_capture_client(daemon_available=True):
     # Mock the HTTP calls
     mock_result = CaptureResult(
         success=True,
-        file_path="/tmp/test.png",
+        file_path="/tmp/test.png",  # noqa: S108
         latency_ms=150,
         method="daemon",
         size_bytes=50000,

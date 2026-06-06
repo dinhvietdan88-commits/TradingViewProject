@@ -94,8 +94,10 @@ def load(verbose: bool = False) -> dict:
                 if not os.environ.get(env_k) and cfg.get(k) and len(cfg[k]) > 10:
                     os.environ[env_k] = cfg[k]
                     loaded[env_k] = "from:qdrant_config_legacy"
-        except Exception:
-            pass
+        except ValueError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
 
     # 4. Phase 12 (Hard Right): Force Colab A100 Tunnel logic
     # If the orchestrator has a running Colab vLLM, redirect all `openai/` tools there.
@@ -107,9 +109,13 @@ def load(verbose: bool = False) -> dict:
             cf_url = tunnel_path.read_text(encoding="utf-8").strip()
             if cf_url:
                 os.environ["OPENAI_API_BASE"] = f"{cf_url}/v1"
-                os.environ["OPENAI_API_KEY"] = "dummy_for_vllm"
+                os.environ["OPENAI_API_KEY"] = (
+                    "dummy_for_vllm"  # pragma: allowlist secret
+                )
                 loaded["OPENAI_API_BASE"] = "from:cf_tunnel.url"
-                loaded["OPENAI_API_KEY"] = "from:cf_tunnel.url (dummy)"
+                loaded["OPENAI_API_KEY"] = (
+                    "from:cf_tunnel.url (dummy)"  # pragma: allowlist secret
+                )
         except OSError:
             # Tunnel URL file unreadable — skip silently, not a critical path
             pass

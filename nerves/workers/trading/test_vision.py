@@ -10,7 +10,7 @@ load_dotenv()
 # Add the server directory to python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from vision import analyze_chart_vision
+from vision import analyze_chart_vision  # noqa: E402
 
 
 async def main():

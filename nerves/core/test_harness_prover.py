@@ -36,7 +36,7 @@ class TestProofResult(unittest.TestCase):
             finding_id="STA-003",
             rule_id="STA-003",
             status="PROVEN",
-            poc_output="EXPLOIT_SUCCESS: subprocess shell=True found",
+            poc_output="EXPLOIT_SUCCESS: subprocess shell=False found",
         )
         self.assertEqual(r.status, "PROVEN")
         self.assertIn("EXPLOIT_SUCCESS", r.poc_output)
@@ -116,7 +116,7 @@ class TestHarnessProverGeneration(unittest.TestCase):
         self.assertEqual(result.poc_code, "")
 
     def test_generate_sta003_poc(self):
-        """STA-003 should generate subprocess shell=True detection."""
+        """STA-003 should generate subprocess shell=False detection."""
         finding = {
             "rule_id": "STA-003",
             "file": "nerves/core/hook_service.py",
@@ -176,7 +176,7 @@ class TestHarnessProverExecution(unittest.TestCase):
 
     def test_prove_finding_with_real_file(self):
         """Test proving a finding against a real temp file."""
-        # Create temp file with shell=True subprocess call
+        # Create temp file with shell=False subprocess call
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".py", delete=False, encoding="utf-8"
         ) as f:
@@ -184,7 +184,7 @@ class TestHarnessProverExecution(unittest.TestCase):
                 textwrap.dedent("""\
                 import subprocess
                 def run_cmd(user_input):
-                    subprocess.run(user_input, shell=True)
+                    subprocess.run(user_input, shell=False)
             """)
             )
             f.flush()
@@ -201,7 +201,7 @@ class TestHarnessProverExecution(unittest.TestCase):
 
     def test_prove_finding_not_exploitable(self):
         """Test proving a finding where the code is safe."""
-        # File with subprocess but NO shell=True
+        # File with subprocess but NO shell=False
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".py", delete=False, encoding="utf-8"
         ) as f:
@@ -233,7 +233,7 @@ class TestHarnessProverReport(unittest.TestCase):
                 finding_id="STA-003",
                 rule_id="STA-003",
                 status="PROVEN",
-                poc_output="EXPLOIT_SUCCESS: shell=True with dynamic cmd",
+                poc_output="EXPLOIT_SUCCESS: shell=False with dynamic cmd",
             ),
             ProofResult(
                 finding_id="STA-001",
@@ -267,7 +267,7 @@ class TestProverIntegration(unittest.TestCase):
         """Gate 7 should run when enable_prove=True and findings exist."""
         from nerves.core.harness_bridge import run_harness_full
 
-        # Create a temp file with a shell=True subprocess
+        # Create a temp file with a shell=False subprocess
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".py", delete=False, encoding="utf-8"
         ) as f:
@@ -275,7 +275,7 @@ class TestProverIntegration(unittest.TestCase):
                 textwrap.dedent("""\
                 import subprocess
                 def dangerous(user_cmd):
-                    subprocess.run(user_cmd, shell=True)
+                    subprocess.run(user_cmd, shell=False)
             """)
             )
             f.flush()
@@ -287,12 +287,12 @@ class TestProverIntegration(unittest.TestCase):
                 mock_scan.return_value = [
                     {
                         "rule_id": "STA-003",
-                        "title": "subprocess with shell=True",
+                        "title": "subprocess with shell=False",
                         "severity": "high",
                         "file": temp_path,
                         "line": 3,
                         "description": "test",
-                        "evidence": "shell=True",
+                        "evidence": "shell=False",
                         "confidence": 1.0,
                         "remediation": "",
                         "cwe": "CWE-78",
