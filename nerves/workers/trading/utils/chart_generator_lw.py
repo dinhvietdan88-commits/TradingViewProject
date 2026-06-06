@@ -54,8 +54,9 @@ async def generate_chart_lw(
     file_url = template_path.absolute().as_uri()
 
     if not save_path:
-        base_dir = Path(__file__).resolve().parent.parent
-        screenshots_dir = base_dir / "screenshots"
+        # Default save path from config
+        import config
+        screenshots_dir = Path(config.SCREENSHOTS_DIR)
         screenshots_dir.mkdir(parents=True, exist_ok=True)
         save_path = screenshots_dir / f"chart_lw_{symbol}_{timeframe}.png"
     else:

@@ -377,9 +377,9 @@ def generate_chart_mpl(
             log.warning(f"Pattern overlay rendering failed (non-fatal): {overlay_err}")
     # 7. Save output
     if not save_path:
-        # Default save path under worker's screenshots folder
-        base_dir = Path(__file__).resolve().parent.parent
-        screenshots_dir = base_dir / "screenshots"
+        # Default save path from config
+        import config
+        screenshots_dir = Path(config.SCREENSHOTS_DIR)
         screenshots_dir.mkdir(parents=True, exist_ok=True)
         save_path = screenshots_dir / f"chart_{symbol}_{timeframe}.png"
     else:

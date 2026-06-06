@@ -509,7 +509,7 @@ class VpsAnalyzerWorker:
         # Start uvicorn health server in background
         import uvicorn
 
-        config_uv = uvicorn.Config(app, host="127.0.0.1", port=8000, log_level="info")
+        config_uv = uvicorn.Config(app, host=os.getenv("HOST", "0.0.0.0"), port=8000, log_level="info")
         server = uvicorn.Server(config_uv)
         server_task = asyncio.create_task(server.serve())
         log.info("[VpsAnalyzer] Health and metrics server started on port 8000.")
@@ -885,6 +885,9 @@ class VpsAnalyzerWorker:
                         f"insufficient {strategy_name} criteria"
                     ),
                     "analysis_mode": analysis_mode,
+                    "symbol": symbol,
+                    "action": action,
+                    "price": price_val,
                 }
 
         # ── Parse AI approval if in AI mode ───────────────────────────────────
@@ -896,6 +899,9 @@ class VpsAnalyzerWorker:
                     "approved": False,
                     "reason": f"RAG error: {advice[:100]}",
                     "analysis_mode": analysis_mode,
+                    "symbol": symbol,
+                    "action": action,
+                    "price": price_val,
                 }
 
             # Hard reject if AI confidence is too low (< 30)
@@ -904,6 +910,9 @@ class VpsAnalyzerWorker:
                     "approved": False,
                     "reason": f"Hard Reject: AI confidence too low ({ai_conf} < 30)",
                     "analysis_mode": analysis_mode,
+                    "symbol": symbol,
+                    "action": action,
+                    "price": price_val,
                 }
 
             # 1. Prefix-based checks (high priority)

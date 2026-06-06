@@ -70,6 +70,7 @@ services:
       - LLM_CALL_TIMEOUT_SEC=${LLM_CALL_TIMEOUT_SEC:-30}
       - RISK_PER_TRADE=${RISK_PER_TRADE:-0.02}
       - STOP_LOSS_PCT=${STOP_LOSS_PCT:-0.08}
+      - KNOWLEDGE_DIR=/knowledge/trading_wizard/chunks
       # Telegram notifications from AI Core
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
@@ -114,6 +115,8 @@ services:
       - analyzer_logs:/logs
       # Writable screenshots volume — /app/screenshots is inside ro bind mount
       - analyzer_screenshots:/screenshots
+      # Mount knowledge base directory read-only
+      - ${KNOWLEDGE_SRC:-/opt/trading-bot/docs/knowledge}:/knowledge:ro
     healthcheck:
       test:
         - "CMD"
