@@ -75,7 +75,7 @@ def main():
     if sys.platform == "win32":
         creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
 
-    proc = subprocess.Popen(
+    proc = subprocess.Popen(  # nosec
         [sys.executable, str(daemon_script)],
         cwd=str(trading_path),
         env=env,

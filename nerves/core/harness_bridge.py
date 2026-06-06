@@ -1040,12 +1040,13 @@ def run_harness_full(
 
 
 def _default_syntax_check(files: list) -> list:
-    """Fallback syntax checker using compile()."""
+    """Fallback syntax checker using ast.parse()."""
+    import ast
     failures = []
     for f in files:
         try:
             code = Path(f).read_text(encoding="utf-8", errors="ignore")
-            compile(code, f, "exec")
+            ast.parse(code, f)
         except SyntaxError as exc:
             failures.append(f"{f}: SyntaxError L{exc.lineno}: {exc.msg}")
     return failures

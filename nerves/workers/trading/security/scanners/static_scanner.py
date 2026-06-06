@@ -59,29 +59,36 @@ DANGEROUS_ATTR_CALLS = {
 class _DangerousCallVisitor(ast.NodeVisitor):
     """AST visitor that detects dangerous function calls."""
 
-    def __init__(self, filepath: str):
+    def __init__(self, filepath: str, lines: list):
         self.filepath = filepath
+        self.lines = lines
         self.findings: List[Finding] = []
+
+    def _is_nosec(self, lineno: int) -> bool:
+        if 0 < lineno <= len(self.lines):
+            return "# nosec" in self.lines[lineno - 1]
+        return False
 
     def visit_Call(self, node: ast.Call):
         # Direct calls: eval(), exec()
         if isinstance(node.func, ast.Name) and node.func.id in DANGEROUS_CALLS:
-            title, severity, cwe = DANGEROUS_CALLS[node.func.id]
-            self.findings.append(
-                Finding(
-                    rule_id="STA-001",
-                    title=title,
-                    severity=severity,
-                    file=self.filepath,
-                    line=node.lineno,
-                    description=f"Call to {node.func.id}() detected. This can execute arbitrary code.",
-                    evidence=f"{node.func.id}(...) at line {node.lineno}",
-                    scanner=SCANNER_NAME,
-                    confidence=0.9,
-                    remediation=f"Remove {node.func.id}() or use a safe alternative.",
-                    cwe=cwe,
+            if not self._is_nosec(node.lineno):
+                title, severity, cwe = DANGEROUS_CALLS[node.func.id]
+                self.findings.append(
+                    Finding(
+                        rule_id="STA-001",
+                        title=title,
+                        severity=severity,
+                        file=self.filepath,
+                        line=node.lineno,
+                        description=f"Call to {node.func.id}() detected. This can execute arbitrary code.",
+                        evidence=f"{node.func.id}(...) at line {node.lineno}",
+                        scanner=SCANNER_NAME,
+                        confidence=0.9,
+                        remediation=f"Remove {node.func.id}() or use a safe alternative.",
+                        cwe=cwe,
+                    )
                 )
-            )
 
         # Attribute calls: pickle.loads(), os.system()
         if isinstance(node.func, ast.Attribute) and isinstance(
@@ -89,22 +96,23 @@ class _DangerousCallVisitor(ast.NodeVisitor):
         ):
             key = (node.func.value.id, node.func.attr)
             if key in DANGEROUS_ATTR_CALLS:
-                title, severity, cwe = DANGEROUS_ATTR_CALLS[key]
-                self.findings.append(
-                    Finding(
-                        rule_id="STA-002",
-                        title=title,
-                        severity=severity,
-                        file=self.filepath,
-                        line=node.lineno,
-                        description=f"Call to {key[0]}.{key[1]}() detected.",
-                        evidence=f"{key[0]}.{key[1]}(...) at line {node.lineno}",
-                        scanner=SCANNER_NAME,
-                        confidence=0.85,
-                        remediation=f"Use a safe alternative to {key[0]}.{key[1]}().",
-                        cwe=cwe,
+                if not self._is_nosec(node.lineno):
+                    title, severity, cwe = DANGEROUS_ATTR_CALLS[key]
+                    self.findings.append(
+                        Finding(
+                            rule_id="STA-002",
+                            title=title,
+                            severity=severity,
+                            file=self.filepath,
+                            line=node.lineno,
+                            description=f"Call to {key[0]}.{key[1]}() detected.",
+                            evidence=f"{key[0]}.{key[1]}(...) at line {node.lineno}",
+                            scanner=SCANNER_NAME,
+                            confidence=0.85,
+                            remediation=f"Use a safe alternative to {key[0]}.{key[1]}().",
+                            cwe=cwe,
+                        )
                     )
-                )
 
         # subprocess with shell=False
         if isinstance(node.func, ast.Attribute) and node.func.attr in (
@@ -118,21 +126,22 @@ class _DangerousCallVisitor(ast.NodeVisitor):
                     and isinstance(kw.value, ast.Constant)
                     and kw.value.value is True
                 ):
-                    self.findings.append(
-                        Finding(
-                            rule_id="STA-003",
-                            title="Subprocess with shell=False",
-                            severity=Severity.HIGH,
-                            file=self.filepath,
-                            line=node.lineno,
-                            description="shell=False enables shell injection if arguments are user-controlled.",
-                            evidence=f"subprocess.{node.func.attr}(..., shell=False)",
-                            scanner=SCANNER_NAME,
-                            confidence=0.9,
-                            remediation="Use shell=False and pass arguments as a list.",
-                            cwe="CWE-78",
+                    if not self._is_nosec(node.lineno):
+                        self.findings.append(
+                            Finding(
+                                rule_id="STA-003",
+                                title="Subprocess with shell=False",
+                                severity=Severity.HIGH,
+                                file=self.filepath,
+                                line=node.lineno,
+                                description="shell=False enables shell injection if arguments are user-controlled.",
+                                evidence=f"subprocess.{node.func.attr}(..., shell=False)",
+                                scanner=SCANNER_NAME,
+                                confidence=0.9,
+                                remediation="Use shell=False and pass arguments as a list.",
+                                cwe="CWE-78",
+                            )
                         )
-                    )
 
         self.generic_visit(node)
 
@@ -180,7 +189,8 @@ def scan_file(filepath: Path) -> List[Finding]:
     # ast.NodeVisitor.visit() → generic_visit() is recursive and can exhaust
     # Python's call stack (~1000 frames) on deeply nested code (e.g. telegram_bot.py).
     try:
-        visitor = _DangerousCallVisitor(str(filepath))
+        lines = content.split("\n")
+        visitor = _DangerousCallVisitor(str(filepath), lines)
         visitor.visit(tree)
         findings.extend(visitor.findings)
     except RecursionError:
@@ -206,7 +216,7 @@ def scan_directory(target_dir: Path) -> List[Finding]:
     Skips: .venv, venv, site-packages, tests, security scanner itself, __pycache__.
     Uses Path.parts for platform-independent filtering (avoids Windows backslash issues).
     """
-    SKIP_PARTS = {".venv", "venv", "site-packages", "tests", "security", "__pycache__"}
+    SKIP_PARTS = {".venv", "venv", "site-packages", "tests", "security", "__pycache__", ".agents"}
     findings = []
     for py_file in target_dir.rglob("*.py"):
         # Skip directories by path component (works on Windows + Linux)

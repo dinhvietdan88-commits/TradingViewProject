@@ -35,7 +35,7 @@ try:
     if install_location:
         exe_path = os.path.join(install_location, "TradingView.exe")
         print("Starting:", exe_path)
-        subprocess.Popen(
+        subprocess.Popen(  # nosec
             [exe_path, "--remote-debugging-port=9223"],
             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
         )

@@ -38,7 +38,7 @@ if sys.platform.startswith("win"):
 
 
 def clear_screen():
-    os.system("cls" if os.name == "nt" else "clear")  # noqa: S605
+    print("\033[H\033[J", end="")
 
 
 def print_header(title):

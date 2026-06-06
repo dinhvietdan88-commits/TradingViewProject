@@ -192,9 +192,9 @@ def run_local_command(cmd):
                 timeout=10,
             )
         else:
-            res = subprocess.run(  # noqa: S602
-                cmd,
-                shell=True,
+            import shlex
+            res = subprocess.run(
+                shlex.split(cmd),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
