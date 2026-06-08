@@ -66,7 +66,8 @@ import pytest_asyncio  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
 
 # Override env BEFORE importing any app modules
-os.environ["WEBHOOK_SECRET"] = "test-secret"  # noqa: S105
+if "SMOKE_BASE_URL" not in os.environ:
+    os.environ["WEBHOOK_SECRET"] = "test-secret"  # noqa: S105
 os.environ["BINANCE_API_KEY"] = ""
 os.environ["BINANCE_API_SECRET"] = ""
 os.environ["TELEGRAM_BOT_TOKEN"] = ""
