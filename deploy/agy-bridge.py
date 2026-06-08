@@ -19,6 +19,7 @@ Usage:
   # Or via systemd (see /etc/systemd/system/agy-bridge.service)
 """
 
+from __future__ import annotations
 import asyncio
 import logging
 import os
@@ -26,7 +27,6 @@ import shutil
 import sys
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 
 # ── Auth ─────────────────────────────────────────────────────────
 AGY_BRIDGE_SECRET = os.environ.get("AGY_BRIDGE_SECRET", "")
@@ -122,6 +122,11 @@ class CliHealthTracker:
         default_factory=list, init=False
     )  # True=success, False=fail
     _consecutive_failures: int = field(default=0, init=False)
+    _parallel_calls_count: int = field(default=0, init=False)
+
+    def increment_parallel(self):
+        """Increment parallel call count when CLI is bypassed/cancelled."""
+        self._parallel_calls_count += 1
 
     def record(self, success: bool, latency_ms: float = 0.0):
         """Record a CLI call result."""
@@ -137,6 +142,9 @@ class CliHealthTracker:
             self._outcomes = self._outcomes[-self.window_size :]
         if len(self._latencies) > self.window_size:
             self._latencies = self._latencies[-self.window_size :]
+
+        # Reset parallel calls count since we successfully ran a real probe/call
+        self._parallel_calls_count = 0
 
     @property
     def is_degraded(self) -> bool:
@@ -165,7 +173,12 @@ class CliHealthTracker:
 
     @property
     def strategy(self) -> str:
-        return "parallel" if self.is_degraded else "sequential"
+        if self.is_degraded:
+            if self._parallel_calls_count >= 10:
+                # Force sequential probe to check if CLI recovered
+                return "sequential"
+            return "parallel"
+        return "sequential"
 
     @property
     def info(self) -> dict:
@@ -181,6 +194,7 @@ class CliHealthTracker:
             "avg_latency_ms": round(avg_lat, 1),
             "failure_rate": round(fail_rate, 3),
             "consecutive_failures": self._consecutive_failures,
+            "parallel_calls_count": self._parallel_calls_count,
             "samples": len(self._outcomes),
             "thresholds": {
                 "latency_ms": self.latency_threshold_ms,
@@ -476,6 +490,72 @@ async def _run_sequential(
     }
 
 
+async def _handle_parallel_winner(
+    winner_name: str, winner: dict, tasks: dict, done: set, pending: set
+):
+    """Cancel remaining tasks and record CLI health stats for winner."""
+    # Cancel remaining tasks
+    for name, task in tasks.items():  # noqa: B007
+        if task in pending:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            except Exception as e:
+                log.warning(f"Error cancelling task: {e}")
+
+    # Record CLI health if CLI participated
+    if "cli" in tasks:
+        cli_task = tasks["cli"]
+        if cli_task in done:
+            cli_result = cli_task.result()
+            cli_health.record(
+                success=cli_result.get("success", False),
+                latency_ms=cli_result.get("latency_ms", 0),
+            )
+        else:
+            # CLI was still pending when SDK won → CLI is slow
+            # Do not record success=False to avoid feedback loop degradation
+            cli_health.increment_parallel()
+
+    log.info(
+        f"[parallel] {winner_name} won ({winner['latency_ms']:.0f}ms) "
+        f"— health: {cli_health.strategy}"
+    )
+
+
+async def _wait_for_remaining(tasks: dict, pending: set) -> dict:
+    """Wait for remaining pending tasks if the first completed task failed."""
+    for task in pending:
+        try:
+            result = await asyncio.wait_for(task, timeout=5)
+            if result.get("success"):
+                # Record CLI health
+                if "cli" in tasks:
+                    cli_task = tasks["cli"]
+                    cli_r = cli_task.result() if cli_task.done() else {"success": False}
+                    cli_health.record(
+                        success=cli_r.get("success", False),
+                        latency_ms=cli_r.get("latency_ms", 0),
+                    )
+                log.info(f"[parallel] late winner ({result['latency_ms']:.0f}ms)")
+                return result
+        except (TimeoutError, asyncio.CancelledError):
+            pass
+        except Exception as e:
+            log.warning(f"Error waiting for task: {e}")
+
+    # All failed
+    cli_health.record(success=False)
+    errors = []
+    for name, task in tasks.items():
+        if task.done():
+            r = task.result()
+            errors.append(f"{name}={r.get('error', '?')[:60]}")
+    return {"success": False, "error": f"All failed: {'; '.join(errors)}"}
+
+
 async def _run_parallel(
     prompt: str, model: str, timeout_sec: int, has_cli: bool, has_sdk: bool
 ) -> dict:
@@ -509,64 +589,10 @@ async def _run_parallel(
                 break
 
     if winner:
-        # Cancel remaining tasks
-        for name, task in tasks.items():  # noqa: B007
-            if task in pending:
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
-                except Exception as e:
-                    log.warning(f"Error cancelling task: {e}")
-
-        # Record CLI health if CLI participated
-        if "cli" in tasks:
-            cli_task = tasks["cli"]
-            if cli_task in done:
-                cli_result = cli_task.result()
-                cli_health.record(
-                    success=cli_result.get("success", False),
-                    latency_ms=cli_result.get("latency_ms", 0),
-                )
-            else:
-                # CLI was still pending when SDK won → CLI is slow
-                cli_health.record(success=False)
-
-        log.info(
-            f"[parallel] {winner_name} won ({winner['latency_ms']:.0f}ms) "
-            f"— health: {cli_health.strategy}"
-        )
+        await _handle_parallel_winner(winner_name, winner, tasks, done, pending)
         return winner
 
-    # First completed task failed — wait for remaining
-    for task in pending:
-        try:
-            result = await asyncio.wait_for(task, timeout=5)
-            if result.get("success"):
-                # Record CLI health
-                if "cli" in tasks:
-                    cli_task = tasks["cli"]
-                    cli_r = cli_task.result() if cli_task.done() else {"success": False}
-                    cli_health.record(
-                        success=cli_r.get("success", False),
-                        latency_ms=cli_r.get("latency_ms", 0),
-                    )
-                log.info(f"[parallel] late winner ({result['latency_ms']:.0f}ms)")
-                return result
-        except (TimeoutError, asyncio.CancelledError):
-            pass
-        except Exception as e:
-            log.warning(f"Error waiting for task: {e}")
-
-    # All failed
-    cli_health.record(success=False)
-    errors = []
-    for name, task in tasks.items():
-        if task.done():
-            r = task.result()
-            errors.append(f"{name}={r.get('error', '?')[:60]}")
-    return {"success": False, "error": f"All failed: {'; '.join(errors)}"}
+    return await _wait_for_remaining(tasks, pending)
 
 
 async def _run_agy(prompt: str, model: str, timeout_sec: int) -> dict:
