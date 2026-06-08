@@ -407,3 +407,29 @@ async def get_db_counts() -> dict[str, int]:
                 raise ValueError(f"Disallowed table name: {table!r}")
             counts[f"{table}_count"] = rows[0][0] if rows else 0
         return counts
+
+
+async def get_sentiment_history(symbol: str, limit: int = 30) -> list[dict[str, Any]]:
+    """Get historical sentiment records for a symbol."""
+    clean_symbol = symbol.split(":")[-1].split(".")[0].split("_")[0].upper()
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            """SELECT created_at, combined_score, twitter_score, rss_score, glassnode_score, raw_data
+               FROM sentiment_logs
+               WHERE symbol = ? OR symbol = ?
+               ORDER BY created_at DESC LIMIT ?""",
+            (clean_symbol, symbol, limit),
+        )
+        rows = await cursor.fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            if d.get("raw_data"):
+                try:
+                    d["raw_data"] = json.loads(d["raw_data"])
+                except Exception:  # noqa: S110
+                    pass
+            result.append(d)
+        result.reverse()
+        return result

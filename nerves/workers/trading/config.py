@@ -286,7 +286,7 @@ RSS_FEED_URLS = [
     url.strip()
     for url in os.getenv(
         "RSS_FEED_URLS",
-        "https://feeds.feedburner.com/CoinTelegraph,https://www.coindesk.com/arc/outboundfeeds/rss/",
+        "https://cointelegraph.com/rss,https://coindesk.com/arc/outboundfeeds/rss",
     ).split(",")
     if url.strip()
 ]

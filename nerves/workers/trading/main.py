@@ -1506,6 +1506,27 @@ async def rag_status_endpoint():
     }
 
 
+@app.get("/api/sentiment/current")
+async def get_current_sentiment_endpoint(
+    symbol: str = Query("BTCUSDT", description="Cap giao dich can lay tam ly"),
+):
+    """Lay du lieu tam ly hien tai cho mot cap giao dich."""
+    from analyzer.sentiment_analyzer import SentimentAnalyzer
+
+    analyzer = SentimentAnalyzer()
+    res = await analyzer.analyze_symbol(symbol)
+    return res
+
+
+@app.get("/api/sentiment/history")
+async def get_sentiment_history_endpoint(
+    symbol: str = Query("BTCUSDT", description="Cap giao dich"),
+    limit: int = Query(30, ge=1, le=100, description="So luong ban ghi"),
+):
+    """Lay lich su diem tam ly tong hop."""
+    return await database.get_sentiment_history(symbol=symbol, limit=limit)
+
+
 # ═══ WEBHOOK ENDPOINT — moved to gateway/webhook.py (Phase 5) ═══════════════
 # Registered via app.include_router(_webhook_router) above.
 # See: server/gateway/webhook.py

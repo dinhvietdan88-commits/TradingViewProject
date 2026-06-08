@@ -160,6 +160,7 @@ class TradeApproved(Event):
     mode: str = ""  # "MTT" | "MIS" | "" — forwarded from SignalValidated
     is_recovered: bool = False
     age_minutes: float = 0.0
+    combined_score: str | None = None
 
 
 @dataclass(frozen=True)

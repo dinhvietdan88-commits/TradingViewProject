@@ -291,6 +291,7 @@ from data.query_service import (  # noqa: E402, F401
     get_stats,
     get_stats_by_mode,
     get_trades,
+    get_sentiment_history,
 )
 
 # ═══════════════════════════════════════════════════════════════

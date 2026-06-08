@@ -481,6 +481,39 @@ async def generate_trading_advice(
     if pattern_detection:
         stats_context += f"- Pattern Result (AI Analyzer): {pattern_detection}\n"
 
+    # ── Sentiment Stats context ───────────────────────────────────────────
+    sentiment_stats = payload.get("sentiment_stats", {})
+    sentiment_context = ""
+    if sentiment_stats and sentiment_stats.get("enabled", True):
+        combined_score = sentiment_stats.get("combined_score", 0.0)
+        breakdown = sentiment_stats.get("breakdown", {})
+        sources = sentiment_stats.get("sources", {})
+        raw_metrics = sentiment_stats.get("raw_metrics", {})
+
+        fng_val = raw_metrics.get("fng_value", "N/A")
+        funding_rate = raw_metrics.get("funding_rate", "N/A")
+        open_interest = raw_metrics.get("open_interest", "N/A")
+
+        sentiment_context += "## CHỈ BÁO TÂM LÝ THỊ TRƯỜNG & DỮ LIỆU ON-CHAIN\n"
+        sentiment_context += f"- Điểm Tâm lý Tổng hợp (Combined Score): {combined_score} (Trọng số động)\n"
+        sentiment_context += f"- Twitter/Social Sentiment: {breakdown.get('twitter', 0.0)} ({sources.get('twitter', 'N/A')})\n"
+        sentiment_context += f"- RSS News Sentiment: {breakdown.get('rss', 0.0)} ({sources.get('rss', 'N/A')})\n"
+        sentiment_context += f"- Fear & Greed Index: {breakdown.get('fng', 0.0)} (Chỉ số F&G: {fng_val})\n"
+
+        if (
+            breakdown.get("glassnode", 0.0) != 0.0
+            or sources.get("glassnode") != "glassnode_not_applicable"
+        ):
+            sentiment_context += f"- Glassnode NUPL: {breakdown.get('glassnode', 0.0)} ({sources.get('glassnode', 'N/A')})\n"
+
+        if isinstance(funding_rate, float):
+            fr_pct = f"{funding_rate * 100:.4f}%"
+        else:
+            fr_pct = str(funding_rate)
+
+        sentiment_context += f"- CCXT Funding Rate: {fr_pct} (Score: {breakdown.get('ccxt', 0.0)} từ {sources.get('ccxt', 'N/A')})\n"
+        sentiment_context += f"- CCXT Open Interest: {open_interest}\n\n"
+
     prompt = f"""Chuyên gia SEPA Minervini. Phân tích tín hiệu TradingView.
 
 ## TÍN HIỆU: {symbol} {action.upper()} @ {price}
@@ -490,7 +523,7 @@ async def generate_trading_advice(
 ## CHỈ BÁO KỸ THUẬT THỰC TẾ (HỆ THỐNG TỰ TÍNH TOÁN)
 {stats_context}
 
-## KIẾN THỨC MINERVINI
+{sentiment_context}## KIẾN THỨC MINERVINI
 {knowledge_context}
 
 ## YÊU CẦU (dưới 150 từ, emoji cho Telegram)
