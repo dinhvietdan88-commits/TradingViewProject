@@ -40,6 +40,30 @@ cp .env.example .env       # Cấu hình API keys
 python main.py             # Start server on :5000
 ```
 
+### 🛡️ Quality Gate & Security Check
+Trước khi commit hoặc push code, bắt buộc chạy cổng kiểm thử chất lượng cục bộ để đảm bảo tuân thủ tiêu chuẩn an ninh và độ phức tạp cyclomatic (Complexity <= 15):
+```bash
+# Thực hiện setup pre-commit và ruff
+python scripts/local_security_gate.py setup
+
+# Chạy quét an ninh và lint nhanh
+python scripts/local_security_gate.py check --quick
+
+# Chạy quét an ninh đầy đủ (bao gồm phân tích tĩnh CodeQL + coverage)
+python scripts/local_security_gate.py check
+```
+
+### 📊 Giám sát Vận hành (Sentry / GlitchTip)
+Hệ thống tích hợp Sentry SDK để giám sát lỗi và hiệu năng thời gian thực. Cấu hình các biến môi trường sau trong `.env`:
+```env
+SENTRY_DSN=http://your-glitchtip-dsn
+SENTRY_TRACES_SAMPLE_RATE=0.1
+SENTRY_PROFILES_SAMPLE_RATE=0.05
+ENVIRONMENT=production
+```
+Mọi dữ liệu nhạy cảm (API Keys, Secrets, Passphrases) sẽ được lọc đệ quy và xóa tự động (`[SCRUBBED]`) trước khi đẩy telemetry lên server giám sát.
+
+
 ---
 
 ## 📂 Project Structure
