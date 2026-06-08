@@ -416,3 +416,28 @@ async def test_ai_analyzer_directional_sentiment(mock_global_capture_client):
 
         set_bus(default_bus)
         reset_capture_state()
+
+
+@pytest.mark.asyncio
+async def test_macro_trend_processor_krag_loading():
+    """Verify that MacroTrendProcessor loads its RAG grounding file correctly."""
+    from processor.macro_trend_processor import MacroTrendProcessor
+    from processor.base_processor import BaseSignalProcessor
+
+    processor = MacroTrendProcessor()
+
+    # Assert inheritance
+    assert isinstance(processor, BaseSignalProcessor)
+    assert processor.name == "MacroTrendProcessor"
+
+    # Assert knowledge path and content loading
+    assert (
+        processor.knowledge_path
+        == "lobes/knowledge/macro_trend/macro_regime_conditions.md"
+    )
+
+    content = processor._knowledge_content
+    assert len(content) > 0
+    assert "Macro Regime & Trend Filtering Knowledge Base" in content
+    assert "TREND" in content
+    assert "CHOP" in content
