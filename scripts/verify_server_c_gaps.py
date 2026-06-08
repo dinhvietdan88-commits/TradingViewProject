@@ -15,6 +15,8 @@ RED = "\033[91m"
 RESET = "\033[0m"
 BLUE = "\033[94m"
 
+PORT = os.environ.get("PORT", "8081")
+
 
 def print_step(msg):
     print(f"\n{BLUE}[STEP]{RESET} {msg}")
@@ -52,7 +54,7 @@ def start_daemon(workspace_root):
     env = os.environ.copy()
     env["LOG_JSON_FORMAT"] = "true"
     env["CHROMA_REMOTE"] = "false"
-    env["PORT"] = "8000"
+    env["PORT"] = PORT
     env["HF_HUB_OFFLINE"] = "1"
     env["TRANSFORMERS_OFFLINE"] = "1"
     # Set PYTHONPATH
@@ -63,7 +65,7 @@ def start_daemon(workspace_root):
     print(f"Running script: {daemon_script}")
     print(f"Using PYTHONPATH: {env['PYTHONPATH']}")
 
-    # Run uvicorn on port 8000
+    # Run uvicorn on port PORT
     # Use CREATE_NEW_PROCESS_GROUP on Windows to safely send CTRL_C_EVENT to the process group
     creationflags = 0
     if sys.platform == "win32":
@@ -93,7 +95,7 @@ def start_daemon(workspace_root):
 
 
 def wait_for_fastapi_ready(proc, health_url, stdout_lines):
-    print_step("Waiting for FastAPI health server to start on port 8000...")
+    print_step(f"Waiting for FastAPI health server to start on port {PORT}...")
     started = False
     max_retries = 30
     for i in range(max_retries):
@@ -167,10 +169,10 @@ def verify_health_payload(health_url, proc):
 
 
 def verify_metrics_endpoints(proc):
-    print_step("Testing metrics endpoint GET http://localhost:8000/metrics...")
+    print_step(f"Testing metrics endpoint GET http://localhost:{PORT}/metrics...")
     try:
         # Test Prometheus format (Plain text)
-        req = urllib.request.Request("http://localhost:8000/metrics")
+        req = urllib.request.Request(f"http://localhost:{PORT}/metrics")
         with urllib.request.urlopen(req, timeout=5) as response:  # noqa: S310
             assert response.status == 200, f"Expected status 200, got {response.status}"
             body = response.read().decode("utf-8")
@@ -194,7 +196,7 @@ def verify_metrics_endpoints(proc):
 
         # Test JSON format (with Accept header)
         req_json = urllib.request.Request(
-            "http://localhost:8000/metrics", headers={"Accept": "application/json"}
+            f"http://localhost:{PORT}/metrics", headers={"Accept": "application/json"}
         )
         with urllib.request.urlopen(req_json, timeout=5) as response:  # noqa: S310
             assert response.status == 200, f"Expected status 200, got {response.status}"
@@ -321,7 +323,7 @@ def main():
 
     check_chromadb_seeding(workspace_root)
     proc, stdout_lines = start_daemon(workspace_root)
-    health_url = "http://localhost:8000/health"
+    health_url = f"http://localhost:{PORT}/health"
     wait_for_fastapi_ready(proc, health_url, stdout_lines)
     verify_health_payload(health_url, proc)
     verify_metrics_endpoints(proc)
