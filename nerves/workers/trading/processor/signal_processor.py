@@ -155,6 +155,81 @@ async def process_signal(event: SignalReceived) -> None:
 
     is_daily = event.interval.strip().lower() in {"d", "1d", "daily"}
 
+    # ── MTA Macro Trend Filter (v6.1) ────────────────────────
+    import config
+
+    if config.MTA_ENABLED and action in ("buy", "sell") and not is_daily:
+        try:
+            from capture_client import get_capture_client
+
+            client = get_capture_client()
+            import asyncio
+
+            results = await asyncio.gather(
+                client.fetch_ohlcv(event.symbol, "D", limit=50),
+                client.fetch_ohlcv(event.symbol, "4h", limit=50),
+                return_exceptions=True,
+            )
+            daily_candles = (
+                results[0] if not isinstance(results[0], Exception) else None
+            )
+            fourhour_candles = (
+                results[1] if not isinstance(results[1], Exception) else None
+            )
+
+            if (
+                daily_candles
+                and fourhour_candles
+                and len(daily_candles) > 0
+                and len(fourhour_candles) > 0
+            ):
+                sma_daily = sum(c[4] for c in daily_candles) / len(daily_candles)
+                latest_close_daily = daily_candles[-1][4]
+
+                sma_4h = sum(c[4] for c in fourhour_candles) / len(fourhour_candles)
+                latest_close_4h = fourhour_candles[-1][4]
+
+                is_bullish_daily = latest_close_daily > sma_daily
+                is_bullish_4h = latest_close_4h > sma_4h
+
+                if action == "buy" and not is_bullish_daily and not is_bullish_4h:
+                    log.warning(
+                        f"SignalProcessor: Rejecting BUY signal for {event.symbol} due to Bearish macro trend "
+                        f"(1D close {latest_close_daily:.2f} < SMA {sma_daily:.2f}, 4H close {latest_close_4h:.2f} < SMA {sma_4h:.2f})"
+                    )
+                    await _bus.emit(
+                        SignalRejected(
+                            signal_id=event.signal_id,
+                            symbol=event.symbol,
+                            action=action,
+                            reason="macro_trend_conflict",
+                            interval=event.interval,
+                            exchange=event.exchange,
+                        )
+                    )
+                    return
+
+                if action == "sell" and is_bullish_daily and is_bullish_4h:
+                    log.warning(
+                        f"SignalProcessor: Rejecting SELL signal for {event.symbol} due to Bullish macro trend "
+                        f"(1D close {latest_close_daily:.2f} > SMA {sma_daily:.2f}, 4H close {latest_close_4h:.2f} > SMA {sma_4h:.2f})"
+                    )
+                    await _bus.emit(
+                        SignalRejected(
+                            signal_id=event.signal_id,
+                            symbol=event.symbol,
+                            action=action,
+                            reason="macro_trend_conflict",
+                            interval=event.interval,
+                            exchange=event.exchange,
+                        )
+                    )
+                    return
+        except Exception as mta_err:
+            log.warning(
+                f"SignalProcessor: MTA macro filter failed (fail-safe bypass): {mta_err}"
+            )
+
     if action in ("buy", "sell"):
         if is_daily:
             if regime == "CHOP":
