@@ -84,6 +84,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6
 
+      - name: Connect to Tailscale VPN
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
       - name: Create server symlink
         run: ln -s nerves/workers/trading server
 
