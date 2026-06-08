@@ -276,10 +276,12 @@ async def test_dedup_allows_signal_after_ttl_expires():
 # ═══════════════════════════════════════════════════════════════
 
 
-@pytest.mark.parametrize("valid_interval", ["60", "1h", "60m"])
+@pytest.mark.parametrize(
+    "valid_interval", ["5", "5m", "15", "15m", "30", "30m", "60", "1h", "60m"]
+)
 @pytest.mark.asyncio
 async def test_valid_timeframes_pass(valid_interval):
-    """Intervals '60', '1h', '60m' should all produce SignalValidated."""
+    """Intervals like '5', '5m', '15', '15m', '30', '30m', '60', '1h', '60m' should produce SignalValidated."""
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
@@ -302,10 +304,10 @@ async def test_valid_timeframes_pass(valid_interval):
         reset_dedup_cache()
 
 
-@pytest.mark.parametrize("bad_interval", ["4h", "15", "240", ""])
+@pytest.mark.parametrize("bad_interval", ["4h", "240", ""])
 @pytest.mark.asyncio
 async def test_invalid_timeframes_rejected(bad_interval):
-    """Intervals that are not 1h/60/60m should produce SignalRejected(invalid_timeframe)."""
+    """Intervals that are not valid trade/Daily intervals should produce SignalRejected(invalid_timeframe)."""
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
