@@ -1886,6 +1886,7 @@ class VpsAnalyzerWorker:
                         "status": resp.status,
                         "data": body,
                         "executed_on": "server_b",
+                        "route_verified": True,
                     }
                 log.error(
                     f"[VpsAnalyzer] Server B rejected (HTTP {resp.status}): {body}"

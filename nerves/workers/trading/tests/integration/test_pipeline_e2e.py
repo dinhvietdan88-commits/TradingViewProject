@@ -115,9 +115,10 @@ async def test_scenario_a_full_pipeline_high_confidence(pipeline_bus):
 
     final_events = []
 
-    @pipeline_bus.on(TradeExecuted)
     async def on_done(event):
         final_events.append(event)
+
+    pipeline_bus.on(TradeExecuted)(on_done)
 
     try:
         with (
@@ -236,9 +237,10 @@ async def test_scenario_b_medium_confidence_held_for_approval(pipeline_bus):
 
     approved_events = []
 
-    @pipeline_bus.on(TradeApproved)
     async def on_approved(event):
         approved_events.append(event)
+
+    pipeline_bus.on(TradeApproved)(on_approved)
 
     try:
         with (
@@ -346,13 +348,15 @@ async def test_scenario_c_low_confidence_no_trade(pipeline_bus):
 
     trade_events = []
 
-    @pipeline_bus.on(TradeApproved)
     async def on_approved(event):
         trade_events.append(("approved", event))
 
-    @pipeline_bus.on(TradeExecuted)
+    pipeline_bus.on(TradeApproved)(on_approved)
+
     async def on_executed(event):
         trade_events.append(("executed", event))
+
+    pipeline_bus.on(TradeExecuted)(on_executed)
 
     try:
         with (
@@ -426,13 +430,15 @@ async def test_scenario_d_invalid_timeframe_stops_at_processor(pipeline_bus):
     rejected_events = []
     analysis_events = []
 
-    @pipeline_bus.on(SignalRejected)
     async def on_rejected(event):
         rejected_events.append(event)
 
-    @pipeline_bus.on(AnalysisComplete)
+    pipeline_bus.on(SignalRejected)(on_rejected)
+
     async def on_analysis(event):
         analysis_events.append(event)
+
+    pipeline_bus.on(AnalysisComplete)(on_analysis)
 
     await pipeline_bus.emit(
         SignalReceived(
@@ -465,13 +471,15 @@ async def test_scenario_e_duplicate_signal_blocked_by_dedup(pipeline_bus):
     validated = []
     rejected = []
 
-    @pipeline_bus.on(SignalValidated)
     async def on_validated(event):
         validated.append(event)
 
-    @pipeline_bus.on(SignalRejected)
+    pipeline_bus.on(SignalValidated)(on_validated)
+
     async def on_rejected(event):
         rejected.append(event)
+
+    pipeline_bus.on(SignalRejected)(on_rejected)
 
     await pipeline_bus.emit(
         SignalReceived(

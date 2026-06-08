@@ -8,11 +8,62 @@ conftest.py — Shared fixtures for entire test suite.
 import os
 import pathlib
 import sys
-from unittest.mock import AsyncMock, patch
+import types
+import importlib.machinery
+from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
+# Unify security.runtime_guard in sys.modules to prevent class mismatches from shadow/duplicate imports
+try:
+    import nerves.workers.trading.security.runtime_guard as rg
+
+    sys.modules["security.runtime_guard"] = rg
+    sys.modules["nerves.workers.trading.security.runtime_guard"] = rg
+except ImportError:
+    try:
+        import security.runtime_guard as rg
+
+        sys.modules["security.runtime_guard"] = rg
+        sys.modules["nerves.workers.trading.security.runtime_guard"] = rg
+    except ImportError:
+        pass
+
+# Inject the global chromadb mock to prevent import/loading issues and remote dependency calls
+mock_chroma = types.ModuleType("chromadb")
+mock_chroma.__file__ = "<mock chromadb>"
+mock_chroma.__spec__ = importlib.machinery.ModuleSpec("chromadb", None)
+
+mock_chroma_utils = types.ModuleType("chromadb.utils")
+mock_chroma_utils.__file__ = "<mock chromadb.utils>"
+mock_chroma_utils.__spec__ = importlib.machinery.ModuleSpec("chromadb.utils", None)
+
+mock_chroma_utils_ef = types.ModuleType("chromadb.utils.embedding_functions")
+mock_chroma_utils_ef.__file__ = "<mock chromadb.utils.embedding_functions>"
+mock_chroma_utils_ef.__spec__ = importlib.machinery.ModuleSpec(
+    "chromadb.utils.embedding_functions", None
+)
+
+mock_chroma.utils = mock_chroma_utils
+mock_chroma_utils.embedding_functions = mock_chroma_utils_ef
+
+mock_chroma.HttpClient = MagicMock()
+mock_chroma.PersistentClient = MagicMock()
+mock_chroma.get_or_create_collection = MagicMock()
+
+
+def dummy_ef(*args, **kwargs):
+    return MagicMock()
+
+
+mock_chroma_utils_ef.SentenceTransformerEmbeddingFunction = dummy_ef
+
+sys.modules["chromadb"] = mock_chroma
+sys.modules["chromadb.utils"] = mock_chroma_utils
+sys.modules["chromadb.utils.embedding_functions"] = mock_chroma_utils_ef
+
+
+import pytest  # noqa: E402
+import pytest_asyncio  # noqa: E402
+from httpx import ASGITransport, AsyncClient  # noqa: E402
 
 # Override env BEFORE importing any app modules
 os.environ["WEBHOOK_SECRET"] = "test-secret"  # noqa: S105

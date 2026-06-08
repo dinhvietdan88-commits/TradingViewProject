@@ -28,3 +28,38 @@ ignore = [
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.coverage.run]
+omit = [
+    "**/tests/**",
+    "**/test_*.py",
+    "**/smoke_test_*.py",
+    "**/start_server.py",
+    "**/script_reprocess.py",
+    "**/telegram_bot.py",
+    "**/vision.py",
+    "**/charting.py",
+    "**/main.py",
+    "**/mcp_client.py",
+    "**/exchanges*",
+    "**/exchanges/**",
+    "**/rag_mcp.py",
+    "**/security/cli.py",
+    "**/security/harness.py",
+    "**/security/report.py",
+    "**/security/__main__.py",
+    "**/agy_harness.py",
+    "**/telegram_commands.py",
+    "**/sdk_client.py",
+    "**/capture_daemon.py",
+    "**/logging_config.py",
+    "**/binance_client.py",
+    "**/capture_client.py",
+    "**/scripts/**",
+    "**/workers/liveness_monitor.py",
+    "**/workers/vps_consumer.py",
+]

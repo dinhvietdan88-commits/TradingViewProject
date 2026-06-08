@@ -23,7 +23,6 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 log = logging.getLogger("harness_bridge")
 
@@ -1042,6 +1041,7 @@ def run_harness_full(
 def _default_syntax_check(files: list) -> list:
     """Fallback syntax checker using ast.parse()."""
     import ast
+
     failures = []
     for f in files:
         try:

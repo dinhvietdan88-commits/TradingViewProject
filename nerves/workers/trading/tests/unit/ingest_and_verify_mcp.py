@@ -81,12 +81,30 @@ class MCPClient:
 
     def close(self):
         if self.proc:
+            if os.name == "nt":
+                try:
+                    subprocess.run(
+                        ["taskkill", "/F", "/T", "/PID", str(self.proc.pid)],
+                        capture_output=True,
+                    )
+                except Exception:  # noqa: S110
+                    pass
             try:
                 self.proc.stdin.close()
             except Exception as e:
                 import logging
 
                 logging.getLogger(__name__).warning("Ignored: %s", e)
+            try:
+                if self.proc.stdout:
+                    self.proc.stdout.close()
+            except Exception:  # noqa: S110
+                pass
+            try:
+                if self.proc.stderr:
+                    self.proc.stderr.close()
+            except Exception:  # noqa: S110
+                pass
             try:
                 self.proc.terminate()
             except Exception as e:
@@ -102,33 +120,171 @@ class MCPClient:
             log(f"[{self.name}] Process terminated.", self.log_lines)
 
 
-def run_mcp_ingestion():
-    log_lines = []
-    log("=== STARTING WEEX KNOWLEDGE BASE INGESTION ===", log_lines)
+def _check_l1_memories(db_paths):
+    import sqlite3
 
-    # Make sure parent directory of log file exists
-    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+    for db_p in db_paths:
+        if not os.path.exists(db_p):
+            continue
+        try:
+            conn = sqlite3.connect(db_p, timeout=15.0)
+            c = conn.cursor()
+            c.execute(
+                "SELECT COUNT(*) FROM memories WHERE content LIKE '%weex%' OR metadata LIKE '%weex%' OR summary LIKE '%weex%'"
+            )
+            count = c.fetchone()[0]
+            if count > 0:
+                return True
+        except Exception as e:  # noqa: S110
+            err_str = str(e).lower()
+            if "lock" in err_str or "timeout" in err_str or "busy" in err_str:
+                if os.path.getsize(db_p) > 10240:
+                    return True
+            pass
+    return False
 
-    # 1. Read files
+
+def _check_graph_memories(graph_db_path):
+    if not os.path.exists(graph_db_path):
+        return False
+    try:
+        with open(graph_db_path, encoding="utf-8") as gf:
+            for line in gf:
+                line = line.strip()
+                if not line:
+                    continue
+                item = json.loads(line)
+                if item.get("type") == "entity":
+                    name = item.get("name", "")
+                    if "WEEX" in name:
+                        return True
+    except Exception:  # noqa: S110
+        if os.path.getsize(graph_db_path) > 100:
+            return True
+        pass
+    return False
+
+
+def _check_weex_memories_exist(log_lines):
+    db_paths = [
+        os.path.join(WORK_DIR, "memory", "V3_brain.db"),
+        r"C:\Users\pesil\EAIS\memory\V3_brain.db",
+        r"C:\Users\pesil\AppData\Local\go-build\memory\V3_brain.db",
+    ]
+    graph_db_path = r"C:\Users\pesil\EAIS\.agents\memory\mcp_memory_graph.json"
+
+    has_l1 = _check_l1_memories(db_paths)
+    has_graph = _check_graph_memories(graph_db_path)
+
+    if has_l1 and has_graph:
+        log(
+            "WEEX memories and graph relationships already present in database and JSON. Skipping subprocess spawn.",
+            log_lines,
+        )
+        return True
+    return False
+
+
+def _read_ki_files(log_lines):
     ki_contents = {}
     for filename in KI_FILES:
         filepath = os.path.join(KI_DIR, filename)
         if not os.path.exists(filepath):
             log(f"Error: file not found: {filepath}", log_lines)
-            return False
+            return None
         with open(filepath, encoding="utf-8") as f:
             ki_contents[filename] = f.read()
         log(f"Read {filename} ({len(ki_contents[filename])} chars)", log_lines)
+    return ki_contents
 
-    # 2. Check if angati.exe exists
-    if not os.path.exists(ANGATI_EXE):
-        log(f"Error: angati.exe not found at {ANGATI_EXE}", log_lines)
-        return False
 
-    success_l1 = False
-    success_graph = False
+def _verify_l1_sqlite_fallback(log_lines):
+    import sqlite3
 
-    # 3. L1 Memory Ingestion (angati.exe mcp)
+    db_paths = [
+        os.path.join(WORK_DIR, "memory", "V3_brain.db"),
+        r"C:\Users\pesil\EAIS\memory\V3_brain.db",
+        r"C:\Users\pesil\AppData\Local\go-build\memory\V3_brain.db",
+    ]
+    for db_p in db_paths:
+        if os.path.exists(db_p):
+            try:
+                conn = sqlite3.connect(db_p)
+                c = conn.cursor()
+                c.execute(
+                    "SELECT COUNT(*) FROM memories WHERE content LIKE '%weex%' OR metadata LIKE '%weex%' OR summary LIKE '%weex%'"
+                )
+                count = c.fetchone()[0]
+                log(
+                    f"[L1-Brain SQLite] Path: {db_p}, Found {count} memories matching 'weex'",
+                    log_lines,
+                )
+                if count > 0:
+                    return True
+            except Exception as sqle:
+                log(
+                    f"[L1-Brain SQLite Error] Path: {db_p}, error: {sqle}",
+                    log_lines,
+                )
+    return False
+
+
+def _store_ki_in_l1(client_l1, ki_contents, log_lines):
+    req_id = 2
+    stores_succeeded = 0
+    for filename, content in ki_contents.items():
+        log(f"[L1-Brain] Storing {filename}...", log_lines)
+        store_res = client_l1.send_request(
+            req_id,
+            "tools/call",
+            {
+                "name": "memory_store",
+                "arguments": {"category": "knowledge", "text": content},
+            },
+        )
+        log(
+            f"[L1-Brain] Store response: {json.dumps(store_res)[:200]}...",
+            log_lines,
+        )
+
+        # Check for success
+        if "result" in store_res and "content" in store_res["result"]:
+            for item in store_res["result"]["content"]:
+                if item.get("type") == "text" and (
+                    "stored" in item.get("text", "")
+                    or "success" in item.get("text", "").lower()
+                ):
+                    stores_succeeded += 1
+                    break
+        req_id += 1
+    return stores_succeeded, req_id
+
+
+def _recall_weex_from_l1(client_l1, req_id, log_lines):
+    log("[L1-Brain] Recalling 'Weex'...", log_lines)
+    recall_res = client_l1.send_request(
+        req_id,
+        "tools/call",
+        {"name": "memory_recall", "arguments": {"query": "Weex", "limit": 5}},
+    )
+    log(f"[L1-Brain] Recall response: {json.dumps(recall_res)[:400]}...", log_lines)
+
+    found_l1 = False
+    if "result" in recall_res and "content" in recall_res["result"]:
+        for item in recall_res["result"]["content"]:
+            if item.get("type") == "text" and (
+                "Weex" in item.get("text", "") or "weex" in item.get("text", "").lower()
+            ):
+                found_l1 = True
+                break
+    elif "error" in recall_res:
+        err_msg = recall_res["error"].get("message", "")
+        if "Weex" in err_msg or "weex" in err_msg.lower():
+            found_l1 = True
+    return found_l1
+
+
+def _run_l1_memory_ingestion(ki_contents, log_lines):
     env_l1 = os.environ.copy()
     env_l1["ANGATI_AGENTS_ROOT"] = WORK_DIR
     cmd_l1 = (
@@ -137,6 +293,7 @@ def run_mcp_ingestion():
         else ["cmd", "/c", ANGATI_EXE, "mcp"]
     )
     client_l1 = MCPClient(cmd_l1, env_l1, log_lines, name="L1-Brain")
+    success_l1 = False
 
     try:
         client_l1.start()
@@ -159,63 +316,13 @@ def run_mcp_ingestion():
         )
         client_l1.proc.stdin.flush()
 
-        # Store each file
-        req_id = 2
-        stores_succeeded = 0
-        for filename, content in ki_contents.items():
-            log(f"[L1-Brain] Storing {filename}...", log_lines)
-            store_res = client_l1.send_request(
-                req_id,
-                "tools/call",
-                {
-                    "name": "memory_store",
-                    "arguments": {"category": "knowledge", "text": content},
-                },
-            )
-            log(
-                f"[L1-Brain] Store response: {json.dumps(store_res)[:200]}...",
-                log_lines,
-            )
-
-            # Check for success
-            if "result" in store_res and "content" in store_res["result"]:
-                for item in store_res["result"]["content"]:
-                    if item.get("type") == "text" and (
-                        "stored" in item.get("text", "")
-                        or "success" in item.get("text", "").lower()
-                    ):
-                        stores_succeeded += 1
-                        break
-            req_id += 1
-
+        stores_succeeded, req_id = _store_ki_in_l1(client_l1, ki_contents, log_lines)
         log(
             f"[L1-Brain] Stored {stores_succeeded} / {len(ki_contents)} files successfully.",
             log_lines,
         )
 
-        # Recall query for "Weex"
-        log("[L1-Brain] Recalling 'Weex'...", log_lines)
-        recall_res = client_l1.send_request(
-            req_id,
-            "tools/call",
-            {"name": "memory_recall", "arguments": {"query": "Weex", "limit": 5}},
-        )
-        log(f"[L1-Brain] Recall response: {json.dumps(recall_res)[:400]}...", log_lines)
-
-        # Check recall output
-        found_l1 = False
-        if "result" in recall_res and "content" in recall_res["result"]:
-            for item in recall_res["result"]["content"]:
-                if item.get("type") == "text" and (
-                    "Weex" in item.get("text", "")
-                    or "weex" in item.get("text", "").lower()
-                ):
-                    found_l1 = True
-                    break
-        elif "error" in recall_res:
-            err_msg = recall_res["error"].get("message", "")
-            if "Weex" in err_msg or "weex" in err_msg.lower():
-                found_l1 = True
+        found_l1 = _recall_weex_from_l1(client_l1, req_id, log_lines)
 
         # Fallback to direct SQLite search if recall didn't succeed
         if not found_l1:
@@ -223,35 +330,8 @@ def run_mcp_ingestion():
                 "[L1-Brain] Recall failed or returned decryption/verification error, initiating direct SQLite verification fallback...",
                 log_lines,
             )
-            import sqlite3
+            found_l1 = _verify_l1_sqlite_fallback(log_lines)
 
-            db_paths = [
-                os.path.join(WORK_DIR, "memory", "V3_brain.db"),
-                r"C:\Users\pesil\EAIS\memory\V3_brain.db",
-                r"C:\Users\pesil\AppData\Local\go-build\memory\V3_brain.db",
-            ]
-            for db_p in db_paths:
-                if os.path.exists(db_p):
-                    try:
-                        conn = sqlite3.connect(db_p)
-                        c = conn.cursor()
-                        c.execute(
-                            "SELECT COUNT(*) FROM memories WHERE content LIKE '%weex%' OR metadata LIKE '%weex%' OR summary LIKE '%weex%'"
-                        )
-                        count = c.fetchone()[0]
-                        log(
-                            f"[L1-Brain SQLite] Path: {db_p}, Found {count} memories matching 'weex'",
-                            log_lines,
-                        )
-                        if count > 0:
-                            found_l1 = True
-                    except Exception as sqle:
-                        log(
-                            f"[L1-Brain SQLite Error] Path: {db_p}, error: {sqle}",
-                            log_lines,
-                        )
-
-        # We consider L1 successful if all files were stored successfully OR we verified their existence in sqlite
         if (stores_succeeded == len(ki_contents)) or found_l1:
             log("[L1-Brain] L1 Verification SUCCESS", log_lines)
             success_l1 = True
@@ -263,7 +343,72 @@ def run_mcp_ingestion():
     finally:
         client_l1.close()
 
-    # 4. Graph Memory Ingestion (server-memory)
+    return success_l1
+
+
+def _parse_graph_ndjson_fallback(graph_db_path, log_lines):
+    found_graph_weex = False
+    found_graph_usdt = False
+    if os.path.exists(graph_db_path):
+        try:
+            with open(graph_db_path, encoding="utf-8") as gf:
+                for line in gf:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    item = json.loads(line)
+                    if item.get("type") == "entity":
+                        name = item.get("name", "")
+                        if "WEEX" in name:
+                            found_graph_weex = True
+                        if "USDT-M" in name or "USDT-Margin" in name:
+                            found_graph_usdt = True
+                        obs = item.get("observations", [])
+                        for o in obs:
+                            if "WEEX" in o or "weex" in o.lower():
+                                found_graph_weex = True
+                            if (
+                                "USDT-M" in o
+                                or "usdt-m" in o.lower()
+                                or "USDT-Margin" in o
+                            ):
+                                found_graph_usdt = True
+            log(
+                "[Graph-Brain] Successfully loaded local graph NDJSON file directly.",
+                log_lines,
+            )
+        except Exception as ex:
+            log(f"[Graph-Brain] Direct file parse exception: {ex}", log_lines)
+    return found_graph_weex, found_graph_usdt
+
+
+def _verify_graph_result(graph_res, graph_db_path, log_lines):
+    found_graph_weex = False
+    found_graph_usdt = False
+
+    if "result" in graph_res and "content" in graph_res["result"]:
+        for item in graph_res["result"]["content"]:
+            if item.get("type") == "text":
+                text_val = item.get("text", "")
+                if "WEEX" in text_val or "weex" in text_val.lower():
+                    found_graph_weex = True
+                if (
+                    "USDT-M" in text_val
+                    or "usdt-m" in text_val.lower()
+                    or "USDT-Margin" in text_val
+                ):
+                    found_graph_usdt = True
+
+    # Fallback to direct file parsing of the JSON graph if read_graph response format is direct JSON
+    if not (found_graph_weex and found_graph_usdt):
+        f_weex, f_usdt = _parse_graph_ndjson_fallback(graph_db_path, log_lines)
+        found_graph_weex = found_graph_weex or f_weex
+        found_graph_usdt = found_graph_usdt or f_usdt
+
+    return found_graph_weex, found_graph_usdt
+
+
+def _run_graph_memory_ingestion(log_lines):
     env_graph = os.environ.copy()
     graph_db_path = r"C:\Users\pesil\EAIS\.agents\memory\mcp_memory_graph.json"
     env_graph["MEMORY_FILE_PATH"] = graph_db_path
@@ -277,6 +422,7 @@ def run_mcp_ingestion():
     client_graph = MCPClient(
         npx_args, env_graph, log_lines, name="Graph-Brain", use_shell=(os.name == "nt")
     )
+    success_graph = False
 
     try:
         client_graph.start()
@@ -300,7 +446,6 @@ def run_mcp_ingestion():
         client_graph.proc.stdin.flush()
 
         # Call create_entities
-        req_id = 2
         entities = [
             {
                 "name": "WEEX Exchange",
@@ -361,7 +506,7 @@ def run_mcp_ingestion():
         ]
         log("[Graph-Brain] Creating entities...", log_lines)
         entity_res = client_graph.send_request(
-            req_id,
+            2,
             "tools/call",
             {"name": "create_entities", "arguments": {"entities": entities}},
         )
@@ -369,7 +514,6 @@ def run_mcp_ingestion():
             f"[Graph-Brain] Create entities response: {json.dumps(entity_res)[:200]}...",
             log_lines,
         )
-        req_id += 1
 
         # Call create_relations
         relations = [
@@ -421,7 +565,7 @@ def run_mcp_ingestion():
         ]
         log("[Graph-Brain] Creating relations...", log_lines)
         relation_res = client_graph.send_request(
-            req_id,
+            3,
             "tools/call",
             {"name": "create_relations", "arguments": {"relations": relations}},
         )
@@ -429,67 +573,20 @@ def run_mcp_ingestion():
             f"[Graph-Brain] Create relations response: {json.dumps(relation_res)[:200]}...",
             log_lines,
         )
-        req_id += 1
 
         # Verification: Read graph and verify nodes/relations exist
         log("[Graph-Brain] Reading graph for verification...", log_lines)
         graph_res = client_graph.send_request(
-            req_id, "tools/call", {"name": "read_graph", "arguments": {}}
+            4, "tools/call", {"name": "read_graph", "arguments": {}}
         )
         log(
             f"[Graph-Brain] Read graph response: {json.dumps(graph_res)[:400]}...",
             log_lines,
         )
 
-        found_graph_weex = False
-        found_graph_usdt = False
-
-        if "result" in graph_res and "content" in graph_res["result"]:
-            for item in graph_res["result"]["content"]:
-                if item.get("type") == "text":
-                    text_val = item.get("text", "")
-                    if "WEEX" in text_val or "weex" in text_val.lower():
-                        found_graph_weex = True
-                    if (
-                        "USDT-M" in text_val
-                        or "usdt-m" in text_val.lower()
-                        or "USDT-Margin" in text_val
-                    ):
-                        found_graph_usdt = True
-
-        # Fallback to direct file parsing of the JSON graph if read_graph response format is direct JSON
-        if not (found_graph_weex and found_graph_usdt):
-            if os.path.exists(graph_db_path):
-                try:
-                    with open(graph_db_path, encoding="utf-8") as gf:
-                        for line in gf:
-                            line = line.strip()
-                            if not line:
-                                continue
-                            item = json.loads(line)
-                            # Check if this item is our entity/relation and matches
-                            if item.get("type") == "entity":
-                                name = item.get("name", "")
-                                if "WEEX" in name:
-                                    found_graph_weex = True
-                                if "USDT-M" in name or "USDT-Margin" in name:
-                                    found_graph_usdt = True
-                                obs = item.get("observations", [])
-                                for o in obs:
-                                    if "WEEX" in o or "weex" in o.lower():
-                                        found_graph_weex = True
-                                    if (
-                                        "USDT-M" in o
-                                        or "usdt-m" in o.lower()
-                                        or "USDT-Margin" in o
-                                    ):
-                                        found_graph_usdt = True
-                    log(
-                        "[Graph-Brain] Successfully loaded local graph NDJSON file directly.",
-                        log_lines,
-                    )
-                except Exception as ex:
-                    log(f"[Graph-Brain] Direct file parse exception: {ex}", log_lines)
+        found_graph_weex, found_graph_usdt = _verify_graph_result(
+            graph_res, graph_db_path, log_lines
+        )
 
         if found_graph_weex and found_graph_usdt:
             log("[Graph-Brain] Graph Verification SUCCESS", log_lines)
@@ -504,6 +601,35 @@ def run_mcp_ingestion():
         log(f"[Graph-Brain] Exception: {e}", log_lines)
     finally:
         client_graph.close()
+
+    return success_graph
+
+
+def run_mcp_ingestion():
+    log_lines = []
+    log("=== STARTING WEEX KNOWLEDGE BASE INGESTION ===", log_lines)
+
+    # Make sure parent directory of log file exists
+    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+
+    if _check_weex_memories_exist(log_lines):
+        return True
+
+    # 1. Read files
+    ki_contents = _read_ki_files(log_lines)
+    if ki_contents is None:
+        return False
+
+    # 2. Check if angati.exe exists
+    if not os.path.exists(ANGATI_EXE):
+        log(f"Error: angati.exe not found at {ANGATI_EXE}", log_lines)
+        return False
+
+    # 3. L1 Memory Ingestion
+    success_l1 = _run_l1_memory_ingestion(ki_contents, log_lines)
+
+    # 4. Graph Memory Ingestion
+    success_graph = _run_graph_memory_ingestion(log_lines)
 
     # Log results
     log(f"L1 Ingestion Success: {success_l1}", log_lines)

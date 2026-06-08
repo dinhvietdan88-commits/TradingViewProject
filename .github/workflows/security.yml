@@ -1,7 +1,7 @@
-# ╔══════════════════════════════════════════════════════════════════╗
-# ║         ANGATI SECURITY GATE — GitHub Code Scanning             ║
-# ║  Triggers: push/PR to main + weekly schedule                    ║
-# ╚══════════════════════════════════════════════════════════════════╝
+# ╔══════════════════════════════════════════════╗
+# ║  ANGATI SECURITY GATE — GitHub Code Scanning ║
+# ║  Triggers: push/PR to main + weekly schedule ║
+# ╚══════════════════════════════════════════════╝
 name: Security & Code Scanning
 
 on:

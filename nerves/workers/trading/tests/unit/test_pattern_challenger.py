@@ -6,7 +6,6 @@ Adapted to actual implementation API:
   - telegram_bot sends photo_path separately before interactive message
 """
 
-import shutil
 import sys
 from pathlib import Path
 
@@ -33,12 +32,18 @@ class TestPatternChallenger:
             }
             for i in range(100)
         ]
-        self.temp_dir = Path(__file__).resolve().parent / "temp_challenger_charts"
-        self.temp_dir.mkdir(exist_ok=True)
+        import tempfile
+
+        self.temp_dir_obj = tempfile.TemporaryDirectory(
+            prefix="temp_challenger_charts_"
+        )
+        self.temp_dir = Path(self.temp_dir_obj.name)
 
     def teardown_method(self):
-        if self.temp_dir.exists():
-            shutil.rmtree(self.temp_dir)
+        try:
+            self.temp_dir_obj.cleanup()
+        except Exception:  # noqa: S110
+            pass
 
     # -------------------------------------------------------------------------
     # 1. Chart Generator: Pattern overlays as dataclass (not string)

@@ -83,3 +83,12 @@ angati.exe
 .secrets.baseline
 nerves/workers/trading/test_trades.log
 *.log
+.codeql_old_1*/
+.codeql_old_2*/
+.codeql_old_3*/
+.codeql_old_4*/
+.codeql_old_5*/
+.codeql_old_6*/
+.codeql_old_7*/
+.codeql_old_8/
+.codeql_old_9/

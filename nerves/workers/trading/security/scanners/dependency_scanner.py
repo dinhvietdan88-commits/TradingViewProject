@@ -28,6 +28,7 @@ def scan_requirements(target_dir: Path) -> list[Finding]:
     # Try pip-audit first (best results, bypassed on Windows due to grandchild pipe hang bug)
     try:
         import os
+
         if os.name != "nt":
             cmd = [
                 "pip-audit",

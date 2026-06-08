@@ -28,14 +28,7 @@ def print_failure(msg):
     print(f"{RED}[FAIL]{RESET} {msg}")
 
 
-def main():
-    print("==================================================")
-    print("SERVER C (AI CORE) GAPS VERIFICATION SUITE")
-    print("==================================================")
-
-    workspace_root = Path(__file__).resolve().parent.parent
-
-    # 1. Check ChromaDB Seeding directly before starting daemon
+def check_chromadb_seeding(workspace_root):
     print_step("Testing ChromaDB Seeding directly using chromadb.PersistentClient...")
     try:
         import chromadb
@@ -53,7 +46,8 @@ def main():
         print_failure(f"ChromaDB Seeding check failed: {e}")
         sys.exit(1)
 
-    # 2. Run the Server C daemon as a background subprocess
+
+def start_daemon(workspace_root):
     print_step("Starting Server C daemon as background subprocess...")
     env = os.environ.copy()
     env["LOG_JSON_FORMAT"] = "true"
@@ -95,10 +89,11 @@ def main():
 
     t = threading.Thread(target=read_output, daemon=True)
     t.start()
+    return proc, stdout_lines
 
-    # 3. Wait for FastAPI health server to start on port 8000
+
+def wait_for_fastapi_ready(proc, health_url, stdout_lines):
     print_step("Waiting for FastAPI health server to start on port 8000...")
-    health_url = "http://localhost:8000/health"
     started = False
     max_retries = 30
     for i in range(max_retries):
@@ -114,7 +109,7 @@ def main():
                 if response.status == 200:
                     started = True
                     break
-        except ConnectionError as e:
+        except Exception as e:
             import logging
 
             logging.getLogger(__name__).warning("Ignored: %s", e)
@@ -132,7 +127,8 @@ def main():
 
     print_success("FastAPI health server started successfully.")
 
-    # 4. Test health check endpoint details
+
+def verify_health_payload(health_url, proc):
     print_step("Verifying health check endpoint response payload details...")
     try:
         req = urllib.request.Request(health_url)  # noqa: S310
@@ -169,15 +165,14 @@ def main():
         proc.terminate()
         sys.exit(1)
 
-    # 5. Test metrics check endpoint (Prometheus format and JSON format)
+
+def verify_metrics_endpoints(proc):
     print_step("Testing metrics endpoint GET http://localhost:8000/metrics...")
     try:
         # Test Prometheus format (Plain text)
         req = urllib.request.Request("http://localhost:8000/metrics")
         with urllib.request.urlopen(req, timeout=5) as response:  # noqa: S310
             assert response.status == 200, f"Expected status 200, got {response.status}"
-            response.headers.get("Content-Type", "")
-            # Relax content type assertion as Uvicorn response media type is text/plain but could vary depending on environment
             body = response.read().decode("utf-8")
             print("Prometheus Metrics Sample:")
             for line in body.splitlines()[:6]:
@@ -231,89 +226,106 @@ def main():
         proc.terminate()
         sys.exit(1)
 
-    # 6. Test Graceful Shutdown & JSON Logging
+
+def kill_and_wait_for_exit(proc):
+    if sys.platform == "win32":
+        print("Sending CTRL_BREAK_EVENT to process group on Windows...")
+        os.kill(proc.pid, signal.CTRL_BREAK_EVENT)
+    else:
+        print("Sending SIGINT to daemon...")
+        proc.send_signal(signal.SIGINT)
+
+    print("Waiting up to 10 seconds for daemon to exit gracefully...")
+    exit_code = None
+    for _ in range(100):
+        exit_code = proc.poll()
+        if exit_code is not None:
+            break
+        time.sleep(0.1)
+
+    assert exit_code is not None, "Daemon did not exit within 10 seconds."
+    assert exit_code == 0, f"Daemon exited with non-zero code: {exit_code}"
+    print_success("Daemon shutdown gracefully with exit code 0.")
+
+
+def _check_json_log(line_str):
+    if "{" not in line_str or "}" not in line_str:
+        return False
+    start_idx = line_str.find("{")
+    end_idx = line_str.rfind("}") + 1
+    candidate = line_str[start_idx:end_idx]
+    try:
+        log_data = json.loads(candidate)
+        return "ts" in log_data and "level" in log_data and "msg" in log_data
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).warning("Ignored: %s", e)
+        return False
+
+
+def verify_stdout_logs(stdout_lines):
+    print_step("Verifying stdout log lines and graceful shutdown markers...")
+    json_log_count = 0
+    total_log_lines = len(stdout_lines)
+
+    markers = {
+        "Stopping scheduler": False,
+        "Setting server.should_exit": False,
+        "Closing ClientSession": False,
+        "Shutdown complete": False,
+    }
+
+    for line in stdout_lines:
+        line_str = line.strip()
+        if not line_str:
+            continue
+
+        for marker in markers:
+            if marker in line_str:
+                markers[marker] = True
+
+        if _check_json_log(line_str):
+            json_log_count += 1
+
+    print(
+        f"Analyzed {total_log_lines} log lines. Found {json_log_count} valid structured JSON log lines."
+    )
+    assert json_log_count > 0, "No structured JSON log lines were found in stdout."
+
+    for marker, found in markers.items():
+        assert found, f"Graceful shutdown marker '{marker}' was NOT found in stdout."
+        print(f"Found shutdown marker: '{marker}'")
+
+    print_success("JSON logging and graceful shutdown markers successfully verified.")
+
+
+def verify_graceful_shutdown(proc, stdout_lines):
     print_step("Testing Graceful Shutdown...")
     try:
-        if sys.platform == "win32":
-            print("Sending CTRL_BREAK_EVENT to process group on Windows...")
-            os.kill(proc.pid, signal.CTRL_BREAK_EVENT)
-        else:
-            print("Sending SIGINT to daemon...")
-            proc.send_signal(signal.SIGINT)
-
-        print("Waiting up to 10 seconds for daemon to exit gracefully...")
-        # Wait with timeout
-        exit_code = None
-        for _ in range(100):
-            exit_code = proc.poll()
-            if exit_code is not None:
-                break
-            time.sleep(0.1)
-
-        assert exit_code is not None, "Daemon did not exit within 10 seconds."
-        assert exit_code == 0, f"Daemon exited with non-zero code: {exit_code}"
-        print_success("Daemon shutdown gracefully with exit code 0.")
-
-        # Verify JSON logging & graceful shutdown markers
-        print_step("Verifying stdout log lines and graceful shutdown markers...")
-
-        json_log_count = 0
-        total_log_lines = len(stdout_lines)
-
-        # Shutdown markers to verify
-        markers = {
-            "Stopping scheduler": False,
-            "Setting server.should_exit": False,
-            "Closing ClientSession": False,
-            "Shutdown complete": False,
-        }
-
-        for line in stdout_lines:
-            line_str = line.strip()
-            if not line_str:
-                continue
-
-            # Check markers in raw line
-            for marker in markers:
-                if marker in line_str:
-                    markers[marker] = True
-
-            # Check if line contains JSON log
-            # Since StructuredFormatter outputs JSON like {"ts": ..., "level": ..., "msg": ...}
-            if "{" in line_str and "}" in line_str:
-                start_idx = line_str.find("{")
-                end_idx = line_str.rfind("}") + 1
-                candidate = line_str[start_idx:end_idx]
-                try:
-                    log_data = json.loads(candidate)
-                    if "ts" in log_data and "level" in log_data and "msg" in log_data:
-                        json_log_count += 1
-                except ConnectionError as e:
-                    import logging
-
-                    logging.getLogger(__name__).warning("Ignored: %s", e)
-
-        print(
-            f"Analyzed {total_log_lines} log lines. Found {json_log_count} valid structured JSON log lines."
-        )
-        assert json_log_count > 0, "No structured JSON log lines were found in stdout."
-
-        for marker, found in markers.items():
-            assert found, (
-                f"Graceful shutdown marker '{marker}' was NOT found in stdout."
-            )
-            print(f"Found shutdown marker: '{marker}'")
-
-        print_success(
-            "JSON logging and graceful shutdown markers successfully verified."
-        )
-
+        kill_and_wait_for_exit(proc)
+        verify_stdout_logs(stdout_lines)
     except Exception as e:
         print_failure(f"Graceful Shutdown / Logging verification failed: {e}")
-        # Clean up process if still alive
         if proc.poll() is None:
             proc.terminate()
         sys.exit(1)
+
+
+def main():
+    print("==================================================")
+    print("SERVER C (AI CORE) GAPS VERIFICATION SUITE")
+    print("==================================================")
+
+    workspace_root = Path(__file__).resolve().parent.parent
+
+    check_chromadb_seeding(workspace_root)
+    proc, stdout_lines = start_daemon(workspace_root)
+    health_url = "http://localhost:8000/health"
+    wait_for_fastapi_ready(proc, health_url, stdout_lines)
+    verify_health_payload(health_url, proc)
+    verify_metrics_endpoints(proc)
+    verify_graceful_shutdown(proc, stdout_lines)
 
     print("\n==================================================")
     print(f"{GREEN}ALL SERVER C GAPS VERIFICATION TESTS PASSED SUCCESSFULLY!{RESET}")

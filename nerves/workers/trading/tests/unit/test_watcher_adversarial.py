@@ -132,7 +132,7 @@ async def test_pytest_failure_capturing(tmp_path):
 
     # Inject a temporary failing test
     failing_test_dir = trading_dir / "tests" / "unit"
-    failing_test_file = failing_test_dir / "test_temp_forced_failure.py"
+    failing_test_file = failing_test_dir / "temp_forced_failure.py"
 
     # Ensure directory exists
     failing_test_dir.mkdir(parents=True, exist_ok=True)
@@ -163,9 +163,16 @@ async def test_pytest_failure_capturing(tmp_path):
     original_create_subprocess = asyncio.create_subprocess_exec
 
     async def mock_create_subprocess(*args, **kwargs):
+        import os
+
         modified_args = list(args)
         if len(modified_args) >= 3 and modified_args[2] == "pytest":
             modified_args.append(str(failing_test_file))
+        sub_env = os.environ.copy()
+        for key in list(sub_env.keys()):
+            if key.startswith("COV_") or key.startswith("COVERAGE_"):
+                sub_env.pop(key)
+        kwargs["env"] = sub_env
         return await original_create_subprocess(*modified_args, **kwargs)
 
     try:
@@ -174,7 +181,7 @@ async def test_pytest_failure_capturing(tmp_path):
             patch("asyncio.create_subprocess_exec", side_effect=mock_create_subprocess),
         ):
             # We call run_test_suite directly or simulate file change. Let's run the suite!
-            # Since the failing test is in tests/unit/test_temp_forced_failure.py, running pytest
+            # Since the failing test is in tests/unit/temp_forced_failure.py, running pytest
             # will run this test and it will fail.
             await run_test_suite({str(failing_test_file)})
 

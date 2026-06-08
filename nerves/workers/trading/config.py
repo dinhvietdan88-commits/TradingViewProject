@@ -17,6 +17,11 @@ WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
 # Logging
 LOG_FILE = os.getenv("LOG_FILE", "trades.log")
 
+# Sentry / Observability
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+SENTRY_TRACES_SAMPLE_RATE = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1"))
+SENTRY_PROFILES_SAMPLE_RATE = float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.05"))
+
 # Database (Sprint 4)
 DB_PATH = os.getenv("DB_PATH", "trades.db")
 DB_TIMEOUT = float(os.getenv("DB_TIMEOUT", "60.0"))
