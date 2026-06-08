@@ -257,3 +257,111 @@ async def test_telegram_cmd_scan_all():
         assert "Kết quả Scan All" in call_args["text"]
         assert "weex" in call_args["text"]
         assert "BTCUSDT_UMCBL" in call_args["text"]
+
+
+@pytest.mark.asyncio
+async def test_scan_symbols_fallback_to_rest_and_run_rest_scan():
+    import time
+
+    now_ms = int(time.time() * 1000)
+    day_ms = 24 * 60 * 60 * 1000
+    mock_candles = []
+    for i in range(250):
+        ts = now_ms - (250 - i) * day_ms
+        price = 100.0 + i * 0.5
+        mock_candles.append([ts, price, price + 2.0, price - 2.0, price + 0.1, 1000.0])
+
+    from analysis import scan_symbols
+
+    with patch(
+        "analysis.fetch_candles_with_retry", AsyncMock(return_value=mock_candles)
+    ):
+        results = await scan_symbols(["BTCUSDT"], mcp_client=None)
+        assert len(results) == 1
+        assert results[0].symbol == "BTCUSDT"
+        assert results[0].error is None
+
+
+@pytest.mark.asyncio
+async def test_scan_symbols_mcp_health_check_failed():
+    mcp_client = MagicMock()
+    mcp_client.health_check = AsyncMock(side_effect=Exception("Connection refused"))
+
+    import time
+
+    now_ms = int(time.time() * 1000)
+    day_ms = 24 * 60 * 60 * 1000
+    mock_candles = []
+    for i in range(250):
+        ts = now_ms - (250 - i) * day_ms
+        price = 100.0 + i * 0.5
+        mock_candles.append([ts, price, price + 2.0, price - 2.0, price + 0.1, 1000.0])
+
+    from analysis import scan_symbols
+
+    with patch(
+        "analysis.fetch_candles_with_retry", AsyncMock(return_value=mock_candles)
+    ):
+        results = await scan_symbols(["BTCUSDT"], mcp_client=mcp_client)
+        assert len(results) == 1
+        assert results[0].symbol == "BTCUSDT"
+
+
+@pytest.mark.asyncio
+async def test_scan_symbols_mcp_batch_run_failed():
+    mcp_client = MagicMock()
+    mcp_client.health_check = AsyncMock(return_value={"connected": True})
+    mcp_client.batch_run = AsyncMock(side_effect=Exception("Timeout"))
+
+    import time
+
+    now_ms = int(time.time() * 1000)
+    day_ms = 24 * 60 * 60 * 1000
+    mock_candles = []
+    for i in range(250):
+        ts = now_ms - (250 - i) * day_ms
+        price = 100.0 + i * 0.5
+        mock_candles.append([ts, price, price + 2.0, price - 2.0, price + 0.1, 1000.0])
+
+    from analysis import scan_symbols
+
+    with patch(
+        "analysis.fetch_candles_with_retry", AsyncMock(return_value=mock_candles)
+    ):
+        results = await scan_symbols(["BTCUSDT"], mcp_client=mcp_client)
+        assert len(results) == 1
+        assert results[0].symbol == "BTCUSDT"
+
+
+@pytest.mark.asyncio
+async def test_scan_symbols_mcp_returns_error_or_incomplete():
+    mcp_client = MagicMock()
+    mcp_client.health_check = AsyncMock(return_value={"connected": True})
+    mcp_client.batch_run = AsyncMock(
+        return_value=[
+            {"symbol": "BTCUSDT", "error": "Rate limit"},
+            {
+                "symbol": "ETHUSDT",
+                "quote": MagicMock(close=100.0, high=102.0, low=98.0, volume=100.0),
+                "studies": MagicMock(sma50=None),
+            },
+        ]
+    )
+
+    import time
+
+    now_ms = int(time.time() * 1000)
+    day_ms = 24 * 60 * 60 * 1000
+    mock_candles = []
+    for i in range(250):
+        ts = now_ms - (250 - i) * day_ms
+        price = 100.0 + i * 0.5
+        mock_candles.append([ts, price, price + 2.0, price - 2.0, price + 0.1, 1000.0])
+
+    from analysis import scan_symbols
+
+    with patch(
+        "analysis.fetch_candles_with_retry", AsyncMock(return_value=mock_candles)
+    ):
+        results = await scan_symbols(["BTCUSDT", "ETHUSDT"], mcp_client=mcp_client)
+        assert len(results) == 2

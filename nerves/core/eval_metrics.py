@@ -316,6 +316,7 @@ def evaluate_agent_run(
             all_passed = False
 
     import time
+
     return {
         "overall_passed": all_passed,
         "metrics": results,

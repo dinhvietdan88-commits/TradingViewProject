@@ -40,7 +40,6 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
-from typing import Optional
 
 AGENTS_ROOT = Path(__file__).resolve().parent.parent.parent
 

@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime, timedelta, timezone, UTC
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import aiosqlite
 
@@ -22,9 +22,7 @@ def format_vn_time(utc_str: str) -> str:
         Formatted string like '2026-06-04 01:45:11 (ICT)'
     """
     try:
-        dt = datetime.strptime(utc_str, "%Y-%m-%d %H:%M:%S").replace(
-            tzinfo=UTC
-        )
+        dt = datetime.strptime(utc_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC)
         vn_dt = dt.astimezone(VN_TZ)
         return vn_dt.strftime("%Y-%m-%d %H:%M:%S") + " (ICT)"
     except (ValueError, TypeError):

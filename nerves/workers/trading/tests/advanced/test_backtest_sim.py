@@ -70,6 +70,21 @@ async def test_backtest_pnl_sl_tp_logic(mock_bus, mocker):
     mocker.patch("database.update_trade_oco", new_callable=AsyncMock)
     mocker.patch("database.update_signal_status", new_callable=AsyncMock)
     mocker.patch(
+        "database.get_risk_settings",
+        new_callable=AsyncMock,
+        return_value={
+            "exchange": "mock_exchange",
+            "symbol": "*",
+            "daily_loss_cap": 10.0,
+            "drawdown_cap": 5.0,
+            "max_quote_qty": 100.0,
+            "slippage_limit": 0.005,
+            "safe_mode": 1,
+            "state": "CLOSED",
+        },
+    )
+    mocker.patch("database.get_daily_loss", new_callable=AsyncMock, return_value=0.0)
+    mocker.patch(
         "engine.regime_switcher.get_market_regime",
         new_callable=AsyncMock,
         return_value="TRENDING",

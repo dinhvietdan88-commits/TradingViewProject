@@ -10,13 +10,62 @@ Verifies:
 
 import pathlib
 import sys
+import importlib.util
+import importlib.machinery
+import types
+from unittest.mock import MagicMock, patch
+import pytest
+
+# Mock importlib.util.find_spec to return a valid spec for chromadb without loading the real package
+orig_find_spec = importlib.util.find_spec
+
+
+def mock_find_spec(name, package=None):
+    if name == "chromadb":
+        return importlib.machinery.ModuleSpec("chromadb", None)
+    try:
+        return orig_find_spec(name, package)
+    except Exception:
+        return None
+
+
+importlib.util.find_spec = mock_find_spec
+
+# Mock chromadb in sys.modules to prevent opentelemetry import errors in broken environments
+
+mock_chroma = types.ModuleType("chromadb")
+mock_chroma.__file__ = "<mock chromadb>"
+mock_chroma.__spec__ = importlib.machinery.ModuleSpec("chromadb", None)
+
+mock_chroma_utils = types.ModuleType("chromadb.utils")
+mock_chroma_utils.__file__ = "<mock chromadb.utils>"
+mock_chroma_utils.__spec__ = importlib.machinery.ModuleSpec("chromadb.utils", None)
+
+mock_chroma_utils_ef = types.ModuleType("chromadb.utils.embedding_functions")
+mock_chroma_utils_ef.__file__ = "<mock chromadb.utils.embedding_functions>"
+mock_chroma_utils_ef.__spec__ = importlib.machinery.ModuleSpec(
+    "chromadb.utils.embedding_functions", None
+)
+
+mock_chroma.utils = mock_chroma_utils
+mock_chroma_utils.embedding_functions = mock_chroma_utils_ef
+
+mock_chroma.HttpClient = MagicMock()
+mock_chroma.PersistentClient = MagicMock()
+
+
+def dummy_ef(*args, **kwargs):
+    return MagicMock()
+
+
+mock_chroma_utils_ef.SentenceTransformerEmbeddingFunction = dummy_ef
+
+sys.modules["chromadb"] = mock_chroma
+sys.modules["chromadb.utils"] = mock_chroma_utils
+sys.modules["chromadb.utils.embedding_functions"] = mock_chroma_utils_ef
 
 # Ensure server/ is on sys.path so `import config` / `import rag` work
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
-
-from unittest.mock import MagicMock, patch
-
-import pytest
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -87,7 +136,9 @@ async def test_remote_mode_uses_http_client():
         config.CHROMA_SERVER_PORT = 9000
 
         with (
-            patch("chromadb.HttpClient", return_value=mock_client) as mock_http_cls,
+            patch.object(
+                mock_chroma, "HttpClient", return_value=mock_client
+            ) as mock_http_cls,
             patch.object(rag, "_get_embedding_function", return_value=mock_ef),
         ):
             result = await rag.init_vector_db()
@@ -150,8 +201,8 @@ async def test_local_mode_uses_persistent_client(tmp_path):
         config.CHROMA_DB_PATH = str(chroma_dir)
 
         with (
-            patch(
-                "chromadb.PersistentClient", return_value=mock_client
+            patch.object(
+                mock_chroma, "PersistentClient", return_value=mock_client
             ) as mock_persist_cls,
             patch.object(rag, "_get_embedding_function", return_value=mock_ef),
         ):
@@ -197,7 +248,7 @@ async def test_remote_mode_collection_initialized():
         config.CHROMA_SERVER_PORT = 8000
 
         with (
-            patch("chromadb.HttpClient", return_value=mock_client),
+            patch.object(mock_chroma, "HttpClient", return_value=mock_client),
             patch.object(rag, "_get_embedding_function", return_value=mock_ef),
         ):
             await rag.init_vector_db()
@@ -245,7 +296,7 @@ async def test_query_knowledge_after_remote_init():
         config.CHROMA_SERVER_PORT = 8000
 
         with (
-            patch("chromadb.HttpClient", return_value=mock_client),
+            patch.object(mock_chroma, "HttpClient", return_value=mock_client),
             patch.object(rag, "_get_embedding_function", return_value=mock_ef),
         ):
             await rag.init_vector_db()
@@ -305,7 +356,7 @@ async def test_remote_mode_skips_knowledge_dir_check():
         config.KNOWLEDGE_DIR = "/nonexistent/knowledge/dir"
 
         with (
-            patch("chromadb.HttpClient", return_value=mock_client),
+            patch.object(mock_chroma, "HttpClient", return_value=mock_client),
             patch.object(rag, "_get_embedding_function", return_value=mock_ef),
         ):
             result = await rag.init_vector_db()
@@ -355,7 +406,7 @@ async def test_remote_mode_no_local_dir_created(tmp_path):
         config.CHROMA_DB_PATH = str(local_chroma_dir)
 
         with (
-            patch("chromadb.HttpClient", return_value=mock_client),
+            patch.object(mock_chroma, "HttpClient", return_value=mock_client),
             patch.object(rag, "_get_embedding_function", return_value=mock_ef),
         ):
             await rag.init_vector_db()
@@ -425,8 +476,10 @@ async def test_http_client_not_called_in_local_mode(tmp_path):
         config.CHROMA_DB_PATH = str(tmp_path / "chroma_db")
 
         with (
-            patch("chromadb.PersistentClient", return_value=mock_persist_client),
-            patch("chromadb.HttpClient") as mock_http_cls,
+            patch.object(
+                mock_chroma, "PersistentClient", return_value=mock_persist_client
+            ),
+            patch.object(mock_chroma, "HttpClient") as mock_http_cls,
             patch.object(rag, "_get_embedding_function", return_value=mock_ef),
         ):
             await rag.init_vector_db()

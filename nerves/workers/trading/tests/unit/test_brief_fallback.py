@@ -62,13 +62,20 @@ async def test_morning_brief_fallback_to_mplfinance():
             method="mplfinance",
         )
 
+        orig_exists = Path.exists
+
+        def exists_side_effect(self, *args, **kwargs):
+            if "brief_BTCUSDT" in str(self) or "mock_screenshots" in str(self):
+                return True
+            return orig_exists(self, *args, **kwargs)
+
         with (
             patch(
                 "capture_client.PythonCaptureClient.capture_screenshot",
                 new_callable=AsyncMock,
                 return_value=mock_capture_res,
             ) as mock_local_capture,
-            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.exists", exists_side_effect),
         ):
             # Temporarily force MCP enabled
             original_mcp_enabled = config.MCP_ENABLED

@@ -3,6 +3,8 @@ name: Staging Smoke Test
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       smoke_url:
@@ -128,5 +130,60 @@ jobs:
             curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
               -d "chat_id=${TELEGRAM_CHAT_ID}" \
               -d "text=🚨 Staging Smoke FAILED on ${SHORT_SHA} — ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+              -d "parse_mode=Markdown" || true
+          fi
+
+  staging-smoke-fallback:
+    name: Staging Smoke Fallback
+    needs: check-config
+    if: needs.check-config.outputs.has_url == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Create server symlink
+        run: ln -s nerves/workers/trading server
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Compute weekly cache key
+        id: uv-cache
+        run: echo "week=$(date -u +%Y-W%V)" >> $GITHUB_OUTPUT
+
+      - name: Cache uv packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ steps.uv-cache.outputs.week }}-${{ hashFiles('nerves/workers/trading/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-${{ steps.uv-cache.outputs.week }}-
+            ${{ runner.os }}-uv-
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv pip install --system -r server/requirements.txt
+          uv pip install --system -r server/requirements-test.txt
+
+      - name: Run Fallback Pipeline Simulation
+        run: |
+          python scripts/simulate_pipeline.py
+
+      - name: Notify Telegram on Failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            SHORT_SHA=$(echo "${{ github.sha }}" | head -c 7)
+            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${TELEGRAM_CHAT_ID}" \
+              -d "text=🚨 Staging Smoke Fallback FAILED on ${SHORT_SHA} — ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
               -d "parse_mode=Markdown" || true
           fi

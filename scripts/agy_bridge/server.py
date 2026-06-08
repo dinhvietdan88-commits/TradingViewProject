@@ -20,7 +20,6 @@ import logging
 import os
 import shutil
 import time
-from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field

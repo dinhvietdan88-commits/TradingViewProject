@@ -284,8 +284,12 @@ async def test_server_a_c_integration_flow(test_db, worker):
 
         run_task = asyncio.create_task(worker.run())
 
-        # Give it a short moment to process the signal
-        await asyncio.sleep(0.5)
+        # Wait up to 5 seconds for the signal to be processed
+        for _ in range(50):
+            status, ack_status = await get_signal_db_status(queue_id)
+            if status == "ACKED":
+                break
+            await asyncio.sleep(0.1)
 
         # Trigger shutdown
         worker._shutdown_event.set()

@@ -1576,3 +1576,187 @@ tr:hover td { background: var(--glass); }
   border: 1px solid rgba(255, 77, 109, 0.3);
   box-shadow: 0 0 12px rgba(255, 77, 109, 0.15);
 }
+
+/* ── SENTIMENT LAYER STYLES ── */
+.sentiment-cell {
+  position: relative;
+  cursor: help;
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.sentiment-cell:hover .sentiment-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+.sentiment-tooltip {
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translate(-50%, 10px);
+  width: 280px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+  text-align: left;
+}
+.sentiment-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: rgba(15, 23, 42, 0.95) transparent transparent transparent;
+}
+.sentiment-tooltip-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 4px;
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sentiment-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  font-family: var(--mono);
+}
+.sentiment-tooltip-row span.val {
+  font-weight: 600;
+}
+
+/* Overview Widget styles */
+.sentiment-overview-widget {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sentiment-overview-widget .widget-title {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sentiment-overview-flex {
+  display: flex;
+  gap: 16px;
+}
+.sentiment-gauge-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 12px;
+  position: relative;
+}
+.sentiment-funding-box {
+  flex: 1.2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 12px;
+}
+.funding-rate-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  font-family: var(--mono);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  padding-bottom: 4px;
+}
+.funding-rate-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.gauge-canvas-wrap {
+  width: 100%;
+  max-width: 130px;
+  height: 80px;
+  position: relative;
+}
+.gauge-val-display {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-top: -15px;
+  z-index: 10;
+}
+.gauge-label-display {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+.sentiment-watchlist-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.watchlist-breakdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+}
+.watchlist-breakdown-bar-bg {
+  width: 100px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.watchlist-breakdown-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+}
+.combined-score-history-chart-wrap {
+  width: 100%;
+  height: 100px;
+  margin-top: 6px;
+}
+.sentiment-flag-toggle {
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+.sentiment-flag-toggle.active {
+  background: rgba(52, 211, 153, 0.15);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: rgb(52, 211, 153);
+}
+

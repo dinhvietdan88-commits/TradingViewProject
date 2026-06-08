@@ -3,8 +3,7 @@ import logging
 import platform
 import secrets
 import time
-from datetime import datetime, timezone, UTC
-from typing import Optional
+from datetime import datetime, UTC
 
 import models
 from fastapi import APIRouter, Header, HTTPException, Query, Request, status

@@ -19,7 +19,7 @@ References:
 
 import json
 import os
-from datetime import datetime, timezone, UTC
+from datetime import datetime, UTC
 
 # ---------------------------------------------------------------------------
 # Agent Card Schema (A2A v1.0 compliant)

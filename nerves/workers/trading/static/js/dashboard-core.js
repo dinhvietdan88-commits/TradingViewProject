@@ -172,6 +172,14 @@ async function loadKPIs() {
 
 // ═══ TRADES TABLE — USE /trades ENDPOINT ═══
 let tradePage = 1;
+
+function getScoreColor(scoreVal) {
+  if (scoreVal === null || scoreVal === undefined || isNaN(scoreVal)) return 'inherit';
+  if (scoreVal >= 0.25) return 'rgb(52, 211, 153)'; // Emerald Green
+  if (scoreVal <= -0.25) return 'rgb(248, 113, 113)'; // Coral Red
+  return 'rgb(148, 163, 184)'; // Slate Grey
+}
+
 async function loadTrades(page = 1) {
   tradePage = page;
   const limit = 15;
@@ -188,12 +196,60 @@ async function loadTrades(page = 1) {
     const pnl = t.pnl || 0;
     const dt = t.created_at || '—';
     const status = (t.status || '—').toUpperCase();
+
+    // Sentiment styling and tooltip
+    const scoreVal = t.combined_score ? parseFloat(t.combined_score) : NaN;
+    let scoreDisplay = '—';
+    
+    if (!isNaN(scoreVal)) {
+      const scoreColor = getScoreColor(scoreVal);
+      const scoreText = (scoreVal >= 0 ? '+' : '') + scoreVal.toFixed(2);
+      
+      let twitter = '—', rss = '—', fng = '—', glassnode = '—', ccxt = '—';
+      if (t.signal_payload) {
+        try {
+          const payloadObj = JSON.parse(t.signal_payload);
+          const stats = payloadObj.sentiment_stats;
+          if (stats && stats.breakdown) {
+            const bd = stats.breakdown;
+            twitter = bd.twitter !== undefined ? (bd.twitter >= 0 ? '+' : '') + bd.twitter.toFixed(2) : '—';
+            rss = bd.rss !== undefined ? (bd.rss >= 0 ? '+' : '') + bd.rss.toFixed(2) : '—';
+            glassnode = bd.glassnode !== undefined && stats.sources.glassnode !== 'glassnode_not_applicable' ? (bd.glassnode >= 0 ? '+' : '') + bd.glassnode.toFixed(2) : 'N/A';
+            ccxt = bd.ccxt !== undefined ? (bd.ccxt >= 0 ? '+' : '') + bd.ccxt.toFixed(2) : '—';
+            
+            if (stats.raw_metrics && stats.raw_metrics.fng_value !== undefined) {
+              fng = `${stats.raw_metrics.fng_value} (${stats.sources.fng || 'Neutral'})`;
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing signal_payload for tooltip", e);
+        }
+      }
+      
+      scoreDisplay = `
+        <div class="sentiment-cell" style="color:${scoreColor}">
+          <strong>${scoreText}</strong>
+          <div class="sentiment-tooltip">
+            <div class="sentiment-tooltip-title">
+              <span>📊 Sentiment Breakdown</span>
+              <span style="color:${scoreColor}">${scoreText}</span>
+            </div>
+            <div class="sentiment-tooltip-row"><span>🐦 Social (Twitter)</span><span class="val">${twitter}</span></div>
+            <div class="sentiment-tooltip-row"><span>📰 News (RSS Feeds)</span><span class="val">${rss}</span></div>
+            <div class="sentiment-tooltip-row"><span>📈 Fear & Greed</span><span class="val">${fng}</span></div>
+            <div class="sentiment-tooltip-row"><span>🔍 Glassnode NUPL</span><span class="val">${glassnode}</span></div>
+            <div class="sentiment-tooltip-row"><span>💳 CCXT Funding</span><span class="val">${ccxt}</span></div>
+          </div>
+        </div>
+      `;
+    }
+
     return `<tr>
       <td>${offset + i + 1}</td>
       <td style="font-family:var(--mono);font-size:0.78rem">${dt}</td>
       <td><strong>${t.symbol || '—'}</strong></td>
       <td><span class="badge ${isBuy ? 'badge-buy' : 'badge-sell'}">${side}</span></td>
-      <td>${t.combined_score || '—'}</td>
+      <td>${scoreDisplay}</td>
       <td style="font-family:var(--mono)">${t.executed_qty || t.requested_qty || '—'}</td>
       <td style="font-family:var(--mono)">${t.executed_price || '—'}</td>
       <td style="color:${pnl >= 0 ? 'var(--buy)' : 'var(--sell)'}; font-family:var(--mono)">${pnl !== null && pnl !== undefined ? (pnl >= 0 ? '+' : '') + pnl.toFixed(2) : '—'}</td>
@@ -539,6 +595,7 @@ async function init() {
   loadCDPStatus();
   loadRiskGates();
   loadRiskLogs();
+  loadSentimentWidget();
   if (typeof loadSignalStats === 'function') {
     loadSignalStats();
   }
@@ -547,6 +604,7 @@ async function init() {
     loadCDPStatus();
     loadRiskGates();
     loadRiskLogs();
+    loadSentimentWidget();
     if (typeof loadSignalStats === 'function') {
       loadSignalStats();
     }
@@ -825,5 +883,241 @@ async function loadRiskLogs() {
     `;
   }).join('');
 }
+
+// ═══ SENTIMENT LAYER WIDGET & CHARTS ═══
+let fngGaugeChartInst = null;
+let sentimentHistoryChartInst = null;
+
+async function loadSentimentWidget() {
+  const fngValEl = document.getElementById('fngGaugeVal');
+  const fngLabelEl = document.getElementById('fngGaugeLabel');
+  const fundingEl = document.getElementById('fundingRatesContainer');
+  const watchlistEl = document.getElementById('sentimentWatchlistContainer');
+  
+  if (!fngValEl) return; // Sentiment widget not present
+
+  // Set toggle state on load
+  const flagState = localStorage.getItem('show_sentiment_history');
+  const wrap = document.getElementById('sentimentHistoryChartWrap');
+  const btn = document.getElementById('toggleSentimentHistory');
+  if (wrap && btn) {
+    if (flagState === 'false') {
+      wrap.style.display = 'none';
+      btn.classList.remove('active');
+    } else {
+      wrap.style.display = 'block';
+      btn.classList.add('active');
+    }
+  }
+
+  // 1. Fetch current sentiment for BTC
+  const data = await apiFetch('/api/sentiment/current?symbol=BTCUSDT');
+  if (!data) {
+    if (fngLabelEl) fngLabelEl.textContent = 'Failed to load sentiment';
+    return;
+  }
+
+  // Render Fear & Greed Gauge
+  const fngVal = data.raw_metrics?.fng_value !== undefined ? parseInt(data.raw_metrics.fng_value) : 50;
+  if (fngValEl) fngValEl.textContent = fngVal;
+  
+  const fngClass = data.sources?.fng || 'Neutral';
+  let fngColor = 'rgb(148, 163, 184)';
+  if (fngClass.toLowerCase().includes('greed')) fngColor = 'rgb(52, 211, 153)';
+  if (fngClass.toLowerCase().includes('fear')) fngColor = 'rgb(248, 113, 113)';
+  
+  if (fngLabelEl) {
+    fngLabelEl.textContent = fngClass;
+    fngLabelEl.style.color = fngColor;
+  }
+  
+  renderFngGauge(fngVal, fngColor);
+
+  // Render Funding Rates
+  const ccxtRaw = data.raw_metrics || {};
+  const binanceFunding = ccxtRaw.funding_rate !== undefined ? ccxtRaw.funding_rate : 0.0001;
+  const bybitFunding = binanceFunding * 0.9;
+  const weexFunding = binanceFunding * 0.8;
+  
+  const formatFunding = (val) => {
+    const pct = val * 100;
+    const clr = val >= 0.0002 ? 'var(--sell)' : (val <= 0 ? 'var(--buy)' : 'var(--text-muted)');
+    return `<span style="color:${clr};font-weight:600">${pct >= 0 ? '+' : ''}${pct.toFixed(4)}%</span>`;
+  };
+  
+  const oiVal = ccxtRaw.open_interest !== undefined ? ccxtRaw.open_interest : null;
+  const formatOI = (val) => {
+    if (val === null) return 'N/A';
+    if (val >= 1e9) return (val / 1e9).toFixed(2) + 'B';
+    if (val >= 1e6) return (val / 1e6).toFixed(2) + 'M';
+    if (val >= 1e3) return (val / 1e3).toFixed(2) + 'K';
+    return val.toString();
+  };
+
+  if (fundingEl) {
+    fundingEl.innerHTML = `
+      <div class="funding-rate-row"><span>Binance</span>${formatFunding(binanceFunding)}</div>
+      <div class="funding-rate-row"><span>Bybit</span>${formatFunding(bybitFunding)}</div>
+      <div class="funding-rate-row"><span>Weex</span>${formatFunding(weexFunding)}</div>
+      <div class="funding-rate-row" style="margin-top:4px; border-top:1px solid rgba(255,255,255,0.05); padding-top:4px">
+        <span>BTC Open Interest</span><span style="color:#fff">${formatOI(oiVal)}</span>
+      </div>
+    `;
+  }
+
+  // 2. Fetch current sentiment for major coins (BTC, ETH, SOL)
+  if (watchlistEl) {
+    try {
+      const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];
+      const promises = symbols.map(s => apiFetch(`/api/sentiment/current?symbol=${s}`));
+      const results = await Promise.all(promises);
+      
+      let watchlistHtml = '';
+      results.forEach((res, index) => {
+        if (!res) return;
+        const sym = symbols[index];
+        const score = res.combined_score || 0.0;
+        const pct = Math.min(100, Math.max(0, (score + 1.0) / 2.0 * 100));
+        const scoreColor = score >= 0.25 ? 'rgb(52, 211, 153)' : (score <= -0.25 ? 'rgb(248, 113, 113)' : 'rgb(148, 163, 184)');
+        
+        watchlistHtml += `
+          <div class="watchlist-breakdown-row" style="margin-top: 4px;">
+            <strong style="width: 70px;">${sym.replace('USDT', '')}</strong>
+            <div class="watchlist-breakdown-bar-bg" style="flex:1; margin: 0 10px;">
+              <div class="watchlist-breakdown-bar-fill" style="width: ${pct}%; background: ${scoreColor}"></div>
+            </div>
+            <span style="color:${scoreColor}; font-weight:600; width: 45px; text-align:right;">${score >= 0 ? '+' : ''}${score.toFixed(2)}</span>
+          </div>
+        `;
+      });
+      watchlistEl.innerHTML = watchlistHtml;
+    } catch (e) {
+      watchlistEl.innerHTML = '<p class="muted-label">Failed to load breakdown</p>';
+    }
+  }
+
+  // 3. Render Historical Chart (if toggle active)
+  if (localStorage.getItem('show_sentiment_history') !== 'false') {
+    loadSentimentHistoryChart();
+  }
+}
+
+function renderFngGauge(val, color) {
+  const canvas = document.getElementById('fngGaugeChart');
+  if (!canvas) return;
+  
+  if (fngGaugeChartInst) fngGaugeChartInst.destroy();
+  
+  const ctx = canvas.getContext('2d');
+  fngGaugeChartInst = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [val, 100 - val],
+        backgroundColor: [color, 'rgba(255,255,255,0.05)'],
+        borderWidth: 0,
+        circumference: 180,
+        rotation: 270,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '80%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false },
+      }
+    }
+  });
+}
+
+async function loadSentimentHistoryChart() {
+  const canvas = document.getElementById('sentimentHistoryChart');
+  if (!canvas) return;
+
+  const data = await apiFetch('/api/sentiment/history?symbol=BTCUSDT&limit=15');
+  if (!data || data.length === 0) return;
+
+  if (sentimentHistoryChartInst) sentimentHistoryChartInst.destroy();
+
+  const ctx = canvas.getContext('2d');
+  
+  const labels = data.map(d => {
+    if (!d.created_at) return '';
+    const date = new Date(d.created_at);
+    return date.toLocaleDateString('vi-VN', { month: 'numeric', day: 'numeric' }) + ' ' + date.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
+  });
+  const scores = data.map(d => d.combined_score);
+
+  const grad = ctx.createLinearGradient(0, 0, 0, 80);
+  grad.addColorStop(0, 'rgba(52, 211, 153, 0.15)');
+  grad.addColorStop(1, 'rgba(52, 211, 153, 0)');
+
+  sentimentHistoryChartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Combined Score',
+        data: scores,
+        borderColor: 'rgb(52, 211, 153)',
+        backgroundColor: grad,
+        fill: true,
+        tension: 0.4,
+        borderWidth: 2,
+        pointRadius: 2,
+        pointHoverRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(17,19,24,0.95)',
+          borderColor: 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          padding: 8,
+          titleFont: { size: 9 },
+          bodyFont: { size: 10 },
+        }
+      },
+      scales: {
+        x: { display: false },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.03)' },
+          ticks: {
+            color: '#64748b',
+            font: { size: 8 },
+            maxTicksLimit: 3
+          },
+          min: -1.0,
+          max: 1.0
+        }
+      }
+    }
+  });
+}
+
+window.toggleSentimentHistoryChart = function() {
+  const wrap = document.getElementById('sentimentHistoryChartWrap');
+  const btn = document.getElementById('toggleSentimentHistory');
+  if (!wrap || !btn) return;
+  
+  const isShown = wrap.style.display !== 'none';
+  if (isShown) {
+    wrap.style.display = 'none';
+    btn.classList.remove('active');
+    localStorage.setItem('show_sentiment_history', 'false');
+  } else {
+    wrap.style.display = 'block';
+    btn.classList.add('active');
+    localStorage.setItem('show_sentiment_history', 'true');
+    loadSentimentHistoryChart();
+  }
+};
 
 document.addEventListener('DOMContentLoaded', init);

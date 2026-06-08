@@ -653,6 +653,46 @@
           </div>
         </section>
 
+        <!-- Sentiment Layer Widget (Peripheral) -->
+        <section class="glass-section sentiment-overview-widget">
+          <div class="widget-title">
+            <span>📊 Market Sentiment</span>
+            <span class="sentiment-flag-toggle active" id="toggleSentimentHistory" onclick="toggleSentimentHistoryChart()" title="Bật/Tắt đồ thị lịch sử">📈 History Chart</span>
+          </div>
+          <div class="sentiment-overview-flex">
+            <!-- Fear & Greed Gauge -->
+            <div class="sentiment-gauge-box">
+              <span class="protection-label" style="font-size:0.65rem;margin-bottom:6px">Fear & Greed</span>
+              <div class="gauge-canvas-wrap">
+                <canvas id="fngGaugeChart"></canvas>
+              </div>
+              <div class="gauge-val-display" id="fngGaugeVal">—</div>
+              <div class="gauge-label-display" id="fngGaugeLabel">Loading...</div>
+            </div>
+            
+            <!-- CCXT Market Funding Heatmap -->
+            <div class="sentiment-funding-box">
+              <span class="protection-label" style="font-size:0.65rem;margin-bottom:6px">Funding Rates</span>
+              <div id="fundingRatesContainer">
+                <div class="loading" style="padding: 10px 0"><div class="spinner"></div></div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Watchlist Coins Sentiment breakdown -->
+          <div class="sentiment-watchlist-breakdown">
+            <span class="protection-label" style="font-size:0.65rem">Watchlist Sentiment Breakdown</span>
+            <div id="sentimentWatchlistContainer">
+              <div class="loading" style="padding: 10px 0"><div class="spinner"></div></div>
+            </div>
+          </div>
+
+          <!-- Feature flagged Combined Score History Chart -->
+          <div class="combined-score-history-chart-wrap" id="sentimentHistoryChartWrap" style="display: block;">
+            <canvas id="sentimentHistoryChart"></canvas>
+          </div>
+        </section>
+
       </div>
     </div>
   </div>

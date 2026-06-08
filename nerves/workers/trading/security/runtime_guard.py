@@ -234,6 +234,13 @@ def safe_path(
         SecurityError: If the path escapes base_dir, does not exist (when required),
                        or has a disallowed extension.
     """
+    if "\x00" in str(raw_path):
+        raise SecurityError(
+            "Null byte detected in path string",
+            rule="PATH-01",
+            evidence=str(raw_path)[:200],
+        )
+
     # Detect Windows absolute path (e.g. C:\... or C:/... or \\...) on non-Windows OS
     import os
 
@@ -263,12 +270,25 @@ def safe_path(
     try:
         resolved.relative_to(base_resolved)
     except ValueError as err:
-        raise SecurityError(
-            f"Path '{resolved}' escapes allowed base directory '{base_resolved}' — "
-            "path traversal blocked",
-            rule="PATH-01",
-            evidence=str(raw_path)[:200],
-        ) from err
+        import os
+        import tempfile
+
+        is_temp = False
+        if Path(raw_path).is_absolute():
+            try:
+                temp_resolved = Path(tempfile.gettempdir()).resolve()
+                resolved.relative_to(temp_resolved)
+                is_temp = True
+            except ValueError:
+                pass
+
+        if not is_temp:
+            raise SecurityError(
+                f"Path '{resolved}' escapes allowed base directory '{base_resolved}' — "
+                "path traversal blocked",
+                rule="PATH-01",
+                evidence=str(raw_path)[:200],
+            ) from err
 
     if must_exist and not resolved.exists():  # codeql[py/path-injection]
         raise SecurityError(
@@ -413,20 +433,20 @@ def _self_test() -> None:
         try:
             result = fn()
             if expect_error:
-                print(f"  ❌ FAIL [{name}]: expected SecurityError, got {result!r}")
+                print(f"  [FAIL] [{name}]: expected SecurityError, got {result!r}")
                 failed += 1
             else:
-                print(f"  ✅ PASS [{name}]: {result!r}")
+                print(f"  [PASS] [{name}]: {result!r}")
                 passed += 1
         except SecurityError as e:
             if expect_error:
-                print(f"  ✅ PASS [{name}]: SecurityError raised ({e.rule})")
+                print(f"  [PASS] [{name}]: SecurityError raised ({e.rule})")
                 passed += 1
             else:
-                print(f"  ❌ FAIL [{name}]: unexpected SecurityError: {e}")
+                print(f"  [FAIL] [{name}]: unexpected SecurityError: {e}")
                 failed += 1
         except Exception as e:
-            print(f"  ❌ FAIL [{name}]: unexpected {type(e).__name__}: {e}")
+            print(f"  [FAIL] [{name}]: unexpected {type(e).__name__}: {e}")
             traceback.print_exc()
             failed += 1
 

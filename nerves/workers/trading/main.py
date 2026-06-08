@@ -25,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 
 import config
 import database
+import logging_config
 import notifier
 import rag
 
@@ -143,21 +144,8 @@ if not _is_pytest and sys.stdout and hasattr(sys.stdout, "buffer"):
 if not _is_pytest and sys.stderr and hasattr(sys.stderr, "buffer"):
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-# Setup logging — StreamHandler explicitly UTF-8 to avoid cp1252 crash on Windows
-Path(config.LOG_FILE).parent.mkdir(parents=True, exist_ok=True)
-_stream_handler = logging.StreamHandler(sys.stdout)
-_stream_handler.setFormatter(
-    logging.Formatter("%(asctime)s  %(levelname)s  %(message)s")
-)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)s  %(message)s",
-    handlers=[
-        logging.FileHandler(config.LOG_FILE, encoding="utf-8"),
-        _stream_handler,
-    ],
-)
+# Setup logging using unified logging config (integrates Sentry)
+logging_config.setup_logging(log_file=config.LOG_FILE)
 log = logging.getLogger(__name__)
 
 
@@ -1516,6 +1504,27 @@ async def rag_status_endpoint():
         "knowledge_dir": config.KNOWLEDGE_DIR,
         "chroma_db_path": config.CHROMA_DB_PATH,
     }
+
+
+@app.get("/api/sentiment/current")
+async def get_current_sentiment_endpoint(
+    symbol: str = Query("BTCUSDT", description="Cap giao dich can lay tam ly"),
+):
+    """Lay du lieu tam ly hien tai cho mot cap giao dich."""
+    from analyzer.sentiment_analyzer import SentimentAnalyzer
+
+    analyzer = SentimentAnalyzer()
+    res = await analyzer.analyze_symbol(symbol)
+    return res
+
+
+@app.get("/api/sentiment/history")
+async def get_sentiment_history_endpoint(
+    symbol: str = Query("BTCUSDT", description="Cap giao dich"),
+    limit: int = Query(30, ge=1, le=100, description="So luong ban ghi"),
+):
+    """Lay lich su diem tam ly tong hop."""
+    return await database.get_sentiment_history(symbol=symbol, limit=limit)
 
 
 # ═══ WEBHOOK ENDPOINT — moved to gateway/webhook.py (Phase 5) ═══════════════

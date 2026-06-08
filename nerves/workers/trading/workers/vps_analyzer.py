@@ -37,6 +37,7 @@ from fastapi import FastAPI, Request, Response
 
 import config
 import rag
+from analyzer.sentiment_analyzer import SentimentAnalyzer
 from logging_config import setup_logging
 
 # V2: Import Circuit Breaker singleton
@@ -350,6 +351,67 @@ async def get_metrics(request: Request):
 log = logging.getLogger(__name__)
 
 
+# ── Sentiment Telegram Formatting Helpers ─────────────────────────────────────
+def _score_to_label(
+    score: float,
+    pos_thresh: float,
+    neg_thresh: float,
+    pos_str="Tích cực",
+    neg_str="Tiêu cực",
+    neut_str="Trung lập",
+) -> str:
+    """Map numeric score to sentiment label or emoji."""
+    if score >= pos_thresh:
+        return pos_str
+    if score <= neg_thresh:
+        return neg_str
+    return neut_str
+
+
+def _format_volume_amount(val: float | None) -> str:
+    """Format volume or open interest with k/M suffixes."""
+    if val is None or not isinstance(val, (int, float)):
+        return "N/A"
+    if val >= 1_000_000:
+        return f"{val / 1_000_000:.1f}M"
+    if val >= 1_000:
+        return f"{val / 1_000:.1f}k"
+    return str(int(val))
+
+
+def _format_price(price: float) -> str:
+    """Format price with decimal precision based on magnitude."""
+    return f"{price:,.2f}" if price >= 1 else f"{price:.6f}"
+
+
+def _format_status_label(approved: bool, hold: bool) -> str:
+    """Get status label for Telegram alert."""
+    if approved:
+        if hold:
+            return "⏳ HOLD (chờ duyệt)"
+        return "✅ APPROVED"
+    return "❌ REJECTED"
+
+
+def _format_mode_label(mode: str, provider_detail: str | None) -> str:
+    """Format execution mode client description."""
+    if mode == "ai":
+        if provider_detail == "agy-cli":
+            return "AI (agy-cli / OAuth 🔑)"
+        if provider_detail == "google-genai":
+            return "AI (Gemini SDK / API 📡)"
+        if provider_detail == "gemini-direct":
+            return "AI (Gemini Direct / Fallback ⚠️)"
+        if provider_detail == "gemini-fallback":
+            return "AI (Gemini Fallback ⚠️)"
+        if provider_detail:
+            return f"AI ({provider_detail})"
+        return "AI"
+    if mode == "algorithmic":
+        return "Algorithmic (No AI ⚙️)"
+    return mode.upper()
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Worker
 # ─────────────────────────────────────────────────────────────────────────────
@@ -380,6 +442,7 @@ class VpsAnalyzerWorker:
         # poll_interval is kept for compatibility but only used as error back-off
         self.poll_interval = config.VPS_POLL_INTERVAL_SECONDS
         self._lock = asyncio.Lock()
+        self.sentiment_analyzer = SentimentAnalyzer()
 
     # ── Session management ────────────────────────────────────────────────────
 
@@ -460,11 +523,7 @@ class VpsAnalyzerWorker:
 
     # ── Main daemon loop ──────────────────────────────────────────────────────
 
-    async def run(self):
-        """Main daemon loop: long-poll → analyse → forward → ack.
-
-        Runs until cancelled.
-        """
+    async def _startup(self):
         # Logging configuration based on environment variable LOG_JSON_FORMAT
         json_format = os.getenv(
             "LOG_JSON_FORMAT", "false"
@@ -512,18 +571,57 @@ class VpsAnalyzerWorker:
         config_uv = uvicorn.Config(
             app,
             host=os.getenv("HOST", "0.0.0.0"),  # noqa: S104
-            port=8000,
+            port=int(os.getenv("PORT", "8000")),
             log_level="info",
         )
         server = uvicorn.Server(config_uv)
         server_task = asyncio.create_task(server.serve())
         log.info("[VpsAnalyzer] Health and metrics server started on port 8000.")
+        return server, server_task
 
-        # Setup graceful shutdown signal handling
+    async def _shutdown(self, server, server_task):
+        print("[DEBUG] Starting graceful shutdown cleanup...", flush=True)
+        log.info("[VpsAnalyzer] Starting graceful shutdown cleanup...")
+
+        # Stop scheduler
+        try:
+            from scheduler import stop_scheduler
+
+            print("[DEBUG] Stopping scheduler...", flush=True)
+            stop_scheduler()
+            print("[DEBUG] Scheduler stopped.", flush=True)
+        except Exception as e:
+            log.warning(f"[VpsAnalyzer] Error stopping scheduler: {e}")
+
+        # Stop uvicorn server task
+        print("[DEBUG] Setting server.should_exit = True...", flush=True)
+        server.should_exit = True
+        print("[DEBUG] Cancelling server_task...", flush=True)
+        server_task.cancel()
+        try:
+            print("[DEBUG] Awaiting server_task...", flush=True)
+            await server_task
+            print("[DEBUG] Awaited server_task.", flush=True)
+        except asyncio.CancelledError:
+            print("[DEBUG] Caught CancelledError for server_task.", flush=True)
+            pass
+        log.info("[VpsAnalyzer] Health server stopped.")
+
+        # Close ClientSession
+        print("[DEBUG] Closing ClientSession...", flush=True)
+        await self.close()
+        print("[DEBUG] ClientSession closed.", flush=True)
+
+        # Flush logs
+        print("[DEBUG] Shutting down logging...", flush=True)
+        logging.shutdown()
+        print("[DEBUG] Logging shut down.", flush=True)
+
+        log.info("[VpsAnalyzer] Shutdown complete.")
+        print("[DEBUG] Shutdown complete.", flush=True)
+
+    def _setup_signals(self, loop):
         import signal
-
-        self._shutdown_event = asyncio.Event()
-        loop = asyncio.get_running_loop()
 
         def handle_signal(sig, frame):
             sig_name = "SIGINT"
@@ -543,6 +641,18 @@ class VpsAnalyzerWorker:
                 signal.signal(sig, handle_signal)
             except Exception as e:
                 log.warning(f"Could not register signal handler for {sig}: {e}")
+
+    async def run(self):
+        """Main daemon loop: long-poll → analyse → forward → ack.
+
+        Runs until cancelled.
+        """
+        server, server_task = await self._startup()
+
+        # Setup graceful shutdown signal handling
+        self._shutdown_event = asyncio.Event()
+        loop = asyncio.get_running_loop()
+        self._setup_signals(loop)
 
         # Fix #54 Bug 1: Create shutdown_task fresh each iteration.
         # Creating it once outside the loop caused asyncio.wait() to return immediately
@@ -640,45 +750,7 @@ class VpsAnalyzerWorker:
                 log.exception(f"[VpsAnalyzer] Unexpected error in run loop: {exc}")
                 await asyncio.sleep(self.BACKOFF_ON_ERROR_SEC)
 
-        print("[DEBUG] Starting graceful shutdown cleanup...", flush=True)
-        log.info("[VpsAnalyzer] Starting graceful shutdown cleanup...")
-
-        # Stop scheduler
-        try:
-            from scheduler import stop_scheduler
-
-            print("[DEBUG] Stopping scheduler...", flush=True)
-            stop_scheduler()
-            print("[DEBUG] Scheduler stopped.", flush=True)
-        except Exception as e:
-            log.warning(f"[VpsAnalyzer] Error stopping scheduler: {e}")
-
-        # Stop uvicorn server task
-        print("[DEBUG] Setting server.should_exit = True...", flush=True)
-        server.should_exit = True
-        print("[DEBUG] Cancelling server_task...", flush=True)
-        server_task.cancel()
-        try:
-            print("[DEBUG] Awaiting server_task...", flush=True)
-            await server_task
-            print("[DEBUG] Awaited server_task.", flush=True)
-        except asyncio.CancelledError:
-            print("[DEBUG] Caught CancelledError for server_task.", flush=True)
-            pass
-        log.info("[VpsAnalyzer] Health server stopped.")
-
-        # Close ClientSession
-        print("[DEBUG] Closing ClientSession...", flush=True)
-        await self.close()
-        print("[DEBUG] ClientSession closed.", flush=True)
-
-        # Flush logs
-        print("[DEBUG] Shutting down logging...", flush=True)
-        logging.shutdown()
-        print("[DEBUG] Logging shut down.", flush=True)
-
-        log.info("[VpsAnalyzer] Shutdown complete.")
-        print("[DEBUG] Shutdown complete.", flush=True)
+        await self._shutdown(server, server_task)
 
     # ── Signal analysis ───────────────────────────────────────────────────────
 
@@ -839,6 +911,23 @@ class VpsAnalyzerWorker:
                 payload["vcp_stats"] = {"detected": False}
 
             try:
+                # Sentiment Analysis Integration
+                try:
+                    sentiment_stats = await self.sentiment_analyzer.analyze_symbol(
+                        symbol
+                    )
+                    payload["sentiment_stats"] = sentiment_stats
+                except Exception as exc:
+                    log.warning(
+                        f"[VpsAnalyzer] Sentiment analysis error for {symbol}: {exc}"
+                    )
+                    payload["sentiment_stats"] = {
+                        "enabled": False,
+                        "combined_score": 0.0,
+                        "breakdown": {},
+                    }
+                signal["payload"] = payload
+
                 rag_query = rag.build_rag_query(symbol, action, payload)
                 rag_chunks = rag.query_knowledge(rag_query, n_results=config.RAG_TOP_K)
 
@@ -1205,6 +1294,95 @@ class VpsAnalyzerWorker:
 
         return None
 
+    def _format_telegram_sentiment(
+        self, sentiment_stats: dict[str, Any], symbol: str, exchange_name: str
+    ) -> list[str]:
+        """Construct visual sentiment metrics breakdown (Option B)."""
+        if not sentiment_stats or not sentiment_stats.get("enabled"):
+            return []
+
+        combined_score = sentiment_stats.get("combined_score", 0.0)
+        breakdown = sentiment_stats.get("breakdown", {})
+        sources = sentiment_stats.get("sources", {})
+        raw_metrics = sentiment_stats.get("raw_metrics", {})
+
+        # Slider: [🔴───🎯───🟢]
+        val_norm = (combined_score + 1.0) / 2.0
+        idx = max(0, min(6, int(round(val_norm * 6))))
+        track = ["─"] * 7
+        track[idx] = "🎯"
+        slider = f"[🔴{''.join(track)}🟢]"
+
+        sent_label = _score_to_label(combined_score, 0.25, -0.25)
+
+        lines = [
+            "",
+            f"📊 <b>Tâm lý:</b> <code>{slider} {combined_score:+.2f} ({sent_label})</code>",
+        ]
+
+        # Twitter
+        t_score = breakdown.get("twitter", 0.0)
+        t_label = _score_to_label(t_score, 0.15, -0.15)
+        lines.append(
+            f"├── 🐦 <b>Social (Twitter):</b> <code>{t_score:+.2f}</code> ({t_label})"
+        )
+
+        # RSS News
+        r_score = breakdown.get("rss", 0.0)
+        r_label = _score_to_label(r_score, 0.15, -0.15)
+        lines.append(
+            f"├── 📰 <b>News (RSS Feeds):</b> <code>{r_score:+.2f}</code> ({r_label})"
+        )
+
+        # Fear & Greed
+        fng_val = raw_metrics.get("fng_value")
+        if fng_val is not None:
+            fng_class = str(raw_metrics.get("classification", "Neutral"))
+            if "mock" in fng_class.lower():
+                fng_class = fng_class.replace("Mock ", "").replace("mock ", "")
+            fng_emoji = _score_to_label(
+                fng_val, 55, 45, pos_str="🟢", neg_str="🔴", neut_str="🟡"
+            )
+            lines.append(
+                f"├── 📈 <b>Fear & Greed:</b> {fng_emoji} {fng_class} ({int(fng_val)})"
+            )
+
+        # Glassnode
+        clean_symbol = symbol.split(":")[-1].split(".")[0].split("_")[0].upper()
+        base_symbol = clean_symbol.replace("USDT", "")
+        glassnode_active = sources.get(
+            "glassnode"
+        ) != "glassnode_not_applicable" and base_symbol in ("BTC", "ETH")
+        if glassnode_active:
+            g_score = breakdown.get("glassnode", 0.0)
+            g_emoji = _score_to_label(
+                g_score, 0.4, -0.2, pos_str="🟢", neg_str="🔴", neut_str="🟡"
+            )
+            lines.append(
+                f"├── 🔍 <b>Glassnode NUPL:</b> {g_emoji} <code>{g_score:+.2f}</code>"
+            )
+
+        # CCXT Market Funding (always last)
+        funding_rate = raw_metrics.get("funding_rate", 0.0) or 0.0
+        oi_val = raw_metrics.get("open_interest")
+        bias_emoji = _score_to_label(
+            funding_rate, 0.0001, -0.0001, pos_str="🟢", neg_str="🔴", neut_str="🟡"
+        )
+        bias_text = _score_to_label(
+            funding_rate,
+            0.0001,
+            -0.0001,
+            pos_str="Long Bias",
+            neg_str="Short Bias",
+            neut_str="Neutral",
+        )
+
+        oi_str = _format_volume_amount(oi_val)
+        lines.append(
+            f"└── 💳 <b>Market Funding:</b> {bias_emoji} {bias_text} ({exchange_name}: {funding_rate * 100:.4f}% / OI: {oi_str})"
+        )
+        return lines
+
     async def _notify_analysis_telegram(self, analyzed: dict[str, Any]):
         """Send AI analysis result to Telegram.
 
@@ -1237,33 +1415,12 @@ class VpsAnalyzerWorker:
                 provider_detail = match.group(1)
                 analysis = _re.sub(r"\n\n\[Provider: (.*?)\]$", "", analysis)
 
-        # Status icon
-        if approved:
-            status = "✅ APPROVED"
-            hold = tp.get("hold_for_approval", False)
-            if hold:
-                status = "⏳ HOLD (chờ duyệt)"
-        else:
-            status = "❌ REJECTED"
-
-        # Mode icon
+        # Status & Mode formatting via helpers
+        hold = tp.get("hold_for_approval", False)
+        status = _format_status_label(approved, hold)
         mode_icon = "🧠" if mode == "ai" else "📊"
-
-        # Format Client/Provider detail
-        mode_label = mode.upper()
-        if mode == "ai":
-            if provider_detail == "agy-cli":
-                mode_label = "AI (agy-cli / OAuth 🔑)"
-            elif provider_detail == "google-genai":
-                mode_label = "AI (Gemini SDK / API 📡)"
-            elif provider_detail == "gemini-direct":
-                mode_label = "AI (Gemini Direct / Fallback ⚠️)"
-            elif provider_detail == "gemini-fallback":
-                mode_label = "AI (Gemini Fallback ⚠️)"
-            elif provider_detail:
-                mode_label = f"AI ({provider_detail})"
-        elif mode == "algorithmic":
-            mode_label = "Algorithmic (No AI ⚙️)"
+        mode_label = _format_mode_label(mode, provider_detail)
+        formatted_price = _format_price(price)
 
         # Build message
         lines = [
@@ -1271,26 +1428,32 @@ class VpsAnalyzerWorker:
             f"{mode_icon} <b>AI Core Analysis #{queue_id}</b>",
             f"{'━' * 28}",
             "",
-            f"📌 <b>{symbol}</b> | <code>{action.upper()}</code> @ <code>{price:,.2f}</code>"
-            if price >= 1
-            else f"📌 <b>{symbol}</b> | <code>{action.upper()}</code> @ <code>{price:.6f}</code>",
+            f"📌 <b>{symbol}</b> | <code>{action.upper()}</code> @ <code>{formatted_price}</code>",
             f"🎯 Confidence: <b>{conf}%</b>  |  Client: <b>{mode_label}</b>",
             f"📋 Status: <b>{status}</b>",
         ]
+
+        # Sentiment Layer (Option B: Visual Metrics)
+        exchange_name = tp.get("exchange", config.DEFAULT_EXCHANGE).upper()
+        sentiment_lines = self._format_telegram_sentiment(
+            analyzed, symbol, exchange_name
+        )
+        if sentiment_lines:
+            lines.extend(sentiment_lines)
 
         if approved and tp:
             qty = tp.get("qty", 0)
             sl = tp.get("sl", 0)
             tp_price = tp.get("tp", 0)
             risk = tp.get("risk_per_trade", 0)
+            formatted_sl = _format_price(sl)
+            formatted_tp = _format_price(tp_price)
             lines.extend(
                 [
                     "",
                     "💰 <b>Position:</b>",
                     f"   • Qty: <code>{qty}</code>",
-                    f"   • SL: <code>{sl:,.2f}</code>  |  TP: <code>{tp_price:,.2f}</code>"
-                    if sl >= 1
-                    else f"   • SL: <code>{sl:.6f}</code>  |  TP: <code>{tp_price:.6f}</code>",
+                    f"   • SL: <code>{formatted_sl}</code>  |  TP: <code>{formatted_tp}</code>",
                     f"   • Risk/Trade: <code>{risk:.1%}</code>",
                 ]
             )
@@ -1886,6 +2049,7 @@ class VpsAnalyzerWorker:
                         "status": resp.status,
                         "data": body,
                         "executed_on": "server_b",
+                        "route_verified": True,
                     }
                 log.error(
                     f"[VpsAnalyzer] Server B rejected (HTTP {resp.status}): {body}"
@@ -2010,7 +2174,7 @@ class VpsAnalyzerWorker:
                         reason = f"RAG analysis rejected signal — does not meet {strategy_name} criteria"
                         mode = "algorithmic" if not llm_breaker.is_available() else "ai"
 
-                    return {
+                    res_dict = {
                         "queue_id": queue_id,
                         "approved": False,
                         "reason": reason,
@@ -2029,7 +2193,7 @@ class VpsAnalyzerWorker:
                 elif isinstance(analyzed, dict) and "approved" in analyzed:
                     # V2 dict returned by a test mock or V2-aware caller
                     if analyzed["approved"]:
-                        return {
+                        res_dict = {
                             "queue_id": queue_id,
                             "approved": True,
                             "trade_payload": analyzed["trade_payload"],
@@ -2037,7 +2201,7 @@ class VpsAnalyzerWorker:
                             or analyzed["trade_payload"].get("analysis_mode", "ai"),
                         }
                     else:
-                        return {
+                        res_dict = {
                             "queue_id": queue_id,
                             "approved": False,
                             "reason": analyzed.get(
@@ -2058,12 +2222,17 @@ class VpsAnalyzerWorker:
                         }
                 else:
                     # V1: plain trade_payload dict → approved
-                    return {
+                    res_dict = {
                         "queue_id": queue_id,
                         "approved": True,
                         "trade_payload": analyzed,
                         "analysis_mode": analyzed.get("analysis_mode", "ai"),
                     }
+
+                res_dict["sentiment_stats"] = signal.get("payload", {}).get(
+                    "sentiment_stats"
+                )
+                return res_dict
 
             except Exception as exc:
                 log.exception(

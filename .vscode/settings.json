@@ -8,5 +8,16 @@
       "source.fixAll.ruff": "explicit",
       "source.organizeImports.ruff": "explicit"
     }
+  },
+  "python.analysis.exclude": [
+    "**/__pyrefly_virtual__/**",
+    "c:/__pyrefly_virtual__/**",
+    "C:/__pyrefly_virtual__/**"
+  ],
+  "files.exclude": {
+    "**/__pyrefly_virtual__/**": true
+  },
+  "search.exclude": {
+    "**/__pyrefly_virtual__/**": true
   }
 }

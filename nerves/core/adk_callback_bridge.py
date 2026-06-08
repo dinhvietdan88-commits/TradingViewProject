@@ -20,7 +20,6 @@ References:
 import json
 import time
 import uuid
-from typing import Optional
 
 # ---------------------------------------------------------------------------
 # ADK Event Representation (Simplified for interop)

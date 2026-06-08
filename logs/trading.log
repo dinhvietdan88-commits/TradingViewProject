@@ -4589,3 +4589,20 @@
 2026-06-04 05:55:40,057 [WARNING] scheduler:86 — [Scheduler] CDP Keep-Alive check failed: Cannot connect to host localhost:9222 ssl:default [The remote computer refused the network connection]. Attempting reload.
 2026-06-04 05:55:42,335 [ERROR] scheduler:109 — [Scheduler] CDP Keep-Alive: Failed to reload page: Cannot connect to host localhost:9222 ssl:default [The remote computer refused the network connection]
 2026-06-04 05:55:42,335 [INFO] apscheduler.executors.default:203 — Job "TradingView CDP Keepalive Check (trigger: interval[0:05:00], next run at: 2026-06-04 06:00:37 +07)" executed successfully
+2026-06-07 05:16:12,023 [INFO] root:138 — Logging configured: level=INFO, file=logs/trading.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-07 06:12:20,138 [INFO] root:138 — Logging configured: level=INFO, file=logs/trading.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-07 06:12:38,876 [INFO] root:138 — Logging configured: level=INFO, file=logs/trading.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-07 06:20:45,051 [INFO] root:138 — Logging configured: level=INFO, file=logs/trading.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-07 06:21:02,650 [WARNING] router:39 — VBS: Unauthorized attempt (secret mismatch)
+2026-06-07 06:21:02,652 [WARNING] router:39 — VBS: Unauthorized attempt (secret mismatch)
+2026-06-07 06:21:02,655 [WARNING] router:39 — VBS: Unauthorized attempt (secret mismatch)
+2026-06-07 06:21:14,923 [INFO] root:138 — Logging configured: level=INFO, file=logs/trading.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-07 06:48:12,010 [INFO] root:138 — Logging configured: level=INFO, file=logs/trading.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-07 06:52:10,527 [INFO] root:138 — Logging configured: level=INFO, file=logs/trading.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-07 06:52:44,560 [WARNING] router:39 — VBS: Unauthorized attempt (secret mismatch)
+2026-06-07 06:52:44,561 [WARNING] router:39 — VBS: Unauthorized attempt (secret mismatch)
+2026-06-07 06:52:44,562 [WARNING] router:39 — VBS: Unauthorized attempt (secret mismatch)
+2026-06-07 06:53:11,003 [INFO] root:138 — Logging configured: level=INFO, file=logs/trading.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-07 13:18:52,119 [INFO] root:138 — Logging configured: level=INFO, file=logs/trading.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-07 13:18:52,126 [INFO] root:138 — Logging configured: level=INFO, file=logs/trading.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-07 13:18:52,128 [INFO] __main__:474 — [VpsAnalyzer] V2 Starting (consumer=server-c-analyzer, long_poll_timeout=30s, circuit_threshold=3)

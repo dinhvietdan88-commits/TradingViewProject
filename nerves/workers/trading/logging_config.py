@@ -140,3 +140,76 @@ def setup_logging(
         f"rotation={max_size_mb}MB × {backup_count} backups "
         f"(max total: {total_max_mb} MB), json={json_format}"
     )
+
+    # ── Sentry Initialization ────────────────────────────────────────────────
+    sentry_dsn = os.getenv("SENTRY_DSN", "")
+    if sentry_dsn:
+        try:
+            import sentry_sdk
+            from sentry_sdk.integrations.logging import LoggingIntegration
+            from sentry_sdk.integrations.fastapi import FastAPIIntegration
+
+            sentry_logging = LoggingIntegration(
+                level=logging.INFO,  # Capture info and above as breadcrumbs
+                event_level=logging.ERROR,  # Send error and above as events
+            )
+
+            def before_send(event, hint):
+                sensitive_keys = {
+                    "api_key",
+                    "secret",
+                    "api_secret",
+                    "passphrase",
+                    "password",
+                    "binance_api_key",
+                    "binance_api_secret",
+                    "bybit_api_key",
+                    "bybit_api_secret",
+                    "weex_api_key",
+                    "weex_api_secret",
+                    "weex_passphrase",
+                }
+
+                # Helper to recursive scrub sensitive data in nested dicts/lists
+                def scrub_sensitive(data):
+                    if isinstance(data, dict):
+                        for k in list(data.keys()):
+                            if (
+                                any(sk in k.lower() for sk in sensitive_keys)
+                                or "secret" in k.lower()
+                                or "passphrase" in k.lower()
+                            ):
+                                data[k] = "[SCRUBBED]"
+                            else:
+                                scrub_sensitive(data[k])
+                    elif isinstance(data, list):
+                        for item in data:
+                            scrub_sensitive(item)
+
+                if "request" in event:
+                    req = event["request"]
+                    if "headers" in req:
+                        scrub_sensitive(req["headers"])
+                    if "data" in req:
+                        scrub_sensitive(req["data"])
+
+                if "breadcrumbs" in event and "values" in event["breadcrumbs"]:
+                    for crumb in event["breadcrumbs"]["values"]:
+                        if "data" in crumb:
+                            scrub_sensitive(crumb["data"])
+
+                return event
+
+            sentry_sdk.init(
+                dsn=sentry_dsn,
+                integrations=[sentry_logging, FastAPIIntegration()],
+                traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+                profiles_sample_rate=float(
+                    os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.05")
+                ),
+                environment=os.getenv("ENVIRONMENT", "development"),
+                before_send=before_send,
+            )
+            logging.info("Sentry SDK: ✅ Initialized successfully.")
+        except Exception as e:
+            logging.warning(f"Sentry SDK: ⚠️ Initialization failed: {e}")

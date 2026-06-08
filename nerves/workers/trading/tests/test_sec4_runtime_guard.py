@@ -409,3 +409,9 @@ class TestSSRFIntegration:
         validated_url = validate_exchange_url(url)
         assert "BTCUSDT" in validated_url
         assert "api.binance.com" in validated_url
+
+    def test_runtime_guard_internal_self_test(self):
+        """Invoke the built-in self-test module to verify basic sanity and increase test coverage."""
+        from security.runtime_guard import _self_test
+
+        _self_test()

@@ -193,6 +193,7 @@ def run_local_command(cmd):
             )
         else:
             import shlex
+
             res = subprocess.run(
                 shlex.split(cmd),
                 stdout=subprocess.PIPE,
