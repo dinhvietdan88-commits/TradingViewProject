@@ -154,7 +154,24 @@ async def process_signal(event: SignalReceived) -> None:
     await database.set_setting("market_regime", regime)
 
     is_daily = event.interval.strip().lower() in {"d", "1d", "daily"}
-    is_1h = event.interval.strip().lower() in {"60", "1h", "60m"}
+
+    # ── MTA Macro Trend Filter (v6.1) ────────────────────────
+    from processor.macro_trend_processor import MacroTrendProcessor
+
+    macro_processor = MacroTrendProcessor()
+    macro_accepted = await macro_processor.process(event)
+    if not macro_accepted:
+        await _bus.emit(
+            SignalRejected(
+                signal_id=event.signal_id,
+                symbol=event.symbol,
+                action=action,
+                reason="macro_trend_conflict",
+                interval=event.interval,
+                exchange=event.exchange,
+            )
+        )
+        return
 
     if action in ("buy", "sell"):
         if is_daily:
@@ -174,10 +191,10 @@ async def process_signal(event: SignalReceived) -> None:
                     )
                 )
                 return
-        elif not is_1h:
+        elif not _is_valid_trade_interval(event.interval):
             log.warning(
                 f"SignalProcessor: Rejecting trade for {event.symbol}: "
-                f"invalid interval '{event.interval}'. Only 1h/60 or Daily (trending) is allowed."
+                f"invalid interval '{event.interval}'. Only 5m/15m/30m/1h or Daily (trending) is allowed."
             )
             await _bus.emit(
                 SignalRejected(
@@ -289,7 +306,6 @@ async def process_indicator_signal(event: IndicatorSignalReceived) -> None:
     await database.set_setting("market_regime", regime)
 
     is_daily = event.interval.strip().lower() in {"d", "1d", "daily"}
-    is_1h = event.interval.strip().lower() in {"60", "1h", "60m"}
 
     if event.signal_type == "entry":
         if is_daily:
@@ -308,7 +324,7 @@ async def process_indicator_signal(event: IndicatorSignalReceived) -> None:
                     )
                 )
                 return
-        elif not is_1h:
+        elif not _is_valid_trade_interval(event.interval):
             log.warning(
                 f"SignalProcessor: Rejecting indicator entry for {event.symbol} - invalid interval {event.interval}"
             )

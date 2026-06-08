@@ -335,18 +335,32 @@ async def process_validated_signal(event: SignalValidated) -> None:
                     f"(Twitter={t_score:.2f}, RSS={r_score:.2f}, Glassnode={g_score:.2f})\n"
                 )
 
-                # Apply sentiment modifier to confidence score
+                is_buy = event.action.lower() == "buy"
+                is_sell = event.action.lower() == "sell"
+
+                # Apply sentiment modifier directionally
                 if combined > 0.5:
-                    confidence = min(10, confidence + 1)
-                    analysis_text += "   ↳ Bullish sentiment boost → confidence +1\n\n"
-                elif combined < -0.7:
-                    confidence = max(1, confidence - 2)
-                    analysis_text += "   ↳ Panic/Extreme bearish sentiment penalty → confidence -2\n\n"
-                elif combined < -0.4:
-                    confidence = max(1, confidence - 1)
-                    analysis_text += (
-                        "   ↳ Bearish sentiment penalty → confidence -1\n\n"
-                    )
+                    if is_buy:
+                        confidence = min(10, confidence + 1)
+                        analysis_text += (
+                            "   ↳ Bullish sentiment boost (BUY) → confidence +1\n\n"
+                        )
+                    elif is_sell:
+                        confidence = max(1, confidence - 2)
+                        analysis_text += (
+                            "   ↳ Bullish sentiment penalty (SELL) → confidence -2\n\n"
+                        )
+                elif combined < -0.5:
+                    if is_buy:
+                        confidence = max(1, confidence - 3)
+                        analysis_text += (
+                            "   ↳ Bearish sentiment penalty (BUY) → confidence -3\n\n"
+                        )
+                    elif is_sell:
+                        confidence = min(10, confidence + 1)
+                        analysis_text += (
+                            "   ↳ Bearish sentiment boost (SELL) → confidence +1\n\n"
+                        )
                 else:
                     analysis_text += (
                         "   ↳ Neutral sentiment → no confidence modifier\n\n"
@@ -355,6 +369,90 @@ async def process_validated_signal(event: SignalValidated) -> None:
             log.warning(
                 f"AIAnalyzer: Sentiment analysis failed (non-fatal): {sent_err}"
             )
+
+    # ── Step 2.7: Multi-Timeframe Alignment (MTA) & Matching Model ──
+    tas = 0.0
+    sts = 0.0
+    mlts = 0.0
+    if getattr(config, "MTA_ENABLED", True):
+        try:
+            from capture_client import get_capture_client
+
+            client = get_capture_client()
+            import asyncio
+
+            tf_tasks = [
+                client.fetch_ohlcv(symbol, "1m", limit=30),
+                client.fetch_ohlcv(symbol, "5m", limit=30),
+                client.fetch_ohlcv(symbol, "15m", limit=30),
+                client.fetch_ohlcv(symbol, "30m", limit=30),
+                client.fetch_ohlcv(symbol, "1h", limit=30),
+                client.fetch_ohlcv(symbol, "4h", limit=30),
+                client.fetch_ohlcv(symbol, "D", limit=30),
+            ]
+            tf_results = await asyncio.gather(*tf_tasks, return_exceptions=True)
+
+            def get_trend(res) -> int:
+                if isinstance(res, Exception) or not res or len(res) < 10:
+                    return 0
+                closes = [c[4] for c in res]
+                sma = sum(closes[-20:]) / len(closes[-20:])
+                latest = closes[-1]
+                return 1 if latest > sma else (-1 if latest < sma else 0)
+
+            t_1m = get_trend(tf_results[0])
+            t_5m = get_trend(tf_results[1])
+            t_15m = get_trend(tf_results[2])
+            t_30m = get_trend(tf_results[3])
+            t_1h = get_trend(tf_results[4])
+            t_4h = get_trend(tf_results[5])
+            t_1d = get_trend(tf_results[6])
+
+            sts = (
+                config.MTA_STF_WEIGHT_1M * t_1m
+                + config.MTA_STF_WEIGHT_5M * t_5m
+                + config.MTA_STF_WEIGHT_15M * t_15m
+                + config.MTA_STF_WEIGHT_30M * t_30m
+            )
+            mlts = (
+                config.MTA_MLTF_WEIGHT_1H * t_1h
+                + config.MTA_MLTF_WEIGHT_4H * t_4h
+                + config.MTA_MLTF_WEIGHT_1D * t_1d
+            )
+            tas = sts + mlts
+
+            log.info(
+                f"AIAnalyzer: MTA Trend calculated for {symbol} - TAS={tas:.2f} "
+                f"(STS={sts:.2f} [1m:{t_1m}, 5m:{t_5m}, 15m:{t_15m}, 30m:{t_30m}], "
+                f"MLTS={mlts:.2f} [1h:{t_1h}, 4h:{t_4h}, 1d:{t_1d}])"
+            )
+
+            analysis_text += f"📐 **TIMEFRAME ALIGNMENT:** TAS={tas:.2f} (STS={sts:.2f}, MLTS={mlts:.2f})\n"
+
+            is_buy = event.action.lower() == "buy"
+            is_sell = event.action.lower() == "sell"
+
+            if tas >= 0.5:
+                if is_buy:
+                    confidence = min(10, confidence + 1)
+                    analysis_text += f"   ↳ Bullish trend alignment (TAS={tas:.2f}) → confidence +1\n\n"
+                elif is_sell:
+                    confidence = max(1, confidence - 2)
+                    analysis_text += f"   ↳ Trend conflict (SELL signal during Bullish trend, TAS={tas:.2f}) → confidence -2\n\n"
+            elif tas <= -0.5:
+                if is_buy:
+                    confidence = max(1, confidence - 3)
+                    analysis_text += f"   ↳ Trend conflict (BUY signal during Bearish trend, TAS={tas:.2f}) → confidence -3\n\n"
+                elif is_sell:
+                    confidence = min(10, confidence + 1)
+                    analysis_text += f"   ↳ Bearish trend alignment (TAS={tas:.2f}) → confidence +1\n\n"
+            else:
+                analysis_text += (
+                    "   ↳ Neutral trend consensus → no confidence modifier\n\n"
+                )
+
+        except Exception as mta_err:
+            log.warning(f"AIAnalyzer: MTA macro filter failed: {mta_err}")
 
     # ── Step 3: Compute final verdict flags ──────────────────
     # v6.0 INV-5/6: Threshold enforcement is in NotificationHub.
