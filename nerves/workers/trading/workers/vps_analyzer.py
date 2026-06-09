@@ -1109,7 +1109,12 @@ class VpsAnalyzerWorker:
         # ── Programmatic Guardrails ───────────────────────────────────────────
         # 1. Trend Template score < 5/8
         tt_score = payload.get("trend_stats", {}).get("score")
-        if tt_score is not None and isinstance(tt_score, (int, float)) and tt_score < 5:
+        if (
+            action.lower() in ("buy", "long")
+            and tt_score is not None
+            and isinstance(tt_score, (int, float))
+            and tt_score < 5
+        ):
             return {
                 "approved": False,
                 "reason": f"Programmatic guardrail: Trend Template score {tt_score}/8 is below minimum threshold (5/8)",

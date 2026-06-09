@@ -433,3 +433,79 @@ async def get_sentiment_history(symbol: str, limit: int = 30) -> list[dict[str, 
             result.append(d)
         result.reverse()
         return result
+
+
+# ═══════════════════════════════════════════════════════════════
+# CONSENSUS QUERY
+# ═══════════════════════════════════════════════════════════════
+
+
+async def get_consensus_audit_logs(
+    limit: int = 50, offset: int = 0
+) -> list[dict[str, Any]]:
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        sql = """
+            SELECT * FROM consensus_audit_logs
+            ORDER BY timestamp DESC LIMIT ? OFFSET ?
+        """
+        rows = await db.execute_fetchall(sql, [limit, offset])
+        return [dict(r) for r in rows]
+
+
+# ═══════════════════════════════════════════════════════════════
+# STATE LEDGER QUERY
+# ═══════════════════════════════════════════════════════════════
+
+
+async def get_signals(
+    symbol: str | None = None,
+    state: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict[str, Any]:
+    """Truy van danh sach signals de phuc vu Ledger Dashboard UI."""
+    query_parts = []
+    params = []
+
+    if symbol:
+        query_parts.append("symbol = ?")
+        params.append(symbol.upper())
+
+    if state:
+        query_parts.append("state = ?")
+        params.append(state.upper())
+
+    where_clause = " WHERE " + " AND ".join(query_parts) if query_parts else ""
+
+    limit = min(limit, 200)
+
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+
+        # Lay tong so record
+        count_sql = f"SELECT COUNT(*) as cnt FROM signals{where_clause}"  # noqa: S608
+        row = await db.execute_fetchall(count_sql, params)
+        total = row[0][0] if row else 0
+
+        # Lay danh sach record theo trang
+        fetch_sql = f"""  # noqa: S608
+            SELECT id, created_at, symbol, action, price, quote_qty, source_ip, payload, mode, processed, vbs_queue_id, state, rejection_reason
+            FROM signals
+            {where_clause}  # noqa: S608
+            ORDER BY created_at DESC, id DESC
+            LIMIT ? OFFSET ?
+        """  # noqa: S608
+        rows = await db.execute_fetchall(fetch_sql, params + [limit, offset])
+
+        signals = []
+        for r in rows:
+            d = dict(r)
+            if d.get("payload"):
+                try:
+                    d["payload"] = json.loads(d["payload"])
+                except Exception:  # noqa: S110
+                    pass
+            signals.append(d)
+
+    return {"signals": signals, "total": total, "limit": limit, "offset": offset}

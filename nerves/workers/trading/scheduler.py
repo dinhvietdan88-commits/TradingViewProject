@@ -19,6 +19,17 @@ ICT = ZoneInfo("Asia/Ho_Chi_Minh")
 _scheduler: AsyncIOScheduler | None = None
 
 
+async def _run_ohlcv_sync_job():
+    """Wrapper cho APScheduler — import sync_ohlcv_all_symbols lazily."""
+    try:
+        from workers.ohlcv_sync import sync_ohlcv_all_symbols
+
+        logger.info("[Scheduler] Triggering scheduled ohlcv sync...")
+        await sync_ohlcv_all_symbols()
+    except Exception as e:
+        logger.error(f"[Scheduler] OHLCV sync job failed: {e}", exc_info=True)
+
+
 async def _run_morning_brief_job():
     """Wrapper cho APScheduler — import brief lazily để tránh circular."""
     try:
@@ -136,6 +147,16 @@ def create_scheduler() -> AsyncIOScheduler:
         replace_existing=True,
     )
     logger.info("[Scheduler] TradingView CDP Keepalive scheduled every 5 minutes")
+
+    scheduler.add_job(
+        _run_ohlcv_sync_job,
+        trigger="interval",
+        minutes=5,
+        id="ohlcv_sync_daemon",
+        name="Candlestick OHLCV Sync Daemon",
+        replace_existing=True,
+    )
+    logger.info("[Scheduler] Candlestick OHLCV Sync Daemon scheduled every 5 minutes")
 
     if config.BRIEF_ENABLED:
         # Parse HH:MM from config

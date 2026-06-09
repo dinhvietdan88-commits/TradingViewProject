@@ -306,3 +306,61 @@ MTA_STF_WEIGHT_1M = float(os.getenv("MTA_STF_WEIGHT_1M", "0.05"))
 MTA_MLTF_WEIGHT_1D = float(os.getenv("MTA_MLTF_WEIGHT_1D", "0.25"))
 MTA_MLTF_WEIGHT_4H = float(os.getenv("MTA_MLTF_WEIGHT_4H", "0.20"))
 MTA_MLTF_WEIGHT_1H = float(os.getenv("MTA_MLTF_WEIGHT_1H", "0.15"))
+
+
+# Privacy Rule: Only allow raw RAG analysis storage on user's local machine, NEVER on server-a, server-b, server-c
+def _is_restricted_server() -> bool:
+    import socket
+    import os
+
+    try:
+        hostname = socket.gethostname().lower()
+        for s in [
+            "server-a",
+            "server-b",
+            "server-c",
+            "server_a",
+            "server_b",
+            "server_c",
+        ]:
+            if s in hostname:
+                return True
+    except Exception:  # noqa: S110
+        pass
+
+    for var in ["VPS_CONSUMER_ID", "HOSTNAME", "COMPUTERNAME"]:
+        val = os.getenv(var, "").lower()
+        for s in [
+            "server-a",
+            "server-b",
+            "server-c",
+            "server_a",
+            "server_b",
+            "server_c",
+        ]:
+            if s in val:
+                return True
+
+    if os.path.exists("/etc/hostname"):
+        try:
+            with open("/etc/hostname", "r") as f:
+                content = f.read().lower()
+                for s in [
+                    "server-a",
+                    "server-b",
+                    "server-c",
+                    "server_a",
+                    "server_b",
+                    "server_c",
+                ]:
+                    if s in content:
+                        return True
+        except Exception:  # noqa: S110
+            pass
+    return False
+
+
+if _is_restricted_server():
+    STORE_RAW_ANALYSIS = False
+else:
+    STORE_RAW_ANALYSIS = os.getenv("STORE_RAW_ANALYSIS", "false").lower() == "true"

@@ -63,7 +63,10 @@ def _get_imports():
 
 
 async def send_interactive_trade_approval(
-    signal_id: int, message: str, photo_path: str | None = None
+    signal_id: int,
+    message: str,
+    photo_path: str | None = None,
+    photo_caption: str | None = None,
 ) -> list:
     """Send interactive trade approval message with Approve/Reject buttons.
 
@@ -112,7 +115,10 @@ async def send_interactive_trade_approval(
 
                         photo_file_path = Path(photo_path)
                         if photo_file_path.exists():
-                            caption = f"📊 Chart Analysis — Signal #{signal_id}"
+                            caption = (
+                                photo_caption
+                                or f"📊 Chart Analysis — Signal #{signal_id}"
+                            )
                             photo_buf = prepare_telegram_photo(photo_file_path)
                             if photo_buf:
                                 await _bot_app.bot.send_photo(
@@ -146,7 +152,11 @@ async def send_interactive_trade_approval(
 
 
 async def send_interactive_indicator_alert(
-    signal_id: int, symbol: str, message: str, photo_path: str | None = None
+    signal_id: int,
+    symbol: str,
+    message: str,
+    photo_path: str | None = None,
+    photo_caption: str | None = None,
 ) -> list:
     """Send interactive indicator alert with AI Scan and Dismiss buttons.
 
@@ -194,7 +204,8 @@ async def send_interactive_indicator_alert(
                         photo_file_path = Path(photo_path)
                         if photo_file_path.exists():
                             caption = (
-                                f"📊 Indicator Chart — {symbol} (Signal #{signal_id})"
+                                photo_caption
+                                or f"📊 Indicator Chart — {symbol} (Signal #{signal_id})"
                             )
                             photo_buf = prepare_telegram_photo(photo_file_path)
                             if photo_buf:

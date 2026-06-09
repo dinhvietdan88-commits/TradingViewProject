@@ -237,6 +237,9 @@ async def lifespan(app: FastAPI):
     import hub.notification_hub  # noqa: F401 — @bus.on(SignalRejected)
     import processor.signal_enricher  # noqa: F401 — @bus.on(IndicatorSignalValidated)
     import processor.signal_processor  # noqa: F401 — @bus.on(SignalReceived)
+    import processor.macro_trend_processor  # noqa: F401 — @bus.on(SignalIngested)
+    import processor.minervini_sepa_processor  # noqa: F401 — @bus.on(MacroValidated)
+    import processor.mean_reversion_processor  # noqa: F401 — @bus.on(MacroValidated)
 
     log.info(
         f"EventBus: {_event_bus.metrics['total_handlers']} handlers registered "
@@ -1110,6 +1113,33 @@ async def get_indicator_signals(
         )
 
     return {"total": total, "limit": limit, "offset": offset, "signals": signals}
+
+
+@app.get("/api/signals")
+async def get_signals_endpoint(
+    symbol: str | None = Query(None, description="Filter by symbol, e.g. BTCUSDT"),
+    state: str | None = Query(
+        None,
+        description="Filter by state: INGESTED|MACRO_PASSED|STRATEGY_PASSED|COMPLETED|REJECTED",
+    ),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+):
+    """Fetch webhook signals with states and rejection reasons for the Ledger dashboard tab."""
+    try:
+        res = await database.get_signals(
+            symbol=symbol,
+            state=state,
+            limit=limit,
+            offset=offset,
+        )
+        return res
+    except Exception as e:
+        log.exception(f"Failed to get signals: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error querying signals: {e}",
+        ) from e
 
 
 @app.get("/api/chart-markers")

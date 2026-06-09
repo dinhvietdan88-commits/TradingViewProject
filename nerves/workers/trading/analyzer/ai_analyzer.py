@@ -109,6 +109,12 @@ async def process_validated_signal(event: SignalValidated) -> None:
         f"AIAnalyzer: Processing validated signal #{event.signal_id} for {event.symbol} (Action: {event.action})"
     )
 
+    import inspect
+
+    res = database.update_signal_state(event.signal_id, "ANALYZING")
+    if inspect.isawaitable(res):
+        await res
+
     symbol = event.symbol
     now = datetime.now(UTC).timestamp()
 
@@ -236,48 +242,49 @@ async def process_validated_signal(event: SignalValidated) -> None:
 
     # ── Step 1.5: Pattern Detection (VCP/Cup/DoubleBottom) ─────
     pattern_summary = ""
-    try:
-        from capture_client import get_capture_client
-        from utils.pattern_overlay import detect_all_patterns
+    if not getattr(event, "mta_calculated", False):
+        try:
+            from capture_client import get_capture_client
+            from utils.pattern_overlay import detect_all_patterns
 
-        capture = get_capture_client()
+            capture = get_capture_client()
 
-        # Fetch OHLCV for pattern detection (reuse existing client)
-        ohlcv_data = await capture.fetch_ohlcv(symbol, timeframe="1d", limit=150)
-        if ohlcv_data and len(ohlcv_data) >= 30:
-            patterns = detect_all_patterns(ohlcv_data, pivot_window=5)
+            # Fetch OHLCV for pattern detection (reuse existing client)
+            ohlcv_data = await capture.fetch_ohlcv(symbol, timeframe="1d", limit=150)
+            if ohlcv_data and len(ohlcv_data) >= 30:
+                patterns = detect_all_patterns(ohlcv_data, pivot_window=5)
 
-            if patterns.any_detected:
-                pattern_summary = f"📐 **PATTERN DETECTION:** {patterns.summary}\n"
-                analysis_text += pattern_summary
+                if patterns.any_detected:
+                    pattern_summary = f"📐 **PATTERN DETECTION:** {patterns.summary}\n"
+                    analysis_text += pattern_summary
 
-                # Boost confidence if VCP with high quality detected
-                if patterns.vcp.detected and patterns.vcp.quality_score >= 70:
-                    confidence = min(10, confidence + 1)
-                    analysis_text += f"   ↳ VCP Quality={patterns.vcp.quality_score:.0f} → confidence +1\n"
+                    # Boost confidence if VCP with high quality detected
+                    if patterns.vcp.detected and patterns.vcp.quality_score >= 70:
+                        confidence = min(10, confidence + 1)
+                        analysis_text += f"   ↳ VCP Quality={patterns.vcp.quality_score:.0f} → confidence +1\n"
 
-                # Store pattern info in vision_result for chart rendering
-                vision_result["pattern_overlay"] = {
-                    "vcp_detected": patterns.vcp.detected,
-                    "cup_handle_detected": patterns.cup_handle.detected,
-                    "double_bottom_detected": patterns.double_bottom.detected,
-                    "summary": patterns.summary,
-                    "vcp_quality": patterns.vcp.quality_score
-                    if patterns.vcp.detected
-                    else 0,
-                }
-            else:
-                analysis_text += (
-                    "📐 **PATTERN:** Không phát hiện VCP/Cup/DoubleBottom\n"
-                )
-                # Penalize if NO pattern and confidence is borderline
-                if confidence == 8:
-                    confidence = 7
+                    # Store pattern info in vision_result for chart rendering
+                    vision_result["pattern_overlay"] = {
+                        "vcp_detected": patterns.vcp.detected,
+                        "cup_handle_detected": patterns.cup_handle.detected,
+                        "double_bottom_detected": patterns.double_bottom.detected,
+                        "summary": patterns.summary,
+                        "vcp_quality": patterns.vcp.quality_score
+                        if patterns.vcp.detected
+                        else 0,
+                    }
+                else:
                     analysis_text += (
-                        "   ↳ Không có pattern → confidence 8→7 (cần human gate)\n"
+                        "📐 **PATTERN:** Không phát hiện VCP/Cup/DoubleBottom\n"
                     )
-    except Exception as pat_err:
-        log.warning(f"AIAnalyzer: Pattern detection failed (non-fatal): {pat_err}")
+                    # Penalize if NO pattern and confidence is borderline
+                    if confidence == 8:
+                        confidence = 7
+                        analysis_text += (
+                            "   ↳ Không có pattern → confidence 8→7 (cần human gate)\n"
+                        )
+        except Exception as pat_err:
+            log.warning(f"AIAnalyzer: Pattern detection failed (non-fatal): {pat_err}")
 
     # ── Step 2: RAG Analysis ─────────────────────────────────
     rag_advice = ""
@@ -376,56 +383,65 @@ async def process_validated_signal(event: SignalValidated) -> None:
     mlts = 0.0
     if getattr(config, "MTA_ENABLED", True):
         try:
-            from capture_client import get_capture_client
+            if getattr(event, "mta_calculated", False):
+                tas = getattr(event, "tas", 0.0)
+                sts = getattr(event, "sts", 0.0)
+                mlts = getattr(event, "mlts", 0.0)
+                log.info(
+                    f"AIAnalyzer: MTA Trend loaded from validated signal for {symbol} - "
+                    f"TAS={tas:.2f} (STS={sts:.2f}, MLTS={mlts:.2f})"
+                )
+            else:
+                from capture_client import get_capture_client
 
-            client = get_capture_client()
-            import asyncio
+                client = get_capture_client()
+                import asyncio
 
-            tf_tasks = [
-                client.fetch_ohlcv(symbol, "1m", limit=30),
-                client.fetch_ohlcv(symbol, "5m", limit=30),
-                client.fetch_ohlcv(symbol, "15m", limit=30),
-                client.fetch_ohlcv(symbol, "30m", limit=30),
-                client.fetch_ohlcv(symbol, "1h", limit=30),
-                client.fetch_ohlcv(symbol, "4h", limit=30),
-                client.fetch_ohlcv(symbol, "D", limit=30),
-            ]
-            tf_results = await asyncio.gather(*tf_tasks, return_exceptions=True)
+                tf_tasks = [
+                    client.fetch_ohlcv(symbol, "1m", limit=30),
+                    client.fetch_ohlcv(symbol, "5m", limit=30),
+                    client.fetch_ohlcv(symbol, "15m", limit=30),
+                    client.fetch_ohlcv(symbol, "30m", limit=30),
+                    client.fetch_ohlcv(symbol, "1h", limit=30),
+                    client.fetch_ohlcv(symbol, "4h", limit=30),
+                    client.fetch_ohlcv(symbol, "D", limit=30),
+                ]
+                tf_results = await asyncio.gather(*tf_tasks, return_exceptions=True)
 
-            def get_trend(res) -> int:
-                if isinstance(res, Exception) or not res or len(res) < 10:
-                    return 0
-                closes = [c[4] for c in res]
-                sma = sum(closes[-20:]) / len(closes[-20:])
-                latest = closes[-1]
-                return 1 if latest > sma else (-1 if latest < sma else 0)
+                def get_trend(res) -> int:
+                    if isinstance(res, Exception) or not res or len(res) < 10:
+                        return 0
+                    closes = [c[4] for c in res]
+                    sma = sum(closes[-20:]) / len(closes[-20:])
+                    latest = closes[-1]
+                    return 1 if latest > sma else (-1 if latest < sma else 0)
 
-            t_1m = get_trend(tf_results[0])
-            t_5m = get_trend(tf_results[1])
-            t_15m = get_trend(tf_results[2])
-            t_30m = get_trend(tf_results[3])
-            t_1h = get_trend(tf_results[4])
-            t_4h = get_trend(tf_results[5])
-            t_1d = get_trend(tf_results[6])
+                t_1m = get_trend(tf_results[0])
+                t_5m = get_trend(tf_results[1])
+                t_15m = get_trend(tf_results[2])
+                t_30m = get_trend(tf_results[3])
+                t_1h = get_trend(tf_results[4])
+                t_4h = get_trend(tf_results[5])
+                t_1d = get_trend(tf_results[6])
 
-            sts = (
-                config.MTA_STF_WEIGHT_1M * t_1m
-                + config.MTA_STF_WEIGHT_5M * t_5m
-                + config.MTA_STF_WEIGHT_15M * t_15m
-                + config.MTA_STF_WEIGHT_30M * t_30m
-            )
-            mlts = (
-                config.MTA_MLTF_WEIGHT_1H * t_1h
-                + config.MTA_MLTF_WEIGHT_4H * t_4h
-                + config.MTA_MLTF_WEIGHT_1D * t_1d
-            )
-            tas = sts + mlts
+                sts = (
+                    config.MTA_STF_WEIGHT_1M * t_1m
+                    + config.MTA_STF_WEIGHT_5M * t_5m
+                    + config.MTA_STF_WEIGHT_15M * t_15m
+                    + config.MTA_STF_WEIGHT_30M * t_30m
+                )
+                mlts = (
+                    config.MTA_MLTF_WEIGHT_1H * t_1h
+                    + config.MTA_MLTF_WEIGHT_4H * t_4h
+                    + config.MTA_MLTF_WEIGHT_1D * t_1d
+                )
+                tas = sts + mlts
 
-            log.info(
-                f"AIAnalyzer: MTA Trend calculated for {symbol} - TAS={tas:.2f} "
-                f"(STS={sts:.2f} [1m:{t_1m}, 5m:{t_5m}, 15m:{t_15m}, 30m:{t_30m}], "
-                f"MLTS={mlts:.2f} [1h:{t_1h}, 4h:{t_4h}, 1d:{t_1d}])"
-            )
+                log.info(
+                    f"AIAnalyzer: MTA Trend calculated for {symbol} - TAS={tas:.2f} "
+                    f"(STS={sts:.2f} [1m:{t_1m}, 5m:{t_5m}, 15m:{t_15m}, 30m:{t_30m}], "
+                    f"MLTS={mlts:.2f} [1h:{t_1h}, 4h:{t_4h}, 1d:{t_1d}])"
+                )
 
             analysis_text += f"📐 **TIMEFRAME ALIGNMENT:** TAS={tas:.2f} (STS={sts:.2f}, MLTS={mlts:.2f})\n"
 
