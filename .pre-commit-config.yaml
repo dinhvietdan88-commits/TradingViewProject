@@ -53,5 +53,6 @@ repos:
             .*\.db|
             .*test.*fixture.*|
             lobes/.*|
-            \.claude/.*
+            \.claude/.*|
+            compliance/.*
           )$
