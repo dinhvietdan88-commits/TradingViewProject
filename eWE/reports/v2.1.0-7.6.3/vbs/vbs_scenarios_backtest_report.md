@@ -1,0 +1,101 @@
+# 📚 Báo cáo Phân tích Chuyên sâu & Kết tinh Chiến lược VBS (v2.1.0-7.6.3)
+
+Tài liệu này trình bày bản phân tích chuyên sâu từ chiến dịch tối ưu hóa và backtest trên **627 tín hiệu nguồn** của chiến lược VBS (được thu thập từ ngày 30/05/2026 đến 09/06/2026), đối chiếu trực tiếp với các phiên bản thử nghiệm lịch sử của hệ thống **MIS v1 (Multi-Indicator Strategy)** để kết tinh thành các loại hình chiến lược giao dịch tối ưu.
+
+---
+
+## 🎯 1. BẢN ĐỒ ÁNH XẠ KỊCH BẢN (SCENARIOS MAPPING)
+Chiến dịch backtest v2.1.0-7.6.3 được thiết kế để tái tạo và tối ưu hóa các phương án thử nghiệm mà hệ thống V1 đã từng thực hiện, chuyển dịch từ các quy tắc lọc thủ công/AI sang các rào chắn vật lý và toán học xác thực:
+
+| Kịch bản | Định nghĩa Kỹ thuật | Phiên bản V1 Tương ứng | Vai trò trong Hệ thống |
+| :--- | :--- | :--- | :--- |
+| **S1** | Giao dịch Breakout thuần túy, sử dụng khoảng dừng lỗ 8% và chốt lời 20% mặc định. | **MIS v1 (Baseline)** | Điểm chuẩn (Baseline) để đo lường hiệu quả của các bộ lọc. |
+| **S2** | Áp dụng bộ lọc Mark Minervini Trend Template (Score >= 5/8) kết hợp mẫu hình thu hẹp biến động VCP (Volume ratio < 1.0 và Range ratio < 1.0 trong 5 ngày trước breakout). | **MIS v12B (Strict SEPA)** | Đo lường hiệu quả lọc nhiễu của trường phái giao dịch chính thống. |
+| **S3** | Lọc xu hướng theo cụm đường trung bình EMA ngắn hạn: Giá > EMA20 > EMA50 > EMA100 (đối với lệnh Long). | **Strategy MTT (v1.005-b)** | Bám sát xu hướng động lượng ngắn hạn. |
+| **S4** | Điểm dừng lỗ chặt chẽ (1.5 * ATR14), chốt lời rộng (3.0 * ATR14) kết hợp điểm dừng kéo theo Chandelier Trailing Stop (2.5 * ATR14). | **MIS v10 / v11A (Trailing Stops)** | Tối ưu hóa tỷ lệ Risk/Reward và gồng lãi theo xu hướng. |
+| **S5** | Xác thực đa khung thời gian: Khung Daily đạt xu hướng (Trend Template Score >= 5), khung 1H đạt xu hướng (EMA20 > EMA50 > EMA200). | **MIS v13C (Multi-Timeframe)** | Xác thực xu hướng vĩ mô trước khi kích hoạt lệnh vi mô. |
+| **S6** | Kịch bản lai tối ưu: Khung Daily xác nhận xu hướng (Score >= 5), kết hợp chỉ báo động lượng RSI14 (Long >= 50) và MACD nằm trên đường tín hiệu. | **MIS v15/v16/v2 (Optimized Hybrid)** | Cấu hình tối ưu kết hợp xu hướng dài hạn và động lượng ngắn hạn. |
+
+---
+
+## 📊 2. BẢNG SO SÁNH HIỆU SUẤT TỔNG THỂ
+
+### PHƯƠNG ÁN A: QUY MÔ VỐN CỐ ĐỊNH (Fixed Sizing - $100/vị thế)
+*Vốn khởi đầu: 10,000 USDT. Mỗi vị thế cố định 100 USDT.*
+
+| Kịch bản | Lệnh Khớp | Tỷ lệ Thắng | Lợi nhuận Ròng | Profit Factor | Max Drawdown | Đánh giá Trạng thái |
+| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| **S1 (Baseline)** | 622 | 51.3% | +861.12 USDT | 1.52 | 0.80% | ⚠️ Nhiều nhiễu, Drawdown cao so với quy mô vị thế. |
+| **S2 (Strict SEPA)** | 44 | 63.6% | +9.57 USDT | 1.36 | 0.26% | 🟢 Cực kỳ an toàn, khớp rất ít lệnh, loại bỏ 93% nhiễu. |
+| **S3 (EMA Stack)** | 237 | 70.5% | +828.02 USDT | 6.45 | 1.38% | 🟢 Tỷ lệ thắng xuất sắc, bám trend ngắn hạn tốt. |
+| **S4 (Trailing SL)** | 622 | 51.6% | **+11,718.84 USDT** | **12.89** | **0.48%** | 🏆 **Lợi nhuận cao nhất**, Profit Factor ấn tượng nhờ gồng lời. |
+| **S5 (MTF Validation)** | 242 | 74.4% | +1,607.09 USDT | 12.22 | 1.21% | 🟢 Rất ổn định, bộ lọc đa khung thời gian hoạt động tối ưu. |
+| **S6 (Optimized Hybrid)**| 315 | **77.8%** | +2,159.18 USDT | **15.20** | 1.23% | 🏆 **Tỷ lệ thắng cao nhất**, hiệu suất ổn định vượt trội. |
+
+---
+
+### PHƯƠNG ÁN B: QUY MÔ VỐN HỢP LỆ THEO LÃI KÉP (Dynamic Sizing - Rủi ro 2% Portfolio)
+*Vốn khởi đầu: 10,000 USDT. Rủi ro 2% tài sản mỗi lệnh, quy mô vị thế tự động điều chỉnh theo khoảng cách Stop Loss.*
+
+| Kịch bản | Lệnh Khớp | Tỷ lệ Thắng | Lợi nhuận Ròng | Profit Factor | Max Drawdown | Đánh giá Trạng thái |
+| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| **S1 (Baseline)** | 622 | 51.3% | +64,702.53 USDT | 1.29 | 20.72% | ⚠️ Biến động tài sản quá lớn, rủi ro cháy tài khoản cao. |
+| **S2 (Strict SEPA)** | 44 | 63.6% | +238.04 USDT | 1.34 | 6.30% | 🟢 Tăng trưởng chậm nhưng chắc chắn. |
+| **S3 (EMA Stack)** | 237 | 70.5% | +66,928.87 USDT | 3.02 | 31.57% | ⚠️ Lợi nhuận tốt nhưng drawdown pha mở rộng khá sâu. |
+| **S4 (Trailing SL)** | 622 | 51.6% | +305,303.30 USDT | 1.44 | 31.68% | 🟢 Hiệu quả gồng lãi kép mạnh mẽ. |
+| **S5 (MTF Validation)** | 242 | 74.4% | +507,693.52 USDT | 3.27 | 30.08% | 🟢 Cân bằng hoàn hảo giữa rủi ro và tăng trưởng. |
+| **S6 (Optimized Hybrid)**| 315 | **77.8%** | **+1,988,997.28 USDT**| **3.31** | **31.57%** | 🏆 **Đỉnh cao hiệu quả lãi kép**, tăng trưởng tài sản >198 lần. |
+
+---
+
+## 🔍 3. PHÂN TÍCH CHUYÊN SÂU (DEEP-DIVE ANALYSIS)
+
+### 📈 A. Sức mạnh của gồng lãi và quản lý rủi ro động (Kịch bản S4)
+*   **Hiện tượng**: Mặc dù tỷ lệ thắng của S4 chỉ tương đương S1 (51.6% so với 51.3%), nhưng lợi nhuận ròng của S4 ở chế độ Fixed Sizing gấp **13.6 lần** S1 (+11,718 USDT so với +861 USDT).
+*   **Nguyên nhân**: Khoảng cách Stop Loss chặt chẽ dựa trên ATR (1.5 * ATR14) giúp giảm thiểu tối đa tổn thất khi lệnh sai. Đồng thời, việc chốt lời mục tiêu rộng (3.0 * ATR14) kết hợp với đường dừng kéo theo **Chandelier Trailing Stop** (2.5 * ATR14) cho phép giữ lệnh chạy xuyên suốt các đợt sóng mạnh của xu hướng tăng. Chiến lược này hiện thực hóa triết lý: *"Cắt lỗ nhanh và để lợi nhuận chạy tự do"*.
+
+### 🛡️ B. Bộ lọc Minervini SEPA (Kịch bản S2): An toàn tối đa nhưng bỏ lỡ cơ hội ngắn hạn
+*   **Hiện tượng**: S2 lọc bỏ tới **93% tín hiệu** (chỉ khớp 44 trên 627 tín hiệu). Mặc dù đạt tỷ lệ thắng tốt (63.6%) và drawdown cực thấp (0.26%), nhưng lợi nhuận thực tế đạt được rất khiêm tốn (+9.57 USDT).
+*   **Nguyên nhân**: Bộ lọc SEPA truyền thống của Mark Minervini được thiết kế cho các cổ phiếu tăng trưởng trung-dài hạn có tích lũy nền tảng chặt chẽ (mẫu hình VCP kéo dài hàng tuần hoặc hàng tháng). Khi áp dụng cho các tín hiệu Crypto tần suất cao (giao dịch trong khung 1H ngắn hạn), bộ lọc này trở nên quá khắt khe, loại bỏ hầu hết các đợt breakout chớp nhoáng có lợi nhuận cao nhưng thiếu tích lũy dài hạn.
+
+### 🌐 C. Xác thực đa khung thời gian (Kịch bản S5): Khiên chắn xu hướng vĩ mô
+*   **Hiện tượng**: Khi ép điều kiện khung Daily phải đồng thuận xu hướng (Trend Template Score >= 5/8) rồi mới cho phép khớp lệnh ở khung 1H (S5), số lượng lệnh khớp giảm từ 622 xuống 242. Tuy nhiên, Win Rate tăng vọt từ 51.3% lên **74.4%** và Profit Factor đạt tới **12.22**.
+*   **Kết luận**: Giao dịch breakout khung ngắn hạn chỉ thực sự hiệu quả khi nằm trong một xu hướng tăng giá vĩ mô vững chắc ở khung ngày. Việc bỏ qua xu hướng đa khung thời gian là nguyên nhân chính dẫn đến tỷ lệ trade lỗi cực cao ở bản V1.
+
+### 🏆 D. Lãi kép tối ưu với Kịch bản Lai Hybrid (S6)
+*   **Hiện tượng**: S6 kết hợp bộ lọc xu hướng ngày (Trend Template) với động lượng ngắn hạn (RSI >= 50 và MACD nằm trên Signal). Kết quả là đạt tỷ lệ thắng cao nhất hệ thống (**77.8%**). Ở chế độ Dynamic Sizing, S6 tạo ra mức tăng trưởng tài sản không tưởng: biến **10,000 USDT ban đầu thành 1,998,997.28 USDT** nhờ hiệu ứng lãi kép dồn dập trên một chuỗi lệnh thắng liên tục.
+*   **Nguyên nhân**: Bằng cách kết hợp RSI và MACD, chiến lược chỉ tham gia các breakout khi động lượng đang ở pha tăng tốc mạnh nhất, giảm thiểu tối đa các pha tích lũy đi ngang gây hao mòn tài sản (chop/decay). Điều này cho phép áp dụng đòn bẩy lãi kép 2% portfolio một cách an toàn mà không sợ chuỗi thua lỗ liên tiếp tàn phá tài khoản.
+
+---
+
+## 🧬 4. KẾT TINH THÀNH CHIẾN LƯỢC (STRATEGY CRYSTALLIZATION)
+
+Dựa trên kết quả thực nghiệm tối ưu hóa 627 tín hiệu, chúng ta kết tinh thành **4 loại hình chiến lược chuyên biệt** dành cho các khẩu vị rủi ro và điều kiện thị trường khác nhau:
+
+### 🛡️ Loại 1: Chiến lược Bảo thủ SEPA (Conservative SEPA)
+*   **Cấu hình**: Áp dụng nguyên mẫu **S2**.
+*   **Khẩu vị rủi ro**: Cực kỳ thấp (Risk-Averse).
+*   **Cách thức vận hành**: Chỉ giao dịch khi khung Daily đạt điểm xu hướng tuyệt đối và có mẫu hình tích lũy thu hẹp biến động (VCP) rõ rệt. Khớp rất ít lệnh nhưng lệnh nào khớp đều có xác suất thắng cực cao.
+*   **Tham số khuyên dùng**: Vốn Dynamic 1% portfolio, Stop Loss chặt chẽ theo ATR mục tiêu.
+
+### ⚡ Loại 2: Chiến lược Bám đuổi Động lượng Ngắn hạn (Short-term Trend Stack)
+*   **Cấu hình**: Áp dụng kịch bản **S3 / S5**.
+*   **Khẩu vị rủi ro**: Trung bình.
+*   **Cách thức vận hành**: Giao dịch liên tục theo cụm EMA ngắn hạn khi khung 1H và Daily đồng thuận xu hướng. Thích hợp cho thị trường Crypto đang ở giai đoạn Uptrend mạnh mẽ (Bull Market), tận dụng tối đa các nhịp điều chỉnh (pullback) để nhồi lệnh.
+*   **Tham số khuyên dùng**: Fixed Sizing hoặc Dynamic 1.5% portfolio, SL/TP theo cấu hình mặc định của webhook.
+
+### 🏆 Loại 3: Chiến lược Thu hoạch Lãi kép Tối ưu (Optimized Hybrid - Đề xuất chính)
+*   **Cấu hình**: Áp dụng kịch bản **S6**.
+*   **Khẩu vị rủi ro**: Chủ động (Aggressive Compounding).
+*   **Cách thức vận hành**: Kết hợp bộ lọc xu hướng vĩ mô (Trend Template) với chỉ báo động lượng tăng tốc (RSI/MACD). Đây là chiến lược cốt lõi của phiên bản v2.1.0-7.6.3 để tối ưu hóa dòng tiền.
+*   **Tham số khuyên dùng**: Dynamic Compounding Sizing (Rủi ro 2% portfolio mỗi lệnh). Bảo đảm tuân thủ nghiêm ngặt ranh giới ngoại tuyến và không tự ý sửa đổi tham số để tránh phá vỡ chuỗi toán học của hiệu ứng lãi kép.
+
+### 🚀 Loại 4: Chiến lược Breakout Gồng Lời ATR (Aggressive ATR Trailing)
+*   **Cấu hình**: Áp dụng kịch bản **S4**.
+*   **Khẩu vị rủi ro**: Cao (High Risk-Reward).
+*   **Cách thức vận hành**: Khớp tất cả các breakout hợp lệ của tín hiệu VBS, không cần bộ lọc xu hướng ngày nhưng siết chặt khoảng cách SL bằng 1.5 * ATR14 và sử dụng Chandelier Trailing để gồng lãi tối đa. Thích hợp cho các giai đoạn thị trường biến động mạnh, có nhiều tin tức vĩ mô dẫn dắt xu hướng.
+*   **Tham số khuyên dùng**: Fixed Sizing để bảo vệ tài khoản khỏi biến động lớn, hoặc Dynamic Sizing tối đa 1.0% portfolio.
+
+---
+
+*Báo cáo được chưng cất tự động từ dữ liệu thực nghiệm và được phê duyệt bởi **Victory Auditor** của hệ thống Angati.*

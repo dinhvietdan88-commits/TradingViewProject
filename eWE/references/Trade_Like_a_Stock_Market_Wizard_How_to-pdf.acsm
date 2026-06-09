@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<fulfillmentToken fulfillmentType="buy" xmlns="http://ns.adobe.com/adept">
+    <distributor>urn:uuid:00000000-0000-0000-0000-000000000001</distributor>
+    <operatorURL>http://books.google.com/books/acs4/fulfillment</operatorURL>
+    <expiration>2026-04-28T02:41:38-07:00</expiration>
+    <transaction>ge:4e7f7ca0-3bb8-7f65-7bf0-be6ec402fb45:1777368398749403</transaction>
+    <userId>10507478330254239715</userId>
+    <resourceItemInfo>
+        <resource>urn:uuid:4e7f7ca0-3bb8-7f65-7bf0-be6ec402fb45</resource>
+        <resourceItem>1</resourceItem>
+        <src>https://books.google.com/books/download/Trade_Like_a_Stock_Market_Wizard_How_to.pdf?acsid=urn:uuid:4e7f7ca0-3bb8-7f65-7bf0-be6ec402fb45&amp;output=acs4_book_bytes&amp;ar=b0359a5388b4058a7b22d21dbad9b87e</src>
+        <downloadType>simple</downloadType>
+    </resourceItemInfo>
+    <hmac>7tg0kn8aBvzfVtIMWdXFemIKRBk=</hmac>
+</fulfillmentToken>
