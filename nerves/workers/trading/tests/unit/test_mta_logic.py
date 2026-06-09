@@ -14,6 +14,7 @@ from core.events import (
     SignalReceived,
     SignalRejected,
     SignalValidated,
+    SignalIngested,
 )
 
 
@@ -39,6 +40,9 @@ async def test_signal_processor_mta_buy_rejected_on_bearish_macro(
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
+    from processor.macro_trend_processor import process_macro_trend
+
+    test_bus.on(SignalIngested)(process_macro_trend)
     set_bus(test_bus)
     reset_dedup_cache()
 
@@ -97,6 +101,9 @@ async def test_signal_processor_mta_sell_rejected_on_bullish_macro(
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
     test_bus = EventBus()
+    from processor.macro_trend_processor import process_macro_trend
+
+    test_bus.on(SignalIngested)(process_macro_trend)
     set_bus(test_bus)
     reset_dedup_cache()
 
@@ -441,3 +448,293 @@ async def test_macro_trend_processor_krag_loading():
     assert "Macro Regime & Trend Filtering Knowledge Base" in content
     assert "TREND" in content
     assert "CHOP" in content
+
+
+@pytest.mark.asyncio
+async def test_macro_trend_processor_sentiment_overrides_bullish(
+    mock_global_capture_client,
+):
+    """MacroTrendProcessor: Bullish sentiment > 0.6 bypasses BUY veto (even if bearish trend) but vetoes SELL immediately."""
+    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
+
+    test_bus = EventBus()
+    from processor.macro_trend_processor import process_macro_trend
+    from processor.minervini_sepa_processor import process_minervini_sepa
+    from core.events import MacroValidated
+
+    test_bus.on(SignalIngested)(process_macro_trend)
+    test_bus.on(MacroValidated)(process_minervini_sepa)
+    set_bus(test_bus)
+    reset_dedup_cache()
+
+    validated_events = []
+    rejected_events = []
+
+    @test_bus.on(SignalValidated)
+    async def on_validated(event):
+        validated_events.append(event)
+
+    @test_bus.on(SignalRejected)
+    async def on_rejected(event):
+        rejected_events.append(event)
+
+    # Set mock bearish candles so BUY would normally be vetoed
+    bearish_candles = make_candles("bearish")
+    mock_global_capture_client.return_value = bearish_candles
+
+    # Mock Sentiment Analyzer to return Bullish sentiment (>0.6)
+    mock_sentiment_analyzer = MagicMock()
+    mock_sentiment_analyzer.analyze_symbol = AsyncMock(
+        return_value={
+            "enabled": True,
+            "combined_score": 0.8,
+            "breakdown": {"twitter": 0.8, "rss": 0.8, "glassnode": 0.8},
+        }
+    )
+
+    orig_mta = config.MTA_ENABLED
+    orig_sent = config.SENTIMENT_ENABLED
+
+    try:
+        config.MTA_ENABLED = True
+        config.SENTIMENT_ENABLED = True
+
+        with (
+            patch("engine.regime_switcher.get_market_regime", return_value="TREND"),
+            patch("database.set_setting", return_value=None),
+            patch(
+                "analyzer.sentiment_analyzer.SentimentAnalyzer",
+                return_value=mock_sentiment_analyzer,
+            ),
+        ):
+            # 1. BUY signal in Bearish trend with Bullish sentiment -> Should PASS (bypasses veto)
+            event_buy = SignalReceived(
+                signal_id=401,
+                symbol="BTCUSDT",
+                action="buy",
+                price=60000.0,
+                quote_qty=10.0,
+                interval="5m",
+                sl="",
+                tp="",
+                exchange="binance",
+            )
+            await process_signal(event_buy)
+
+            assert len(validated_events) == 1
+            assert validated_events[0].signal_id == 401
+            assert len(rejected_events) == 0
+
+            # 2. SELL signal with Bullish sentiment -> Should get VETOED immediately
+            event_sell = SignalReceived(
+                signal_id=402,
+                symbol="BTCUSDT",
+                action="sell",
+                price=60000.0,
+                quote_qty=10.0,
+                interval="5m",
+                sl="",
+                tp="",
+                exchange="binance",
+            )
+            await process_signal(event_sell)
+
+            assert len(rejected_events) == 1
+            assert rejected_events[0].signal_id == 402
+            assert rejected_events[0].reason == "macro_trend_conflict"
+
+    finally:
+        config.MTA_ENABLED = orig_mta
+        config.SENTIMENT_ENABLED = orig_sent
+        from core.event_bus import bus as default_bus
+
+        set_bus(default_bus)
+        reset_dedup_cache()
+
+
+@pytest.mark.asyncio
+async def test_macro_trend_processor_sentiment_overrides_bearish(
+    mock_global_capture_client,
+):
+    """MacroTrendProcessor: Bearish sentiment < -0.6 bypasses SELL veto (even if bullish trend) but vetoes BUY immediately."""
+    from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
+
+    test_bus = EventBus()
+    from processor.macro_trend_processor import process_macro_trend
+    from processor.minervini_sepa_processor import process_minervini_sepa
+    from core.events import MacroValidated
+
+    test_bus.on(SignalIngested)(process_macro_trend)
+    test_bus.on(MacroValidated)(process_minervini_sepa)
+    set_bus(test_bus)
+    reset_dedup_cache()
+
+    validated_events = []
+    rejected_events = []
+
+    @test_bus.on(SignalValidated)
+    async def on_validated(event):
+        validated_events.append(event)
+
+    @test_bus.on(SignalRejected)
+    async def on_rejected(event):
+        rejected_events.append(event)
+
+    # Set mock bullish candles so SELL would normally be vetoed
+    bullish_candles = make_candles("bullish")
+    mock_global_capture_client.return_value = bullish_candles
+
+    # Mock Sentiment Analyzer to return Bearish sentiment (< -0.6)
+    mock_sentiment_analyzer = MagicMock()
+    mock_sentiment_analyzer.analyze_symbol = AsyncMock(
+        return_value={
+            "enabled": True,
+            "combined_score": -0.8,
+            "breakdown": {"twitter": -0.8, "rss": -0.8, "glassnode": -0.8},
+        }
+    )
+
+    orig_mta = config.MTA_ENABLED
+    orig_sent = config.SENTIMENT_ENABLED
+
+    try:
+        config.MTA_ENABLED = True
+        config.SENTIMENT_ENABLED = True
+
+        with (
+            patch("engine.regime_switcher.get_market_regime", return_value="TREND"),
+            patch("database.set_setting", return_value=None),
+            patch(
+                "analyzer.sentiment_analyzer.SentimentAnalyzer",
+                return_value=mock_sentiment_analyzer,
+            ),
+        ):
+            # 1. SELL signal in Bullish trend with Bearish sentiment -> Should PASS (bypasses veto)
+            event_sell = SignalReceived(
+                signal_id=501,
+                symbol="BTCUSDT",
+                action="sell",
+                price=60000.0,
+                quote_qty=10.0,
+                interval="5m",
+                sl="",
+                tp="",
+                exchange="binance",
+            )
+            await process_signal(event_sell)
+
+            assert len(validated_events) == 1
+            assert validated_events[0].signal_id == 501
+            assert len(rejected_events) == 0
+
+            # 2. BUY signal with Bearish sentiment -> Should get VETOED immediately
+            event_buy = SignalReceived(
+                signal_id=502,
+                symbol="BTCUSDT",
+                action="buy",
+                price=60000.0,
+                quote_qty=10.0,
+                interval="5m",
+                sl="",
+                tp="",
+                exchange="binance",
+            )
+            await process_signal(event_buy)
+
+            assert len(rejected_events) == 1
+            assert rejected_events[0].signal_id == 502
+            assert rejected_events[0].reason == "macro_trend_conflict"
+
+    finally:
+        config.MTA_ENABLED = orig_mta
+        config.SENTIMENT_ENABLED = orig_sent
+        from core.event_bus import bus as default_bus
+
+        set_bus(default_bus)
+        reset_dedup_cache()
+
+
+@pytest.mark.asyncio
+async def test_ai_analyzer_uses_precalculated_mta():
+    """AIAnalyzer: Bypasses fetching and uses precalculated MTA values if mta_calculated is True."""
+    from analyzer.ai_analyzer import (
+        process_validated_signal,
+        reset_capture_state,
+        set_bus,
+    )
+
+    test_bus = EventBus()
+    set_bus(test_bus)
+    reset_capture_state()
+
+    analysis_events = []
+
+    @test_bus.on(AnalysisComplete)
+    async def on_analysis(event):
+        analysis_events.append(event)
+
+    # Create mock screenshot file on disk
+    mock_screenshot_path = Path(__file__).parent / "precalc_mta_test_screenshot.png"
+    mock_screenshot_path.touch()
+
+    orig_mta = config.MTA_ENABLED
+
+    try:
+        config.MTA_ENABLED = True
+
+        with (
+            patch("analyzer.ai_analyzer.get_mcp_client") as mock_mcp_factory,
+            patch("analyzer.ai_analyzer.vision_module") as mock_vision,
+            patch("database.insert_brief") as mock_insert_brief,
+            patch("capture_client.get_capture_client") as mock_client_factory,
+        ):
+            mock_insert_brief.return_value = 1
+            mock_mcp = AsyncMock()
+            mock_mcp.health_check = AsyncMock(return_value={"connected": True})
+            mock_mcp.capture_screenshot = AsyncMock(
+                return_value=str(mock_screenshot_path)
+            )
+            mock_mcp_factory.return_value = mock_mcp
+
+            mock_vision.analyze_chart_vision = AsyncMock(
+                return_value={
+                    "confidence": 7,
+                    "analysis": "Test chart",
+                    "error": None,
+                }
+            )
+
+            # SignalValidated with precalculated MTA (TAS = 1.0, bullish)
+            event = SignalValidated(
+                signal_id=601,
+                symbol="BTCUSDT",
+                action="buy",
+                price=60000.0,
+                quote_qty=10.0,
+                exchange="binance",
+                tas=1.0,
+                sts=0.4,
+                mlts=0.6,
+                mta_calculated=True,
+            )
+
+            await process_validated_signal(event)
+
+            # verify capture_client fetch_ohlcv was NOT called
+            mock_client_factory.assert_not_called()
+
+            assert len(analysis_events) == 1
+            assert (
+                analysis_events[0].confidence == 8
+            )  # 7 + 1 boost from precalculated TAS 1.0
+            assert (
+                "**TIMEFRAME ALIGNMENT:** TAS=1.00" in analysis_events[0].analysis_text
+            )
+
+    finally:
+        mock_screenshot_path.unlink(missing_ok=True)
+        config.MTA_ENABLED = orig_mta
+        from core.event_bus import bus as default_bus
+
+        set_bus(default_bus)
+        reset_capture_state()

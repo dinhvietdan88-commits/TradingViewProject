@@ -138,6 +138,7 @@ async def test_sl_cap_enforced_buy():
         mock_db.insert_trade = AsyncMock(return_value=901)
         mock_db.update_trade_oco = AsyncMock()
         mock_db.update_signal_status = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
 
         await execute_trade(event)
 
@@ -204,6 +205,7 @@ async def test_sl_cap_enforced_sell():
         mock_db.insert_trade = AsyncMock(return_value=902)
         mock_db.update_trade_oco = AsyncMock()
         mock_db.update_signal_status = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
 
         await execute_trade(event)
 
@@ -269,6 +271,7 @@ async def test_sl_within_cap_unchanged():
         mock_db.insert_trade = AsyncMock(return_value=903)
         mock_db.update_trade_oco = AsyncMock()
         mock_db.update_signal_status = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
 
         await execute_trade(event)
 

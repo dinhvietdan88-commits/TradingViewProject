@@ -122,6 +122,7 @@ async def test_sell_side_emits_trade_executed_with_sell_side():
             mock_db.insert_trade = AsyncMock(return_value=10)
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
 
             await execute_trade(
                 _make_event(action="sell", symbol="ETHUSDT", signal_id=110)
@@ -167,6 +168,7 @@ async def test_exchange_routing_failure_emits_trade_failed():
 
             mock_db.insert_trade = AsyncMock(return_value=11)
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
 
             await execute_trade(_make_event(exchange="unknown_exchange", signal_id=120))
 
@@ -215,6 +217,7 @@ async def test_fallback_exchange_label_in_trade_executed():
             mock_db.insert_trade = AsyncMock(return_value=12)
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
 
             await execute_trade(_make_event(exchange="bybit", signal_id=130))
 
@@ -258,6 +261,7 @@ async def test_oco_order_id_passed_to_db():
             mock_db.insert_trade = AsyncMock(return_value=13)
             mock_db.update_trade_oco = AsyncMock(side_effect=capture_oco)
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
 
             await execute_trade(_make_event(signal_id=140))
 
@@ -304,6 +308,7 @@ async def test_sl_tp_prices_passed_to_execute_smart_order():
             mock_db.insert_trade = AsyncMock(return_value=14)
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
 
             await execute_trade(
                 _make_event(sl="65000", tp="74000", price=68000.0, signal_id=150)
@@ -350,6 +355,7 @@ async def test_trade_executed_carries_actual_exchange():
             mock_db.insert_trade = AsyncMock(return_value=15)
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
 
             await execute_trade(_make_event(exchange="okx", signal_id=160))
 
@@ -387,6 +393,7 @@ async def test_trade_failed_carries_requested_exchange():
 
             mock_db.insert_trade = AsyncMock(return_value=16)
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
 
             await execute_trade(_make_event(exchange="bybit", signal_id=170))
 
@@ -433,6 +440,7 @@ async def test_comma_formatted_sl_tp_parsed_correctly():
             mock_db.insert_trade = AsyncMock(return_value=17)
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
 
             await execute_trade(
                 _make_event(sl="65,000", tp="74,000", price="68,000", signal_id=180)
@@ -480,6 +488,7 @@ async def test_invalid_sl_tp_gracefully_becomes_none():
             mock_db.insert_trade = AsyncMock(return_value=18)
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
 
             await execute_trade(_make_event(sl="INVALID", tp="N/A", signal_id=190))
 
@@ -518,6 +527,7 @@ async def test_invalid_entry_price_fails_trade_gracefully():
 
             mock_db.insert_trade = AsyncMock(return_value=19)
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
 
             # Test zero price
             await execute_trade(_make_event(price=0.0, signal_id=200))
@@ -571,6 +581,7 @@ async def test_negative_sl_tp_clamped_to_none():
             mock_db.insert_trade = AsyncMock(return_value=20)
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
 
             await execute_trade(
                 _make_event(sl="-10.0", tp="0.0", price=100.0, signal_id=210)
@@ -613,6 +624,7 @@ async def test_negative_or_zero_qty_clamped_to_none():
             mock_db.insert_trade = AsyncMock(return_value=21)
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
 
             # Test negative qty
             await execute_trade(_make_event(quote_qty=-5.0, price=100.0, signal_id=220))
@@ -660,6 +672,7 @@ async def test_weex_routing_success():
             mock_db.insert_trade = AsyncMock(return_value=30)
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
 
             await execute_trade(
                 _make_event(exchange="weex", symbol="BTCUSDT", signal_id=300)

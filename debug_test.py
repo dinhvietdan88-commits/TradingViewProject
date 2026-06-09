@@ -1,65 +1,42 @@
-import asyncio
-import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+import pandas as pd
 
-sys.path.insert(0, "nerves/workers/trading")
+base_ts = 1774569600000
+prices = [
+    (100.0, 1000.0, 50.0, 500.0),
+    (500.0, 10000.0, 400.0, 8000.0),
+    (8000.0, 1000000.0, 7000.0, 50000.0),
+    (50000.0, 60000.0, 0.0001, 10.0),
+    (10.0, 100.0, 5.0, 90.0),
+    (90.0, 150.0, 80.0, 120.0),
+]
 
+candles_5m = []
+for i in range(6):
+    ts = base_ts + i * 300000
+    open_p, high_p, low_p, close_p = prices[i]
+    candles_5m.append([ts, open_p, high_p, low_p, close_p, 15.0])
 
-async def main():
-    dummy_ohlcv = []
-    base_price = 100.0
-    import time
+df = pd.DataFrame(
+    candles_5m, columns=["timestamp", "open", "high", "low", "close", "volume"]
+)
+is_ms = True
+if is_ms:
+    df["datetime"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
+else:
+    df["datetime"] = pd.to_datetime(df["timestamp"], unit="s", utc=True)
+df.set_index("datetime", inplace=True)
 
-    now_ms = int(time.time() * 1000)
-    day_ms = 24 * 60 * 60 * 1000
+print("Original DF:")
+print(df)
 
-    for i in range(365):
-        price = base_price + (i * 0.1)
-        high = price * 1.02
-        low = price * 0.98
-        dummy_ohlcv.append(
-            [now_ms - (365 - i) * day_ms, price, high, low, price, 1000.0]
-        )
+rule = "30min"
+resampled = (
+    df.resample(rule, closed="left", label="left")
+    .agg(
+        {"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"}
+    )
+    .dropna()
+)
 
-    mock_capture_client = MagicMock()
-    mock_capture_client.fetch_ohlcv = AsyncMock(return_value=dummy_ohlcv)
-
-    mock_breaker = MagicMock()
-    mock_breaker.is_available.return_value = True
-    mock_breaker.call_timeout_sec = 10
-
-    mock_advice_func = AsyncMock(return_value="APPROVED: The VCP pattern is strong.")
-
-    with (
-        patch("workers.vps_analyzer.llm_breaker", mock_breaker),
-        patch("capture_client.get_capture_client", return_value=mock_capture_client),
-        patch("workers.vps_analyzer.rag.generate_trading_advice", mock_advice_func),
-        patch(
-            "workers.vps_analyzer.rag.query_knowledge",
-            return_value=[
-                {"content": "mock text", "metadata": {}, "relevance_score": 0.9}
-            ],
-        ),
-    ):
-        from workers.vps_analyzer import VpsAnalyzerWorker
-
-        worker = VpsAnalyzerWorker()
-
-        signal = {
-            "symbol": "BTCUSDT",
-            "action": "buy",
-            "price": "136.5",
-            "payload": {
-                "volume": 2000,
-                "volume_avg": 1000,
-                "rsi": 55,
-                "timeframe": "D",
-            },
-            "queue_id": 123,
-        }
-
-        result = await worker._analyze_signal_v2(signal)
-        print("RESULT IS:", result)
-
-
-asyncio.run(main())
+print("\nResampled DF:")
+print(resampled)

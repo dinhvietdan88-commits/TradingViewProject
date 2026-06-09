@@ -23,6 +23,7 @@ from core.events import (
     SignalReceived,
     SignalRejected,
     SignalValidated,
+    SignalIngested,
 )
 
 # ═══════════════════════════════════════════════════════════════
@@ -46,6 +47,19 @@ def _make_event(**kwargs):
     return SignalReceived(**defaults)
 
 
+def _setup_test_bus():
+    bus = EventBus()
+    from processor.macro_trend_processor import process_macro_trend
+    from processor.minervini_sepa_processor import process_minervini_sepa
+    from processor.mean_reversion_processor import process_mean_reversion
+    from core.events import MacroValidated
+
+    bus.on(SignalIngested)(process_macro_trend)
+    bus.on(MacroValidated)(process_minervini_sepa)
+    bus.on(MacroValidated)(process_mean_reversion)
+    return bus
+
+
 # ═══════════════════════════════════════════════════════════════
 # ALERT BYPASS
 # ═══════════════════════════════════════════════════════════════
@@ -56,7 +70,7 @@ async def test_alert_action_emits_alert_triggered():
     """Action='alert' must emit AlertTriggered and skip dedup / timeframe checks."""
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
-    test_bus = EventBus()
+    test_bus = _setup_test_bus()
     set_bus(test_bus)
     reset_dedup_cache()
     emitted = []
@@ -84,7 +98,7 @@ async def test_alert_carries_exchange_context():
     """AlertTriggered should preserve exchange from original SignalReceived."""
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
-    test_bus = EventBus()
+    test_bus = _setup_test_bus()
     set_bus(test_bus)
     reset_dedup_cache()
     emitted = []
@@ -115,7 +129,7 @@ async def test_dedup_rejects_duplicate_within_ttl():
     """Second identical (symbol, action) within 60s → SignalRejected(reason=duplicate_signal)."""
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
-    test_bus = EventBus()
+    test_bus = _setup_test_bus()
     set_bus(test_bus)
     reset_dedup_cache()
     validated = []
@@ -153,7 +167,7 @@ async def test_dedup_allows_different_actions():
     """buy and sell for the same symbol are different cache keys — both should pass."""
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
-    test_bus = EventBus()
+    test_bus = _setup_test_bus()
     set_bus(test_bus)
     reset_dedup_cache()
     validated = []
@@ -182,7 +196,7 @@ async def test_dedup_allows_different_symbols():
     """Same action on different symbols are independent cache keys — both should pass."""
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
-    test_bus = EventBus()
+    test_bus = _setup_test_bus()
     set_bus(test_bus)
     reset_dedup_cache()
     validated = []
@@ -211,7 +225,7 @@ async def test_dedup_cache_is_symbol_case_insensitive():
     """Dedup key normalizes symbol to uppercase — 'btcusdt' == 'BTCUSDT'."""
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
-    test_bus = EventBus()
+    test_bus = _setup_test_bus()
     set_bus(test_bus)
     reset_dedup_cache()
     rejected = []
@@ -247,7 +261,7 @@ async def test_dedup_allows_signal_after_ttl_expires():
         set_bus,
     )
 
-    test_bus = EventBus()
+    test_bus = _setup_test_bus()
     set_bus(test_bus)
     reset_dedup_cache()
     validated = []
@@ -284,7 +298,7 @@ async def test_valid_timeframes_pass(valid_interval):
     """Intervals like '5', '5m', '15', '15m', '30', '30m', '60', '1h', '60m' should produce SignalValidated."""
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
-    test_bus = EventBus()
+    test_bus = _setup_test_bus()
     set_bus(test_bus)
     reset_dedup_cache()
     validated = []
@@ -310,7 +324,7 @@ async def test_invalid_timeframes_rejected(bad_interval):
     """Intervals that are not valid trade/Daily intervals should produce SignalRejected(invalid_timeframe)."""
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
-    test_bus = EventBus()
+    test_bus = _setup_test_bus()
     set_bus(test_bus)
     reset_dedup_cache()
     rejected = []
@@ -341,7 +355,7 @@ async def test_unknown_action_rejected():
     """An unrecognized action (not buy/sell/alert) should be rejected."""
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
-    test_bus = EventBus()
+    test_bus = _setup_test_bus()
     set_bus(test_bus)
     reset_dedup_cache()
     rejected = []
@@ -372,7 +386,7 @@ async def test_signal_validated_preserves_exchange():
     """SignalValidated must carry the exchange field from the original SignalReceived."""
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
-    test_bus = EventBus()
+    test_bus = _setup_test_bus()
     set_bus(test_bus)
     reset_dedup_cache()
     validated = []
@@ -397,7 +411,7 @@ async def test_signal_rejected_preserves_exchange():
     """SignalRejected must carry the exchange field (for logging/notifications)."""
     from processor.signal_processor import process_signal, reset_dedup_cache, set_bus
 
-    test_bus = EventBus()
+    test_bus = _setup_test_bus()
     set_bus(test_bus)
     reset_dedup_cache()
     rejected = []

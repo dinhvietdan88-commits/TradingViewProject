@@ -104,6 +104,7 @@ async def test_successful_trade_emits_executed():
             mock_db.insert_trade = AsyncMock(return_value=1)
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
 
             # v6.0: TradeEngine subscribes to TradeApproved, not SignalValidated
             event = TradeApproved(
@@ -163,6 +164,7 @@ async def test_failed_trade_emits_failed():
             mock_get_router.return_value = mock_router
             mock_db.insert_trade = AsyncMock(return_value=2)
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
 
             # v6.0: TradeEngine subscribes to TradeApproved, not SignalValidated
             event = TradeApproved(
@@ -259,6 +261,7 @@ async def test_weex_daily_loss_cap_blocks_trade():
             # Setup database mocks
             mock_db.insert_trade = AsyncMock(return_value=3)
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
             mock_db.get_rolling_drawdown = AsyncMock(return_value=2.0)
             # Daily loss exceeds cap ($12.50 >= $10.00)
             mock_db.get_daily_loss = AsyncMock(return_value=12.50)
@@ -319,6 +322,7 @@ async def test_weex_drawdown_limit_blocks_trade():
             # Setup database mocks
             mock_db.insert_trade = AsyncMock(return_value=4)
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
             # Drawdown exceeds limit (6.5% > 5%)
             mock_db.get_rolling_drawdown = AsyncMock(return_value=6.5)
             mock_db.get_daily_loss = AsyncMock(return_value=0.0)
@@ -419,6 +423,7 @@ async def test_weex_failed_execution_triggers_fallback():
             mock_db.insert_trade = AsyncMock(return_value=5)
             mock_db.update_trade_oco = AsyncMock()
             mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
             mock_db.get_rolling_drawdown = AsyncMock(return_value=2.0)
             mock_db.get_daily_loss = AsyncMock(return_value=0.0)
 

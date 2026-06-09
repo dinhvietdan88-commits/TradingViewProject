@@ -157,7 +157,10 @@ async def test_weex_ohlcv_fetch():
     mock_session.__aenter__ = AsyncMock(return_value=mock_session_instance)
     mock_session.__aexit__ = AsyncMock(return_value=None)
 
-    with patch("aiohttp.ClientSession", return_value=mock_session):
+    with (
+        patch("config.CHART_CCXT_FALLBACK", False),
+        patch("aiohttp.ClientSession", return_value=mock_session),
+    ):
         # We pass BTCUSDT_UMCBL and it should fetch using 'weex' logic
         ohlcv = await client._fetch_ohlcv_from_exchange("BTCUSDT_UMCBL", "1h", limit=2)
 

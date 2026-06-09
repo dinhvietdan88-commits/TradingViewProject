@@ -160,6 +160,12 @@ async def test_processor_validates_1h_signal():
 
     test_bus = EventBus()
     set_bus(test_bus)
+    from core.events import SignalIngested, MacroValidated
+    from processor.macro_trend_processor import process_macro_trend
+    from processor.minervini_sepa_processor import process_minervini_sepa
+
+    test_bus.subscribe(SignalIngested, process_macro_trend)
+    test_bus.subscribe(MacroValidated, process_minervini_sepa)
     validated = []
 
     @test_bus.on(SignalValidated)

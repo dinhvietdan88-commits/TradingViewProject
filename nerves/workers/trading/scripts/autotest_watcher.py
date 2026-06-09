@@ -96,10 +96,26 @@ def parse_pytest_failures(stdout: str) -> list[dict]:
                     next_line.startswith("___") and next_line.endswith("___")
                 ) or next_line.startswith("===="):
                     break
+                if next_line.startswith("---") or "Captured " in next_line:
+                    # Skip captured log/stderr/stdout blocks entirely
+                    while i < len(lines):
+                        peek_line = lines[i]
+                        if (
+                            peek_line.startswith("___") and peek_line.endswith("___")
+                        ) or peek_line.startswith("===="):
+                            break
+                        i += 1
+                    break
                 failure_lines.append(next_line)
                 i += 1
 
-            tb_lines = [line for line in failure_lines if line.strip()]
+            tb_lines = [
+                line
+                for line in failure_lines
+                if line.strip()
+                and "WARNING database:" not in line
+                and "Ignored: duplicate column" not in line
+            ]
             tb_short = (
                 "\n".join(tb_lines[-8:]) if len(tb_lines) >= 8 else "\n".join(tb_lines)
             )
@@ -124,7 +140,13 @@ def extract_failure_details(stdout: str, stderr: str) -> tuple[str, str]:
             return test_name, err_msg
 
     # Ultimate fallback: last 8 lines of stdout
-    lines = [line for line in stdout.splitlines() if line.strip()]
+    lines = [
+        line
+        for line in stdout.splitlines()
+        if line.strip()
+        and "WARNING database:" not in line
+        and "Ignored: duplicate column" not in line
+    ]
     tb_short = "\n".join(lines[-8:]) if len(lines) >= 8 else "\n".join(lines)
     return "pytest", tb_short
 

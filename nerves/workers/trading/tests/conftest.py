@@ -74,6 +74,7 @@ os.environ["TELEGRAM_BOT_TOKEN"] = ""
 os.environ["TELEGRAM_CHAT_ID"] = ""
 os.environ["DISCORD_WEBHOOK_URL"] = ""
 os.environ["ENABLE_IP_WHITELIST"] = "false"
+os.environ["MTA_ENABLED"] = "false"
 
 
 @pytest.fixture(autouse=True)
@@ -84,6 +85,18 @@ def mock_global_capture_client():
     ) as mock_fetch:
         mock_fetch.return_value = None
         yield mock_fetch
+
+
+@pytest.fixture(autouse=True)
+async def init_test_db(tmp_path):
+    """Automatically initialize a clean, migrated database for every test."""
+    import config
+    import database
+
+    config.DB_PATH = str(tmp_path / "test_auto.db")
+    os.environ["DB_PATH"] = config.DB_PATH
+    await database.init_db()
+    yield
 
 
 os.environ["LOG_FILE"] = "test_trades.log"
