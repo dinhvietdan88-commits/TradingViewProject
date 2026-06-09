@@ -655,7 +655,7 @@ free -m
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │                SERVER C — AI CORE (8U16G)                      │
-│                  Debian 12 Standard                            │
+│                  Oracle Linux 9 Standard                      │
 │                                                                │
 │  ┌────────────────────────────────────────────────────────┐    │
 │  │           ChromaDB Server (:8000)                      │    │
@@ -708,7 +708,7 @@ free -m
 │                                                  │
 │  Total RAM:          16384 MB                    │
 │  ────────────────────────────────                │
-│  Debian 12:           -100 MB (OS)               │
+│  Oracle Linux 9:      -100 MB (OS)               │
 │  SSH + Tailscale:      -35 MB                    │
 │  Docker Engine:        -80 MB                    │
 │  ────────────────────────────────                │
@@ -1110,11 +1110,11 @@ Start-Service TradingBotExecution
 | 14 | BUFFER_SECRET sinh ngẫu nhiên (≥32 bytes) | ☑ |
 | 15 | Telegram notification test thành công | ☑ |
 
-### 11.2 SERVER C — AI Core (Debian 12)
+### 11.2 SERVER C — AI Core (Oracle Linux 9)
 
 | # | Hạng mục | Trạng thái |
 |---|----------|-----------|
-| 1 | Debian 12 đã cài (Standard OK cho 8U16G) | ☑ |
+| 1 | Oracle Linux 9 đã cài (Standard OK cho 8U16G) | ☑ |
 | 2 | User `botuser`, SSH hardened | ☑ |
 | 3 | NTP chrony đồng bộ | ☑ |
 | 4 | Docker CE + Compose V2 | ☑ |

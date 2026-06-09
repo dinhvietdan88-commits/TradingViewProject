@@ -1,6 +1,6 @@
 # Provisioning Verification Report
 
-**Generated at**: 2026-06-09T16:38:43Z
+**Generated at**: 2026-06-09T23:48:21Z
 **Target Server(s)**: all
 
 ## Summary
@@ -31,7 +31,7 @@
 | 11.1.13 | VBS container chạy, /health trả healthy | **FAIL** | VBS container not running. |
 | 11.1.14 | BUFFER_SECRET sinh ngẫu nhiên (>=32 bytes) | **FAIL** | BUFFER_SECRET not found in env configuration files. |
 | 11.1.15 | Telegram notification test thành công | **FAIL** | Telegram credentials missing. |
-| 11.2.1 | Debian 12 đã cài (Standard OK cho 8U16G) | **FAIL** | OS matched:  |
+| 11.2.1 | Oracle Linux 9 đã cài (Standard OK cho 8U16G) | **FAIL** | OS matched:  |
 | 11.2.2 | User botuser, SSH hardened | **FAIL** | No valid deployment users found. |
 | 11.2.3 | NTP chrony đồng bộ | **FAIL** | Chrony NTP inactive. |
 | 11.2.4 | Docker CE + Compose V2 | **FAIL** | Docker/Compose not found. |
@@ -65,7 +65,7 @@
 
 ```json
 {
-  "timestamp": "2026-06-09T16:38:43Z",
+  "timestamp": "2026-06-09T23:48:21Z",
   "summary": {
     "passed": 8,
     "failed": 36,
@@ -166,7 +166,7 @@
     "11.2.1": {
       "passed": false,
       "status": "FAIL",
-      "description": "Debian 12 \u0111\u00e3 c\u00e0i (Standard OK cho 8U16G)",
+      "description": "Oracle Linux 9 \u0111\u00e3 c\u00e0i (Standard OK cho 8U16G)",
       "msg": "OS matched: "
     },
     "11.2.2": {
