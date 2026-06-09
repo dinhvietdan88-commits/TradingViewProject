@@ -828,3 +828,230 @@ Thiết lập cơ chế kiểm định độc lập liên tục:
 - [ ] Mọi kịch bản truyền tin fallback (A2A) ghi nhận thông số xác minh vật lý từ transport layer (`route_verified=true`).
 - [ ] Tiến trình Cron Check được đăng ký và ghi nhận trạng thái liveness của các dịch vụ đúng định kỳ.
 - [ ] Auditor độc lập xuất báo cáo tuân thủ an toàn (Clean Verdict) trên toàn bộ dự án.
+
+## Follow-up — 2026-06-08T14:18:34+07:00
+
+Implement a decentralized signal processing system featuring Multi-Timeframe Alignment (MTA) based on long-term trends (1D, 4H, 1H) and an LLM sentiment layer, integrated with a Hybrid Staged Blackboard and Consensus Engine Matrix architecture.
+
+Working directory: c:\Users\pesil\working\mj_trading\TradingViewProject
+Integrity mode: development
+
+## Requirements
+
+### R1. Multi-Timeframe Alignment (MTA) & Sentiment Layer
+- Extend the MTA mechanism to calculate and integrate the 1H timeframe local trend ($T_{1H}$) using the SMA-20 of the last 30 1H candles.
+- $T_{1H}$ must contribute 15% (or as configured by `MTA_MLTF_WEIGHT_1H`) to the Medium/Long-Term Trend Score ($MLTS$).
+- Maintain the veto rules where a BUY signal is rejected if both 1D and 4H are bearish, and a SELL signal is rejected if both 1D and 4H are bullish.
+- Connect the Sentiment Layer to boost or penalize signal confidence scores based on directional sentiment (as validated in the test suite).
+
+### R2. Hybrid Staged Blackboard & Event Flow
+- Reorganize the signal processing steps into a staged blackboard event bus architecture:
+  1. `SignalReceived` event.
+  2. Gatekeeper / Ingestion stage (checks deduplication, timeframe validity) -> emits `SignalIngested`.
+  3. Asynchronous `MacroTrendProcessor` -> evaluates macro vetoes, market regime (`CHOP` block), and MTA trend rules -> emits `SignalValidated` (or `SignalRejected`).
+  4. AI Analyzer stage -> evaluates chart vision, RAG, and sentiment boost/penalty -> emits `AnalysisComplete` / `TradeApproved`.
+
+### R3. Consensus Engine Matrix
+- Implement the Virtualized Council Consensus Matrix representing four key roles (Systems Architect [SA], Site Reliability Engineer [SRE], Meta Evolver [META], and Architecture Controller [AC]) yielding verdicts of `GO`, `WARN`, or `BLOCK` for E5 operations and core state transitions.
+- Implement the consensus rules: unanimous or majority voting determines the final verdict, with AC override capability under specific constitutional exceptions (`[creative_violation]` or `[documentation_only]`).
+
+### R4. Grounding and Knowledge Bases
+- Enforce strict RAG/KRAG grounding rules where every specialized processor reads its rules from a dedicated markdown file (e.g., `macro_regime_conditions.md` for `MacroTrendProcessor`).
+
+## Acceptance Criteria
+
+### Event Flow & Asynchrony
+- [ ] Webhook signals flow sequentially and asynchronously through the event bus handlers (`SignalReceived` -> `SignalIngested` -> `SignalValidated`/`SignalRejected` -> `AnalysisComplete`).
+- [ ] No blocking I/O calls or race conditions occur during event propagation on the shared bus.
+- [ ] `MacroTrendProcessor` correctly processes `SignalIngested` and logs grounding checks loaded from `macro_regime_conditions.md`.
+
+### Trend Analysis & Scores
+- [ ] 1H candle trend evaluation ($T_{1H}$) correctly matches SMA-20 of the last 30 1H candles.
+- [ ] Long-term trend score ($MLTS$) correctly weights 1H (15%), 4H (20%), and 1D (25%) trends.
+- [ ] Sentiment Layer correctly boosts or penalizes confidence score.
+
+### Consensus Engine
+- [ ] The Consensus Engine Matrix validates state transitions using the 4 roles (`SA`, `SRE`, `META`, `AC`).
+- [ ] An AC override command or configuration overrides a blocked verdict when constitutional exceptions apply.
+
+### Verification
+- [ ] The command `pytest nerves/workers/trading/tests/unit/test_mta_logic.py nerves/workers/trading/tests/unit/test_signal_processor.py` passes with 100% success (all tests green).
+- [ ] Newly added tests for 1H trend alignment, Consensus Matrix verdicts, and event bus stages pass.
+
+## Follow-up — 2026-06-08T16:08:16+07:00
+
+Implement Layer 3 (Strategy-Specific Processors) in the event-driven signal processing pipeline, including a Minervini SEPA Processor and a Mean Reversion Processor with dynamic volatility-based analysis, and establish a Unified State Ledger in SQLite (trades.db).
+
+Working directory: c:\Users\pesil\working\mj_trading\TradingViewProject
+Integrity mode: development
+
+## Requirements
+
+### R1. Layer 3 Strategy-Specific Processors
+- Implement `MinerviniSepaProcessor` and `MeanReversionProcessor` inside `nerves/workers/trading/processor/` inheriting from `BaseSignalProcessor`.
+- Realign event flow: `SignalIngested` (emitted by Layer 1 `SignalProcessor`) $\rightarrow$ `MacroTrendProcessor` (Layer 2) $\rightarrow$ `MacroValidated` (New Event) $\rightarrow$ Strategy Processors (Layer 3) $\rightarrow$ `SignalValidated` (Layer 4/AI / Execution).
+- `MinerviniSepaProcessor` must subscribe to `MacroValidated` when `mode` is `MTT` or empty/generic, and check daily OHLCV trend template score $\ge$ 5 and VCP contractions.
+- `MeanReversionProcessor` must subscribe to `MacroValidated` when `mode` is `MIS`, and dynamically analyze market volatility (using historical standard deviation or ATR of the last 50 candles) to calculate Bollinger Bands and RSI thresholds dynamically rather than using static hardcoded limits.
+
+### R2. Unified State Ledger
+- Add a `state` column to the `signals` table in `trades.db` via a database migration.
+- Each processor layer must transition the signal state asynchronously (`INGESTED` $\rightarrow$ `MACRO_PASSED` $\rightarrow$ `STRATEGY_PASSED` $\rightarrow$ `ANALYZING` $\rightarrow$ `COMPLETED` / `REJECTED`).
+
+### R3. Pipeline Resilience & Fail-safes
+- Processors must log clear warnings and default to accepting the signal (fail-safe to `True`) if external calls (e.g., candle fetching) timeout or fail.
+
+## Acceptance Criteria
+
+### Event Routing & State Transition
+- [ ] A new event class `MacroValidated` is defined in `nerves/workers/trading/core/events.py` carrying all original signal fields and MTA parameters.
+- [ ] Database migration successfully adds `state TEXT DEFAULT 'INGESTED'` to `signals` table.
+- [ ] Processor executions update the `signals.state` column in the database at each processing stage.
+- [ ] Rejected signals at any layer (Macro or Strategy) update state to `REJECTED` and emit `SignalRejected`.
+
+### Mean Reversion Dynamic Volatility Check
+- [ ] `MeanReversionProcessor` calculates Bollinger Bands and RSI dynamically.
+- [ ] RSI and Bollinger Bands entry thresholds adapt based on historical volatility (e.g., higher volatility wide bands, lower volatility narrow bands).
+
+### Automated Verification
+- [ ] Unit tests in `nerves/workers/trading/tests/unit/test_minervini_sepa_processor.py` and `test_mean_reversion_processor.py` pass.
+- [ ] Integration test verifies a signal flows through the entire pipeline: Webhook $\rightarrow$ SignalProcessor $\rightarrow$ MacroTrendProcessor $\rightarrow$ Strategy Processor $\rightarrow$ AIAnalyzer.
+
+
+## 2026-06-09T02:50:23Z
+
+Execute a real load test replaying 600+ historical signals currently stored in the database's signals table. The test will fire these signals into Server A's /webhook endpoint over HTTP POST.
+
+Working directory: c:\Users\pesil\working\mj_trading\TradingViewProject
+Integrity mode: demo
+
+## Requirements
+
+### R1. Signal Replay & Throughput Firing Script
+- Create a Python test script (scripts/replay_signals_load_test.py) that queries the existing 600+ signals from 	rades.db signals table.
+- Replay all 600+ signals by firing HTTP POST requests concurrently to Server A's /webhook endpoint.
+- The script must complete the replay of 600 signals within 1 minute (averaging 10 requests per second).
+- Each request payload must mimic the original signal format (symbol, action, price, interval, mode, exchange, etc.) and include the required secret.
+
+### R2. Load Test Execution Scenarios
+The test execution must evaluate two distinct scenarios:
+1. **Rate Limiting Check**: Fire a subset of 100 requests from a single IP address and verify that Server A rate-limits them (HTTP 429) after the 15th request.
+2. **Throughput Ingestion (Bypass Rate Limits)**: Fire the full 600+ requests while randomizing the client IP header (X-Forwarded-For) to bypass the rate limiter, verifying that Server A processes, ingests, and saves all 600+ signals into the database successfully.
+
+### R3. Performance & State Verification
+- Measure the database write latency, total CPU and Memory utilization of Server A during the 600-signal burst.
+- Verify that the Unified State Ledger (signals.state column) correctly transitions all 600+ ingested signals through the pipeline states.
+
+### R4. Telegram Notification Labeling
+- Ensure that any Telegram notifications triggered by these load-test signals are clearly prepended with a [DEMO] or [TEST] label in the message header.
+- The system must differentiate test signals from live production signals, ensuring no live orders are executed and all alert notifications are explicitly marked as tests.
+
+## Acceptance Criteria
+
+### Execution & Speed
+- [ ] A replay script scripts/replay_signals_load_test.py is implemented and runnable.
+- [ ] The script successfully dispatches 600 HTTP requests to /webhook in under 60 seconds.
+
+### Rate Limiting & Database Ingestion
+- [ ] Single-IP burst test triggers HTTP 429 rate-limiting response.
+- [ ] Multi-IP randomized burst test successfully ingests all 600+ signals, producing HTTP 200 responses.
+- [ ] The signals table database audit logs confirm that 600+ new signal entries have been created, and their state transitions (INGESTED, MACRO_PASSED, etc.) are correctly recorded.
+
+### Telegram Alert Labeling
+- [ ] Telegram alert templates or the notification sender module prepends [DEMO] or [TEST] to all message headers triggered by the test signals.
+- [ ] No live exchange orders are placed during the load test (forced dry-run mode for test signals).
+
+### Performance Report
+- [ ] A performance report file (.agents/load_test_report.md) is generated, summarizing peak CPU/memory usage, total duration, success/failure counts, and average latency.
+
+## Follow-up — 2026-06-09T13:44:38+07:00
+
+Implement a normalized local database mirror for candlestick (OHLCV) data, establish a background sync daemon, implement dynamic resampling in memory, and store crystallized market feature states at the time of signal firing to optimize storage, network usage, and backtesting.
+
+Working directory: `c:\Users\pesil\working\mj_trading\TradingViewProject`
+Integrity mode: development
+
+## Requirements
+
+### R1. Database Schema Extension
+Extend the SQLite database (`server/trades.db`) to support normalized OHLCV data. 
+- Create tables `ohlcv_5m` and `ohlcv_1d` with composite primary keys `(symbol, timestamp)`.
+- Ensure appropriate indexing on `(symbol, timestamp)` to allow sub-millisecond query performance.
+- Add an `analysis_features` TEXT column (JSON) to the `signals` table for crystallization storage.
+
+### R2. Background Candle Sync Daemon
+Implement a robust background sync daemon.
+- Every 5 minutes, query active symbols from `server/watchlist.json`.
+- For each symbol, fetch the last 200 candles of `5m` timeframe and the last 5 candles of `1d` timeframe from the exchange API (Binance/Weex).
+- Write fetched candles to the corresponding database tables using `INSERT OR IGNORE` or `INSERT OR REPLACE`.
+- Incorporate basic API rate-limiting guardrails and connection error recovery.
+
+### R3. CaptureClient & Resampling Integration
+Modify `CaptureClient` (`server/capture_client.py`) to leverage local candle data and resample on-the-fly.
+- Intercept calls to retrieve OHLCV data to search the local database first.
+- Direct queries for `5m` and `1d` timeframes to `ohlcv_5m` and `ohlcv_1d`.
+- For timeframes like `30m`, `1h`, or `4h`, fetch `5m` data from the local database and resample in RAM using Pandas.
+- Fall back to the external exchange API only if local data contains gaps or fails.
+
+### R4. Signal Ingestion Crystallization
+Update the signal analyzer (`server/workers/vps_analyzer.py`) to compute and store crystallized indicators at the exact millisecond of signal ingestion.
+- Calculate and serialize indicators (e.g., SMA, ATR, RSI) into the new `analysis_features` column (or `payload` JSON field) when the signal is recorded.
+
+## Acceptance Criteria
+
+### Schema & Data Integrity
+- [ ] The migration script runs without error and creates `ohlcv_5m` and `ohlcv_1d` tables.
+- [ ] No duplicate candles exist under the same `(symbol, timestamp)` composite key.
+
+### Sync & Storage Performance
+- [ ] The sync daemon runs successfully and populates local tables with watchlist candles.
+- [ ] Database query responses for `5m` and `1d` data execute in sub-millisecond ranges.
+
+### Resampling Correctness
+- [ ] In-memory Pandas resampling matches expected mathematical aggregates for High, Low, Open, Close, and Volume when resampling `5m` to `30m`/`1h`/`4h`.
+- [ ] Automated tests in `server/tests/test_ohlcv_resampling.py` pass successfully.
+
+## Follow-up — 2026-06-09T18:49:23+07:00
+
+The goal of this project is to build and run a comprehensive backtesting and optimization campaign for the V6 VBS Strategy (v2.1.0-7.6.3) using the 627 saved source signals in `vbs_replay.db`. The campaign will simulate multiple strategy sub-experiments (matching the historical V1 trials) to identify optimal configurations, create a deep comparative analysis report, and distill the results into concrete strategy variations.
+
+Working directory: C:\Users\pesil\working\mj_trading\TradingViewProject\docs\reports\v2.1.0-7.6.3
+Integrity mode: demo
+
+## Requirements
+
+### R1. Multi-Scenario Simulation Engine
+- Implement a simulation runner that can execute the 627 signals against different strategy parameters, including:
+  - **S1 (Baseline Bypass AI)**: Pure breakout execution with standard risk sizing.
+  - **S2 (Standard Minervini Filter)**: Strict SMA 50/150/200 Trend Template + VCP filters.
+  - **S3 (Short-term EMA Filter)**: EMA 20/50/100 trend filter (similar to MTT v1.005-b).
+  - **S4 (Tight SL/Trailing)**: Tightened SL/TP multipliers and Chandelier Trailing stops (analogous to v11A).
+  - **S5 (Multi-Timeframe Validation)**: Checking daily trend TEMPLATE alignment with hourly execution triggers (analogous to v13C). Must dynamically fetch daily historical candles directly from CCXT (Binance) API and store them locally.
+  - **S6 (Optimized Hybrid Mode)**: High win-rate momentum configuration combining RSI/MACD pullbacks with Trend Template checks.
+- Position Sizing Modes: Run simulations for BOTH modes:
+  1. Fixed trade size of 100 USDT per position.
+  2. Dynamic compound sizing (e.g. 2% portfolio risk per trade, calculated from stop loss distance).
+- All simulations must pull candles from the local `vbs_replay.db` for the 19-candle replay window of each signal to ensure offline repeatability.
+
+### R2. Comparative Performance Analytics
+- Compute performance metrics for each scenario and each position sizing mode: Total P&L (USDT), Win Rate (%), Max Drawdown (%), Profit Factor, and Expectancy.
+- Generate comparative tables comparing all scenarios and both position sizing modes.
+- Generate cumulative equity curve charts for each scenario and save them as PNGs under each scenario's subdirectory.
+
+### R3. Strategy Distillation & Report Indexing
+- Analyze the results to distill specific strategy presets (e.g. Conservative SEPA, Aggressive Breakout, Short-term Momentum).
+- Generate individual report files for each scenario under `docs/reports/v2.1.0-7.6.3/<scenario_name>/`.
+- Compile and update `docs/reports/v2.1.0-7.6.3/BACKTEST_REPORTS_INDEX.md` with detailed summaries and links.
+
+## Acceptance Criteria
+
+### Execution & Accuracy
+- [ ] Simulation executes successfully for all 6 scenarios and both position sizing modes across all 627 signals without crashing.
+- [ ] Daily historical candles are successfully synced from CCXT Binance API and cached in CSDL for S5.
+- [ ] Performance metrics (PnL, Drawdown, Profit Factor) match mathematical formulations.
+- [ ] Outputs are fully saved in `docs/reports/v2.1.0-7.6.3/`.
+
+### Documentation & Visualization
+- [ ] A dedicated report file is generated for each scenario under `docs/reports/v2.1.0-7.6.3/<scenario_name>/`.
+- [ ] Cumulative equity and drawdown charts are generated and saved as PNGs under each scenario's subdirectory.
+- [ ] The index file `v2.1.0-7.6.3/BACKTEST_REPORTS_INDEX.md` is updated with complete comparisons and clickable links.
+- [ ] Preserved visual 19-candle replays are linked.
