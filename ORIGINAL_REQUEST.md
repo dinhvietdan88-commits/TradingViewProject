@@ -973,7 +973,7 @@ Integrity mode: development
 ## Requirements
 
 ### R1. Database Schema Extension
-Extend the SQLite database (`server/trades.db`) to support normalized OHLCV data. 
+Extend the SQLite database (`server/trades.db`) to support normalized OHLCV data.
 - Create tables `ohlcv_5m` and `ohlcv_1d` with composite primary keys `(symbol, timestamp)`.
 - Ensure appropriate indexing on `(symbol, timestamp)` to allow sub-millisecond query performance.
 - Add an `analysis_features` TEXT column (JSON) to the `signals` table for crystallization storage.
