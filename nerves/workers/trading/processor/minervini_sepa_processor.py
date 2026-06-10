@@ -78,7 +78,7 @@ async def process_minervini_sepa(event: MacroValidated) -> None:
 
         res = database.update_signal_state(event.signal_id, "STRATEGY_PASSED")
         if inspect.isawaitable(res):
-            await res
+            _ = await res
         await bus.emit(
             SignalValidated(
                 signal_id=event.signal_id,
@@ -108,7 +108,7 @@ async def process_minervini_sepa(event: MacroValidated) -> None:
             event.signal_id, "REJECTED", "sepa_trend_template_failed"
         )
         if inspect.isawaitable(res):
-            await res
+            _ = await res
         await bus.emit(
             SignalRejected(
                 signal_id=event.signal_id,

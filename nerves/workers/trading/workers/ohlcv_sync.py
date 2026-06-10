@@ -7,9 +7,8 @@ import asyncio
 import logging
 from typing import Any
 
-import database
 from watchlist import get_watchlist
-from capture_client import get_capture_client
+from security.sanitizers import sanitize_symbol, sanitize_log
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +19,9 @@ async def sync_ohlcv_all_symbols() -> None:
     For each symbol, fetch last 200 candles of '5m' and 250 candles of '1d' via capture_client.
     Write batches to database.insert_ohlcv_batch().
     """
+    import database
+    from capture_client import get_capture_client
+
     logger.info("Starting sync_ohlcv_all_symbols daemon job")
     try:
         symbols = get_watchlist()
@@ -142,6 +144,8 @@ async def calculate_crystallized_features(symbol: str) -> dict[str, Any]:
     Calculate SMA(50), SMA(150), SMA(200), RSI(14), and ATR(14) for both timeframes.
     Return a nested dict of features.
     """
+    from capture_client import get_capture_client
+
     client = get_capture_client()
     features = {
         "5m": {
@@ -174,7 +178,9 @@ async def calculate_crystallized_features(symbol: str) -> dict[str, Any]:
             features["5m"]["rsi14"] = get_rsi(closes, 14)
             features["5m"]["atr14"] = get_atr(highs, lows, closes, 14)
     except Exception as e:
-        logger.warning(f"Failed to calculate 5m features for {symbol}: {e}")
+        logger.warning(
+            f"Failed to calculate 5m features for {sanitize_symbol(symbol)}: {sanitize_log(str(e))}"
+        )
 
     # 1d timeframe
     try:
@@ -190,6 +196,8 @@ async def calculate_crystallized_features(symbol: str) -> dict[str, Any]:
             features["1d"]["rsi14"] = get_rsi(closes, 14)
             features["1d"]["atr14"] = get_atr(highs, lows, closes, 14)
     except Exception as e:
-        logger.warning(f"Failed to calculate 1d features for {symbol}: {e}")
+        logger.warning(
+            f"Failed to calculate 1d features for {sanitize_symbol(symbol)}: {sanitize_log(str(e))}"
+        )
 
     return features

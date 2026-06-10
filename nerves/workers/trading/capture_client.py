@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import config
+from security.sanitizers import sanitize_symbol, sanitize_log, sanitize_path
 
 # SEC-4: Runtime guard for SSRF prevention (CWE-918)
 try:
@@ -31,7 +32,12 @@ except ImportError:
         return symbol, interval
 
     def safe_path(raw_path, base_dir: Path, **kwargs) -> Path:  # type: ignore[misc]
-        return Path(raw_path).resolve()  # codeql[py/path-injection]
+        from security.sanitizers import sanitize_path
+
+        clean_path_str = sanitize_path(str(raw_path), [str(base_dir.resolve())])
+        if not clean_path_str:
+            raise ValueError("Path traversal detected")
+        return Path(clean_path_str)
 
 
 logger = logging.getLogger(__name__)
@@ -173,11 +179,11 @@ class PythonCaptureClient:
         local native rendering.
         """
         if save_path is not None:
-            save_path = safe_path(
-                save_path,
-                Path(__file__).resolve().parents[3],
-                allowed_extensions={".png", ".jpg", ".jpeg", ".webp"},
-            )
+            allowed_dir = str(Path(__file__).resolve().parents[3])
+            clean_save = sanitize_path(str(save_path), [allowed_dir])
+            if not clean_save:
+                raise ValueError("Path traversal detected")
+            save_path = Path(clean_save)
 
         start_time = time.monotonic()
 
@@ -681,7 +687,7 @@ class PythonCaptureClient:
                     return candles
             except Exception as e:
                 logger.warning(
-                    f"Failed to fetch/validate local {timeframe} candles for {symbol}: {e}"
+                    f"Failed to fetch/validate local {timeframe} candles for {sanitize_symbol(symbol)}: {sanitize_log(str(e))}"
                 )
 
             # Fallback to exchange
@@ -784,7 +790,7 @@ class PythonCaptureClient:
                         return final_candles
             except Exception as e:
                 logger.warning(
-                    f"Failed to resample local {timeframe} candles for {symbol}: {e}"
+                    f"Failed to resample local {timeframe} candles for {sanitize_symbol(symbol)}: {sanitize_log(str(e))}"
                 )
 
             # Fallback to exchange
@@ -818,12 +824,12 @@ class PythonCaptureClient:
         for ex in exchanges:
             try:
                 logger.info(
-                    f"Attempting direct {interval} fetch from {ex} for {symbol}..."  # codeql[py/log-injection]
+                    f"Attempting direct {interval} fetch from {ex} for {sanitize_symbol(symbol)}..."
                 )
                 return await self._fetch_raw_ohlcv(symbol, interval, limit, exchange=ex)
             except Exception as e:
                 logger.warning(
-                    f"Direct fetch failed from {ex} for {symbol} ({interval}): {e}"  # codeql[py/log-injection]
+                    f"Direct fetch failed from {ex} for {sanitize_symbol(symbol)} ({interval}): {sanitize_log(str(e))}"
                 )
 
         # ── Step 2: Try another way (resampling daily candles to weekly) ──
@@ -831,7 +837,7 @@ class PythonCaptureClient:
             for ex in exchanges:
                 try:
                     logger.info(
-                        f"Attempting to construct weekly chart for {symbol} from {ex} daily candles..."  # codeql[py/log-injection]
+                        f"Attempting to construct weekly chart for {sanitize_symbol(symbol)} from {ex} daily candles..."
                     )
                     daily_klines = await self._fetch_raw_ohlcv(
                         symbol, "1d", limit * 7, exchange=ex
@@ -845,7 +851,7 @@ class PythonCaptureClient:
                             return resampled[-limit:]
                 except Exception as ex_err:
                     logger.warning(
-                        f"Failed to resample daily to weekly from {ex} for {symbol}: {ex_err}"  # codeql[py/log-injection]
+                        f"Failed to resample daily to weekly from {ex} for {sanitize_symbol(symbol)}: {sanitize_log(str(ex_err))}"
                     )
 
         # If all paths fail, raise exception

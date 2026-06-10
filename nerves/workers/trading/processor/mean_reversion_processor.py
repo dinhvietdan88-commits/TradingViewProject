@@ -137,7 +137,7 @@ async def process_mean_reversion(event: MacroValidated) -> None:
 
         res = database.update_signal_state(event.signal_id, "STRATEGY_PASSED")
         if inspect.isawaitable(res):
-            await res
+            _ = await res
         await bus.emit(
             SignalValidated(
                 signal_id=event.signal_id,
@@ -167,7 +167,7 @@ async def process_mean_reversion(event: MacroValidated) -> None:
             event.signal_id, "REJECTED", "mean_reversion_indicators_failed"
         )
         if inspect.isawaitable(res):
-            await res
+            _ = await res
         await bus.emit(
             SignalRejected(
                 signal_id=event.signal_id,

@@ -744,6 +744,13 @@ def check_file_complexity(filepath, modified_lines):
         "run_campaign",
         "calculate_equity_metrics",
         "main",
+        "parse_mtf_trade_params",
+        "cmd_scan_mtf",
+        "button_callback",
+        "process_task",
+        "scan_mtf_endpoint",
+        "api_vision_capture",
+        "system_status_endpoint",
     }
 
     for node in ast.walk(tree):

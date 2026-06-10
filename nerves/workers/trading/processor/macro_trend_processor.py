@@ -62,7 +62,7 @@ class MacroTrendProcessor(BaseSignalProcessor):
                         event.signal_id, "REJECTED", "market_regime_chop_block"
                     )
                     if inspect.isawaitable(res):
-                        await res
+                        _ = await res
                     await bus.emit(
                         SignalRejected(
                             signal_id=event.signal_id,
@@ -103,9 +103,6 @@ class MacroTrendProcessor(BaseSignalProcessor):
                 fourhour_candles = (
                     results[1] if not isinstance(results[1], Exception) else None
                 )
-                onehour_candles = (
-                    results[2] if not isinstance(results[2], Exception) else None
-                )
 
                 is_bullish_daily = False
                 is_bullish_4h = False
@@ -119,17 +116,6 @@ class MacroTrendProcessor(BaseSignalProcessor):
                     sma_4h = sum(c[4] for c in fourhour_candles) / len(fourhour_candles)
                     latest_close_4h = fourhour_candles[-1][4]
                     is_bullish_4h = latest_close_4h > sma_4h
-
-                # Extract 1H local trend
-                t_1h = 0
-                if onehour_candles and len(onehour_candles) >= 20:
-                    closes_1h = [c[4] for c in onehour_candles]
-                    sma_1h = sum(closes_1h[-20:]) / 20
-                    latest_close_1h = closes_1h[-1]
-                    if latest_close_1h > sma_1h:
-                        t_1h = 1
-                    elif latest_close_1h < sma_1h:
-                        t_1h = -1
 
                 # Check sentiment layer
                 combined_sentiment = 0.0
@@ -248,9 +234,6 @@ async def process_macro_trend(event: SignalIngested) -> None:
             f"MacroTrendProcessor: Signal #{event.signal_id} macro trend validated — {event.action} {event.symbol}"
         )
         tas = getattr(_processor, "last_tas", 0.0)
-        getattr(_processor, "last_sts", 0.0)
-        getattr(_processor, "last_mlts", 0.0)
-        getattr(_processor, "last_mta_calculated", False)
 
         # Reset them after read to avoid stale state for subsequent runs
         _processor.last_tas = 0.0
@@ -263,7 +246,7 @@ async def process_macro_trend(event: SignalIngested) -> None:
 
         res = database.update_signal_state(event.signal_id, "MACRO_PASSED")
         if inspect.isawaitable(res):
-            await res
+            _ = await res
 
         regime_val = database.get_setting("market_regime", "TREND")
         regime = await regime_val if inspect.isawaitable(regime_val) else "TREND"
