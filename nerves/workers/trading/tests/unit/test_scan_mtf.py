@@ -144,10 +144,11 @@ async def test_api_scan_mtf_endpoint(client):
         "verdict": "🟢 STRONG LONG SETUP",
     }
 
-    import tempfile
+    import config
 
-    temp_dir = tempfile.TemporaryDirectory()
-    dummy_img = Path(temp_dir.name) / "dummy.png"
+    screenshots_dir = Path(config.CHROMA_DB_PATH).parent.resolve() / "screenshots"
+    screenshots_dir.mkdir(parents=True, exist_ok=True)
+    dummy_img = screenshots_dir / "dummy.png"
     dummy_img.write_bytes(b"dummy content")
 
     with (
@@ -156,7 +157,8 @@ async def test_api_scan_mtf_endpoint(client):
             AsyncMock(return_value=mock_scan_res),
         ),
         patch(
-            "mcp_client.MCPClient.capture_screenshot", AsyncMock(return_value=dummy_img)
+            "mcp_client.MCPClient.capture_screenshot",
+            AsyncMock(return_value=str(dummy_img)),
         ),
         patch(
             "vision.analyze_chart_vision_mtf", AsyncMock(return_value=mock_vision_res)
@@ -171,7 +173,8 @@ async def test_api_scan_mtf_endpoint(client):
         assert data["vision"]["confidence"] == 8
         assert data["vision"]["verdict"] == "🟢 STRONG LONG SETUP"
 
-    temp_dir.cleanup()
+    if dummy_img.exists():
+        dummy_img.unlink()
 
 
 @pytest.mark.asyncio

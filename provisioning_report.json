@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-06T19:17:26Z",
+  "timestamp": "2026-06-09T23:48:21Z",
   "summary": {
     "passed": 8,
     "failed": 36,
@@ -100,7 +100,7 @@
     "11.2.1": {
       "passed": false,
       "status": "FAIL",
-      "description": "Debian 12 \u0111\u00e3 c\u00e0i (Standard OK cho 8U16G)",
+      "description": "Oracle Linux 9 \u0111\u00e3 c\u00e0i (Standard OK cho 8U16G)",
       "msg": "OS matched: "
     },
     "11.2.2": {

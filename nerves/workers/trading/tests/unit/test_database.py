@@ -238,3 +238,186 @@ async def test_equity_cumulative_correct():
     )
     result = await database.get_equity_curve()
     assert result["cumulative_pnl"] == [100.0, 70.0, 120.0]
+
+
+# ═══ OHLCV & SIGNALS MIGRATIONS ═══════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_ohlcv_tables_exist_and_have_correct_columns():
+    import aiosqlite
+
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        for table in ("ohlcv_5m", "ohlcv_1d"):
+            async with db.execute(f"PRAGMA table_info({table})") as cursor:
+                rows = await cursor.fetchall()
+                columns = {r[1]: (r[2].upper(), bool(r[5])) for r in rows}
+
+                assert "symbol" in columns
+                assert columns["symbol"][0] == "TEXT"
+                assert columns["symbol"][1] is True  # composite PK
+
+                assert "timestamp" in columns
+                assert columns["timestamp"][0] == "INTEGER"
+                assert columns["timestamp"][1] is True  # composite PK
+
+                assert "open" in columns
+                assert columns["open"][0] == "REAL"
+                assert columns["open"][1] is False
+
+                assert "high" in columns
+                assert columns["high"][0] == "REAL"
+                assert columns["high"][1] is False
+
+                assert "low" in columns
+                assert columns["low"][0] == "REAL"
+                assert columns["low"][1] is False
+
+                assert "close" in columns
+                assert columns["close"][0] == "REAL"
+                assert columns["close"][1] is False
+
+                assert "volume" in columns
+                assert columns["volume"][0] == "REAL"
+                assert columns["volume"][1] is False
+
+
+@pytest.mark.asyncio
+async def test_ohlcv_indexes_defined():
+    import aiosqlite
+
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        async with db.execute(
+            "SELECT name FROM sqlite_master WHERE type='index'"
+        ) as cursor:
+            rows = await cursor.fetchall()
+            indices = {r[0] for r in rows}
+
+            assert "idx_ohlcv_5m_timestamp" in indices
+            assert "idx_ohlcv_5m_sym_time_desc" in indices
+            assert "idx_ohlcv_1d_timestamp" in indices
+            assert "idx_ohlcv_1d_sym_time_desc" in indices
+
+
+@pytest.mark.asyncio
+async def test_signals_analysis_features_column_exists():
+    import aiosqlite
+
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        async with db.execute("PRAGMA table_info(signals)") as cursor:
+            rows = await cursor.fetchall()
+            column_names = [r[1] for r in rows]
+            assert "analysis_features" in column_names
+
+
+@pytest.mark.asyncio
+async def test_insert_ohlcv_batch():
+    import aiosqlite
+
+    # Insert batch dicts
+    candles_dict = [
+        {
+            "symbol": "BTCUSDT",
+            "timestamp": 1625097600,
+            "open": 35000.0,
+            "high": 36000.0,
+            "low": 34000.0,
+            "close": 35500.0,
+            "volume": 120.5,
+        },
+        {
+            "symbol": "BTCUSDT",
+            "timestamp": 1625097900,
+            "open": 35500.0,
+            "high": 36500.0,
+            "low": 35000.0,
+            "close": 36000.0,
+            "volume": 150.2,
+        },
+    ]
+    await database.insert_ohlcv_batch("5m", candles_dict)
+
+    # Insert batch list/tuples
+    candles_list = [
+        ("ETHUSDT", 1625097600, 2000.0, 2100.0, 1950.0, 2050.0, 500.0),
+    ]
+    await database.insert_ohlcv_batch("1d", candles_list)
+
+    # Verify the results in database
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM ohlcv_5m ORDER BY timestamp ASC"
+        ) as cursor:
+            rows = await cursor.fetchall()
+            assert len(rows) == 2
+            assert rows[0]["symbol"] == "BTCUSDT"
+            assert rows[0]["timestamp"] == 1625097600
+            assert rows[0]["open"] == 35000.0
+            assert rows[0]["close"] == 35500.0
+
+            assert rows[1]["symbol"] == "BTCUSDT"
+            assert rows[1]["timestamp"] == 1625097900
+            assert rows[1]["close"] == 36000.0
+
+        async with db.execute(
+            "SELECT * FROM ohlcv_1d ORDER BY timestamp ASC"
+        ) as cursor:
+            rows = await cursor.fetchall()
+            assert len(rows) == 1
+            assert rows[0]["symbol"] == "ETHUSDT"
+            assert rows[0]["timestamp"] == 1625097600
+            assert rows[0]["close"] == 2050.0
+
+
+@pytest.mark.asyncio
+async def test_signals_raw_analysis_text(monkeypatch):
+    import config
+
+    monkeypatch.setattr(config, "STORE_RAW_ANALYSIS", True)
+    monkeypatch.setattr(config, "_is_restricted_server", lambda: False)
+
+    import aiosqlite
+
+    sig_id = await database.insert_signal(
+        "BTCUSDT",
+        "buy",
+        68000.0,
+        50.0,
+        raw_analysis_text="Minervini Trend Template: 8/8. Strong breakout.",
+    )
+
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM signals WHERE id = ?", (sig_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            assert row is not None
+            assert (
+                row["raw_analysis_text"]
+                == "Minervini Trend Template: 8/8. Strong breakout."
+            )
+
+
+@pytest.mark.asyncio
+async def test_restricted_servers_force_disable_storage(monkeypatch):
+    import config
+
+    monkeypatch.setattr(config, "STORE_RAW_ANALYSIS", True)
+    monkeypatch.setattr(config, "_is_restricted_server", lambda: True)
+
+    import aiosqlite
+
+    sig_id = await database.insert_signal(
+        "BTCUSDT", "buy", 68000.0, 50.0, raw_analysis_text="Should be filtered out."
+    )
+
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM signals WHERE id = ?", (sig_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            assert row is not None
+            assert row["raw_analysis_text"] is None

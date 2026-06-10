@@ -200,11 +200,11 @@ async function loadTrades(page = 1) {
     // Sentiment styling and tooltip
     const scoreVal = t.combined_score ? parseFloat(t.combined_score) : NaN;
     let scoreDisplay = '—';
-    
+
     if (!isNaN(scoreVal)) {
       const scoreColor = getScoreColor(scoreVal);
       const scoreText = (scoreVal >= 0 ? '+' : '') + scoreVal.toFixed(2);
-      
+
       let twitter = '—', rss = '—', fng = '—', glassnode = '—', ccxt = '—';
       if (t.signal_payload) {
         try {
@@ -216,7 +216,7 @@ async function loadTrades(page = 1) {
             rss = bd.rss !== undefined ? (bd.rss >= 0 ? '+' : '') + bd.rss.toFixed(2) : '—';
             glassnode = bd.glassnode !== undefined && stats.sources.glassnode !== 'glassnode_not_applicable' ? (bd.glassnode >= 0 ? '+' : '') + bd.glassnode.toFixed(2) : 'N/A';
             ccxt = bd.ccxt !== undefined ? (bd.ccxt >= 0 ? '+' : '') + bd.ccxt.toFixed(2) : '—';
-            
+
             if (stats.raw_metrics && stats.raw_metrics.fng_value !== undefined) {
               fng = `${stats.raw_metrics.fng_value} (${stats.sources.fng || 'Neutral'})`;
             }
@@ -225,7 +225,7 @@ async function loadTrades(page = 1) {
           console.error("Error parsing signal_payload for tooltip", e);
         }
       }
-      
+
       scoreDisplay = `
         <div class="sentiment-cell" style="color:${scoreColor}">
           <strong>${scoreText}</strong>
@@ -893,7 +893,7 @@ async function loadSentimentWidget() {
   const fngLabelEl = document.getElementById('fngGaugeLabel');
   const fundingEl = document.getElementById('fundingRatesContainer');
   const watchlistEl = document.getElementById('sentimentWatchlistContainer');
-  
+
   if (!fngValEl) return; // Sentiment widget not present
 
   // Set toggle state on load
@@ -920,17 +920,17 @@ async function loadSentimentWidget() {
   // Render Fear & Greed Gauge
   const fngVal = data.raw_metrics?.fng_value !== undefined ? parseInt(data.raw_metrics.fng_value) : 50;
   if (fngValEl) fngValEl.textContent = fngVal;
-  
+
   const fngClass = data.sources?.fng || 'Neutral';
   let fngColor = 'rgb(148, 163, 184)';
   if (fngClass.toLowerCase().includes('greed')) fngColor = 'rgb(52, 211, 153)';
   if (fngClass.toLowerCase().includes('fear')) fngColor = 'rgb(248, 113, 113)';
-  
+
   if (fngLabelEl) {
     fngLabelEl.textContent = fngClass;
     fngLabelEl.style.color = fngColor;
   }
-  
+
   renderFngGauge(fngVal, fngColor);
 
   // Render Funding Rates
@@ -938,13 +938,13 @@ async function loadSentimentWidget() {
   const binanceFunding = ccxtRaw.funding_rate !== undefined ? ccxtRaw.funding_rate : 0.0001;
   const bybitFunding = binanceFunding * 0.9;
   const weexFunding = binanceFunding * 0.8;
-  
+
   const formatFunding = (val) => {
     const pct = val * 100;
     const clr = val >= 0.0002 ? 'var(--sell)' : (val <= 0 ? 'var(--buy)' : 'var(--text-muted)');
     return `<span style="color:${clr};font-weight:600">${pct >= 0 ? '+' : ''}${pct.toFixed(4)}%</span>`;
   };
-  
+
   const oiVal = ccxtRaw.open_interest !== undefined ? ccxtRaw.open_interest : null;
   const formatOI = (val) => {
     if (val === null) return 'N/A';
@@ -971,7 +971,7 @@ async function loadSentimentWidget() {
       const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'];
       const promises = symbols.map(s => apiFetch(`/api/sentiment/current?symbol=${s}`));
       const results = await Promise.all(promises);
-      
+
       let watchlistHtml = '';
       results.forEach((res, index) => {
         if (!res) return;
@@ -979,7 +979,7 @@ async function loadSentimentWidget() {
         const score = res.combined_score || 0.0;
         const pct = Math.min(100, Math.max(0, (score + 1.0) / 2.0 * 100));
         const scoreColor = score >= 0.25 ? 'rgb(52, 211, 153)' : (score <= -0.25 ? 'rgb(248, 113, 113)' : 'rgb(148, 163, 184)');
-        
+
         watchlistHtml += `
           <div class="watchlist-breakdown-row" style="margin-top: 4px;">
             <strong style="width: 70px;">${sym.replace('USDT', '')}</strong>
@@ -1005,9 +1005,9 @@ async function loadSentimentWidget() {
 function renderFngGauge(val, color) {
   const canvas = document.getElementById('fngGaugeChart');
   if (!canvas) return;
-  
+
   if (fngGaugeChartInst) fngGaugeChartInst.destroy();
-  
+
   const ctx = canvas.getContext('2d');
   fngGaugeChartInst = new Chart(ctx, {
     type: 'doughnut',
@@ -1043,7 +1043,7 @@ async function loadSentimentHistoryChart() {
   if (sentimentHistoryChartInst) sentimentHistoryChartInst.destroy();
 
   const ctx = canvas.getContext('2d');
-  
+
   const labels = data.map(d => {
     if (!d.created_at) return '';
     const date = new Date(d.created_at);
@@ -1106,7 +1106,7 @@ window.toggleSentimentHistoryChart = function() {
   const wrap = document.getElementById('sentimentHistoryChartWrap');
   const btn = document.getElementById('toggleSentimentHistory');
   if (!wrap || !btn) return;
-  
+
   const isShown = wrap.style.display !== 'none';
   if (isShown) {
     wrap.style.display = 'none';

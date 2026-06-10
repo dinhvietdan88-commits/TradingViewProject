@@ -35,7 +35,11 @@ CREATE TABLE IF NOT EXISTS signals (
     payload     TEXT,
     mode        TEXT,
     processed   INTEGER NOT NULL DEFAULT 0,
-    vbs_queue_id INTEGER
+    vbs_queue_id INTEGER,
+    state       TEXT DEFAULT 'INGESTED',
+    rejection_reason TEXT,
+    analysis_features TEXT,
+    raw_analysis_text TEXT
 );
 
 CREATE TABLE IF NOT EXISTS trades (
@@ -178,6 +182,47 @@ CREATE TABLE IF NOT EXISTS circuit_breaker_logs (
     trigger_reason TEXT    NOT NULL,
     current_metrics TEXT   NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS consensus_audit_logs (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp      TEXT    NOT NULL DEFAULT (datetime('now')),
+    operation      TEXT    NOT NULL,
+    sa_verdict     TEXT    NOT NULL,
+    sre_verdict    TEXT    NOT NULL,
+    meta_verdict   TEXT    NOT NULL,
+    ac_verdict     TEXT    NOT NULL,
+    final_verdict  TEXT    NOT NULL,
+    override_token TEXT,
+    rationale      TEXT    NOT NULL,
+    details        TEXT
+);
+
+CREATE TABLE IF NOT EXISTS ohlcv_5m (
+    symbol    TEXT,
+    timestamp INTEGER,
+    open      REAL,
+    high      REAL,
+    low       REAL,
+    close     REAL,
+    volume    REAL,
+    PRIMARY KEY (symbol, timestamp)
+);
+
+CREATE TABLE IF NOT EXISTS ohlcv_1d (
+    symbol    TEXT,
+    timestamp INTEGER,
+    open      REAL,
+    high      REAL,
+    low       REAL,
+    close     REAL,
+    volume    REAL,
+    PRIMARY KEY (symbol, timestamp)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ohlcv_5m_timestamp ON ohlcv_5m(timestamp);
+CREATE INDEX IF NOT EXISTS idx_ohlcv_5m_sym_time_desc ON ohlcv_5m(symbol, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_ohlcv_1d_timestamp ON ohlcv_1d(timestamp);
+CREATE INDEX IF NOT EXISTS idx_ohlcv_1d_sym_time_desc ON ohlcv_1d(symbol, timestamp DESC);
 """
 
 
@@ -260,6 +305,44 @@ async def init_db():
 
             logging.getLogger(__name__).warning("Ignored: %s", e)
 
+        # Unified State Ledger: Add state column to signals
+        try:
+            await db.execute(
+                "ALTER TABLE signals ADD COLUMN state TEXT DEFAULT 'INGESTED'"
+            )
+            await db.commit()
+        except sqlite3.OperationalError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
+
+        # Unified State Ledger: Add rejection_reason column to signals
+        try:
+            await db.execute("ALTER TABLE signals ADD COLUMN rejection_reason TEXT")
+            await db.commit()
+        except sqlite3.OperationalError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
+
+        # Dynamic ALTER TABLE for analysis_features column on signals table
+        try:
+            await db.execute("ALTER TABLE signals ADD COLUMN analysis_features TEXT")
+            await db.commit()
+        except sqlite3.OperationalError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
+
+        # Dynamic ALTER TABLE for raw_analysis_text column on signals table
+        try:
+            await db.execute("ALTER TABLE signals ADD COLUMN raw_analysis_text TEXT")
+            await db.commit()
+        except sqlite3.OperationalError as e:
+            import logging
+
+            logging.getLogger(__name__).warning("Ignored: %s", e)
+
     log.info(f"Database initialized: {config.DB_PATH}")
 
 
@@ -279,6 +362,9 @@ from data.persistence_store import (  # noqa: E402, F401
     insert_trade,
     update_signal_status,
     update_trade_oco,
+    insert_consensus_audit_log,
+    update_signal_state,
+    insert_ohlcv_batch,
 )
 
 # Read operations (QueryService)
@@ -292,6 +378,8 @@ from data.query_service import (  # noqa: E402, F401
     get_stats_by_mode,
     get_trades,
     get_sentiment_history,
+    get_consensus_audit_logs,
+    get_signals,
 )
 
 # ═══════════════════════════════════════════════════════════════

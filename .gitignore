@@ -92,3 +92,8 @@ nerves/workers/trading/test_trades.log
 .codeql_old_7*/
 .codeql_old_8/
 .codeql_old_9/
+
+# Antigravity overrides
+*.db
+*.log.*
+proposal.json

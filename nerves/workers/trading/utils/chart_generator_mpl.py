@@ -23,6 +23,8 @@ def generate_chart_mpl(
     parent_timeframe: str | None = None,
     parent_ohlcv: list[list[Any]] | list[dict[str, Any]] | None = None,
     pattern_overlays: Any | None = None,
+    entry_idx: int | None = None,
+    exit_idx: int | None = None,
 ) -> Path:
     """
     Renders a candlestick chart locally using mplfinance/matplotlib.
@@ -154,6 +156,10 @@ def generate_chart_mpl(
     fig.subplots_adjust(right=0.88, left=0.08, top=0.92, bottom=0.08)
 
     # 5. Render custom drawings (Entry, Stop Loss, Take Profit lines)
+    entry_price = None
+    exit_price = None
+    exit_label = "EXIT"
+
     if drawings:
         xlim = main_ax.get_xlim()
         for draw in drawings:
@@ -162,6 +168,12 @@ def generate_chart_mpl(
                 continue
             label = draw.get("label", "")
             color = draw.get("color", "#2962ff")
+
+            if "entry" in label.lower():
+                entry_price = price
+            elif "exit" in label.lower():
+                exit_price = price
+                exit_label = label
 
             # Plot the horizontal line
             main_ax.axhline(
@@ -185,6 +197,49 @@ def generate_chart_mpl(
                     alpha=0.9,
                 ),
             )
+
+    # Render entry/exit markers as annotations/scatter points on the chart
+    if entry_idx is not None and entry_price is not None:
+        main_ax.scatter(
+            entry_idx, entry_price, color="#26a69a", s=100, marker="^", zorder=10
+        )
+        main_ax.text(
+            entry_idx,
+            entry_price * 1.002,
+            "ENTRY",
+            color="#26a69a",
+            fontsize=8,
+            fontweight="bold",
+            ha="center",
+            va="bottom",
+            bbox=dict(
+                facecolor="#131722",
+                edgecolor="#26a69a",
+                boxstyle="round,pad=0.1",
+                alpha=0.8,
+            ),
+        )
+
+    if exit_idx is not None and exit_price is not None:
+        main_ax.scatter(
+            exit_idx, exit_price, color="#ff9800", s=100, marker="v", zorder=10
+        )
+        main_ax.text(
+            exit_idx,
+            exit_price * 0.998,
+            exit_label.upper(),
+            color="#ff9800",
+            fontsize=8,
+            fontweight="bold",
+            ha="center",
+            va="top",
+            bbox=dict(
+                facecolor="#131722",
+                edgecolor="#ff9800",
+                boxstyle="round,pad=0.1",
+                alpha=0.8,
+            ),
+        )
 
     # 6. Render the Strategy Table (SEPA metrics/parameters)
     if strategy_table:

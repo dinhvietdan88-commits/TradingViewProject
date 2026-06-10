@@ -128,6 +128,7 @@ async def test_trade_engine_blocked_by_open_circuit_breaker():
         mock_db.get_risk_settings = AsyncMock(return_value=mock_settings)
         mock_db.insert_trade = AsyncMock(return_value=1)
         mock_db.update_signal_status = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
 
         await execute_trade(event)
 
@@ -187,6 +188,7 @@ async def test_trade_engine_auto_trips_circuit_breaker():
         mock_db.log_circuit_breaker = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=1)
         mock_db.update_signal_status = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
 
         await execute_trade(event)
 
@@ -248,6 +250,7 @@ async def test_trade_engine_half_open_halves_position_size():
         mock_db.insert_trade = AsyncMock(return_value=1)
         mock_db.update_signal_status = AsyncMock()
         mock_db.update_trade_oco = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
 
         await execute_trade(event)
 
@@ -309,6 +312,7 @@ async def test_trade_engine_tripping_event_emitted():
         mock_db.log_circuit_breaker = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=1)
         mock_db.update_signal_status = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
         mock_db.get_setting = AsyncMock(return_value=None)  # No bypass
 
         await execute_trade(event)
@@ -380,6 +384,7 @@ async def test_trade_engine_respects_bypass_setting():
         mock_db.insert_trade = AsyncMock(return_value=1)
         mock_db.update_signal_status = AsyncMock()
         mock_db.update_trade_oco = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
         mock_db.get_setting = AsyncMock(return_value=future_bypass)
 
         await execute_trade(event)

@@ -403,6 +403,7 @@ async def execute_trade(request: Request):
         quote_qty=quote_qty,
         source_ip=request.client.host if request.client else "127.0.0.1",
         payload=body,
+        raw_analysis_text=analysis_text,
     )
 
     hold_for_approval = body.get("hold_for_approval")

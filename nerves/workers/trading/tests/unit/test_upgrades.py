@@ -136,6 +136,10 @@ async def test_signal_processor_blocking_during_chop():
 
     test_bus = EventBus()
     set_bus(test_bus)
+    from core.events import SignalIngested
+    from processor.macro_trend_processor import process_macro_trend
+
+    test_bus.subscribe(SignalIngested, process_macro_trend)
     reset_dedup_cache()
 
     rejected_events = []
@@ -176,6 +180,12 @@ async def test_signal_processor_allow_during_trending():
 
     test_bus = EventBus()
     set_bus(test_bus)
+    from core.events import SignalIngested, MacroValidated
+    from processor.macro_trend_processor import process_macro_trend
+    from processor.minervini_sepa_processor import process_minervini_sepa
+
+    test_bus.subscribe(SignalIngested, process_macro_trend)
+    test_bus.subscribe(MacroValidated, process_minervini_sepa)
     reset_dedup_cache()
 
     validated_events = []
@@ -292,6 +302,7 @@ async def test_bear_end_tactical_sizing_breakout():
         mock_db.insert_trade = AsyncMock(return_value=123)
         mock_db.update_trade_oco = AsyncMock()
         mock_db.update_signal_status = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
 
         await execute_trade(event)
 
@@ -375,6 +386,7 @@ async def test_safe_mode_halves_sizing():
         mock_db.insert_trade = AsyncMock(return_value=124)
         mock_db.update_trade_oco = AsyncMock()
         mock_db.update_signal_status = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
 
         await execute_trade(event)
 
@@ -454,6 +466,7 @@ async def test_safe_mode_deactivation():
         mock_db.insert_trade = AsyncMock(return_value=125)
         mock_db.update_trade_oco = AsyncMock()
         mock_db.update_signal_status = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
 
         await execute_trade(event)
 

@@ -445,6 +445,7 @@
   <button class="tab-btn" data-tab="trade-analysis" onclick="switchTab('trade-analysis')">📊 Analysis</button>
   <button class="tab-btn" data-tab="reports" onclick="switchTab('reports')">📋 Reports</button>
   <button class="tab-btn" data-tab="scanner" onclick="switchTab('scanner')">📋 Scanner</button>
+  <button class="tab-btn" data-tab="ledger" onclick="switchTab('ledger')">⛓️ Ledger</button>
   <button class="tab-btn" data-tab="status" onclick="switchTab('status')">⚡ System</button>
   <button class="tab-btn" data-tab="visualizer" onclick="switchTab('visualizer')">📐 Visualizer</button>
 </nav>
@@ -669,7 +670,7 @@
               <div class="gauge-val-display" id="fngGaugeVal">—</div>
               <div class="gauge-label-display" id="fngGaugeLabel">Loading...</div>
             </div>
-            
+
             <!-- CCXT Market Funding Heatmap -->
             <div class="sentiment-funding-box">
               <span class="protection-label" style="font-size:0.65rem;margin-bottom:6px">Funding Rates</span>
@@ -678,7 +679,7 @@
               </div>
             </div>
           </div>
-          
+
           <!-- Watchlist Coins Sentiment breakdown -->
           <div class="sentiment-watchlist-breakdown">
             <span class="protection-label" style="font-size:0.65rem">Watchlist Sentiment Breakdown</span>
@@ -2216,6 +2217,214 @@
     </div>
 
   </div>
+
+  <!-- ═══ TAB: LEDGER ═══ -->
+  <div id="tab-ledger" class="tab-panel">
+    <!-- Scoped Ledger Styles -->
+    <style>
+      .ledger-timeline-container {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin-top: 12px;
+      }
+      .ledger-filter-bar {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        background: rgba(10, 15, 30, 0.3);
+        border: 1px solid var(--border-color);
+        padding: 12px 16px;
+        border-radius: 12px;
+      }
+      .ledger-filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .ledger-filter-group label {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+      }
+      .ledger-card {
+        background: rgba(10, 15, 30, 0.45);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 16px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        transition: border-color 0.2s ease;
+      }
+      .ledger-card:hover {
+        border-color: rgba(108, 99, 255, 0.3);
+      }
+      .ledger-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        padding-bottom: 10px;
+      }
+      .ledger-card-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .ledger-symbol {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #ffffff;
+      }
+      .ledger-action {
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 4px;
+        text-transform: uppercase;
+      }
+      .ledger-action.buy {
+        background: rgba(52, 211, 153, 0.1);
+        color: #34d399;
+      }
+      .ledger-action.sell {
+        background: rgba(248, 113, 113, 0.1);
+        color: #f87171;
+      }
+      .ledger-meta {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        display: flex;
+        gap: 16px;
+      }
+      .ledger-meta span strong {
+        color: #cbd5e1;
+      }
+      /* Step Timeline Visualizer */
+      .ledger-steps {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        position: relative;
+        margin-top: 10px;
+      }
+      .ledger-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        text-align: center;
+        padding: 10px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        position: relative;
+        transition: all 0.3s ease;
+      }
+      .ledger-step-title {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+      .ledger-step-status {
+        font-size: 0.7rem;
+        font-family: var(--font-mono);
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-muted);
+      }
+      /* Colors per status */
+      .ledger-step.passed {
+        background: rgba(52, 211, 153, 0.03);
+        border-color: rgba(52, 211, 153, 0.2);
+      }
+      .ledger-step.passed .ledger-step-title {
+        color: #34d399;
+      }
+      .ledger-step.passed .ledger-step-status {
+        background: rgba(52, 211, 153, 0.1);
+        color: #34d399;
+      }
+      .ledger-step.failed {
+        background: rgba(248, 113, 113, 0.03);
+        border-color: rgba(248, 113, 113, 0.2);
+      }
+      .ledger-step.failed .ledger-step-title {
+        color: #f87171;
+      }
+      .ledger-step.failed .ledger-step-status {
+        background: rgba(248, 113, 113, 0.1);
+        color: #f87171;
+      }
+      .ledger-step.active {
+        background: rgba(139, 92, 246, 0.03);
+        border-color: rgba(139, 92, 246, 0.4);
+        animation: pulse-active-step 2s infinite ease-in-out;
+      }
+      .ledger-step.active .ledger-step-title {
+        color: #a78bfa;
+      }
+      .ledger-step.active .ledger-step-status {
+        background: rgba(139, 92, 246, 0.15);
+        color: #a78bfa;
+      }
+      @keyframes pulse-active-step {
+        0%, 100% { border-color: rgba(139, 92, 246, 0.3); box-shadow: 0 0 0px rgba(139, 92, 246, 0); }
+        50% { border-color: rgba(139, 92, 246, 0.8); box-shadow: 0 0 8px rgba(139, 92, 246, 0.15); }
+      }
+      .ledger-rejection-info {
+        background: rgba(248, 113, 113, 0.05);
+        border: 1px dashed rgba(248, 113, 113, 0.2);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 0.78rem;
+        color: #f87171;
+        margin-top: 4px;
+        font-family: var(--font-mono);
+      }
+      .ledger-pagination {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+        padding: 10px 0;
+      }
+    </style>
+
+    <div class="ledger-timeline-container">
+      <div class="ledger-filter-bar">
+        <div class="ledger-filter-group">
+          <label for="ledgerFilterSymbol">Mã giao dịch</label>
+          <input type="text" id="ledgerFilterSymbol" class="form-input text-uppercase" placeholder="Tất cả" style="width: 120px;" oninput="refreshLedgerData()">
+        </div>
+        <div class="ledger-filter-group">
+          <label for="ledgerFilterState">Trạng thái</label>
+          <select id="ledgerFilterState" class="form-input" style="width: 180px;" onchange="refreshLedgerData()">
+            <option value="">Tất cả</option>
+            <option value="INGESTED">INGESTED (Tầng 1)</option>
+            <option value="MACRO_PASSED">MACRO_PASSED (Tầng 2)</option>
+            <option value="STRATEGY_PASSED">STRATEGY_PASSED (Tầng 3)</option>
+            <option value="COMPLETED">COMPLETED (Tầng 4)</option>
+            <option value="REJECTED">REJECTED (Bị loại bỏ)</option>
+          </select>
+        </div>
+        <button class="qbtn qbtn-scan" style="margin-left: auto; height: 38px;" onclick="refreshLedgerData()">🔄 Làm mới</button>
+      </div>
+
+      <div id="ledgerSignalsList" style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="text-align: center; color: var(--text-muted); padding: 40px;">Đang tải danh sách Ledger...</div>
+      </div>
+
+      <div class="ledger-pagination">
+        <button id="ledgerPrevBtn" class="qbtn" onclick="ledgerPrevPage()" disabled>◀ Trang trước</button>
+        <span id="ledgerPageNum" style="font-family: var(--font-mono); font-size: 0.82rem; color: var(--text-muted);">Trang 1 / 1</span>
+        <button id="ledgerNextBtn" class="qbtn" onclick="ledgerNextPage()" disabled>Trang sau ▶</button>
+      </div>
+    </div>
+  </div>
 </main>
 
 <script src="https://unpkg.com/lightweight-charts@4/dist/lightweight-charts.standalone.production.js"></script>
@@ -2227,5 +2436,6 @@
 <script src="/static/js/dashboard-signals.js?v=20260529d"></script>
 <script src="/static/js/dashboard-visualizer.js?v=20260602"></script>
 <script src="/static/js/dashboard-reports.js?v=20260603"></script>
+<script src="/static/js/dashboard-ledger.js?v=20260608"></script>
 </body>
 </html>

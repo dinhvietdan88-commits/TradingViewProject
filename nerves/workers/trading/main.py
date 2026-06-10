@@ -237,6 +237,9 @@ async def lifespan(app: FastAPI):
     import hub.notification_hub  # noqa: F401 — @bus.on(SignalRejected)
     import processor.signal_enricher  # noqa: F401 — @bus.on(IndicatorSignalValidated)
     import processor.signal_processor  # noqa: F401 — @bus.on(SignalReceived)
+    import processor.macro_trend_processor  # noqa: F401 — @bus.on(SignalIngested)
+    import processor.minervini_sepa_processor  # noqa: F401 — @bus.on(MacroValidated)
+    import processor.mean_reversion_processor  # noqa: F401 — @bus.on(MacroValidated)
 
     log.info(
         f"EventBus: {_event_bus.metrics['total_handlers']} handlers registered "
@@ -434,11 +437,14 @@ app.add_middleware(
 @app.get("/static/js/{filename:path}")
 async def serve_js_nocache(filename: str):
     """Serve JS with no-cache headers so browser always fetches latest version."""
-    js_path = STATIC_DIR / "js" / filename
-    if not js_path.exists():  # codeql[py/path-injection]
+    from security.sanitizers import sanitize_path
+
+    allowed_dir = str(STATIC_DIR / "js")
+    clean_js_path = sanitize_path(STATIC_DIR / "js" / filename, [allowed_dir])
+    if not clean_js_path or not os.path.exists(clean_js_path):
         raise HTTPException(status_code=404)
     return FileResponse(
-        path=str(js_path),  # codeql[py/path-injection]
+        path=clean_js_path,
         media_type="application/javascript",
         headers={
             "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -700,9 +706,10 @@ async def get_queue_status():
                         },
                     }
     except Exception as e:
+        log.error(f"Queue status check failed: {e}", exc_info=True)
         return {
             "enabled": True,
-            "error": str(e),
+            "error": "VPS Buffer Service communication failure",
             "summary": {
                 "pending": 0,
                 "dispatched": 0,
@@ -903,28 +910,37 @@ async def scan_mtf_endpoint(
     safe_symbol = re.sub(r"[^A-Za-z0-9_\-]", "", sym)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
+    from security.sanitizers import sanitize_path
+
     path_1d = screenshots_dir / f"mtf_1d_{safe_symbol}_{timestamp}.png"
     path_4h = screenshots_dir / f"mtf_4h_{safe_symbol}_{timestamp}.png"
     path_1h = screenshots_dir / f"mtf_1h_{safe_symbol}_{timestamp}.png"
 
+    allowed_dir = str(screenshots_dir)
+    path_1d_str = sanitize_path(path_1d, [allowed_dir])
+    path_4h_str = sanitize_path(path_4h, [allowed_dir])
+    path_1h_str = sanitize_path(path_1h, [allowed_dir])
+
     mcp = _mcp_module.get_mcp_client()
 
     captured_1d = await mcp.capture_screenshot(
-        symbol=sym, timeframe="D", save_path=path_1d
+        symbol=sym, timeframe="D", save_path=path_1d_str
     )
     await asyncio.sleep(0.5)
     captured_4h = await mcp.capture_screenshot(
-        symbol=sym, timeframe="240", save_path=path_4h
+        symbol=sym, timeframe="240", save_path=path_4h_str
     )
     await asyncio.sleep(0.5)
     captured_1h = await mcp.capture_screenshot(
-        symbol=sym, timeframe="60", save_path=path_1h
+        symbol=sym, timeframe="60", save_path=path_1h_str
     )
 
     image_paths = []
     for p in [captured_1d, captured_4h, captured_1h]:
-        if p and Path(p).exists():  # codeql[py/path-injection]
-            image_paths.append(Path(p))
+        if p:
+            safe_p = sanitize_path(p, [allowed_dir])
+            if safe_p and os.path.exists(safe_p):
+                image_paths.append(Path(safe_p))
 
     # 3. Vision AI analysis
     vision_result = {}
@@ -936,10 +952,12 @@ async def scan_mtf_endpoint(
                 mtf_scan_result={"timeframes": mtf_res.timeframes},
             )
         except Exception as e:
+            from security.sanitizers import sanitize_log, sanitize_symbol
+
             log.error(
-                f"Vision analysis failed in endpoint for {sym}: {e}"
-            )  # codeql[py/log-injection]
-            vision_result = {"error": str(e)}
+                f"Vision analysis failed in endpoint for {sanitize_symbol(sym)}: {sanitize_log(str(e))}"
+            )
+            vision_result = {"error": "Vision analysis failed"}
     else:
         vision_result = {"error": "Failed to capture any charts for vision analysis."}
 
@@ -990,15 +1008,9 @@ async def scan_mtf_endpoint(
             "error": vision_result.get("error"),
         },
         "screenshots": {
-            "1d": str(path_1d)
-            if path_1d.exists()
-            else None,  # codeql[py/path-injection]
-            "4h": str(path_4h)
-            if path_4h.exists()
-            else None,  # codeql[py/path-injection]
-            "1h": str(path_1h)
-            if path_1h.exists()
-            else None,  # codeql[py/path-injection]
+            "1d": path_1d_str if path_1d_str and os.path.exists(path_1d_str) else None,
+            "4h": path_4h_str if path_4h_str and os.path.exists(path_4h_str) else None,
+            "1h": path_1h_str if path_1h_str and os.path.exists(path_1h_str) else None,
         },
     }
 
@@ -1110,6 +1122,33 @@ async def get_indicator_signals(
         )
 
     return {"total": total, "limit": limit, "offset": offset, "signals": signals}
+
+
+@app.get("/api/signals")
+async def get_signals_endpoint(
+    symbol: str | None = Query(None, description="Filter by symbol, e.g. BTCUSDT"),
+    state: str | None = Query(
+        None,
+        description="Filter by state: INGESTED|MACRO_PASSED|STRATEGY_PASSED|COMPLETED|REJECTED",
+    ),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+):
+    """Fetch webhook signals with states and rejection reasons for the Ledger dashboard tab."""
+    try:
+        res = await database.get_signals(
+            symbol=symbol,
+            state=state,
+            limit=limit,
+            offset=offset,
+        )
+        return res
+    except Exception as e:
+        log.exception(f"Failed to get signals: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error querying signals: {e}",
+        ) from e
 
 
 @app.get("/api/chart-markers")
@@ -1776,6 +1815,7 @@ async def api_vision_capture(
 
     # ── Step 1: Screenshot Capture ───────────────────────────────
     screenshot_path = None
+    from security.sanitizers import sanitize_path
 
     if config.MCP_ENABLED:
         try:
@@ -1786,7 +1826,19 @@ async def api_vision_capture(
         except Exception as e:
             log.warning(f"MCP CDP capture failed, attempting fallback: {e}")
 
-    if not screenshot_path or not screenshot_path.exists():
+    # Standardize and sanitize screenshot_path
+    clean_screenshot_path = None
+    allowed_roots = [
+        str(Path(__file__).parent.resolve()),
+        str(Path(config.CHROMA_DB_PATH).parent.resolve()),
+    ]
+
+    if screenshot_path:
+        clean_path_str = sanitize_path(str(screenshot_path), allowed_roots)
+        if clean_path_str:
+            clean_screenshot_path = Path(clean_path_str)
+
+    if not clean_screenshot_path or not clean_screenshot_path.exists():
         log.info(
             "CDP/MCP capture not available or failed. Falling back to native local capture..."
         )
@@ -1802,11 +1854,13 @@ async def api_vision_capture(
                 inset_position=inset_position.lower(),
             )
             if res.success and res.file_path:
-                screenshot_path = Path(res.file_path)
+                clean_path_str = sanitize_path(str(res.file_path), allowed_roots)
+                if clean_path_str:
+                    clean_screenshot_path = Path(clean_path_str)
         except Exception as e:
             log.error(f"Local capture failed: {e}")
 
-    if not screenshot_path or not screenshot_path.exists():  # codeql[py/path-injection]
+    if not clean_screenshot_path or not clean_screenshot_path.exists():
         raise HTTPException(
             status_code=500,
             detail="Chart capture failed — both CDP and local rendering are unavailable",
@@ -1815,7 +1869,7 @@ async def api_vision_capture(
     # ── Step 2: AI Vision Analysis ───────────────────────────────
     try:
         vision_result = await vision_module.analyze_chart_vision(
-            image_path=Path(screenshot_path),
+            image_path=clean_screenshot_path,
             symbol=sym,
         )
     except Exception as e:
@@ -1891,9 +1945,9 @@ async def api_vision_capture(
         "patterns": patterns,
         "ai_analysis": analysis_text,
         "screenshot_url": f"/api/vision/screenshot/{brief_id}" if brief_id else None,
-        "has_screenshot": screenshot_path.exists()
-        if screenshot_path
-        else False,  # codeql[py/path-injection]
+        "has_screenshot": clean_screenshot_path.exists()
+        if clean_screenshot_path
+        else False,
     }
 
 
@@ -2126,8 +2180,12 @@ async def system_status_endpoint():
                             "connected": False,
                             "error": f"HTTP {resp.status}",
                         }
-        except Exception as e:
-            vbs_status = {"enabled": True, "connected": False, "error": str(e)}
+        except Exception:
+            vbs_status = {
+                "enabled": True,
+                "connected": False,
+                "error": "Connection error",
+            }
 
     try:
         regime = await database.get_setting("market_regime", "TRENDING")

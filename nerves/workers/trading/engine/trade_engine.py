@@ -570,6 +570,31 @@ async def execute_trade(event: TradeApproved) -> None:
                     fallback_exchange = fb
                     break
 
+    # ── Test signal dynamic dry_run override ────────────────
+    is_test_signal = False
+    if original_payload:
+        if (
+            original_payload.get("is_test") is True
+            or original_payload.get("is_test") == "true"
+        ):
+            is_test_signal = True
+        payload_mode = original_payload.get("mode", "")
+        if isinstance(payload_mode, str) and (
+            payload_mode.startswith("TEST") or payload_mode.startswith("DEMO")
+        ):
+            is_test_signal = True
+    event_mode = getattr(event, "mode", "") or ""
+    if isinstance(event_mode, str) and (
+        event_mode.startswith("TEST") or event_mode.startswith("DEMO")
+    ):
+        is_test_signal = True
+
+    if is_test_signal:
+        log.info("TradeEngine: Test signal detected. Forcing dry_run=True on adapter.")
+        adapter.dry_run = True
+        if hasattr(adapter, "_client") and adapter._client is not None:
+            adapter._client.dry_run = True
+
     try:
         # ── Execute smart order (MARKET + OCO) ───────────────
         try:
@@ -591,6 +616,16 @@ async def execute_trade(event: TradeApproved) -> None:
                 )
                 try:
                     fallback_adapter = router._registry.get_adapter(fallback_exchange)
+                    if is_test_signal:
+                        log.info(
+                            "TradeEngine: Test signal detected. Forcing dry_run=True on fallback_adapter."
+                        )
+                        fallback_adapter.dry_run = True
+                        if (
+                            hasattr(fallback_adapter, "_client")
+                            and fallback_adapter._client is not None
+                        ):
+                            fallback_adapter._client.dry_run = True
                     result = await fallback_adapter.execute_smart_order(
                         symbol=event.symbol,
                         side=action.upper(),
@@ -677,6 +712,11 @@ async def execute_trade(event: TradeApproved) -> None:
                 )
 
             await database.update_signal_status(event.signal_id, 1)
+            import inspect
+
+            res = database.update_signal_state(event.signal_id, "COMPLETED")
+            if inspect.isawaitable(res):
+                await res
 
             # ── Build telegram message for event context ─────
             fallback_text = (
@@ -765,6 +805,11 @@ async def _handle_failure(event, action, error_msg, exchange, combined_score):
         exchange=exchange,
     )
     await database.update_signal_status(event.signal_id, 2)
+    import inspect
+
+    res = database.update_signal_state(event.signal_id, "REJECTED", error_msg)
+    if inspect.isawaitable(res):
+        await res
 
     # ── Angati Event-Driven Semantic Ingestion ────────────────────────
     try:

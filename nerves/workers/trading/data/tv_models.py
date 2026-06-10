@@ -40,8 +40,12 @@ class TradingViewAlertPayload(BaseModel):
     interval: str | None = Field(default=None, description="Chart interval/timeframe")
 
     # Risk management
-    sl: str | None = Field(default=None, description="Stop Loss price or percentage")
-    tp: str | None = Field(default=None, description="Take Profit price or percentage")
+    sl: str | float | None = Field(
+        default=None, description="Stop Loss price or percentage"
+    )
+    tp: str | float | None = Field(
+        default=None, description="Take Profit price or percentage"
+    )
 
     # Exchange routing
     exchange: str | None = Field(default=None, description="Target exchange")

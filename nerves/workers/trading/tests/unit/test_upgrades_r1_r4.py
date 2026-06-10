@@ -121,6 +121,7 @@ async def test_r1_slippage_greater_than_05_percent_switches_to_limit():
         mock_db.insert_trade = AsyncMock(return_value=201)
         mock_db.update_trade_oco = AsyncMock()
         mock_db.update_signal_status = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
 
         await execute_trade(event)
 
@@ -198,6 +199,7 @@ async def test_r1_slippage_less_than_05_percent_stays_market():
         mock_db.insert_trade = AsyncMock(return_value=202)
         mock_db.update_trade_oco = AsyncMock()
         mock_db.update_signal_status = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
 
         await execute_trade(event)
 
@@ -305,6 +307,7 @@ async def test_r2_atr_based_sl_tp_and_sizing():
         mock_db.insert_trade = AsyncMock(return_value=203)
         mock_db.update_trade_oco = AsyncMock()
         mock_db.update_signal_status = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
 
         await execute_trade(event)
 
@@ -434,6 +437,7 @@ async def test_r4_chop_regime_halves_normal_signals():
         mock_db.insert_trade = AsyncMock(return_value=204)
         mock_db.update_trade_oco = AsyncMock()
         mock_db.update_signal_status = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
 
         await execute_trade(event)
 
@@ -508,6 +512,7 @@ async def test_r4_chop_regime_skips_breakout_signals():
         mock_db.set_setting = AsyncMock()
         mock_db.insert_trade = AsyncMock(return_value=205)
         mock_db.update_signal_status = AsyncMock()
+        mock_db.update_signal_state = AsyncMock()
 
         await execute_trade(event)
 

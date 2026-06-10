@@ -128,6 +128,7 @@ async def test_mcp_not_connected_emits_analysis_complete_with_default_confidence
             mock_mcp_factory.return_value = mock_mcp
 
             mock_db.insert_brief = AsyncMock(return_value=1)
+            mock_db.update_signal_state = AsyncMock()
 
             event = SignalValidated(
                 signal_id=20, symbol="BTCUSDT", action="buy", price=68000.0
@@ -196,6 +197,7 @@ async def test_vision_error_reduces_confidence_to_3():
             )
 
             mock_db.insert_brief = AsyncMock(return_value=1)
+            mock_db.update_signal_state = AsyncMock()
 
             event = SignalValidated(signal_id=21, symbol="ETHUSDT", action="buy")
             await process_validated_signal(event)
@@ -280,6 +282,7 @@ async def test_rag_warning_keyword_reduces_confidence():
             )
 
             mock_db.insert_brief = AsyncMock(return_value=1)
+            mock_db.update_signal_state = AsyncMock()
 
             event = SignalValidated(signal_id=22, symbol="BTCUSDT", action="buy")
             await process_validated_signal(event)
@@ -349,6 +352,7 @@ async def test_sl_tp_extracted_from_analysis_text():
             )
 
             mock_db.insert_brief = AsyncMock(return_value=1)
+            mock_db.update_signal_state = AsyncMock()
 
             # sl and tp are empty in the event
             event = SignalValidated(
@@ -417,6 +421,7 @@ async def test_sl_tp_from_event_take_priority():
             )
 
             mock_db.insert_brief = AsyncMock(return_value=1)
+            mock_db.update_signal_state = AsyncMock()
 
             # sl and tp already provided in event
             event = SignalValidated(
@@ -503,6 +508,7 @@ async def test_confidence_threshold_flags(confidence, should_trade, interactive)
             )
 
             mock_db.insert_brief = AsyncMock(return_value=1)
+            mock_db.update_signal_state = AsyncMock()
 
             event = SignalValidated(
                 signal_id=50 + confidence, symbol="BTCUSDT", action="buy"

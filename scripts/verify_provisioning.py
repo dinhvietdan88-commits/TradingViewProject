@@ -411,8 +411,8 @@ def main():
         "11.2": [
             (
                 "1",
-                "Debian 12 đã cài (Standard OK cho 8U16G)",
-                "Check /etc/os-release contains Debian 12 or Oracle 9",
+                "Oracle Linux 9 đã cài (Standard OK cho 8U16G)",
+                "Check /etc/os-release contains Oracle 9",
             ),
             ("2", "User botuser, SSH hardened", "Verify botuser or opt_admin exists"),
             ("3", "NTP chrony đồng bộ", "Verify chrony daemon is active"),
@@ -788,10 +788,8 @@ def main():
         p = False
         if code == 0:
             out_lower = out.lower()
-            if (
-                ("debian" in out_lower and "12" in out_lower)
-                or ("oracle" in out_lower and "9" in out_lower)
-                or ("ol" in out_lower and "9" in out_lower)
+            if ("oracle" in out_lower and "9" in out_lower) or (
+                "ol" in out_lower and "9" in out_lower
             ):
                 p = True
         results["11.2.1"] = {
@@ -1429,8 +1427,8 @@ def main():
     # Perform auto-ticking if requested
     if args.auto_tick and not args.no_tick:
         docs_to_update = [
-            "docs/SETUPS/01_VPS_SERVER_SETUP_GUIDE.md",
-            "docs/reports/01_VPS_SERVER_SETUP_GUIDE.md",
+            "eWE/SETUPS/01_VPS_SERVER_SETUP_GUIDE.md",
+            "eWE/reports/01_VPS_SERVER_SETUP_GUIDE.md",
         ]
         for doc_path in docs_to_update:
             if os.path.exists(doc_path):

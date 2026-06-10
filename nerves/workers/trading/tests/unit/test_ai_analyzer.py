@@ -178,6 +178,7 @@ async def test_high_confidence_triggers_trade():
 
             # DB
             mock_db.insert_brief = AsyncMock(return_value=1)
+            mock_db.update_signal_state = AsyncMock()
 
             event = SignalValidated(
                 signal_id=202,

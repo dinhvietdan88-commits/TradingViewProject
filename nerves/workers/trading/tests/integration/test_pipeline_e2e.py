@@ -69,6 +69,15 @@ def pipeline_bus():
     reset_dedup_cache()
     bus.on(SignalReceived)(process_signal)
 
+    from processor.macro_trend_processor import process_macro_trend
+    from processor.minervini_sepa_processor import process_minervini_sepa
+    from processor.mean_reversion_processor import process_mean_reversion
+    from core.events import SignalIngested, MacroValidated
+
+    bus.on(SignalIngested)(process_macro_trend)
+    bus.on(MacroValidated)(process_minervini_sepa)
+    bus.on(MacroValidated)(process_mean_reversion)
+
     yield bus
 
     # Teardown
@@ -166,9 +175,11 @@ async def test_scenario_a_full_pipeline_high_confidence(pipeline_bus):
 
             # DB
             mock_ai_db.insert_brief = AsyncMock(return_value=1)
+            mock_ai_db.update_signal_state = AsyncMock()
             mock_te_db.insert_trade = AsyncMock(return_value=1)
             mock_te_db.update_trade_oco = AsyncMock()
             mock_te_db.update_signal_status = AsyncMock()
+            mock_te_db.update_signal_state = AsyncMock()
 
             # FIRE the pipeline
             await pipeline_bus.emit(
@@ -280,6 +291,7 @@ async def test_scenario_b_medium_confidence_held_for_approval(pipeline_bus):
             sys.modules.setdefault("telegram_bot", mock_bot)
 
             mock_ai_db.insert_brief = AsyncMock(return_value=1)
+            mock_ai_db.update_signal_state = AsyncMock()
 
             await pipeline_bus.emit(
                 SignalReceived(
@@ -386,6 +398,7 @@ async def test_scenario_c_low_confidence_no_trade(pipeline_bus):
 
             mock_notifier.notify_all = AsyncMock()
             mock_ai_db.insert_brief = AsyncMock(return_value=1)
+            mock_ai_db.update_signal_state = AsyncMock()
 
             await pipeline_bus.emit(
                 SignalReceived(

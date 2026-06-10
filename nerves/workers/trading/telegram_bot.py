@@ -63,7 +63,10 @@ def _get_imports():
 
 
 async def send_interactive_trade_approval(
-    signal_id: int, message: str, photo_path: str | None = None
+    signal_id: int,
+    message: str,
+    photo_path: str | None = None,
+    photo_caption: str | None = None,
 ) -> list:
     """Send interactive trade approval message with Approve/Reject buttons.
 
@@ -112,7 +115,10 @@ async def send_interactive_trade_approval(
 
                         photo_file_path = Path(photo_path)
                         if photo_file_path.exists():
-                            caption = f"📊 Chart Analysis — Signal #{signal_id}"
+                            caption = (
+                                photo_caption
+                                or f"📊 Chart Analysis — Signal #{signal_id}"
+                            )
                             photo_buf = prepare_telegram_photo(photo_file_path)
                             if photo_buf:
                                 await _bot_app.bot.send_photo(
@@ -146,7 +152,11 @@ async def send_interactive_trade_approval(
 
 
 async def send_interactive_indicator_alert(
-    signal_id: int, symbol: str, message: str, photo_path: str | None = None
+    signal_id: int,
+    symbol: str,
+    message: str,
+    photo_path: str | None = None,
+    photo_caption: str | None = None,
 ) -> list:
     """Send interactive indicator alert with AI Scan and Dismiss buttons.
 
@@ -194,7 +204,8 @@ async def send_interactive_indicator_alert(
                         photo_file_path = Path(photo_path)
                         if photo_file_path.exists():
                             caption = (
-                                f"📊 Indicator Chart — {symbol} (Signal #{signal_id})"
+                                photo_caption
+                                or f"📊 Indicator Chart — {symbol} (Signal #{signal_id})"
                             )
                             photo_buf = prepare_telegram_photo(photo_file_path)
                             if photo_buf:
@@ -1065,6 +1076,7 @@ async def cmd_trades(update, context):
         try:
             limit = min(int(context.args[0]), 50)
         except ValueError:
+            # ignore invalid limit format
             pass
 
     trades = await _data_facade.get_recent_trades(limit=limit)
@@ -1134,8 +1146,6 @@ async def _run_backtest_charts(
                        'history' = trade history table only
         symbol:      Optional symbol filter (e.g. 'BTCUSDT')
     """
-    import asyncio
-
     import database
     from charting import (
         generate_backtest_chart,
@@ -1711,6 +1721,7 @@ def parse_mtf_trade_params(
         try:
             entry = float(entry_match.group(1).replace(",", ""))
         except ValueError:
+            # ignore parsing error
             pass
 
     sl_match = re.search(
@@ -1720,6 +1731,7 @@ def parse_mtf_trade_params(
         try:
             sl = float(sl_match.group(1).replace(",", ""))
         except ValueError:
+            # ignore parsing error
             pass
 
     tp_match = re.search(
@@ -1730,6 +1742,7 @@ def parse_mtf_trade_params(
         try:
             tp = float(tp_match.group(1).replace(",", ""))
         except ValueError:
+            # ignore parsing error
             pass
 
     if not entry or entry <= 0:
@@ -1833,8 +1846,6 @@ async def cmd_scan_mtf(update, context):
         )
 
         try:
-            import asyncio
-
             import aiohttp
 
             from analysis import scan_symbol_multi_timeframe
@@ -1981,19 +1992,21 @@ async def cmd_scan_mtf(update, context):
 
             media_group = []
             file_handles = []
-            for i, p in enumerate(image_paths):
-                fh = open(p, "rb")
-                file_handles.append(fh)
-                caption = (
-                    f"📊 {symbol} Multi-Timeframe Charts (1D, 4H, 1H)"
-                    if i == 0
-                    else None
-                )
-                media_group.append(InputMediaPhoto(media=fh, caption=caption))
+            try:
+                for i, p in enumerate(image_paths):
+                    fh = open(p, "rb")
+                    file_handles.append(fh)
+                    caption = (
+                        f"📊 {symbol} Multi-Timeframe Charts (1D, 4H, 1H)"
+                        if i == 0
+                        else None
+                    )
+                    media_group.append(InputMediaPhoto(media=fh, caption=caption))
 
-            await message.reply_media_group(media=media_group)
-            for fh in file_handles:
-                fh.close()
+                await message.reply_media_group(media=media_group)
+            finally:
+                for fh in file_handles:
+                    fh.close()
 
             # 8. Send the text report with inline buttons
             from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -2223,8 +2236,6 @@ async def button_callback(update, context):
             user = query.from_user.username or query.from_user.first_name
 
             # Emit TradeApproved event in background
-            import asyncio
-
             asyncio.create_task(
                 _default_bus.emit_background(
                     TradeApproved(
@@ -2260,7 +2271,6 @@ async def button_callback(update, context):
         if signal_id in PENDING_TRADES:
             event = PENDING_TRADES.pop(signal_id)
             user = query.from_user.username or query.from_user.first_name
-            import asyncio
 
             from core.event_bus import bus as _default_bus
             from core.events import TradeFailed
@@ -2290,7 +2300,7 @@ async def button_callback(update, context):
             await query.message.edit_text(new_text, parse_mode="HTML")
 
     elif data.startswith("ignore_"):
-        signal_id = int(data.split("_")[1])
+        _signal_id = int(data.split("_")[1])
         user = query.from_user.username or query.from_user.first_name
         from notifier import sanitize_for_telegram_html
 
@@ -2914,6 +2924,7 @@ class ExchangeQueryFacade:
                         )
                     )
         except ImportError:
+            # ignore missing exchange dependencies
             pass
         return results
 
@@ -3680,6 +3691,9 @@ def start_bot():
                     )
                     log.info(
                         f"📊 ReportAutoSend scheduler started (time={config.REPORT_SEND_TIME} ICT)"
+                    )
+                    log.debug(
+                        f"Registered background task: {_report_auto_send_task.get_name()}"
                     )
 
             app.post_init = post_init

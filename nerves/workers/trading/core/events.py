@@ -61,6 +61,24 @@ class SignalReceived(Event):
 
 
 @dataclass(frozen=True)
+class SignalIngested(Event):
+    """Emitted by Ingestion/Gatekeeper Layer (SignalProcessor) after passing dedup and timeframe checks."""
+
+    signal_id: int = 0
+    symbol: str = ""
+    action: str = ""
+    price: float | None = None
+    quote_qty: float = 10.0
+    interval: str = ""
+    sl: str = ""
+    tp: str = ""
+    exchange: str = "binance"
+    mode: str = ""  # "MTT" | "MIS" | ""
+    is_recovered: bool = False
+    age_minutes: float = 0.0
+
+
+@dataclass(frozen=True)
 class IndicatorSignalReceived(Event):
     """Emitted by WebhookGateway when an indicator payload is parsed and authenticated."""
 
@@ -123,6 +141,30 @@ class SignalValidated(Event):
     mode: str = ""  # "MTT" | "MIS" | "" — forwarded from SignalReceived
     is_recovered: bool = False
     age_minutes: float = 0.0
+    tas: float = 0.0
+    sts: float = 0.0
+    mlts: float = 0.0
+    mta_calculated: bool = False
+
+
+@dataclass(frozen=True)
+class MacroValidated(Event):
+    """Emitted by Layer 2 MacroTrendProcessor after trend template & regime validation passes."""
+
+    signal_id: int = 0
+    symbol: str = ""
+    action: str = ""
+    price: float | None = None
+    quote_qty: float = 10.0
+    interval: str = ""
+    sl: str = ""
+    tp: str = ""
+    exchange: str = "binance"
+    mode: str = ""  # "MTT" | "MIS" | ""
+    is_recovered: bool = False
+    age_minutes: float = 0.0
+    mta_trend_score: float = 0.0
+    market_regime: str = ""
 
 
 @dataclass(frozen=True)
@@ -315,3 +357,31 @@ class CaptureTriggered(Event):
     symbol: str = ""
     trigger: str = ""  # "signal" | "schedule" | "command"
     source_event_id: str = ""
+
+
+# ═══════════════════════════════════════════════════════════════
+# CONSENSUS EVENTS
+# ═══════════════════════════════════════════════════════════════
+
+
+@dataclass(frozen=True)
+class ConsensusRequested(Event):
+    """Fired when an E5 operation or state transition requires council evaluation."""
+
+    operation: str = ""
+    requester: str = ""
+    details: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class ConsensusEvaluated(Event):
+    """Fired when the Council has completed voting."""
+
+    operation: str = ""
+    sa_verdict: str = ""
+    sre_verdict: str = ""
+    meta_verdict: str = ""
+    ac_verdict: str = ""
+    final_verdict: str = ""
+    override_token: str | None = None
+    rationale: str = ""

@@ -93,6 +93,66 @@ def remove_pending_trade(signal_id: int):
     return PENDING_TRADES.pop(signal_id, None)
 
 
+async def _is_test_signal(event) -> str | None:
+    """Check if a signal is a test signal based on event mode or database lookup."""
+    mode = getattr(event, "mode", "") or ""
+    if isinstance(mode, str):
+        if mode.upper().startswith("TEST"):
+            return "[TEST] "
+        if mode.upper().startswith("DEMO"):
+            return "[DEMO] "
+
+    signal_id = getattr(event, "signal_id", None)
+    if not signal_id and hasattr(event, "symbol") and hasattr(event, "exchange"):
+        try:
+            async with aiosqlite.connect(config.DB_PATH) as db:
+                db.row_factory = aiosqlite.Row
+                async with db.execute(
+                    "SELECT signal_id FROM trades WHERE symbol = ? AND LOWER(exchange) = ? ORDER BY id DESC LIMIT 1",
+                    (event.symbol, event.exchange.lower()),
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if row:
+                        signal_id = row["signal_id"]
+        except Exception as e:
+            log.warning(
+                f"NotificationHub: Failed to resolve signal_id for symbol {event.symbol}: {e}"
+            )
+
+    if signal_id:
+        try:
+            async with aiosqlite.connect(config.DB_PATH) as db:
+                db.row_factory = aiosqlite.Row
+                async with db.execute(
+                    "SELECT mode, payload FROM signals WHERE id = ?", (signal_id,)
+                ) as cursor:
+                    row = await cursor.fetchone()
+                    if row:
+                        db_mode = row["mode"] or ""
+                        if isinstance(db_mode, str):
+                            if db_mode.upper().startswith("TEST"):
+                                return "[TEST] "
+                            if db_mode.upper().startswith("DEMO"):
+                                return "[DEMO] "
+                        payload_str = row["payload"]
+                        if payload_str:
+                            payload = json.loads(payload_str)
+                            if (
+                                payload.get("is_test") is True
+                                or payload.get("is_test") == "true"
+                            ):
+                                return "[TEST] "
+                            p_mode = payload.get("mode") or ""
+                            if isinstance(p_mode, str):
+                                if p_mode.upper().startswith("TEST"):
+                                    return "[TEST] "
+                                if p_mode.upper().startswith("DEMO"):
+                                    return "[DEMO] "
+        except Exception as e:
+            log.warning(f"NotificationHub: Failed to check test status in DB: {e}")
+    return None
+
+
 async def _get_vbs_metadata(signal_id: int) -> dict:
     """Helper to query VBS message metadata from local database payload."""
     try:
@@ -324,14 +384,30 @@ async def notify_signal_rejected(event: SignalRejected) -> None:
     - invalid_timeframe: Interval not in {60, 1h, 60m}.
     - low_confidence: AI confidence < 5 (auto-reject by gate).
     """
+    prefix = await _is_test_signal(event) or ""
+    try:
+        import database
+        import inspect
+
+        res = database.update_signal_state(event.signal_id, "REJECTED", event.reason)
+        if inspect.isawaitable(res):
+            await res
+    except Exception as e:
+        log.warning(f"NotificationHub: Failed to update signal state to REJECTED: {e}")
     reason_map = {
-        "duplicate_signal": "Tín hiệu trùng lặp (dedup 60s)",
-        "invalid_timeframe": f"Khung thời gian không hợp lệ: `{event.interval}`",
-        "unknown_action": f"Hành động không xác định: `{event.action}`",
-        "low_confidence": "Điểm AI quá thấp (< 5/10) — tự động từ chối",
+        "duplicate_signal": "Tầng 1 (Gatekeeper) — Tín hiệu trùng lặp (dedup 60s)",
+        "invalid_timeframe": f"Tầng 1 (Gatekeeper) — Khung thời gian không hợp lệ: `{event.interval}`",
+        "unknown_action": f"Tầng 1 (Gatekeeper) — Hành động không xác định: `{event.action}`",
+        "market_regime_chop_block": "Tầng 2 (Macro Filter) — Bị từ chối do thị trường CHOP (Chop Regime Block)",
+        "macro_trend_conflict": "Tầng 2 (Macro Filter) — Bị từ chối do xu hướng vĩ mô không thuận lợi (Daily/4H SMA Veto)",
+        "sepa_trend_template_failed": "Tầng 3 (Strategy Filter) — Bị từ chối do Trend Template không đủ tiêu chuẩn (< 5/8)",
+        "mean_reversion_indicators_failed": "Tầng 3 (Strategy Filter) — Bị từ chối do không đạt điều kiện chỉ báo RSI & Bollinger Bands",
+        "low_confidence": "Tầng 4 (AI Analyzer) — Điểm AI quá thấp (< 5/10) — tự động từ chối",
     }
 
-    reason_text = reason_map.get(event.reason, event.reason)
+    reason_text = reason_map.get(event.reason)
+    if not reason_text:
+        reason_text = f"Tầng 4 (Execution Engine) — Lỗi: {event.reason}"
 
     if event.reason == "low_confidence" and getattr(event, "analysis_text", ""):
         from utils.html_chunker import truncate_caption_html_safe
@@ -360,6 +436,9 @@ async def notify_signal_rejected(event: SignalRejected) -> None:
     log.info(
         f"NotificationHub: Rejected signal #{event.signal_id} on {getattr(event, 'exchange', 'binance')} — {event.reason}"
     )
+
+    if prefix and not msg.startswith(prefix):
+        msg = prefix + msg
 
     # Try editing original VBS Queue message to avoid spam
     vbs_meta = await _get_vbs_metadata(event.signal_id)
@@ -392,6 +471,9 @@ async def notify_signal_rejected(event: SignalRejected) -> None:
         elif event.reason == "invalid_timeframe":
             edit_msg += " (Khung 1H/Daily mới hợp lệ)"
 
+        if prefix and not edit_msg.startswith(prefix):
+            edit_msg = prefix + edit_msg
+
         edited = False
         for m in tg_msgs:
             if await notifier.edit_telegram_message(
@@ -420,6 +502,7 @@ async def notify_indicator_signal_rejected(event: IndicatorSignalRejected) -> No
     }
     reason_text = reason_map.get(event.reason, event.reason)
 
+    prefix = await _is_test_signal(event) or ""
     if event.is_recovered:
         msg = (
             f"🕒 **[PHỤC HỒI] Tín Hiệu Bị Từ Chối (cách đây {event.age_minutes}p)**\n"
@@ -437,6 +520,9 @@ async def notify_indicator_signal_rejected(event: IndicatorSignalRejected) -> No
     log.info(
         f"NotificationHub: Rejected indicator signal #{event.signal_id} on {event.exchange} — {event.reason}"
     )
+
+    if prefix and not msg.startswith(prefix):
+        msg = prefix + msg
 
     # Try editing original VBS Queue message to avoid spam
     if not event.is_recovered:
@@ -460,6 +546,9 @@ async def notify_indicator_signal_rejected(event: IndicatorSignalRejected) -> No
                 edit_msg += f"{ind_details}\n"
 
             edit_msg += f"• Lý do: {reason_text}"
+
+            if prefix and not edit_msg.startswith(prefix):
+                edit_msg = prefix + edit_msg
 
             edited = False
             for m in tg_msgs:
@@ -498,6 +587,7 @@ async def notify_indicator_signal(event: IndicatorSignalReceived) -> None:
         return
 
     exchange = getattr(event, "exchange", "binance")
+    prefix = await _is_test_signal(event) or ""
 
     # REQ 6.4 / Prop 17: High-priority gate
     priority_prefix = "🔴 **KHẨN CẤP** — " if event.confidence_score > 80 else ""
@@ -535,6 +625,9 @@ async def notify_indicator_signal(event: IndicatorSignalReceived) -> None:
         f"({event.indicator_name}, confidence={event.confidence_score}%)"
     )
 
+    if prefix and not msg.startswith(prefix):
+        msg = prefix + msg
+
     if event.is_recovered:
         await notifier.notify_all(msg)
     else:
@@ -544,12 +637,17 @@ async def notify_indicator_signal(event: IndicatorSignalReceived) -> None:
         try:
             import telegram_bot
 
-            await telegram_bot.send_interactive_indicator_alert(
-                signal_id=event.signal_id,
-                symbol=event.symbol,
-                message=msg,
-                photo_path=chart_path,
-            )
+            kwargs = {
+                "signal_id": event.signal_id,
+                "symbol": event.symbol,
+                "message": msg,
+                "photo_path": chart_path,
+            }
+            if prefix:
+                kwargs["photo_caption"] = (
+                    f"{prefix}📊 Indicator Chart — {event.symbol} (Signal #{event.signal_id})"
+                )
+            await telegram_bot.send_interactive_indicator_alert(**kwargs)
         except Exception as e:
             log.error(
                 f"NotificationHub: Failed to trigger interactive indicator alert: {e}"
@@ -558,10 +656,13 @@ async def notify_indicator_signal(event: IndicatorSignalReceived) -> None:
             if chart_path:
                 import asyncio
 
+                caption = f"📊 {event.symbol} — Indicator"
+                if prefix:
+                    caption = prefix + caption
                 await asyncio.to_thread(
                     notifier.send_telegram_photo,
                     chart_path,
-                    f"📊 {event.symbol} — Indicator",
+                    caption,
                 )
 
 
@@ -600,7 +701,8 @@ async def process_analysis_complete(event: AnalysisComplete) -> None:
         # Render chart with Entry/SL/TP (non-blocking)
         chart_path = await _render_chart_for_event(event)
 
-        await notifier.notify_all(
+        test_prefix = await _is_test_signal(event) or ""
+        approve_msg = (
             f"{prefix}🟢 **AUTO-APPROVE** — `{event.symbol}` trên `{exchange.upper()}`\n"
             f"- Điểm AI: `{confidence}/10`\n"
             f"- Hành động: `{event.action.upper()}`\n"
@@ -608,10 +710,16 @@ async def process_analysis_complete(event: AnalysisComplete) -> None:
             f"- SL: `{event.sl or 'N/A'}` | TP: `{event.tp or 'N/A'}`\n\n"
             f"🤖 Tự động gửi lệnh..."
         )
+        if test_prefix:
+            approve_msg = test_prefix + approve_msg
+
+        await notifier.notify_all(approve_msg)
 
         # Send chart photo if available
         if chart_path:
             caption = f"📊 {event.symbol} — Auto-Approve (AI {confidence}/10)"
+            if test_prefix:
+                caption = test_prefix + caption
             import asyncio
 
             await asyncio.to_thread(notifier.send_telegram_photo, chart_path, caption)
@@ -727,6 +835,10 @@ async def process_analysis_complete(event: AnalysisComplete) -> None:
             tp_pct=tp_pct,
         )
 
+        test_prefix = await _is_test_signal(event) or ""
+        if test_prefix:
+            msg = test_prefix + msg
+
         is_recovered = getattr(event, "is_recovered", False)
         if is_recovered:
             msg = (
@@ -740,6 +852,8 @@ async def process_analysis_complete(event: AnalysisComplete) -> None:
             # Send chart for recovered signals too
             if chart_path:
                 caption = f"📊 {event.symbol} — Recovered (AI {confidence}/10)"
+                if test_prefix:
+                    caption = test_prefix + caption
                 import asyncio
 
                 await asyncio.to_thread(
@@ -749,10 +863,17 @@ async def process_analysis_complete(event: AnalysisComplete) -> None:
             try:
                 import telegram_bot
 
+                kwargs = {
+                    "signal_id": event.signal_id,
+                    "message": msg,
+                    "photo_path": chart_path,
+                }
+                if test_prefix:
+                    kwargs["photo_caption"] = (
+                        f"{test_prefix}📊 Chart Analysis — Signal #{event.signal_id}"
+                    )
                 sent_pairs = await telegram_bot.send_interactive_trade_approval(
-                    signal_id=event.signal_id,
-                    message=msg,
-                    photo_path=chart_path,
+                    **kwargs
                 )
                 if not sent_pairs:
                     # Fallback to normal notify if bot not running
@@ -762,10 +883,13 @@ async def process_analysis_complete(event: AnalysisComplete) -> None:
                     if chart_path:
                         import asyncio
 
+                        caption = f"📊 {event.symbol}"
+                        if test_prefix:
+                            caption = test_prefix + caption
                         await asyncio.to_thread(
                             notifier.send_telegram_photo,
                             chart_path,
-                            f"📊 {event.symbol}",
+                            caption,
                         )
                 else:
                     # REQ7: Register sent messages with ApprovalTimeoutManager for auto-timeout
@@ -783,8 +907,11 @@ async def process_analysis_complete(event: AnalysisComplete) -> None:
                 if chart_path:
                     import asyncio
 
+                    caption = f"📊 {event.symbol}"
+                    if test_prefix:
+                        caption = test_prefix + caption
                     await asyncio.to_thread(
-                        notifier.send_telegram_photo, chart_path, f"📊 {event.symbol}"
+                        notifier.send_telegram_photo, chart_path, caption
                     )
         return
 
@@ -815,6 +942,7 @@ async def process_analysis_complete(event: AnalysisComplete) -> None:
 
 @_default_bus.on(TradeExecuted)
 async def notify_trade_executed(event: TradeExecuted) -> None:
+    test_prefix = await _is_test_signal(event) or ""
     """
     v6.0: Centralized execution notification.
     TradeEngine emits TradeExecuted → NotificationHub formats and sends.
@@ -844,6 +972,9 @@ async def notify_trade_executed(event: TradeExecuted) -> None:
 
         msg += f"\n\n🧠 **Phân tích AI:**\n{truncate_caption_html_safe(event.rag_advice, 500)}"
 
+    if test_prefix and not msg.startswith(test_prefix):
+        msg = test_prefix + msg
+
     log.info(f"NotificationHub: Trade executed #{event.trade_id} on {exchange}")
     await notifier.notify_all(msg)
 
@@ -861,6 +992,7 @@ async def notify_trade_executed(event: TradeExecuted) -> None:
 
 @_default_bus.on(TradeFailed)
 async def notify_trade_failed(event: TradeFailed) -> None:
+    test_prefix = await _is_test_signal(event) or ""
     """
     v6.0: Centralized failure notification.
     TradeEngine emits TradeFailed → NotificationHub formats and sends.
@@ -874,6 +1006,9 @@ async def notify_trade_failed(event: TradeFailed) -> None:
         f"- Chi tiết lỗi: `{event.error}`\n"
         f"- Signal ID: `#{event.signal_id}`"
     )
+
+    if test_prefix and not msg.startswith(test_prefix):
+        msg = test_prefix + msg
 
     log.info(f"NotificationHub: Trade failed for #{event.signal_id} on {exchange}")
     await notifier.notify_all(msg)
@@ -891,6 +1026,7 @@ async def notify_position_closed(event: PositionClosed) -> None:
     PositionMonitor emits PositionClosed → NotificationHub sends P&L.
     """
     exchange = getattr(event, "exchange", "binance")
+    test_prefix = await _is_test_signal(event) or ""
     pnl_emoji = "🟢" if event.pnl >= 0 else "🔴"
     exit_reason_map = {
         "STOP_LOSS": "🛑 Cắt lỗ (Stop Loss)",
@@ -909,6 +1045,9 @@ async def notify_position_closed(event: PositionClosed) -> None:
         f"- P&L: `{event.pnl:+.4f}` ({event.pnl_pct:+.2f}%)\n"
     )
 
+    if test_prefix and not msg.startswith(test_prefix):
+        msg = test_prefix + msg
+
     log.info(
         f"NotificationHub: Position closed {event.symbol} on {exchange} — "
         f"P&L: {event.pnl:+.4f} ({event.exit_reason})"
@@ -923,6 +1062,7 @@ async def notify_position_closed(event: PositionClosed) -> None:
 
 @_default_bus.on(TradeApprovalTimeout)
 async def handle_approval_timeout(event: TradeApprovalTimeout) -> None:
+    test_prefix = await _is_test_signal(event) or ""
     """
     v6.0: Garbage collection for stale interactive approval requests.
     Removes from PENDING_TRADES and notifies the user.
@@ -932,13 +1072,16 @@ async def handle_approval_timeout(event: TradeApprovalTimeout) -> None:
         log.info(
             f"NotificationHub: Approval timeout for #{event.signal_id} {event.symbol}"
         )
-        await notifier.notify_all(
+        timeout_msg = (
             f"⏰ **Hết thời gian duyệt lệnh**\n"
             f"- Mã: `{event.symbol}`\n"
             f"- Signal ID: `#{event.signal_id}`\n"
             f"- Lý do: {event.reason}\n\n"
             f"Lệnh đã bị hủy tự động."
         )
+        if test_prefix:
+            timeout_msg = test_prefix + timeout_msg
+        await notifier.notify_all(timeout_msg)
     else:
         log.debug(
             f"NotificationHub: Timeout for #{event.signal_id} but no pending trade found (already processed)."

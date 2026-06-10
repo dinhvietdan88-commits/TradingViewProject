@@ -31,4 +31,3 @@ slowapi>=0.1.0
 
 # ── Sentry/Observability Integration ──────────────────────────
 sentry-sdk[fastapi]>=2.0.0
-

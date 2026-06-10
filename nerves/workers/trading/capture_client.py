@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import config
+from security.sanitizers import sanitize_symbol, sanitize_log, sanitize_path
 
 # SEC-4: Runtime guard for SSRF prevention (CWE-918)
 try:
@@ -31,7 +32,12 @@ except ImportError:
         return symbol, interval
 
     def safe_path(raw_path, base_dir: Path, **kwargs) -> Path:  # type: ignore[misc]
-        return Path(raw_path).resolve()  # codeql[py/path-injection]
+        from security.sanitizers import sanitize_path
+
+        clean_path_str = sanitize_path(str(raw_path), [str(base_dir.resolve())])
+        if not clean_path_str:
+            raise ValueError("Path traversal detected")
+        return Path(clean_path_str)
 
 
 logger = logging.getLogger(__name__)
@@ -139,10 +145,14 @@ class PythonCaptureClient:
     # ── Core API ──────────────────────────────────────────────────────────────
 
     async def fetch_ohlcv(
-        self, symbol: str, timeframe: str = "D", limit: int = 150
+        self,
+        symbol: str,
+        timeframe: str = "D",
+        limit: int = 150,
+        force_exchange: bool = False,
     ) -> list[Any]:
         """Public method to fetch OHLCV klines from cache or from external public exchange endpoints."""
-        return await self._get_ohlcv_data(symbol, timeframe, limit)
+        return await self._get_ohlcv_data(symbol, timeframe, limit, force_exchange)
 
     async def capture_screenshot(
         self,
@@ -169,11 +179,11 @@ class PythonCaptureClient:
         local native rendering.
         """
         if save_path is not None:
-            save_path = safe_path(
-                save_path,
-                Path(__file__).resolve().parents[3],
-                allowed_extensions={".png", ".jpg", ".jpeg", ".webp"},
-            )
+            allowed_dir = str(Path(__file__).resolve().parents[3])
+            clean_save = sanitize_path(str(save_path), [allowed_dir])
+            if not clean_save:
+                raise ValueError("Path traversal detected")
+            save_path = Path(clean_save)
 
         start_time = time.monotonic()
 
@@ -192,6 +202,9 @@ class PythonCaptureClient:
             capture_method = config.CHART_CAPTURE_METHOD
 
         capture_method = capture_method.lower() if capture_method else "daemon"
+
+        if config.CHART_CAPTURE_METHOD == "none" or capture_method == "none":
+            capture_method = "none"
 
         # Route to daemon if selected and available
         if capture_method == "daemon":
@@ -438,6 +451,12 @@ class PythonCaptureClient:
         pattern_overlays: Any | None = None,
     ) -> CaptureResult:
         """Executes native rendering locally using lightweight-charts or mplfinance."""
+        if method == "none":
+            return CaptureResult(
+                success=False,
+                error="Chart capture is disabled via 'none' method",
+                method="none",
+            )
         self._fallback_mode = True
 
         # Mappings for nested timeframes: 15m (parent 1H) and 1H (parent 4H)
@@ -595,12 +614,50 @@ class PythonCaptureClient:
 
     # ── OHLCV Data Fetcher & Cache ───────────────────────────────────────────
 
+    def _validate_candles(
+        self, candles: list[list[Any]], timeframe: str, required_limit: int
+    ) -> bool:
+        """Validate candle list: count >= required_limit, no gaps, and not stale."""
+        if not candles or len(candles) < required_limit:
+            return False
+
+        # Determine multiplier (seconds vs milliseconds)
+        is_ms = candles[0][0] > 1e11
+        multiplier = 1000 if is_ms else 1
+
+        if timeframe == "5m":
+            interval_ms = 5 * 60 * multiplier
+        elif timeframe == "1d":
+            interval_ms = 24 * 60 * 60 * multiplier
+        else:
+            # fallback
+            interval_ms = 5 * 60 * multiplier
+
+        # 1. Gap check
+        for i in range(1, len(candles)):
+            delta = candles[i][0] - candles[i - 1][0]
+            if delta > 1.5 * interval_ms:
+                return False
+
+        # 2. Staleness check
+        now_ts = time.time() * multiplier
+        if (now_ts - candles[-1][0]) > 2 * interval_ms:
+            return False
+
+        return True
+
     async def _get_ohlcv_data(
-        self, symbol: str, timeframe: str, limit: int
+        self, symbol: str, timeframe: str, limit: int, force_exchange: bool = False
     ) -> list[Any]:
-        """Gets OHLCV data from cache or from external public exchange endpoints."""
+        """Gets OHLCV data from local DB, cache, or from external public exchange endpoints."""
         now = time.time()
         cache_key = (symbol, timeframe)
+
+        if force_exchange:
+            # Bypass local database checking, fetch directly from exchange
+            ohlcv = await self._fetch_ohlcv_from_exchange(symbol, timeframe, limit)
+            self._ohlcv_cache[cache_key] = {"timestamp": now, "data": ohlcv}
+            return ohlcv
 
         # Check cache
         if cache_key in self._ohlcv_cache:
@@ -608,12 +665,144 @@ class PythonCaptureClient:
             if now - entry["timestamp"] < self._ohlcv_cache_ttl:
                 return entry["data"]
 
-        # Fetch from exchange
-        ohlcv = await self._fetch_ohlcv_from_exchange(symbol, timeframe, limit)
+        # If force_exchange is False
+        if timeframe in ("5m", "1d"):
+            try:
+                import aiosqlite
 
-        # Save cache
-        self._ohlcv_cache[cache_key] = {"timestamp": now, "data": ohlcv}
-        return ohlcv
+                async with aiosqlite.connect(
+                    config.DB_PATH, timeout=config.DB_TIMEOUT
+                ) as db:
+                    async with db.execute(
+                        f"SELECT timestamp, open, high, low, close, volume FROM ohlcv_{timeframe} WHERE symbol = ? ORDER BY timestamp DESC LIMIT ?",  # noqa: S608
+                        (symbol, limit),
+                    ) as cursor:
+                        rows = await cursor.fetchall()
+                candles = [[r[0], r[1], r[2], r[3], r[4], r[5]] for r in rows]
+                candles.reverse()
+
+                if self._validate_candles(candles, timeframe, limit):
+                    # Cache in memory and return
+                    self._ohlcv_cache[cache_key] = {"timestamp": now, "data": candles}
+                    return candles
+            except Exception as e:
+                logger.warning(
+                    f"Failed to fetch/validate local {timeframe} candles for {sanitize_symbol(symbol)}: {sanitize_log(str(e))}"
+                )
+
+            # Fallback to exchange
+            ohlcv = await self._fetch_ohlcv_from_exchange(symbol, timeframe, limit)
+            self._ohlcv_cache[cache_key] = {"timestamp": now, "data": ohlcv}
+            try:
+                import database
+
+                formatted = [
+                    [symbol, c[0], c[1], c[2], c[3], c[4], c[5]] for c in ohlcv
+                ]
+                await database.insert_ohlcv_batch(timeframe, formatted)
+            except Exception as e:
+                logger.warning(f"Failed to write fallback candles to local DB: {e}")
+            return ohlcv
+
+        elif timeframe in ("30m", "1h", "4h", "1H", "4H", "30"):
+            tf_lower = timeframe.lower()
+            if tf_lower in ("30m", "30"):
+                target_interval_minutes = 30
+            elif tf_lower in ("1h", "60", "1h"):
+                target_interval_minutes = 60
+            elif tf_lower in ("4h", "240", "4h"):
+                target_interval_minutes = 240
+            else:
+                target_interval_minutes = 30
+
+            query_limit = limit * (target_interval_minutes // 5) + 50
+            try:
+                import aiosqlite
+
+                async with aiosqlite.connect(
+                    config.DB_PATH, timeout=config.DB_TIMEOUT
+                ) as db:
+                    async with db.execute(
+                        "SELECT timestamp, open, high, low, close, volume FROM ohlcv_5m WHERE symbol = ? ORDER BY timestamp DESC LIMIT ?",
+                        (symbol, query_limit),
+                    ) as cursor:
+                        rows = await cursor.fetchall()
+                candles_5m = [[r[0], r[1], r[2], r[3], r[4], r[5]] for r in rows]
+                candles_5m.reverse()
+
+                required_limit = limit * (target_interval_minutes // 5)
+                if self._validate_candles(candles_5m, "5m", required_limit):
+                    import pandas as pd
+
+                    df = pd.DataFrame(
+                        candles_5m,
+                        columns=["timestamp", "open", "high", "low", "close", "volume"],
+                    )
+                    is_ms = candles_5m[0][0] > 1e11
+                    if is_ms:
+                        df["datetime"] = pd.to_datetime(
+                            df["timestamp"], unit="ms", utc=True
+                        )
+                    else:
+                        df["datetime"] = pd.to_datetime(
+                            df["timestamp"], unit="s", utc=True
+                        )
+                    df.set_index("datetime", inplace=True)
+
+                    rule = f"{target_interval_minutes}min"
+                    resampled = (
+                        df.resample(rule, closed="left", label="left")
+                        .agg(
+                            {
+                                "open": "first",
+                                "high": "max",
+                                "low": "min",
+                                "close": "last",
+                                "volume": "sum",
+                            }
+                        )
+                        .dropna()
+                    )
+
+                    resampled_candles = []
+                    for idx, row in resampled.iterrows():
+                        if is_ms:
+                            ts = int(idx.timestamp() * 1000)
+                        else:
+                            ts = int(idx.timestamp())
+                        resampled_candles.append(
+                            [
+                                ts,
+                                float(row["open"]),
+                                float(row["high"]),
+                                float(row["low"]),
+                                float(row["close"]),
+                                float(row["volume"]),
+                            ]
+                        )
+
+                    if len(resampled_candles) >= limit:
+                        final_candles = resampled_candles[-limit:]
+                        self._ohlcv_cache[cache_key] = {
+                            "timestamp": now,
+                            "data": final_candles,
+                        }
+                        return final_candles
+            except Exception as e:
+                logger.warning(
+                    f"Failed to resample local {timeframe} candles for {sanitize_symbol(symbol)}: {sanitize_log(str(e))}"
+                )
+
+            # Fallback to exchange
+            ohlcv = await self._fetch_ohlcv_from_exchange(symbol, timeframe, limit)
+            self._ohlcv_cache[cache_key] = {"timestamp": now, "data": ohlcv}
+            return ohlcv
+
+        else:
+            # Other timeframes (e.g. 1w, 1M)
+            ohlcv = await self._fetch_ohlcv_from_exchange(symbol, timeframe, limit)
+            self._ohlcv_cache[cache_key] = {"timestamp": now, "data": ohlcv}
+            return ohlcv
 
     async def _fetch_ohlcv_from_exchange(
         self, symbol: str, timeframe: str, limit: int
@@ -635,12 +824,12 @@ class PythonCaptureClient:
         for ex in exchanges:
             try:
                 logger.info(
-                    f"Attempting direct {interval} fetch from {ex} for {symbol}..."  # codeql[py/log-injection]
+                    f"Attempting direct {interval} fetch from {ex} for {sanitize_symbol(symbol)}..."
                 )
                 return await self._fetch_raw_ohlcv(symbol, interval, limit, exchange=ex)
             except Exception as e:
                 logger.warning(
-                    f"Direct fetch failed from {ex} for {symbol} ({interval}): {e}"  # codeql[py/log-injection]
+                    f"Direct fetch failed from {ex} for {sanitize_symbol(symbol)} ({interval}): {sanitize_log(str(e))}"
                 )
 
         # ── Step 2: Try another way (resampling daily candles to weekly) ──
@@ -648,7 +837,7 @@ class PythonCaptureClient:
             for ex in exchanges:
                 try:
                     logger.info(
-                        f"Attempting to construct weekly chart for {symbol} from {ex} daily candles..."  # codeql[py/log-injection]
+                        f"Attempting to construct weekly chart for {sanitize_symbol(symbol)} from {ex} daily candles..."
                     )
                     daily_klines = await self._fetch_raw_ohlcv(
                         symbol, "1d", limit * 7, exchange=ex
@@ -662,7 +851,7 @@ class PythonCaptureClient:
                             return resampled[-limit:]
                 except Exception as ex_err:
                     logger.warning(
-                        f"Failed to resample daily to weekly from {ex} for {symbol}: {ex_err}"  # codeql[py/log-injection]
+                        f"Failed to resample daily to weekly from {ex} for {sanitize_symbol(symbol)}: {sanitize_log(str(ex_err))}"
                     )
 
         # If all paths fail, raise exception
