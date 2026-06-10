@@ -15,7 +15,7 @@ def test_parameter_matrix_integrity():
     """Verify that OPTIMIZED_PARAMETERS_MATRIX.md contains the exact required values for BTC, ETH, and SOL."""
     root = find_project_root()
     matrix_path = os.path.join(
-        root, "docs", "knowledge", "trading_wizard", "OPTIMIZED_PARAMETERS_MATRIX.md"
+        root, "eWE", "knowledge", "trading_wizard", "OPTIMIZED_PARAMETERS_MATRIX.md"
     )
     assert os.path.exists(matrix_path), f"Parameters matrix not found at {matrix_path}"
 

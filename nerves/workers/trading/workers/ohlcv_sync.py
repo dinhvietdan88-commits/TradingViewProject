@@ -9,6 +9,7 @@ from typing import Any
 
 from watchlist import get_watchlist
 from security.sanitizers import sanitize_symbol, sanitize_log
+from capture_client import get_capture_client
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,6 @@ async def sync_ohlcv_all_symbols() -> None:
     Write batches to database.insert_ohlcv_batch().
     """
     import database
-    from capture_client import get_capture_client
 
     logger.info("Starting sync_ohlcv_all_symbols daemon job")
     try:
@@ -144,8 +144,6 @@ async def calculate_crystallized_features(symbol: str) -> dict[str, Any]:
     Calculate SMA(50), SMA(150), SMA(200), RSI(14), and ATR(14) for both timeframes.
     Return a nested dict of features.
     """
-    from capture_client import get_capture_client
-
     client = get_capture_client()
     features = {
         "5m": {

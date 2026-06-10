@@ -489,10 +489,10 @@ async def get_signals(
         total = row[0][0] if row else 0
 
         # Lay danh sach record theo trang
-        fetch_sql = f"""  # noqa: S608
+        fetch_sql = f"""
             SELECT id, created_at, symbol, action, price, quote_qty, source_ip, payload, mode, processed, vbs_queue_id, state, rejection_reason
             FROM signals
-            {where_clause}  # noqa: S608
+            {where_clause}
             ORDER BY created_at DESC, id DESC
             LIMIT ? OFFSET ?
         """  # noqa: S608
