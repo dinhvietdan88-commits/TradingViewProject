@@ -1,6 +1,7 @@
 # Ruff configuration for TradingViewProject
 # Matches CI pipeline settings (Angati Internal Security Scan)
 
+
 [tool.ruff]
 line-length = 88
 target-version = "py311"

@@ -1055,3 +1055,38 @@ Integrity mode: demo
 - [ ] Cumulative equity and drawdown charts are generated and saved as PNGs under each scenario's subdirectory.
 - [ ] The index file `v2.1.0-7.6.3/BACKTEST_REPORTS_INDEX.md` is updated with complete comparisons and clickable links.
 - [ ] Preserved visual 19-candle replays are linked.
+\n\n## Follow-up — 2026-06-10T06:51:44+07:00\n\nThiết lập và triển khai kỹ năng toàn cục (global agent skill) mang tên `angati-prr-compliance` tại thư mục `C:\Users\pesil\.gemini\config\skills\angati-prr-compliance\`, đóng gói toàn bộ quy trình kiểm toán chất lượng và an ninh Production Readiness Review (PRR) của TradingViewProject.
+
+Working directory: c:\Users\pesil\working\mj_trading\TradingViewProject
+Integrity mode: development
+
+## Requirements
+
+### R1. Global Skill Structure (SKILL.md)
+Tạo tệp tài liệu hướng dẫn kỹ năng `SKILL.md` tại thư mục `C:\Users\pesil\.gemini\config\skills\angati-prr-compliance\SKILL.md` tuân thủ nghiêm ngặt định dạng Rule 6 của `workflow-skill-creator`:
+- Chứa YAML frontmatter định nghĩa tên kỹ năng (`angati-prr-compliance`) và mô tả ngắn gọn.
+- Tài liệu hóa toàn bộ quy trình thiết lập git hooks, kiểm tra trạng thái liveness, chạy kiểm tra tiêu chuẩn (Ruff + Semgrep đơn luồng), mô phỏng smoke test và quét CodeQL sâu.
+
+### R2. Helper CLI Python Script (prr_audit.py)
+Xây dựng một kịch bản CLI helper bằng Python đặt tại `C:\Users\pesil\.gemini\config\skills\angati-prr-compliance\prr_audit.py` tuân theo mô hình CLI Script Pattern (Rule 3) sử dụng thư viện `argparse`:
+- Hỗ trợ chạy thông qua trình quản lý gói `uv` (sử dụng `uv run`).
+- Các câu lệnh con (subcommands) bắt buộc bao gồm:
+  - `setup`: Kích hoạt git pre-commit hooks bằng cách gọi `scripts/setup_git_hooks.py` và kiểm tra tính sẵn sàng thông qua `scripts/local_security_gate.py status`.
+  - `check`: Thực hiện kiểm tra an toàn tĩnh tiêu chuẩn bằng cách gọi `scripts/local_security_gate.py check` (Đảm bảo cấu hình Semgrep đơn luồng `--jobs=1` và loại trừ thư mục ảo `.venv` bằng ký tự backslash chuẩn Windows).
+  - `deep-check`: Thực hiện quét CodeQL chuyên sâu bằng cách gọi `scripts/local_security_gate.py check --deep`.
+  - `smoke-test`: Chạy mô phỏng đường ống E2E Staging Smoke Test bằng cách gọi `scripts/simulate_pipeline.py`.
+  - `audit`: Chạy kiểm toán độc lập các khoảng trống Server C bằng cách gọi `scripts/verify_server_c_gaps.py`.
+- Tự động ghi kết quả chi tiết của từng bước ra tệp tin log trong thư mục làm việc và chỉ in các thông tin trạng thái ngắn gọn ra stdout (Rule 4).
+
+### R3. Global Installation & Path Verification
+Đảm bảo kỹ năng được cấu hình và cài đặt hoàn chỉnh tại thư mục toàn cục của hệ thống Antigravity (`C:\Users\pesil\.gemini\config\skills\angati-prr-compliance\`) để mọi tác nhân AI khác đều có thể phát hiện và sử dụng độc lập trên toàn hệ thống.
+
+## Acceptance Criteria
+
+### Verification Rules
+- [ ] Tệp tin `C:\Users\pesil\.gemini\config\skills\angati-prr-compliance\SKILL.md` được tạo thành công và chứa đầy đủ cấu trúc tài liệu tiêu chuẩn.
+- [ ] Tệp tin `C:\Users\pesil\.gemini\config\skills\angati-prr-compliance\prr_audit.py` được triển khai với đầy đủ 5 lệnh con: `setup`, `check`, `deep-check`, `smoke-test`, `audit`.
+- [ ] Lệnh `uv run C:\Users\pesil\.gemini\config\skills\angati-prr-compliance\prr_audit.py setup` hoàn thành thành công và xác nhận git hooks được tiêm cứng.
+- [ ] Lệnh `uv run C:\Users\pesil\.gemini\config\skillsngati-prr-compliance\prr_audit.py check` chạy thành công Ruff và Semgrep (sử dụng `--jobs=1` và bỏ qua `.venv`), không bị treo hoặc chết tiến trình.
+- [ ] Lệnh `uv run C:\Users\pesil\.gemini\config\skills\angati-prr-compliance\prr_audit.py smoke-test` chạy thành công mô phỏng E2E và ghi nhận kết quả xác minh đường truyền.
+- [ ] Lệnh `uv run C:\Users\pesil\.gemini\config\skills\angati-prr-compliance\prr_audit.py audit` hoàn tất và báo cáo Server C gaps sạch lỗi.\n

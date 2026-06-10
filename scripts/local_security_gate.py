@@ -54,6 +54,23 @@ CODEQL_DIR = os.path.join(REPO_ROOT, ".codeql")
 CODEQL_DB = os.path.join(CODEQL_DIR, "db-python")
 
 
+def _get_clean_env():
+    env = os.environ.copy()
+    env.pop("PYTHONHOME", None)
+    env.pop("UV_INTERNAL__PYTHONHOME", None)
+    # Prepend stable Python 3.11 path to prevent pre-release Python (like 3.14)
+    # environment leaks/issues in CodeQL and other tools
+    if sys.platform == "win32":
+        stable_py_dir = r"C:\Python311"
+        if os.path.isdir(stable_py_dir):
+            path = env.get("PATH", "")
+            if path:
+                env["PATH"] = f"{stable_py_dir};{path}"
+            else:
+                env["PATH"] = stable_py_dir
+    return env
+
+
 def _run(cmd, cwd=None, check=False, capture=True, timeout=300):
     """Run a command and return (returncode, stdout, stderr)."""
     try:
@@ -64,6 +81,7 @@ def _run(cmd, cwd=None, check=False, capture=True, timeout=300):
             text=True,
             encoding="utf-8",
             timeout=timeout,
+            env=_get_clean_env(),
         )
         return r.returncode, r.stdout or "", r.stderr or ""
     except FileNotFoundError:
@@ -73,24 +91,67 @@ def _run(cmd, cwd=None, check=False, capture=True, timeout=300):
 
 
 def _get_executable(name):
+    # 1. Check virtualenv python directory
     python_dir = os.path.dirname(sys.executable)
     for ext in ["", ".exe", ".cmd", ".bat"]:
         candidate = os.path.normpath(os.path.join(python_dir, f"{name}{ext}"))
         if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
-            return candidate
+            try:
+                res = subprocess.run(
+                    [candidate, "--version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    env=_get_clean_env(),
+                )
+                if res.returncode == 0:
+                    return candidate
+            except Exception:
+                pass
+
+    # 2. Check shutil.which(name)
     which_path = shutil.which(name)
     if which_path:
-        return which_path
-    return name
+        try:
+            res = subprocess.run(
+                [which_path, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                env=_get_clean_env(),
+            )
+            if res.returncode == 0:
+                return which_path
+        except Exception:
+            pass
+
+    # 3. Check fallback global path (C:\Python311\Scripts)
+    fallback_dir = r"C:\Python311\Scripts"
+    for ext in ["", ".exe", ".cmd", ".bat"]:
+        candidate = os.path.normpath(os.path.join(fallback_dir, f"{name}{ext}"))
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            try:
+                res = subprocess.run(
+                    [candidate, "--version"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    env=_get_clean_env(),
+                )
+                if res.returncode == 0:
+                    return candidate
+            except Exception:
+                pass
+
+    # 4. Fallback to name or whatever was found via shutil.which
+    return which_path if which_path else name
 
 
 def _has_cmd(name):
-    python_dir = os.path.dirname(sys.executable)
-    for ext in ["", ".exe", ".cmd", ".bat"]:
-        candidate = os.path.join(python_dir, f"{name}{ext}")
-        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
-            return True
-    return shutil.which(name) is not None
+    exe = _get_executable(name)
+    if exe == name:
+        return shutil.which(name) is not None
+    return os.path.isfile(exe) and os.access(exe, os.X_OK)
 
 
 def _print_header(title):
@@ -385,6 +446,14 @@ def gate_codeql():
             True,
             "CodeQL CLI not installed (skipped) — run: local_security_gate.py setup",
         )
+
+    if sys.version_info >= (3, 14) and "CODEQL_PYTHON" not in os.environ:
+        stable_py = r"C:\Python311\python.exe"
+        if os.path.exists(stable_py):
+            os.environ["CODEQL_PYTHON"] = stable_py
+            print(
+                f"  Note: Using stable python at {stable_py} for CodeQL database extraction."
+            )
 
     print("  Creating CodeQL database (this may take 1-2 minutes)...")
     start = time.time()
