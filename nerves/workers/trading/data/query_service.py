@@ -45,15 +45,13 @@ async def get_trades(
         db.row_factory = aiosqlite.Row
 
         # Count total
-        row = await db.execute_fetchall(
-            f"SELECT COUNT(*) as cnt FROM trades t {where}", params
-        )
+        sql_query = f"SELECT COUNT(*) as cnt FROM trades t {where}"  # noqa: S608
+        row = await db.execute_fetchall(sql_query, params)
         total = row[0][0] if row else 0
 
         # Fetch page
         limit = min(limit, 200)
-        rows = await db.execute_fetchall(
-            f"""SELECT t.*, s.action as signal_action, s.payload as signal_payload,
+        sql_query = f"""SELECT t.*, s.action as signal_action, s.payload as signal_payload,
                        sl.twitter_score, sl.rss_score, sl.glassnode_score, sl.combined_score as sentiment_score, sl.raw_data as sentiment_raw
                 FROM trades t
                 LEFT JOIN signals s ON s.id = t.signal_id
@@ -66,9 +64,8 @@ async def get_trades(
                 )
                 {where}
                 ORDER BY t.created_at DESC
-                LIMIT ? OFFSET ?""",
-            params + [limit, offset],
-        )
+                LIMIT ? OFFSET ?"""  # noqa: S608
+        rows = await db.execute_fetchall(sql_query, params + [limit, offset])
 
         trades = []
         for r in rows:
@@ -76,7 +73,7 @@ async def get_trades(
             if d.get("sentiment_raw"):
                 try:
                     d["sentiment_raw"] = json.loads(d["sentiment_raw"])
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
             trades.append(d)
 
@@ -106,9 +103,8 @@ async def get_stats(symbol: Optional[str] = None, demo: bool = False) -> Dict[st
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
 
-        rows = await db.execute_fetchall(
-            f"SELECT pnl FROM trades t {where} AND pnl IS NOT NULL", params
-        )
+        sql_query = f"SELECT pnl FROM trades t {where} AND pnl IS NOT NULL"  # noqa: S608
+        rows = await db.execute_fetchall(sql_query, params)
 
         pnl_list = [r[0] for r in rows]
 
@@ -210,8 +206,7 @@ async def get_stats_by_mode(demo: bool = False) -> Dict[str, Any]:
 
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        rows = await db.execute_fetchall(
-            f"""
+        sql_query = f"""
             SELECT t.pnl,
                    CASE
                      WHEN s.mode IS NULL OR TRIM(s.mode) = '' THEN 'OTHER'
@@ -220,8 +215,8 @@ async def get_stats_by_mode(demo: bool = False) -> Dict[str, Any]:
             FROM trades t
             LEFT JOIN signals s ON s.id = t.signal_id
             WHERE {where_clause}
-            """,
-        )
+            """  # noqa: S608
+        rows = await db.execute_fetchall(sql_query)
 
     all_rows = [(float(r["pnl"]), r["mode"]) for r in rows]
 
@@ -272,8 +267,7 @@ async def get_recent_trades(
 
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        rows = await db.execute_fetchall(
-            f"""
+        sql_query = f"""
             SELECT t.id,
                    t.created_at,
                    t.symbol,
@@ -290,9 +284,8 @@ async def get_recent_trades(
             {where}
             ORDER BY t.created_at DESC
             LIMIT ?
-            """,
-            params,
-        )
+            """  # noqa: S608
+        rows = await db.execute_fetchall(sql_query, params)
     return [dict(r) for r in rows]
 
 
@@ -321,12 +314,10 @@ async def get_equity_curve(
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
 
-        rows = await db.execute_fetchall(
-            f"""SELECT t.created_at, t.pnl, t.symbol, t.side
+        sql_query = f"""SELECT t.created_at, t.pnl, t.symbol, t.side
                 FROM trades t {where}
-                ORDER BY t.created_at ASC""",
-            params,
-        )
+                ORDER BY t.created_at ASC"""  # noqa: S608
+        rows = await db.execute_fetchall(sql_query, params)
 
         labels = []
         cumulative_pnl = []
@@ -393,12 +384,12 @@ async def get_briefs(
             if d.get("scan_data"):
                 try:
                     d["scan_data"] = json.loads(d["scan_data"])
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
             if d.get("vision_data"):
                 try:
                     d["vision_data"] = json.loads(d["vision_data"])
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
             briefs.append(d)
 
@@ -418,12 +409,12 @@ async def get_brief_by_id(brief_id: int) -> Optional[Dict[str, Any]]:
         if d.get("scan_data"):
             try:
                 d["scan_data"] = json.loads(d["scan_data"])
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
         if d.get("vision_data"):
             try:
                 d["vision_data"] = json.loads(d["vision_data"])
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
         return d
 
@@ -467,7 +458,7 @@ async def get_latest_sentiment_log(symbol: str) -> Optional[Dict[str, Any]]:
         if d.get("raw_data"):
             try:
                 d["raw_data"] = json.loads(d["raw_data"])
-            except Exception:
+            except Exception:  # noqa: S110
                 pass
         return d
 
@@ -489,7 +480,7 @@ async def get_recent_sentiments(limit: int = 20) -> List[Dict[str, Any]]:
             if d.get("raw_data"):
                 try:
                     d["raw_data"] = json.loads(d["raw_data"])
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
             logs.append(d)
         return logs

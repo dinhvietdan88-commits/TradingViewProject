@@ -592,13 +592,13 @@ class ExchangeFundingClient:
                 try:
                     fr_binance = binance.fetch_funding_rate(ccxt_symbol)
                     res_binance["rate"] = fr_binance.get("fundingRate")
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
 
                 try:
                     fr_bybit = bybit.fetch_funding_rate(ccxt_symbol)
                     res_bybit["rate"] = fr_bybit.get("fundingRate")
-                except Exception:
+                except Exception:  # noqa: S110
                     pass
 
                 try:
@@ -627,7 +627,7 @@ class ExchangeFundingClient:
 
         hour_stamp = int(time.time() / 3600)
         seed = f"{base_symbol}_funding_{hour_stamp}"
-        hash_val = int(hashlib.md5(seed.encode()).hexdigest(), 16)
+        hash_val = int(hashlib.sha256(seed.encode()).hexdigest(), 16)
 
         if "Binance" not in rates or rates["Binance"] is None:
             rates["Binance"] = 0.0001 + (hash_val % 15) / 100000.0

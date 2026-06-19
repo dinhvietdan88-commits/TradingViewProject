@@ -2126,7 +2126,7 @@ async def get_sentiment_metrics():
         }
     except Exception as e:
         log.exception(f"Failed to fetch sentiment metrics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/api/sentiment/logs")
@@ -2136,7 +2136,7 @@ async def get_sentiment_logs_endpoint(limit: int = Query(20, ge=1, le=100)):
         return await database.get_recent_sentiments(limit)
     except Exception as e:
         log.exception(f"Failed to fetch sentiment logs: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # ═══ SYSTEM STATUS (P7.6) ════════════════════════════════════════════
