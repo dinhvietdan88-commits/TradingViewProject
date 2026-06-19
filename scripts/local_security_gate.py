@@ -33,6 +33,37 @@ if sys.stderr and hasattr(sys.stderr, "buffer"):
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def get_git_hooks_dir():
+    git_path = os.path.join(REPO_ROOT, ".git")
+    if os.path.isdir(git_path):
+        return os.path.join(git_path, "hooks")
+    elif os.path.isfile(git_path):
+        try:
+            with open(git_path, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+            if content.startswith("gitdir:"):
+                gitdir_path = content.split("gitdir:", 1)[1].strip()
+                # gitdir points to main_repo/.git/worktrees/worktree_name
+                # We need main_repo/.git/hooks
+                # Let's find the grandparent of gitdir_path
+                parent_dir = os.path.dirname(gitdir_path)
+                grandparent_dir = os.path.dirname(parent_dir)
+                if grandparent_dir.endswith(".git") or os.path.isdir(
+                    os.path.join(grandparent_dir, "hooks")
+                ):
+                    return os.path.join(grandparent_dir, "hooks")
+                # Fallback to checking the parent of the worktree if it has a .git sibling
+                main_git_hooks = os.path.abspath(
+                    os.path.join(REPO_ROOT, "..", "TradingViewProject", ".git", "hooks")
+                )
+                if os.path.isdir(main_git_hooks):
+                    return main_git_hooks
+        except Exception:
+            pass
+    # Fallback to default
+    return os.path.join(git_path, "hooks")
+
+
 def get_real_server_dir():
     path = os.path.join(REPO_ROOT, "server")
     if os.path.isdir(path):
@@ -919,7 +950,7 @@ def gate_precommit():
     """Verify pre-commit hooks are installed."""
     _print_header("Gate 5: Pre-commit Hooks")
 
-    hook_path = os.path.join(REPO_ROOT, ".git", "hooks", "pre-commit")
+    hook_path = os.path.join(get_git_hooks_dir(), "pre-commit")
     has_hook = os.path.exists(hook_path)
 
     if has_hook:
@@ -1061,7 +1092,7 @@ def cmd_status(args):
             os.path.join(REPO_ROOT, ".pre-commit-config.yaml")
         ),
         ".git/hooks/pre-commit": os.path.exists(
-            os.path.join(REPO_ROOT, ".git", "hooks", "pre-commit")
+            os.path.join(get_git_hooks_dir(), "pre-commit")
         ),
         "server/ (symlink)": os.path.exists(SERVER_DIR),
     }
