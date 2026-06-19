@@ -6,7 +6,7 @@ import datetime
 from pathlib import Path
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -79,7 +79,9 @@ def load_data_and_indicators():
 
     df_btc_daily = load_cached_candles("BTCUSDT", "1d")
 
-    for sym in active_symbols:
+    from concurrent.futures import ThreadPoolExecutor
+
+    def process_single_symbol(sym):
         df_1d = load_cached_candles(sym, "1d")
         df_1h = load_cached_candles(sym, "1h")
         is_btc = sym in ("BTCUSDT", "BTC/USDT")
@@ -88,9 +90,13 @@ def load_data_and_indicators():
             df_1d, is_btc=is_btc, df_btc_daily=df_btc_daily
         )
         df_1h_ind = calculate_hourly_indicators(df_1h)
+        return sym, df_1d_ind, df_1h_ind
 
-        CANDLE_CACHE[f"{sym}_1d"] = df_1d_ind
-        CANDLE_CACHE[f"{sym}_1h"] = df_1h_ind
+    with ThreadPoolExecutor() as executor:
+        results = executor.map(process_single_symbol, active_symbols)
+        for sym, df_1d_ind, df_1h_ind in results:
+            CANDLE_CACHE[f"{sym}_1d"] = df_1d_ind
+            CANDLE_CACHE[f"{sym}_1h"] = df_1h_ind
 
     return CANDLE_CACHE
 
