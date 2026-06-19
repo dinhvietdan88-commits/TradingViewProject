@@ -1090,3 +1090,30 @@ Xây dựng một kịch bản CLI helper bằng Python đặt tại `C:\Users\p
 - [ ] Lệnh `uv run C:\Users\pesil\.gemini\config\skillsngati-prr-compliance\prr_audit.py check` chạy thành công Ruff và Semgrep (sử dụng `--jobs=1` và bỏ qua `.venv`), không bị treo hoặc chết tiến trình.
 - [ ] Lệnh `uv run C:\Users\pesil\.gemini\config\skills\angati-prr-compliance\prr_audit.py smoke-test` chạy thành công mô phỏng E2E và ghi nhận kết quả xác minh đường truyền.
 - [ ] Lệnh `uv run C:\Users\pesil\.gemini\config\skills\angati-prr-compliance\prr_audit.py audit` hoàn tất và báo cáo Server C gaps sạch lỗi.\n
+
+## Follow-up — 2026-06-19T21:10:01+07:00
+
+Verify code compliance with all security standards, organize changes into logical commits, and push to the remote branch eat/decentralized-macro-filter.
+
+Working directory: c:\Users\pesil\working\mj_trading\TradingViewProject
+Integrity mode: development
+
+## Requirements
+
+### R1. Security & Code Quality Gate Compliance
+- Run the local quality gate checks (sec-02 check command).
+- Address any remaining security findings or ruff lint errors in the current workspace files.
+- Run regression tests for security guards (sec-04).
+
+### R2. Commit Organization & Push
+- Group modified and untracked files into logical, clean Conventional Commit groups using git-commit-organizer.
+- Push the committed changes on branch eat/decentralized-macro-filter to remote dinhvietdan88-commits/TradingViewProject.
+
+## Acceptance Criteria
+
+### Security & Quality
+- local_security_gate.py check passes with 0 failures.
+- 	est_sec4_runtime_guard.py regression tests pass 100%.
+
+### Git Push
+- All code changes are committed and pushed successfully to the remote eat/decentralized-macro-filter branch.
