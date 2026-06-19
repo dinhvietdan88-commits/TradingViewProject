@@ -22,10 +22,13 @@ if hasattr(sys.stderr, "reconfigure"):
     except Exception:  # noqa: S110
         pass
 
-PROJECT_ROOT = Path(r"c:\Users\pesil\working\mj_trading\TradingViewProject")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 vbs_replay_db_path = PROJECT_ROOT / "scratch" / "vbs_replay.db"
 signals_db_path = PROJECT_ROOT / "scratch" / "signal_queue_server_a.db"
 REPORTS_DIR = PROJECT_ROOT / "docs" / "reports" / "v2.1.0-7.6.3"
+
+sys.path.insert(0, str(PROJECT_ROOT / "nerves" / "workers" / "trading"))
+from symbol_config import get_symbol_config
 
 # Setup logging
 logging.basicConfig(
@@ -678,15 +681,19 @@ def run_campaign(signals: list[dict], data_dfs: dict) -> dict:
             )
 
         # S4: Tight SL / Trailing
-        # Tighten SL to 1.5 * ATR14 and TP to 3.0 * ATR14 from entry price
-        # Chandelier trailing stop on hourly candles trailing highest high by 2.5 * ATR14
+        # Use beta-scaled dynamic multipliers from symbol_config
+        sym_cfg = get_symbol_config(symbol)
+        sl_mul = sym_cfg.get("atr_sl_mul", 1.5)
+        tp_mul = sym_cfg.get("atr_tp_mul", 3.0)
+        trail_mul = sym_cfg.get("trail_atr_mul", 2.5)
+
         if daily_atr and daily_atr > 0:
             if is_long:
-                tight_sl = price - (1.5 * daily_atr)
-                tight_tp = price + (3.0 * daily_atr)
+                tight_sl = price - (sl_mul * daily_atr)
+                tight_tp = price + (tp_mul * daily_atr)
             else:
-                tight_sl = price + (1.5 * daily_atr)
-                tight_tp = price - (3.0 * daily_atr)
+                tight_sl = price + (sl_mul * daily_atr)
+                tight_tp = price - (tp_mul * daily_atr)
 
             sim4 = simulate_trade_execution(
                 df_1h,
@@ -696,7 +703,7 @@ def run_campaign(signals: list[dict], data_dfs: dict) -> dict:
                 tight_sl,
                 tight_tp,
                 is_trailing=True,
-                trailing_dist_atr=2.5,
+                trailing_dist_atr=trail_mul,
                 daily_atr14=daily_atr,
             )
             scenarios_trades["S4"].append(

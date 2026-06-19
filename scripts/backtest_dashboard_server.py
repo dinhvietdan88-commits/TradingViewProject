@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-PROJECT_ROOT = Path(r"c:\Users\pesil\working\mj_trading\TradingViewProject")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.run_vbs_backtest_campaign import (
@@ -238,7 +238,13 @@ def run_single_simulation(signal_id: int, params: BacktestParams) -> dict:
 
     # S1: Baseline
     sim1 = simulate_trade_execution(
-        df_1h, start_idx, action, price, base_sl, base_tp, slippage_pct=params.slippage_pct
+        df_1h,
+        start_idx,
+        action,
+        price,
+        base_sl,
+        base_tp,
+        slippage_pct=params.slippage_pct,
     )
     scenarios_results["S1"] = {
         "executed": True,
@@ -256,7 +262,13 @@ def run_single_simulation(signal_id: int, params: BacktestParams) -> dict:
     s2_ok = tt_score >= params.s2_min_tt_score and vcp_met
     if s2_ok:
         sim2 = simulate_trade_execution(
-            df_1h, start_idx, action, price, base_sl, base_tp, slippage_pct=params.slippage_pct
+            df_1h,
+            start_idx,
+            action,
+            price,
+            base_sl,
+            base_tp,
+            slippage_pct=params.slippage_pct,
         )
         scenarios_results["S2"] = {
             "executed": True,
@@ -283,7 +295,13 @@ def run_single_simulation(signal_id: int, params: BacktestParams) -> dict:
     )
     if ema_aligned:
         sim3 = simulate_trade_execution(
-            df_1h, start_idx, action, price, base_sl, base_tp, slippage_pct=params.slippage_pct
+            df_1h,
+            start_idx,
+            action,
+            price,
+            base_sl,
+            base_tp,
+            slippage_pct=params.slippage_pct,
         )
         scenarios_results["S3"] = {
             "executed": True,
@@ -357,7 +375,13 @@ def run_single_simulation(signal_id: int, params: BacktestParams) -> dict:
 
     if s5_ok:
         sim5 = simulate_trade_execution(
-            df_1h, start_idx, action, price, base_sl, base_tp, slippage_pct=params.slippage_pct
+            df_1h,
+            start_idx,
+            action,
+            price,
+            base_sl,
+            base_tp,
+            slippage_pct=params.slippage_pct,
         )
         scenarios_results["S5"] = {
             "executed": True,
@@ -388,7 +412,13 @@ def run_single_simulation(signal_id: int, params: BacktestParams) -> dict:
 
     if s6_ok:
         sim6 = simulate_trade_execution(
-            df_1h, start_idx, action, price, base_sl, base_tp, slippage_pct=params.slippage_pct
+            df_1h,
+            start_idx,
+            action,
+            price,
+            base_sl,
+            base_tp,
+            slippage_pct=params.slippage_pct,
         )
         scenarios_results["S6"] = {
             "executed": True,
@@ -418,10 +448,18 @@ def run_single_simulation(signal_id: int, params: BacktestParams) -> dict:
 
     if is_long:
         tt_details = {
-            "c1": bool(daily_price > sma150 and daily_price > sma200 if sma150 and sma200 else False),
+            "c1": bool(
+                daily_price > sma150 and daily_price > sma200
+                if sma150 and sma200
+                else False
+            ),
             "c2": bool(sma150 > sma200 if sma150 and sma200 else False),
             "c3": bool(sma200_slope > 0 if sma200_slope is not None else False),
-            "c4": bool(sma50 > sma150 and sma50 > sma200 if sma50 and sma150 and sma200 else False),
+            "c4": bool(
+                sma50 > sma150 and sma50 > sma200
+                if sma50 and sma150 and sma200
+                else False
+            ),
             "c5": bool(daily_price > sma50 if sma50 else False),
             "c6": bool(daily_price >= low52w * 1.30 if low52w else False),
             "c7": bool(daily_price >= high52w * 0.75 if high52w else False),
@@ -429,10 +467,18 @@ def run_single_simulation(signal_id: int, params: BacktestParams) -> dict:
         }
     else:
         tt_details = {
-            "c1": bool(daily_price < sma150 and daily_price < sma200 if sma150 and sma200 else False),
+            "c1": bool(
+                daily_price < sma150 and daily_price < sma200
+                if sma150 and sma200
+                else False
+            ),
             "c2": bool(sma150 < sma200 if sma150 < sma200 else False),
             "c3": bool(sma200_slope < 0 if sma200_slope is not None else False),
-            "c4": bool(sma50 < sma150 and sma50 < sma200 if sma50 and sma150 and sma200 else False),
+            "c4": bool(
+                sma50 < sma150 and sma50 < sma200
+                if sma50 and sma150 and sma200
+                else False
+            ),
             "c5": bool(daily_price < sma50 if sma50 else False),
             "c6": bool(daily_price <= high52w * 0.70 if high52w else False),
             "c7": bool(daily_price <= low52w * 1.25 if low52w else False),
@@ -513,28 +559,42 @@ async def simulate_signal(signal_id: int, params: BacktestParams):
         if len(daily_matches) > 0:
             daily_idx = daily_matches.index[0]
             daily_start_slice = max(0, daily_idx - 30)
-            
+
             # Find the max close time across all executed scenarios
             max_close_time_ms = int(daily_row_ts)
             for sc in res["scenarios"].values():
                 if sc.get("executed") and sc.get("close_time_ms"):
                     max_close_time_ms = max(max_close_time_ms, sc["close_time_ms"])
-            
+
             # Find daily candle closed closest to or before max_close_time_ms
             daily_exit_matches = df_1d[df_1d["timestamp"] <= max_close_time_ms]
             if len(daily_exit_matches) > 0:
                 daily_exit_idx = daily_exit_matches.index[-1]
-                daily_end_slice = min(max(daily_idx + 10, daily_exit_idx + 5), len(df_1d))
+                daily_end_slice = min(
+                    max(daily_idx + 10, daily_exit_idx + 5), len(df_1d)
+                )
             else:
                 daily_end_slice = min(daily_idx + 10, len(df_1d))
-            
+
             daily_cols = [
-                "timestamp", "open", "high", "low", "close", "volume", 
-                "ema20", "ema50", "ema100", "rsi14", "macd_line", "macd_signal"
+                "timestamp",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "ema20",
+                "ema50",
+                "ema100",
+                "rsi14",
+                "macd_line",
+                "macd_signal",
             ]
             valid_daily_cols = [col for col in daily_cols if col in df_1d.columns]
-            daily_candles_slice = df_1d.iloc[daily_start_slice:daily_end_slice][valid_daily_cols].to_dict(orient="records")
-            
+            daily_candles_slice = df_1d.iloc[daily_start_slice:daily_end_slice][
+                valid_daily_cols
+            ].to_dict(orient="records")
+
             # Convert NaN to None
             for c in daily_candles_slice:
                 for k, v in c.items():
@@ -708,9 +768,7 @@ async def get_v22_aggregate():
         summary["scenarios"][sc_code] = {
             "executed_trades": sc_data.get("executed_trades", 0),
             "fixed": {
-                k: v
-                for k, v in sc_data.get("fixed", {}).items()
-                if k != "equity_curve"
+                k: v for k, v in sc_data.get("fixed", {}).items() if k != "equity_curve"
             },
             "dynamic": {
                 k: v
