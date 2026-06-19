@@ -380,6 +380,8 @@ from data.query_service import (  # noqa: E402, F401
     get_sentiment_history,
     get_consensus_audit_logs,
     get_signals,
+    get_latest_sentiment_log,
+    get_recent_sentiments,
 )
 
 # ═══════════════════════════════════════════════════════════════

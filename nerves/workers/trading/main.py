@@ -2075,6 +2075,70 @@ async def get_vision_screenshot(brief_id: int):
     return FileResponse(img_path, media_type="image/png")
 
 
+# ═══ SENTIMENT ENDPOINTS (Phase 2) ═══════════════════════════════════
+
+
+@app.get("/api/sentiment/metrics")
+async def get_sentiment_metrics():
+    """Retrieve combined sentiment metrics for dashboard widget."""
+    try:
+        from analyzer.sentiment_analyzer import SentimentAnalyzer
+
+        analyzer = SentimentAnalyzer()
+
+        # 1. Fetch Fear & Greed Index
+        fng_data = await analyzer.fng.get_sentiment()
+
+        # 2. Fetch Funding Rates (use BTCUSDT as baseline)
+        funding_data = await analyzer.funding.get_sentiment("BTCUSDT")
+
+        # 3. Fetch Symbol Watchlist Breakdown
+        watchlist_symbols = wl_module.get_watchlist()
+        if not watchlist_symbols:
+            watchlist_symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+
+        watchlist_breakdown = []
+        for symbol in watchlist_symbols:
+            clean_sym = symbol.split(":")[-1].split(".")[0]
+            if "_" in clean_sym:
+                clean_sym = clean_sym.split("_")[0]
+
+            log_entry = await database.get_latest_sentiment_log(clean_sym)
+            if log_entry:
+                score = log_entry.get("combined_score", 0.0)
+                sentiment_label = "Neutral"
+                if score > 0.4:
+                    sentiment_label = "Bullish"
+                elif score < -0.4:
+                    sentiment_label = "Bearish"
+                watchlist_breakdown.append(
+                    {"symbol": symbol, "score": score, "sentiment": sentiment_label}
+                )
+            else:
+                watchlist_breakdown.append(
+                    {"symbol": symbol, "score": 0.0, "sentiment": "Neutral"}
+                )
+
+        return {
+            "fear_greed": fng_data,
+            "funding_rates": funding_data,
+            "watchlist": watchlist_breakdown,
+        }
+    except Exception as e:
+        log.exception(f"Failed to fetch sentiment metrics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sentiment/logs")
+async def get_sentiment_logs_endpoint(limit: int = Query(20, ge=1, le=100)):
+    """Retrieve recent sentiment logs."""
+    try:
+        return await database.get_recent_sentiments(limit)
+    except Exception as e:
+        log.exception(f"Failed to fetch sentiment logs: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ═══ SYSTEM STATUS (P7.6) ════════════════════════════════════════════
 
 
