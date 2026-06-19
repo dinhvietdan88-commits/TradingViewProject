@@ -1172,7 +1172,11 @@ class VpsAnalyzerWorker:
             "risk_per_trade": config.RISK_PER_TRADE,
             "stop_loss_pct": config.STOP_LOSS_PCT,
             "exchange": payload.get("exchange", config.DEFAULT_EXCHANGE),
-            "hold_for_approval": (50 <= ai_conf <= 79),
+            "hold_for_approval": (
+                config.AI_CONFIDENCE_THRESHOLD_HIL_MIN
+                <= ai_conf
+                <= config.AI_CONFIDENCE_THRESHOLD_HIL_MAX
+            ),
         }
 
         log.info(
