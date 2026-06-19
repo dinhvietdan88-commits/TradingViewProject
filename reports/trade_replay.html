@@ -276,8 +276,22 @@ function selectTrade(idx) {
   }));
   mainSeries.setData(candles);
 
+  // Calculate candle time step dynamically
+  const candleStep = candles.length > 1 ? (candles[1].time - candles[0].time) : 3600;
+
   // Horizontal SL / TP / Entry lines
-  mainSeries.setMarkers([
+  // Clear previous price lines to prevent vertical clutter during in-place updates
+  if (window.activePriceLines) {
+    window.activePriceLines.forEach(l => mainSeries.removePriceLine(l));
+  }
+  window.activePriceLines = [
+    mainSeries.createPriceLine({price:t.sl, color:"#f85149", lineWidth:1, lineStyle:2, title:"SL"}),
+    mainSeries.createPriceLine({price:t.tp, color:"#3fb950", lineWidth:1, lineStyle:2, title:"TP"}),
+    mainSeries.createPriceLine({price:t.entry, color:"#58a6ff", lineWidth:1, lineStyle:1, title:"Entry"})
+  ];
+
+  // Base markers for active trade
+  const markers = [
     {
       time: t.entry_ts,
       position: t.side==="long" ? "belowBar" : "aboveBar",
@@ -294,12 +308,75 @@ function selectTrade(idx) {
       text: `${t.exit_type} ${t.exit.toLocaleString()} (${t.pnl>=0?"+":""}${t.pnl.toFixed(0)})`,
       size: 2,
     }
-  ]);
+  ];
 
-  // Price lines
-  mainSeries.createPriceLine({price:t.sl, color:"#f85149", lineWidth:1, lineStyle:2, title:"SL"});
-  mainSeries.createPriceLine({price:t.tp, color:"#3fb950", lineWidth:1, lineStyle:2, title:"TP"});
-  mainSeries.createPriceLine({price:t.entry, color:"#58a6ff", lineWidth:1, lineStyle:1, title:"Entry"});
+  // Get adjacent trades from parent dashboard to display faded overlays
+  let adjacentTrades = [];
+  try {
+    if (window.parent && typeof window.parent.getAdjacentTradesData === 'function') {
+      adjacentTrades = window.parent.getAdjacentTradesData();
+    }
+  } catch (e) {
+    console.warn("Could not retrieve adjacent trades from parent window:", e);
+  }
+
+  // Parse date string like "2025-03-01 15:15:00" to UTC timestamp
+  function parseUTCDateTime(dateStr) {
+    if (!dateStr) return null;
+    const parts = dateStr.split(/[- :T]/);
+    if (parts.length >= 6) {
+      return Date.UTC(
+        parseInt(parts[0]),
+        parseInt(parts[1]) - 1,
+        parseInt(parts[2]),
+        parseInt(parts[3]),
+        parseInt(parts[4]),
+        parseInt(parts[5])
+      ) / 1000;
+    }
+    return Date.parse(dateStr) / 1000;
+  }
+
+  // Overlay adjacent trades as faded markers if they fall within the loaded candle range
+  adjacentTrades.forEach(adj => {
+    // Skip active trade itself
+    if (adj.vbs_id === t.vbs_id || adj.id === t.id) return;
+
+    const adjEntryTs = parseUTCDateTime(adj.received_at);
+    if (!adjEntryTs) return;
+    const barsHeld = (adj.exit_idx !== undefined && adj.start_idx !== undefined) ? (adj.exit_idx - adj.start_idx) : 0;
+    const adjExitTs = adjEntryTs + barsHeld * candleStep;
+    const adjIsLong = adj.side === 'BUY' || adj.side === 'LONG' || adj.side === 'long';
+
+    // Entry within active range
+    if (adjEntryTs >= candles[0].time && adjEntryTs <= candles[candles.length - 1].time) {
+      markers.push({
+        time: adjEntryTs,
+        position: adjIsLong ? "belowBar" : "aboveBar",
+        color: "#58a6ff40", // faded entry color (alpha 40)
+        shape: adjIsLong ? "arrowUp" : "arrowDown",
+        text: `#${adj.vbs_id} ENTRY`,
+        size: 1,
+      });
+    }
+
+    // Exit within active range
+    if (adjExitTs >= candles[0].time && adjExitTs <= candles[candles.length - 1].time) {
+      const adjExitType = adj.outcome === 'TAKE_PROFIT' ? 'TP' : (adj.outcome === 'STOP_LOSS' || adj.outcome === 'TRAILING_STOP' ? 'SL' : 'TO');
+      markers.push({
+        time: adjExitTs,
+        position: adjExitType==="TP" ? (adjIsLong?"aboveBar":"belowBar") : (adjIsLong?"belowBar":"aboveBar"),
+        color: adjExitType==="TP" ? "#3fb95040" : (adjExitType==="SL" ? "#f8514940" : "#e3b34140"), // faded exit colors
+        shape: "circle",
+        text: `#${adj.vbs_id} EXIT (${adjExitType})`,
+        size: 1,
+      });
+    }
+  });
+
+  // Sort markers chronologically to avoid lightweight-charts warnings
+  markers.sort((a, b) => a.time - b.time);
+  mainSeries.setMarkers(markers);
 
   // RSI/ADX horizontal lines at entry value
   if(t.rsi != null) {
@@ -311,8 +388,31 @@ function selectTrade(idx) {
     adxLine.setData(adxData);
   }
 
-  mainChartInst.timeScale().fitContent();
-  rsiChartInst.timeScale().fitContent();
+  // Set focused visible range: 10 bars before entry, 15 bars after exit
+  let entryIdx = candles.findIndex(c => c.time === t.entry_ts);
+  let exitIdx = candles.findIndex(c => c.time === t.exit_ts);
+
+  if (entryIdx === -1) entryIdx = 0;
+  if (exitIdx === -1) exitIdx = candles.length - 1;
+
+  const fromIdx = Math.max(0, entryIdx - 10);
+  const toIdx = Math.min(candles.length - 1, exitIdx + 15);
+
+  if (candles[fromIdx] && candles[toIdx]) {
+    requestAnimationFrame(() => {
+      mainChartInst.timeScale().setVisibleRange({
+        from: candles[fromIdx].time,
+        to: candles[toIdx].time
+      });
+      rsiChartInst.timeScale().setVisibleRange({
+        from: candles[fromIdx].time,
+        to: candles[toIdx].time
+      });
+    });
+  } else {
+    mainChartInst.timeScale().fitContent();
+    rsiChartInst.timeScale().fitContent();
+  }
 }
 
 // ── Filters ────────────────────────────────────────────────────
@@ -363,11 +463,60 @@ window.addEventListener("DOMContentLoaded", ()=>{
   document.addEventListener("keydown", e=>{
     if(e.key==="ArrowDown" && activeIdx !== null) selectTrade(Math.min(activeIdx+1, filteredTrades.length-1));
     if(e.key==="ArrowUp"   && activeIdx !== null) selectTrade(Math.max(activeIdx-1, 0));
+    
+    // Post message to parent dashboard for slide navigation
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      window.parent.postMessage({ type: 'keydown', key: e.key }, '*');
+    }
   });
 
-  // Default: show 3month_WF
-  document.getElementById("fCfg").value = "3month_WF";
-  applyFilters();
+  // Register global method for dynamic (flicker-free) in-place trade updates
+  window.loadTradeDynamically = function(signalId, scenario) {
+    // Show a loading text in info panel
+    document.getElementById('infoPanel').innerHTML = `
+      <div style="padding:14px;font-size:.8rem;color:var(--text2)">
+        ⚡ Loading VBS #${signalId} [${scenario}]...
+      </div>
+    `;
+
+    return fetch(`/api/v22/trade_replay/${signalId}?scenario=${scenario}`)
+      .then(res => {
+        if (!res.ok) throw new Error(`Failed to load trade simulation: ${res.statusText}`);
+        return res.json();
+      })
+      .then(trade => {
+        TRADES.length = 0; // Clear static list
+        TRADES.push(trade);
+        filteredTrades = [...TRADES];
+        renderList(filteredTrades);
+        selectTrade(0);
+      })
+      .catch(err => {
+        console.error(err);
+        document.getElementById('infoPanel').innerHTML = `
+          <div style="padding:14px;font-size:.8rem;color:var(--red);font-weight:600">
+            ❌ Error: ${err.message}
+          </div>
+        `;
+      });
+  };
+
+  // Check URL params for dynamic trade loading
+  const urlParams = new URLSearchParams(window.location.search);
+  const signalId = urlParams.get('signal_id') || urlParams.get('vbs_id');
+  const scenario = urlParams.get('scenario') || 'S4';
+
+  if (signalId) {
+    // Hide topbar and list panel for clean popup view
+    document.querySelector('.topbar').style.display = 'none';
+    document.querySelector('.list-panel').style.display = 'none';
+
+    window.loadTradeDynamically(signalId, scenario);
+  } else {
+    // Default static behavior
+    document.getElementById("fCfg").value = "3month_WF";
+    applyFilters();
+  }
 });
 </script>
 </body>

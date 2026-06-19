@@ -54,6 +54,7 @@ refactor_styles.py
 *.db-wal
 # Local Agent Workspaces & Logs
 .agents/
+ .agents/
 memory/
 nerves/workers/trading/test_runs.log
 
@@ -97,3 +98,4 @@ nerves/workers/trading/test_trades.log
 *.db
 *.log.*
 proposal.json
+angati.exe

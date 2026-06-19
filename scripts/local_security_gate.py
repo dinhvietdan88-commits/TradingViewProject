@@ -751,6 +751,7 @@ def check_file_complexity(filepath, modified_lines):
         "scan_mtf_endpoint",
         "api_vision_capture",
         "system_status_endpoint",
+        "run_single_simulation",
     }
 
     for node in ast.walk(tree):
