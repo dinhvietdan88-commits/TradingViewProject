@@ -89,6 +89,9 @@ AI_CONFIDENCE_THRESHOLD_HIL_MIN = int(
 AI_CONFIDENCE_THRESHOLD_HIL_MAX = int(
     os.getenv("AI_CONFIDENCE_THRESHOLD_HIL_MAX", "79")
 )
+S5_MIN_TT_SCORE = int(os.getenv("S5_MIN_TT_SCORE", "5"))
+S6_MIN_TT_SCORE = int(os.getenv("S6_MIN_TT_SCORE", "5"))
+S6_MIN_RSI = float(os.getenv("S6_MIN_RSI", "50.0"))
 
 # Notifications
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")

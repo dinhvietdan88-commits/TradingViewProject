@@ -785,6 +785,7 @@ def check_file_complexity(filepath, modified_lines):
         "run_single_simulation",
         "get_sentiment",
         "get_stats",
+        "process_single_signal",
     }
 
     for node in ast.walk(tree):

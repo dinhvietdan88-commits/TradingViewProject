@@ -112,6 +112,13 @@ class BacktestParams(BaseModel):
     s6_min_tt_score: int = 5
     s6_min_rsi: float = 50.0
     slippage_pct: float = 0.05  # Slippage penalty per side (%)
+    mta_mltf_weight_1h: float = 0.15
+    regime_volatility_window: int = 50
+    hil_min_threshold: float = 50.0
+    hil_max_threshold: float = 79.0
+    atr_sl_multiplier: float = 1.5
+    atr_tp_multiplier: float = 3.0
+    chandelier_trailing_multiplier: float = 2.5
 
 
 @app.get("/api/signals")
@@ -204,7 +211,71 @@ def run_single_simulation(signal_id: int, params: BacktestParams) -> dict:
     is_long = action.lower() in ("buy", "long")
     tt_score = daily_row["tt_score_long"] if is_long else daily_row["tt_score_short"]
 
-    # VCP check
+    # 1. 1H Trend (T1H) contribution (from SMA-20 of the last 30 1H candles before signal time)
+    hourly_slice_before = df_1h.iloc[max(0, start_idx - 30) : start_idx]
+    if len(hourly_slice_before) >= 20:
+        sma20 = hourly_slice_before["close"].rolling(window=20).mean().iloc[-1]
+        t_1h = 1.0 if price > sma20 else -1.0
+    else:
+        t_1h = 1.0
+
+    # 2. Combined Medium/Long-Term Trend Score (MLTS)
+    mta_weight = params.mta_mltf_weight_1h
+    mlts = tt_score + mta_weight * t_1h
+
+    # 3. Dynamic Volatility Regime (Trending vs Chop)
+    vol_window = params.regime_volatility_window
+    daily_row_idx = int(daily_row.name)
+    daily_slice_before = df_1d.iloc[
+        max(0, daily_row_idx - vol_window + 1) : daily_row_idx + 1
+    ]
+    if len(daily_slice_before) >= 2:
+        closes_slice = daily_slice_before["close"].values
+        mean_price = closes_slice.mean()
+        std_dev = closes_slice.std()
+        coef_of_variation = std_dev / mean_price if mean_price > 0 else 0.0
+    else:
+        coef_of_variation = 0.05
+
+    # Spread and Alignment for Regime identification
+    latest_ema20 = daily_row["ema20"]
+    latest_ema50 = daily_row["ema50"]
+    latest_ema100 = daily_row["ema100"]
+
+    is_trending_up = latest_ema20 > latest_ema50 > latest_ema100
+    is_trending_down = latest_ema20 < latest_ema50 < latest_ema100
+    ema_aligned = is_trending_up or is_trending_down
+    spread = abs(latest_ema20 - latest_ema100) / daily_price if daily_price > 0 else 0.0
+
+    # Determine Chop regime
+    is_chop = coef_of_variation < 0.015 or (not ema_aligned and spread < 0.02)
+
+    # VCP verification - check 5-day window prior to the breakout signal (aligned with campaign script)
+    vcp_slice = df_1d.iloc[max(0, daily_row_idx - 4) : daily_row_idx + 1]
+    vcp_window_met = False
+    for _, r in vcp_slice.iterrows():
+        r_vol = r["volume"]
+        r_vol_avg20 = r["volume_avg20"]
+        r_high = r["high"]
+        r_low = r["low"]
+        r_atr = r["atr14"]
+
+        r_vol_ratio = (r_vol / r_vol_avg20) if r_vol_avg20 and r_vol_avg20 > 0 else 1.0
+        r_range_ratio = ((r_high - r_low) / r_atr) if r_atr and r_atr > 0 else 1.0
+
+        if r_vol_ratio < 1.0 and r_range_ratio < 1.0:
+            vcp_window_met = True
+            break
+
+    if is_long:
+        near_boundary = (
+            (daily_price >= daily_high52w * 0.90) if daily_high52w else False
+        )
+    else:
+        near_boundary = (daily_price <= daily_low52w * 1.10) if daily_low52w else False
+    vcp_met = vcp_window_met and near_boundary
+
+    # To keep return payload compatible, calculate volume_ratio and range_ratio for daily_row
     volume_ratio = (
         (daily_volume / daily_volume_avg20)
         if daily_volume_avg20 and daily_volume_avg20 > 0
@@ -213,20 +284,49 @@ def run_single_simulation(signal_id: int, params: BacktestParams) -> dict:
     range_ratio = (
         ((daily_high - daily_low) / daily_atr) if daily_atr and daily_atr > 0 else 1.0
     )
-    vol_contracting = volume_ratio < 0.5
-    range_contracting = range_ratio < 0.5
-    if is_long:
-        near_boundary = (
-            (daily_price >= daily_high52w * 0.90) if daily_high52w else False
-        )
-    else:
-        near_boundary = (daily_price <= daily_low52w * 1.10) if daily_low52w else False
-    vcp_met = vol_contracting and range_contracting and near_boundary
 
     # Parse payload SL/TP
     payload = json.loads(payload_json) if payload_json else {}
     sl_val = payload.get("sl") or signal.get("sl")
     tp_val = payload.get("tp") or signal.get("tp")
+
+    # Heuristic AI Confidence & HIL Gating
+    ai_confidence = payload.get("confidence_score") or payload.get("ai_confidence")
+    if ai_confidence is not None:
+        try:
+            ai_confidence = float(ai_confidence)
+        except (ValueError, TypeError):
+            ai_confidence = None
+
+    if not ai_confidence:
+        # Heuristic calculation
+        score = 60.0
+        score += (tt_score - 5) * 5.0
+        if vcp_met:
+            score += 10.0
+        if is_long:
+            if daily_rsi > 60:
+                score += 5.0
+            elif daily_rsi < 45:
+                score -= 10.0
+        else:
+            if daily_rsi < 40:
+                score += 5.0
+            elif daily_rsi > 55:
+                score -= 10.0
+        macd_aligned = (
+            (daily_macd > daily_macd_sig) if is_long else (daily_macd < daily_macd_sig)
+        )
+        if macd_aligned:
+            score += 5.0
+        else:
+            score -= 5.0
+        if is_chop:
+            score -= 20.0
+
+        ai_confidence = max(0.0, min(100.0, score))
+
+    hil_required = params.hil_min_threshold <= ai_confidence <= params.hil_max_threshold
 
     # 1. Custom Baseline SL/TP
     if not sl_val or not tp_val:
@@ -365,9 +465,9 @@ def run_single_simulation(signal_id: int, params: BacktestParams) -> dict:
             "reason": "ATR14 is not available on daily candles",
         }
 
-    # S5: Multi-Timeframe Validation
+    # S5: Multi-Timeframe Validation (incorporating MLTS score with 1H trend)
     s5_ok = False
-    if tt_score >= params.s5_min_tt_score:
+    if mlts >= params.s5_min_tt_score:
         hourly_row = get_last_closed_candle(df_1h, signal_time_ms, 3600000)
         h_ema20 = hourly_row["ema20"]
         h_ema50 = hourly_row["ema50"]
@@ -380,19 +480,34 @@ def run_single_simulation(signal_id: int, params: BacktestParams) -> dict:
                 s5_ok = True
 
     if s5_ok:
+        if daily_atr and daily_atr > 0:
+            s5_sl = (
+                price - (params.atr_sl_multiplier * daily_atr)
+                if is_long
+                else price + (params.atr_sl_multiplier * daily_atr)
+            )
+            s5_tp = (
+                price + (params.atr_tp_multiplier * daily_atr)
+                if is_long
+                else price - (params.atr_tp_multiplier * daily_atr)
+            )
+        else:
+            s5_sl = base_sl
+            s5_tp = base_tp
+
         sim5 = simulate_trade_execution(
             df_1h,
             start_idx,
             action,
             price,
-            base_sl,
-            base_tp,
+            s5_sl,
+            s5_tp,
             slippage_pct=params.slippage_pct,
         )
         scenarios_results["S5"] = {
             "executed": True,
-            "sl": base_sl,
-            "tp": base_tp,
+            "sl": s5_sl,
+            "tp": s5_tp,
             "close_price": sim5["close_price"],
             "close_time_ms": sim5["close_time_ms"],
             "pnl_pct": sim5["pnl_pct"],
@@ -403,12 +518,12 @@ def run_single_simulation(signal_id: int, params: BacktestParams) -> dict:
     else:
         scenarios_results["S5"] = {
             "executed": False,
-            "reason": f"Trend Template score = {tt_score}/8 (need >= {params.s5_min_tt_score}) or hourly EMA trend not aligned",
+            "reason": f"MLTS score = {mlts:.2f} (need >= {params.s5_min_tt_score}) or hourly EMA trend not aligned",
         }
 
-    # S6: Optimized Hybrid Mode
+    # S6: Optimized Hybrid Mode (incorporating Chop Filter / Volatility Regime and MLTS)
     s6_ok = False
-    if tt_score >= params.s6_min_tt_score:
+    if not is_chop and mlts >= params.s6_min_tt_score:
         if is_long:
             if daily_rsi >= params.s6_min_rsi and daily_macd > daily_macd_sig:
                 s6_ok = True
@@ -417,19 +532,46 @@ def run_single_simulation(signal_id: int, params: BacktestParams) -> dict:
                 s6_ok = True
 
     if s6_ok:
-        sim6 = simulate_trade_execution(
-            df_1h,
-            start_idx,
-            action,
-            price,
-            base_sl,
-            base_tp,
-            slippage_pct=params.slippage_pct,
-        )
+        if daily_atr and daily_atr > 0:
+            s6_sl = (
+                price - (params.atr_sl_multiplier * daily_atr)
+                if is_long
+                else price + (params.atr_sl_multiplier * daily_atr)
+            )
+            s6_tp = (
+                price + (params.atr_tp_multiplier * daily_atr)
+                if is_long
+                else price - (params.atr_tp_multiplier * daily_atr)
+            )
+            sim6 = simulate_trade_execution(
+                df_1h,
+                start_idx,
+                action,
+                price,
+                s6_sl,
+                s6_tp,
+                is_trailing=True,
+                trailing_dist_atr=params.chandelier_trailing_multiplier,
+                daily_atr14=daily_atr,
+                slippage_pct=params.slippage_pct,
+            )
+        else:
+            s6_sl = base_sl
+            s6_tp = base_tp
+            sim6 = simulate_trade_execution(
+                df_1h,
+                start_idx,
+                action,
+                price,
+                s6_sl,
+                s6_tp,
+                slippage_pct=params.slippage_pct,
+            )
+
         scenarios_results["S6"] = {
             "executed": True,
-            "sl": base_sl,
-            "tp": base_tp,
+            "sl": s6_sl,
+            "tp": s6_tp,
             "close_price": sim6["close_price"],
             "close_time_ms": sim6["close_time_ms"],
             "pnl_pct": sim6["pnl_pct"],
@@ -440,7 +582,7 @@ def run_single_simulation(signal_id: int, params: BacktestParams) -> dict:
     else:
         scenarios_results["S6"] = {
             "executed": False,
-            "reason": f"Trend Template score = {tt_score}/8 (need >= {params.s6_min_tt_score}) or daily RSI/MACD not aligned",
+            "reason": f"Chop detected = {is_chop} or MLTS score = {mlts:.2f} (need >= {params.s6_min_tt_score}) or daily RSI/MACD not aligned",
         }
 
     # Calculate detailed Trend Template criteria at entry
@@ -512,6 +654,12 @@ def run_single_simulation(signal_id: int, params: BacktestParams) -> dict:
             "volume_ratio": float(volume_ratio),
             "range_ratio": float(range_ratio),
             "tt_details": tt_details,
+            "t_1h": float(t_1h),
+            "mlts": float(mlts),
+            "coef_of_variation": float(coef_of_variation),
+            "is_chop": bool(is_chop),
+            "ai_confidence": float(ai_confidence),
+            "hil_required": bool(hil_required),
         },
         "scenarios": scenarios_results,
         "df_1h": df_1h,
@@ -638,6 +786,13 @@ async def get_v22_trade_replay(
     s6_min_tt_score: int = 5,
     s6_min_rsi: float = 50.0,
     slippage_pct: float = 0.05,
+    mta_mltf_weight_1h: float = 0.15,
+    regime_volatility_window: int = 50,
+    hil_min_threshold: float = 50.0,
+    hil_max_threshold: float = 79.0,
+    atr_sl_multiplier: float = 1.5,
+    atr_tp_multiplier: float = 3.0,
+    chandelier_trailing_multiplier: float = 2.5,
 ):
     """Simulate a specific trade in S1~S6 and return data structured for trade_replay.html."""
     params = BacktestParams(
@@ -651,6 +806,13 @@ async def get_v22_trade_replay(
         s6_min_tt_score=s6_min_tt_score,
         s6_min_rsi=s6_min_rsi,
         slippage_pct=slippage_pct,
+        mta_mltf_weight_1h=mta_mltf_weight_1h,
+        regime_volatility_window=regime_volatility_window,
+        hil_min_threshold=hil_min_threshold,
+        hil_max_threshold=hil_max_threshold,
+        atr_sl_multiplier=atr_sl_multiplier,
+        atr_tp_multiplier=atr_tp_multiplier,
+        chandelier_trailing_multiplier=chandelier_trailing_multiplier,
     )
 
     res = run_single_simulation(signal_id, params)

@@ -789,8 +789,48 @@
                     <input type="number" id="s4_trail_atr" value="2.5" step="0.1" min="0.1">
                 </div>
                 <div class="form-group">
+                    <label for="atr_sl_multiplier">ATR SL Multiplier (S5/S6)</label>
+                    <input type="number" id="atr_sl_multiplier" value="1.5" step="0.1" min="0.1">
+                </div>
+                <div class="form-group">
+                    <label for="atr_tp_multiplier">ATR TP Multiplier (S5/S6)</label>
+                    <input type="number" id="atr_tp_multiplier" value="3.0" step="0.1" min="0.1">
+                </div>
+                <div class="form-group">
+                    <label for="chandelier_trailing_multiplier">Chandelier Trailing Multiplier (S6)</label>
+                    <input type="number" id="chandelier_trailing_multiplier" value="2.5" step="0.1" min="0.1">
+                </div>
+                <div class="form-group">
                     <label for="slippage_pct">Slippage per Side (%)</label>
                     <input type="number" id="slippage_pct" value="0.05" step="0.01" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="mta_mltf_weight_1h">MTA MLTF Weight (1H)</label>
+                    <input type="number" id="mta_mltf_weight_1h" value="0.15" step="0.01" min="0" max="1">
+                </div>
+                <div class="form-group">
+                    <label for="regime_volatility_window">Regime Volatility Window</label>
+                    <input type="number" id="regime_volatility_window" value="50" step="1" min="5">
+                </div>
+                <div class="form-group">
+                    <label for="s5_min_tt_score">S5 Min Trend Score</label>
+                    <input type="number" id="s5_min_tt_score" value="5" step="1" min="0" max="8">
+                </div>
+                <div class="form-group">
+                    <label for="s6_min_tt_score">S6 Min Trend Score</label>
+                    <input type="number" id="s6_min_tt_score" value="5" step="1" min="0" max="8">
+                </div>
+                <div class="form-group">
+                    <label for="s6_min_rsi">S6 Min RSI</label>
+                    <input type="number" id="s6_min_rsi" value="50.0" step="1" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label for="hil_min_threshold">HIL Min Threshold (%)</label>
+                    <input type="number" id="hil_min_threshold" value="50.0" step="1" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label for="hil_max_threshold">HIL Max Threshold (%)</label>
+                    <input type="number" id="hil_max_threshold" value="79.0" step="1" min="0" max="100">
                 </div>
                 <button class="btn-apply" onclick="runSimulation()">⚡ Recalculate Backtest</button>
             </div>
@@ -813,7 +853,7 @@
                         </div>
                     </div>
                     <div class="glass-card">
-                        <div class="section-title">Market Indicators at Entry (Daily)</div>
+                        <div class="section-title">Market Indicators & Crystallization</div>
                         <div class="context-grid">
                             <div class="context-item"><div class="context-label">Trend Score</div><div class="context-value" id="ctx_tt_score">—</div></div>
                             <div class="context-item"><div class="context-label">VCP Pattern</div><div class="context-value" id="ctx_vcp_met">—</div></div>
@@ -823,6 +863,11 @@
                             <div class="context-item"><div class="context-label">Volume Ratio</div><div class="context-value" id="ctx_vol_ratio">—</div></div>
                             <div class="context-item"><div class="context-label">Range Ratio</div><div class="context-value" id="ctx_range_ratio">—</div></div>
                             <div class="context-item"><div class="context-label">Daily Close</div><div class="context-value" id="ctx_close">—</div></div>
+                            <div class="context-item"><div class="context-label">1H Trend (T1H)</div><div class="context-value" id="ctx_t_1h">—</div></div>
+                            <div class="context-item"><div class="context-label">Comb. Score (MLTS)</div><div class="context-value" id="ctx_mlts">—</div></div>
+                            <div class="context-item"><div class="context-label">Chop detected</div><div class="context-value" id="ctx_is_chop">—</div></div>
+                            <div class="context-item"><div class="context-label">AI Confidence</div><div class="context-value" id="ctx_ai_confidence">—</div></div>
+                            <div class="context-item"><div class="context-label">HIL Required</div><div class="context-value" id="ctx_hil_required">—</div></div>
                         </div>
                     </div>
                 </div>
@@ -1413,7 +1458,17 @@ async function runSimulation() {
         s4_tp_atr_mult: parseFloat(document.getElementById('s4_tp_atr').value),
         s4_trail_atr_mult: parseFloat(document.getElementById('s4_trail_atr').value),
         slippage_pct: parseFloat(document.getElementById('slippage_pct').value),
-        s2_min_tt_score: 5, s5_min_tt_score: 5, s6_min_tt_score: 5, s6_min_rsi: 50.0
+        s2_min_tt_score: 5,
+        s5_min_tt_score: parseInt(document.getElementById('s5_min_tt_score').value),
+        s6_min_tt_score: parseInt(document.getElementById('s6_min_tt_score').value),
+        s6_min_rsi: parseFloat(document.getElementById('s6_min_rsi').value),
+        mta_mltf_weight_1h: parseFloat(document.getElementById('mta_mltf_weight_1h').value),
+        regime_volatility_window: parseInt(document.getElementById('regime_volatility_window').value),
+        hil_min_threshold: parseFloat(document.getElementById('hil_min_threshold').value),
+        hil_max_threshold: parseFloat(document.getElementById('hil_max_threshold').value),
+        atr_sl_multiplier: parseFloat(document.getElementById('atr_sl_multiplier').value),
+        atr_tp_multiplier: parseFloat(document.getElementById('atr_tp_multiplier').value),
+        chandelier_trailing_multiplier: parseFloat(document.getElementById('chandelier_trailing_multiplier').value)
     };
     try {
         const res = await fetch(`/api/simulate/${CURRENT_SIGNAL_ID}`, {
@@ -1451,6 +1506,21 @@ function updateMarketContext() {
     document.getElementById('ctx_vol_ratio').innerText = `${ctx.volume_ratio.toFixed(2)}x`;
     document.getElementById('ctx_range_ratio').innerText = `${ctx.range_ratio.toFixed(2)}x`;
     document.getElementById('ctx_close').innerText = `$${ctx.daily_close.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
+
+    // Crystallization metrics
+    document.getElementById('ctx_t_1h').innerText = ctx.t_1h >= 0 ? 'Bullish (1.0)' : 'Bearish (-1.0)';
+    document.getElementById('ctx_mlts').innerText = ctx.mlts.toFixed(2);
+    const chopEl = document.getElementById('ctx_is_chop');
+    chopEl.innerText = ctx.is_chop ? 'CHOP' : 'TRENDING';
+    chopEl.className = ctx.is_chop ? 'context-value danger' : 'context-value success';
+    
+    const confEl = document.getElementById('ctx_ai_confidence');
+    confEl.innerText = `${ctx.ai_confidence.toFixed(1)}%`;
+    confEl.className = ctx.ai_confidence >= 80 ? 'context-value success' : (ctx.ai_confidence < 50 ? 'context-value danger' : 'context-value warning');
+
+    const hilEl = document.getElementById('ctx_hil_required');
+    hilEl.innerText = ctx.hil_required ? 'YES (Review)' : 'NO (Auto)';
+    hilEl.className = ctx.hil_required ? 'context-value warning' : 'context-value';
 }
 
 function updateOutcomes() {
@@ -1553,6 +1623,27 @@ function getAdjacentTradesData() {
 }
 window.getAdjacentTradesData = getAdjacentTradesData;
 
+function getParamsQueryString() {
+    const base_sl = parseFloat(document.getElementById('base_sl').value);
+    const base_tp = parseFloat(document.getElementById('base_tp').value);
+    const s4_sl_atr = parseFloat(document.getElementById('s4_sl_atr').value);
+    const s4_tp_atr = parseFloat(document.getElementById('s4_tp_atr').value);
+    const s4_trail_atr = parseFloat(document.getElementById('s4_trail_atr').value);
+    const slippage_pct = parseFloat(document.getElementById('slippage_pct').value);
+    const s5_min_tt_score = parseInt(document.getElementById('s5_min_tt_score').value);
+    const s6_min_tt_score = parseInt(document.getElementById('s6_min_tt_score').value);
+    const s6_min_rsi = parseFloat(document.getElementById('s6_min_rsi').value);
+    const mta_mltf_weight_1h = parseFloat(document.getElementById('mta_mltf_weight_1h').value);
+    const regime_volatility_window = parseInt(document.getElementById('regime_volatility_window').value);
+    const hil_min_threshold = parseFloat(document.getElementById('hil_min_threshold').value);
+    const hil_max_threshold = parseFloat(document.getElementById('hil_max_threshold').value);
+    const atr_sl_multiplier = parseFloat(document.getElementById('atr_sl_multiplier').value);
+    const atr_tp_multiplier = parseFloat(document.getElementById('atr_tp_multiplier').value);
+    const chandelier_trailing_multiplier = parseFloat(document.getElementById('chandelier_trailing_multiplier').value);
+
+    return `&base_sl_pct=${base_sl}&base_tp_pct=${base_tp}&s4_sl_atr_mult=${s4_sl_atr}&s4_tp_atr_mult=${s4_tp_atr}&s4_trail_atr_mult=${s4_trail_atr}&slippage_pct=${slippage_pct}&s5_min_tt_score=${s5_min_tt_score}&s6_min_tt_score=${s6_min_tt_score}&s6_min_rsi=${s6_min_rsi}&mta_mltf_weight_1h=${mta_mltf_weight_1h}&regime_volatility_window=${regime_volatility_window}&hil_min_threshold=${hil_min_threshold}&hil_max_threshold=${hil_max_threshold}&atr_sl_multiplier=${atr_sl_multiplier}&atr_tp_multiplier=${atr_tp_multiplier}&chandelier_trailing_multiplier=${chandelier_trailing_multiplier}`;
+}
+
 function openReplayModal(vbsId) {
     const scenario = SELECTED_SCENARIO;
     modalTradeList = getFilteredV22Trades();
@@ -1573,10 +1664,11 @@ function openReplayModal(vbsId) {
         modal.classList.add('active');
     }, 10);
     
+    const paramsQuery = getParamsQueryString();
     if (iframe.contentWindow && typeof iframe.contentWindow.loadTradeDynamically === 'function') {
-        iframe.contentWindow.loadTradeDynamically(trade.vbs_id, scenario);
+        iframe.contentWindow.loadTradeDynamically(trade.vbs_id, scenario, paramsQuery);
     } else {
-        iframe.src = `/reports/trade_replay?signal_id=${trade.vbs_id}&scenario=${scenario}`;
+        iframe.src = `/reports/trade_replay?signal_id=${trade.vbs_id}&scenario=${scenario}${paramsQuery}`;
     }
     
     updateModalUI(trade);
@@ -1602,10 +1694,11 @@ function navigateModal(direction) {
     const scenario = SELECTED_SCENARIO;
     
     const iframe = document.getElementById('replay_iframe');
+    const paramsQuery = getParamsQueryString();
     if (iframe.contentWindow && typeof iframe.contentWindow.loadTradeDynamically === 'function') {
-        iframe.contentWindow.loadTradeDynamically(trade.vbs_id, scenario);
+        iframe.contentWindow.loadTradeDynamically(trade.vbs_id, scenario, paramsQuery);
     } else {
-        iframe.src = `/reports/trade_replay?signal_id=${trade.vbs_id}&scenario=${scenario}`;
+        iframe.src = `/reports/trade_replay?signal_id=${trade.vbs_id}&scenario=${scenario}${paramsQuery}`;
     }
     
     updateModalUI(trade);
@@ -1732,7 +1825,17 @@ async function loadTradeDetailRow(vbsId) {
         s4_tp_atr_mult: parseFloat(document.getElementById('s4_tp_atr').value),
         s4_trail_atr_mult: parseFloat(document.getElementById('s4_trail_atr').value),
         slippage_pct: parseFloat(document.getElementById('slippage_pct').value),
-        s2_min_tt_score: 5, s5_min_tt_score: 5, s6_min_tt_score: 5, s6_min_rsi: 50.0
+        s2_min_tt_score: 5,
+        s5_min_tt_score: parseInt(document.getElementById('s5_min_tt_score').value),
+        s6_min_tt_score: parseInt(document.getElementById('s6_min_tt_score').value),
+        s6_min_rsi: parseFloat(document.getElementById('s6_min_rsi').value),
+        mta_mltf_weight_1h: parseFloat(document.getElementById('mta_mltf_weight_1h').value),
+        regime_volatility_window: parseInt(document.getElementById('regime_volatility_window').value),
+        hil_min_threshold: parseFloat(document.getElementById('hil_min_threshold').value),
+        hil_max_threshold: parseFloat(document.getElementById('hil_max_threshold').value),
+        atr_sl_multiplier: parseFloat(document.getElementById('atr_sl_multiplier').value),
+        atr_tp_multiplier: parseFloat(document.getElementById('atr_tp_multiplier').value),
+        chandelier_trailing_multiplier: parseFloat(document.getElementById('chandelier_trailing_multiplier').value)
     };
     
     try {

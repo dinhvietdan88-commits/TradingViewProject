@@ -471,7 +471,7 @@ window.addEventListener("DOMContentLoaded", ()=>{
   });
 
   // Register global method for dynamic (flicker-free) in-place trade updates
-  window.loadTradeDynamically = function(signalId, scenario) {
+  window.loadTradeDynamically = function(signalId, scenario, paramsQuery = '') {
     // Show a loading text in info panel
     document.getElementById('infoPanel').innerHTML = `
       <div style="padding:14px;font-size:.8rem;color:var(--text2)">
@@ -479,7 +479,20 @@ window.addEventListener("DOMContentLoaded", ()=>{
       </div>
     `;
 
-    return fetch(`/api/v22/trade_replay/${signalId}?scenario=${scenario}`)
+    let url = `/api/v22/trade_replay/${signalId}?scenario=${scenario}`;
+    if (paramsQuery) {
+      url += paramsQuery;
+    } else {
+      // Parse current window query parameters if any (for iframe direct loading)
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.forEach((value, key) => {
+        if (key !== 'signal_id' && key !== 'vbs_id' && key !== 'scenario') {
+          url += `&${key}=${value}`;
+        }
+      });
+    }
+
+    return fetch(url)
       .then(res => {
         if (!res.ok) throw new Error(`Failed to load trade simulation: ${res.statusText}`);
         return res.json();

@@ -14,7 +14,7 @@ Starting portfolio size: 10,000 USDT. Fixed position size: 100 USDT.
 | **S3** | Scenario 3: Short-term EMA Filter (Strategy MTT) | 441 | 26.5% | -1140.40 USDT | 0.28 | 15.11% | [View Report](strategy_mtt/report.md) |
 | **S4** | Scenario 4: Tight SL / Trailing Stop (MIS v10/v11a) | 1008 | 46.8% | +423.14 USDT | 1.19 | 3.13% | [View Report](mis_v10/report.md) |
 | **S5** | Scenario 5: Multi-Timeframe Validation (MIS v13c) | 289 | 49.8% | +114.13 USDT | 1.12 | 8.72% | [View Report](mis_v13c/report.md) |
-| **S6** | Scenario 6: Optimized Hybrid Mode (MIS v15/v16/v2) | 448 | 38.8% | +33.11 USDT | 1.02 | 13.12% | [View Report](mis_v15_v16_v2/report.md) |
+| **S6** | Scenario 6: Optimized Hybrid Mode (MIS v15/v16/v2) | 370 | 25.9% | -1091.54 USDT | 0.28 | 14.54% | [View Report](mis_v15_v16_v2/report.md) |
 
 
 ---
@@ -29,7 +29,7 @@ Starting portfolio size: 10,000 USDT. Starting Equity: 10,000 USDT. Risk 2% port
 | **S3** | Scenario 3: Short-term EMA Filter (Strategy MTT) | 441 | 26.5% | -9444.96 USDT | 0.66 | 98.11% | [View Report](strategy_mtt/report.md) |
 | **S4** | Scenario 4: Tight SL / Trailing Stop (MIS v10/v11a) | 1008 | 46.8% | +92410.17 USDT | 1.08 | 70.69% | [View Report](mis_v10/report.md) |
 | **S5** | Scenario 5: Multi-Timeframe Validation (MIS v13c) | 289 | 49.8% | +2501.74 USDT | 1.02 | 91.28% | [View Report](mis_v13c/report.md) |
-| **S6** | Scenario 6: Optimized Hybrid Mode (MIS v15/v16/v2) | 448 | 38.8% | -112.13 USDT | 1.00 | 97.81% | [View Report](mis_v15_v16_v2/report.md) |
+| **S6** | Scenario 6: Optimized Hybrid Mode (MIS v15/v16/v2) | 370 | 25.9% | -9372.52 USDT | 0.66 | 97.81% | [View Report](mis_v15_v16_v2/report.md) |
 
 
 ---
