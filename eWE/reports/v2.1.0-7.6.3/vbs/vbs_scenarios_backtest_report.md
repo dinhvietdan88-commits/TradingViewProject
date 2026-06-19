@@ -68,9 +68,34 @@ Chiến dịch backtest v2.1.0-7.6.3 được thiết kế để tái tạo và 
 
 ---
 
-## 🧬 4. KẾT TINH THÀNH CHIẾN LƯỢC (STRATEGY CRYSTALLIZATION)
+## ⚡ 4. TỐI ƯU HÓA BỘ LỌC ĐIỀU HƯỚNG ĐA KHUNG THỜI GIAN SUPERTREND V1.3 (MTA)
 
-Dựa trên kết quả thực nghiệm tối ưu hóa 627 tín hiệu, chúng ta kết tinh thành **4 loại hình chiến lược chuyên biệt** dành cho các khẩu vị rủi ro và điều kiện thị trường khác nhau:
+Để giải quyết tình trạng sụt giảm hiệu suất nghiêm trọng khi thị trường đi vào vùng giằng co đi ngang (Chop) từ ngày 09/06 đến 17/06/2026 (mở rộng quy mô mẫu lên **1,015 tín hiệu**), chúng tôi đã phát triển và chạy thử nghiệm hệ thống **Bộ lọc định hướng SuperTrend v1.3** trên 3 khung thời gian:
+1.  **1H (Lọc nhanh - Fast Filter):** Loại bỏ nhiễu và bẫy tăng/giảm giá (Traps).
+2.  **4H (Lọc trung hạn - Medium Filter):** Xác định xu hướng chính và lọc vùng tích lũy (Chop/Sideway).
+3.  **1D (Lọc dài hạn - Long Filter):** Xác định chu kỳ giá vĩ mô.
+
+### A. Kết quả thử nghiệm bộ lọc `ST(7, 3.5)` (Đã trừ phí 0.05% mỗi chiều)
+
+*   **Kịch bản S6 (Optimized Hybrid):**
+    *   *Baseline (Không lọc):* Khớp 449 lệnh, WR **38.75%**, Net PnL Dynamic **-311.83 USDT** (Cháy ròng do phí).
+    *   *Bộ lọc 1H ST Only:* Khớp 311 lệnh (giảm 138 lệnh nhiễu), WR **55.95% (+17.20%)**, Net PnL Dynamic **+34,920.78 USDT**.
+*   **Kịch bản S4 (Trailing SL):**
+    *   *Baseline (Không lọc):* Khớp 1013 lệnh, WR **46.99%**, Net PnL Dynamic **+106,972.26 USDT**.
+    *   *Bộ lọc 1H ST Only:* Khớp 509 lệnh (giảm 504 lệnh nhiễu), WR **66.99% (+20.00%)**, Net PnL Dynamic **+5,714,692.57 USDT** (Tăng trưởng cực kỳ ngoạn mục nhờ lãi kép).
+*   **Kịch bản S3+S5 (Trend Stack - Phân tách S3 & S5):**
+    *   *Cấu hình Joint S3+S5:* Baseline khớp 241 lệnh, WR **39.83%**, Net PnL Dynamic **-7,500.44 USDT**. Tích hợp 1H ST Filter: Khớp 232 lệnh, WR **41.38%**, Net PnL Dynamic **-7,078.58 USDT** (Hiệu suất vẫn âm nặng do độ trễ của EMA Daily).
+    *   *Cấu hình S3-only (Daily EMA Stack):* Baseline khớp 441 lệnh, WR **26.53%**, Net PnL Dynamic **-9,442.57 USDT**. Tích hợp 1H ST Filter: Khớp 250 lệnh, WR **38.40%**, Net PnL Dynamic **-7,187.59 USDT** (Xác nhận S3 là bộ lọc gây trễ nghiêm trọng và phá hủy lợi nhuận).
+    *   *Cấu hình S5-only (Hourly confirmation + Daily Trend):* Baseline khớp 289 lệnh, WR **49.83%**, Net PnL Dynamic **+2,497.80 USDT**. Tích hợp 1H ST Filter: Khớp 280 lệnh, WR **51.43%**, Net PnL Dynamic **+4,607.11 USDT** (Hiệu suất dương vượt trội nhờ tối ưu nhạy bén khung 1H EMA Stack).
+
+### B. Bài học thực nghiệm về Cấu trúc Đa khung thời gian
+*   **Tại sao chỉ 1H ST là đủ hiệu quả?** Giai đoạn May 30 - June 17, 2026 là downtrend vĩ mô dài hạn của BTC (giá nằm dưới EMA200 ngày, ADX Daily duy trì cực cao >30). Vì toàn bộ các tín hiệu S6 và S3+S5 vượt qua điều kiện lọc xu hướng ngày đều là Short, xu hướng 4H và 1D SuperTrend vốn đã ở vị thế Bearish (đồng thuận 100%). Do đó, bộ lọc 4H và 1D không lọc thêm lệnh nào, và chỉ có bộ lọc **1H SuperTrend** đóng vai trò lọc nhiễu nhạy bén ở sóng ngắn.
+
+---
+
+## 🧬 5. KẾT TINH THÀNH CHIẾN LƯỢC (STRATEGY CRYSTALLIZATION)
+
+Dựa trên kết quả thực nghiệm tối ưu hóa 627 tín hiệu và các phân tách mở rộng trên 1,015 tín hiệu, chúng ta kết tinh thành **4 loại hình chiến lược chuyên biệt** dành cho các khẩu vị rủi ro và điều kiện thị trường khác nhau:
 
 ### 🛡️ Loại 1: Chiến lược Bảo thủ SEPA (Conservative SEPA)
 *   **Cấu hình**: Áp dụng nguyên mẫu **S2**.
@@ -78,11 +103,11 @@ Dựa trên kết quả thực nghiệm tối ưu hóa 627 tín hiệu, chúng t
 *   **Cách thức vận hành**: Chỉ giao dịch khi khung Daily đạt điểm xu hướng tuyệt đối và có mẫu hình tích lũy thu hẹp biến động (VCP) rõ rệt. Khớp rất ít lệnh nhưng lệnh nào khớp đều có xác suất thắng cực cao.
 *   **Tham số khuyên dùng**: Vốn Dynamic 1% portfolio, Stop Loss chặt chẽ theo ATR mục tiêu.
 
-### ⚡ Loại 2: Chiến lược Bám đuổi Động lượng Ngắn hạn (Short-term Trend Stack)
-*   **Cấu hình**: Áp dụng kịch bản **S3 / S5**.
+### ⚡ Loại 2: Chiến lược Bám đuổi Động lượng Ngắn hạn (S5-only Trend Validation)
+*   **Cấu hình**: Áp dụng kịch bản **S5-only** (Bỏ qua hoàn toàn S3).
 *   **Khẩu vị rủi ro**: Trung bình.
-*   **Cách thức vận hành**: Giao dịch liên tục theo cụm EMA ngắn hạn khi khung 1H và Daily đồng thuận xu hướng. Thích hợp cho thị trường Crypto đang ở giai đoạn Uptrend mạnh mẽ (Bull Market), tận dụng tối đa các nhịp điều chỉnh (pullback) để nhồi lệnh.
-*   **Tham số khuyên dùng**: Fixed Sizing hoặc Dynamic 1.5% portfolio, SL/TP theo cấu hình mặc định của webhook.
+*   **Cách thức vận hành**: Giao dịch theo cụm EMA ngắn hạn khung 1H đồng thuận với cấu trúc xu hướng tối thiểu khung ngày. Đã loại bỏ hoàn toàn bộ lọc S3 (EMA Daily Stack) do tính trễ cao gây bào mòn tài sản. Khuyên dùng kết hợp bộ lọc xu hướng **SuperTrend v1.3 `ST(7, 3.5) 1H`**.
+*   **Tham số khuyên dùng**: Fixed Sizing hoặc Dynamic 1.0% - 1.5% portfolio để kiểm soát Drawdown.
 
 ### 🏆 Loại 3: Chiến lược Thu hoạch Lãi kép Tối ưu (Optimized Hybrid - Đề xuất chính)
 *   **Cấu hình**: Áp dụng kịch bản **S6**.

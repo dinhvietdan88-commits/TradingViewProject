@@ -367,15 +367,22 @@ def simulate_trade_execution(
     is_trailing: bool = False,
     trailing_dist_atr: float = 0.0,
     daily_atr14: float = 0.0,
+    slippage_pct: float = 0.05,
 ) -> dict:
     """Simulate execution on hourly candles from start_idx."""
+    action_lower = action.lower()
+    is_long = action_lower in ("buy", "long")
+
+    # Apply entry slippage
+    if is_long:
+        entry_price = entry_price * (1.0 + slippage_pct / 100.0)
+    else:
+        entry_price = entry_price * (1.0 - slippage_pct / 100.0)
+
     close_price = entry_price
     close_time_ms = int(df_1h.iloc[-1]["timestamp"])
     reason = "TIMEOUT"
     exit_idx = len(df_1h) - 1
-
-    action_lower = action.lower()
-    is_long = action_lower in ("buy", "long")
 
     # Initialize trailing stop variables
     # Trailing Stop = Highest High since entry - 2.5 * daily_atr14 (for long)
@@ -383,12 +390,15 @@ def simulate_trade_execution(
     highest_high = entry_price
     lowest_low = entry_price
     current_sl = sl_price
+    trailing_sl_history = []
 
     for i in range(start_idx, len(df_1h)):
         row = df_1h.iloc[i]
         high = float(row["high"])
         low = float(row["low"])
         ts = int(row["timestamp"])
+
+        trailing_sl_history.append(current_sl)
 
         # Check stop loss & take profit first using current_sl and tp_price carried over
         if is_long:
@@ -449,6 +459,12 @@ def simulate_trade_execution(
         exit_idx = len(df_1h) - 1
         close_price = float(df_1h.iloc[exit_idx]["close"])
 
+    # Apply exit slippage
+    if is_long:
+        close_price = close_price * (1.0 - slippage_pct / 100.0)
+    else:
+        close_price = close_price * (1.0 + slippage_pct / 100.0)
+
     pnl_pct = (
         (close_price - entry_price) / entry_price
         if is_long
@@ -461,6 +477,7 @@ def simulate_trade_execution(
         "close_reason": reason,
         "pnl_pct": pnl_pct,
         "exit_idx": exit_idx,
+        "trailing_sl_history": trailing_sl_history,
     }
 
 
@@ -481,8 +498,8 @@ def run_campaign(signals: list[dict], data_dfs: dict) -> dict:
         received_at = signal["received_at"]
         payload_json = signal["payload_json"]
 
-        # Basic validations
-        if action.lower() not in ("buy", "sell", "long", "short") or price <= 0:
+        # Basic validations - filter out mock/test signals (e.g. price = 100.0)
+        if action.lower() not in ("buy", "sell", "long", "short") or price <= 1000.0:
             continue
 
         # Parse payload SL/TP
