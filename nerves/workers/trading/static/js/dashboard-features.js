@@ -1286,6 +1286,7 @@ async function loadOverviewWidgets() {
     loadOverviewVision(),
     loadOverviewHealth(),
     startTickerPolling(),
+    typeof loadSentimentWidget === 'function' ? loadSentimentWidget() : Promise.resolve(),
   ]);
 }
 

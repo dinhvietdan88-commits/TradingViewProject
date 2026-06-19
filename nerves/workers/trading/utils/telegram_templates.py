@@ -22,6 +22,8 @@ DEFAULT_TEMPLATES = {
         "• Trend Template: <b>{tt_score}/8 ({stage})</b>\n"
         "• Volatility Contraction (VCP): <b>{vcp_status}</b>\n"
         "• Khối lượng (Volume): <code>{volume_ratio}x avg</code>\n\n"
+        "📊 <b>TÂM LÝ THỊ TRƯỜNG (SENTIMENT):</b>\n"
+        "{sentiment_details}\n\n"
         "🧠 <b>KHUYẾN NGHỊ AI ({ai_provider}):</b>\n"
         "{ai_advice}\n\n"
         "🛑 <b>Quản lý rủi ro (Risk Limits):</b>\n"
@@ -73,6 +75,13 @@ MOCK_KEYS = {
     "stage": "Stage 2",
     "vcp_status": "Confirmed",
     "volume_ratio": "1.8",
+    "sentiment_details": (
+        "📊 Tâm lý: <code>[🔴───⬜──🟢] +0.28 (Tích cực)</code>\n"
+        "├── 🐦 Social (Twitter): <code>+0.10</code>\n"
+        "├── 📰 News (RSS Feeds): <code>+0.30</code>\n"
+        "├── 📈 Fear & Greed: <code>🟢 Greed (75)</code>\n"
+        "└── 💳 Market Funding: <code>🟢 Long Bias (Binance: 0.0150% / OI: 12.5k)</code>"
+    ),
     "ai_provider": "Claude-3.5-Sonnet RAG",
     "ai_advice": "Strong bullish continuation pattern.",
     "stop_loss": "62540.00",

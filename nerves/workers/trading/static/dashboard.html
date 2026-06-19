@@ -653,6 +653,36 @@
           </div>
         </section>
 
+        <!-- Market Sentiment Metrics -->
+        <section class="glass-section overview-sentiment-section" id="sentimentSection">
+          <div class="section-title" style="display: flex; align-items: center; gap: 8px;">
+            <span>📊</span> Market Sentiment Metrics
+          </div>
+          <div class="sentiment-widget-grid">
+            <!-- Fear & Greed Gauge Box -->
+            <div class="sentiment-kpi-box" id="fngBox">
+              <span class="protection-label">Fear & Greed Index</span>
+              <div class="fng-value" id="fngValue">—</div>
+              <span class="fng-label" id="fngLabel">Neutral</span>
+              <span style="font-size: 0.6rem; opacity: 0.6; margin-top: 4px;" id="fngUpdateTime">Updated: —</span>
+            </div>
+            <!-- Funding Rates Heatmap -->
+            <div class="sentiment-kpi-box" style="align-items: stretch; justify-content: flex-start;">
+              <span class="protection-label" style="margin-bottom: 8px; text-align: center;">Funding Rates Heatmap</span>
+              <div class="funding-heatmap-list" id="fundingList">
+                <div class="loading" style="padding: 10px"><div class="spinner"></div></div>
+              </div>
+            </div>
+          </div>
+          <!-- Symbol Watchlist Breakdown -->
+          <div class="sentiment-watchlist-breakdown">
+            <div class="sentiment-watchlist-title">🔍 Watchlist Sentiment Breakdown</div>
+            <div id="sentimentWatchlistList">
+              <div class="loading" style="padding: 10px"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </section>
+
       </div>
     </div>
   </div>

@@ -170,6 +170,43 @@ async function loadKPIs() {
   `;
 }
 
+// ═══ COLOR SCHEME FOR COMBINED SENTIMENT SCORE ═══
+function getScoreStyle(score) {
+  if (score === null || score === undefined || isNaN(score)) {
+    return 'color: #9ca3af; background: rgba(156, 163, 175, 0.1);';
+  }
+  const val = Math.max(-1, Math.min(1, parseFloat(score)));
+  let h, s, l;
+  if (val < 0) {
+    h = 0; // Red
+    s = Math.round(10 + Math.abs(val) * 70); // 10% to 80%
+    l = Math.round(65 - Math.abs(val) * 15); // 65% to 50%
+  } else {
+    h = 135; // Green
+    s = Math.round(10 + val * 60); // 10% to 70%
+    l = Math.round(65 - val * 15); // 65% to 50%
+  }
+  return `color: hsl(${h}, ${s}%, ${l}%); background: hsla(${h}, ${s}%, ${l}%, 0.1);`;
+}
+
+function getScoreColor(score) {
+  if (score === null || score === undefined || isNaN(score)) {
+    return '#9ca3af';
+  }
+  const val = Math.max(-1, Math.min(1, parseFloat(score)));
+  let h, s, l;
+  if (val < 0) {
+    h = 0;
+    s = Math.round(10 + Math.abs(val) * 70);
+    l = Math.round(65 - Math.abs(val) * 15);
+  } else {
+    h = 135;
+    s = Math.round(10 + val * 60);
+    l = Math.round(65 - val * 15);
+  }
+  return `hsl(${h}, ${s}%, ${l}%)`;
+}
+
 // ═══ TRADES TABLE — USE /trades ENDPOINT ═══
 let tradePage = 1;
 async function loadTrades(page = 1) {
@@ -188,12 +225,60 @@ async function loadTrades(page = 1) {
     const pnl = t.pnl || 0;
     const dt = t.created_at || '—';
     const status = (t.status || '—').toUpperCase();
+    
+    const rawScore = t.sentiment_score !== undefined && t.sentiment_score !== null ? t.sentiment_score : t.combined_score;
+    const scoreStyle = getScoreStyle(rawScore);
+    const scoreFormatted = (rawScore !== null && rawScore !== undefined) ? rawScore.toFixed(2) : '—';
+    
+    let tooltipHtml = '';
+    if (t.sentiment_raw) {
+      try {
+        const raw = typeof t.sentiment_raw === 'string' ? JSON.parse(t.sentiment_raw) : t.sentiment_raw;
+        const tw = raw.twitter || {};
+        const rss = raw.rss || {};
+        const fng = raw.fear_greed || {};
+        const fund = raw.funding_rates || {};
+        
+        const twScore = tw.score !== undefined ? tw.score.toFixed(2) : '—';
+        const rssScore = rss.score !== undefined ? rss.score.toFixed(2) : '—';
+        const fngVal = fng.value !== undefined ? fng.value : '—';
+        const fngLabel = fng.sentiment || '—';
+        
+        let fundRatesStr = '';
+        if (fund.rates) {
+          fundRatesStr = Object.entries(fund.rates)
+            .map(([ex, r]) => `${ex}: ${r}`)
+            .join(', ');
+        } else {
+          fundRatesStr = '—';
+        }
+        
+        tooltipHtml = `
+          <div class="sentiment-tooltip">
+            <div class="sentiment-tooltip-title">Sentiment Breakdown</div>
+            <div class="sentiment-tooltip-row"><span>Twitter Sentiment:</span> <span>${twScore}</span></div>
+            <div class="sentiment-tooltip-row"><span>RSS News Sentiment:</span> <span>${rssScore}</span></div>
+            <div class="sentiment-tooltip-row"><span>Fear & Greed Index:</span> <span>${fngVal} (${fngLabel})</span></div>
+            <div class="sentiment-tooltip-row"><span>Funding Rates:</span> <span style="font-size:0.65rem; max-width:140px; text-align:right; word-break:break-all">${fundRatesStr}</span></div>
+            <div class="sentiment-tooltip-row"><span>Open Interest:</span> <span>${fund.oi || '—'}</span></div>
+          </div>
+        `;
+      } catch (err) {
+        console.error('Error parsing sentiment_raw', err);
+      }
+    }
+
     return `<tr>
       <td>${offset + i + 1}</td>
       <td style="font-family:var(--mono);font-size:0.78rem">${dt}</td>
       <td><strong>${t.symbol || '—'}</strong></td>
       <td><span class="badge ${isBuy ? 'badge-buy' : 'badge-sell'}">${side}</span></td>
-      <td>${t.combined_score || '—'}</td>
+      <td>
+        <div class="combined-score-cell" style="${scoreStyle}">
+          ${scoreFormatted}
+          ${tooltipHtml}
+        </div>
+      </td>
       <td style="font-family:var(--mono)">${t.executed_qty || t.requested_qty || '—'}</td>
       <td style="font-family:var(--mono)">${t.executed_price || '—'}</td>
       <td style="color:${pnl >= 0 ? 'var(--buy)' : 'var(--sell)'}; font-family:var(--mono)">${pnl !== null && pnl !== undefined ? (pnl >= 0 ? '+' : '') + pnl.toFixed(2) : '—'}</td>
@@ -539,6 +624,7 @@ async function init() {
   loadCDPStatus();
   loadRiskGates();
   loadRiskLogs();
+  loadSentimentWidget();
   if (typeof loadSignalStats === 'function') {
     loadSignalStats();
   }
@@ -547,6 +633,7 @@ async function init() {
     loadCDPStatus();
     loadRiskGates();
     loadRiskLogs();
+    loadSentimentWidget();
     if (typeof loadSignalStats === 'function') {
       loadSignalStats();
     }
@@ -824,6 +911,115 @@ async function loadRiskLogs() {
       </div>
     `;
   }).join('');
+}
+
+async function loadSentimentWidget() {
+  const fngValEl = document.getElementById('fngValue');
+  const fngLabelEl = document.getElementById('fngLabel');
+  const fngTimeEl = document.getElementById('fngUpdateTime');
+  const fundingListEl = document.getElementById('fundingList');
+  const watchlistListEl = document.getElementById('sentimentWatchlistList');
+  
+  if (!fngValEl && !fngLabelEl && !fundingListEl && !watchlistListEl) return;
+  
+  const data = await apiFetch('/api/sentiment/metrics');
+  if (!data) {
+    if (fundingListEl) fundingListEl.innerHTML = '<p class="muted-label">Không thể tải dữ liệu tâm lý</p>';
+    if (watchlistListEl) watchlistListEl.innerHTML = '<p class="muted-label">Không thể tải dữ liệu tâm lý</p>';
+    return;
+  }
+  
+  // 1. Fear & Greed Index
+  const fng = data.fear_greed || {};
+  const fngVal = fng.value !== undefined ? fng.value : 50;
+  const fngLabel = fng.sentiment || 'Neutral';
+  const fngScore = (fngVal - 50) / 50.0;
+  const fngColor = getScoreColor(fngScore);
+  
+  if (fngValEl) {
+    fngValEl.textContent = fngVal;
+    fngValEl.style.color = fngColor;
+  }
+  if (fngLabelEl) {
+    fngLabelEl.textContent = fngLabel;
+    fngLabelEl.style.color = fngColor;
+  }
+  if (fngTimeEl) {
+    let updateTimeStr = '—';
+    if (fng.timestamp) {
+      try {
+        const d = new Date(parseInt(fng.timestamp) * 1000);
+        updateTimeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      } catch (err) {}
+    }
+    fngTimeEl.textContent = `Updated: ${updateTimeStr}`;
+  }
+  
+  // 2. Funding Rates Heatmap
+  const fund = data.funding_rates || {};
+  const rates = fund.rates || {};
+  const rawRates = fund.raw_rates || {};
+  
+  if (fundingListEl) {
+    let html = '';
+    const rateEntries = Object.entries(rates);
+    if (rateEntries.length === 0) {
+      html = '<div style="text-align:center; padding: 10px; opacity:0.5">Không có dữ liệu funding</div>';
+    } else {
+      for (const [ex, rateStr] of rateEntries) {
+        const val = rawRates[ex] || 0;
+        let color = 'var(--text-muted)';
+        if (val > 0.0003) {
+          color = '#ff9800'; // High funding rate (orange / warnings)
+        } else if (val > 0) {
+          color = '#34d399'; // Normal positive funding (green)
+        } else if (val < 0) {
+          color = '#ef5350'; // Negative funding (red)
+        }
+        html += `
+          <div class="funding-heatmap-item">
+            <span>${ex}</span>
+            <span class="funding-rate-val" style="color: ${color}">${rateStr}</span>
+          </div>
+        `;
+      }
+      // Display Open Interest at the bottom
+      if (fund.oi) {
+        html += `
+          <div style="font-size: 0.65rem; opacity: 0.6; margin-top: 4px; text-align: right; font-family: var(--mono)">
+            Open Interest: ${fund.oi}
+          </div>
+        `;
+      }
+    }
+    fundingListEl.innerHTML = html;
+  }
+  
+  // 3. Symbol Watchlist Breakdown
+  const watchlist = data.watchlist || [];
+  if (watchlistListEl) {
+    let wlHtml = '';
+    if (watchlist.length === 0) {
+      wlHtml = '<div style="text-align:center; padding: 10px; opacity:0.5">Watchlist trống</div>';
+    } else {
+      wlHtml = watchlist.map(w => {
+        const score = w.score !== undefined ? w.score : 0.0;
+        const pct = Math.round(((score + 1) / 2) * 100);
+        const scoreColor = getScoreColor(score);
+        
+        return `
+          <div class="sentiment-watchlist-row">
+            <span class="sentiment-watchlist-sym">${w.symbol}</span>
+            <div class="sentiment-progress-bar-wrap">
+              <div class="sentiment-progress-bar-fill" style="width: ${pct}%; background: ${scoreColor}"></div>
+            </div>
+            <span class="sentiment-watchlist-score" style="color: ${scoreColor}">${w.sentiment} (${score.toFixed(2)})</span>
+          </div>
+        `;
+      }).join('');
+    }
+    watchlistListEl.innerHTML = wlHtml;
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);

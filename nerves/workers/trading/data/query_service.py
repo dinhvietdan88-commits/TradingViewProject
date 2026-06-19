@@ -50,16 +50,32 @@ async def get_trades(
         # Fetch page
         limit = min(limit, 200)
         rows = await db.execute_fetchall(
-            f"""SELECT t.*, s.action as signal_action, s.payload as signal_payload
+            f"""SELECT t.*, s.action as signal_action, s.payload as signal_payload,
+                       sl.twitter_score, sl.rss_score, sl.glassnode_score, sl.combined_score as sentiment_score, sl.raw_data as sentiment_raw
                 FROM trades t
                 LEFT JOIN signals s ON s.id = t.signal_id
+                LEFT JOIN sentiment_logs sl ON sl.id = (
+                    SELECT id FROM sentiment_logs
+                    WHERE symbol = t.symbol
+                    AND created_at <= t.created_at
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                )
                 {where}
                 ORDER BY t.created_at DESC
                 LIMIT ? OFFSET ?""",
             params + [limit, offset],
         )
 
-        trades = [dict(r) for r in rows]
+        trades = []
+        for r in rows:
+            d = dict(r)
+            if d.get("sentiment_raw"):
+                try:
+                    d["sentiment_raw"] = json.loads(d["sentiment_raw"])
+                except Exception:
+                    pass
+            trades.append(d)
 
     return {"trades": trades, "total": total, "limit": limit, "offset": offset}
 
@@ -425,3 +441,52 @@ async def get_db_counts() -> Dict[str, int]:
             rows = await db.execute_fetchall(f"SELECT COUNT(*) FROM {table}")
             counts[f"{table}_count"] = rows[0][0] if rows else 0
         return counts
+
+
+async def get_latest_sentiment_log(symbol: str) -> Optional[Dict[str, Any]]:
+    """Retrieve the latest sentiment log for a given symbol."""
+    clean_symbol = symbol.split(":")[-1].split(".")[0]
+    if "_" in clean_symbol:
+        clean_symbol = clean_symbol.split("_")[0]
+        
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        rows = await db.execute_fetchall(
+            """SELECT * FROM sentiment_logs
+               WHERE symbol = ?
+               ORDER BY created_at DESC
+               LIMIT 1""",
+            [clean_symbol]
+        )
+        if not rows:
+            return None
+        d = dict(rows[0])
+        if d.get("raw_data"):
+            try:
+                d["raw_data"] = json.loads(d["raw_data"])
+            except Exception:
+                pass
+        return d
+
+
+async def get_recent_sentiments(limit: int = 20) -> List[Dict[str, Any]]:
+    """Retrieve the recent sentiment logs across all symbols."""
+    limit = min(limit, 100)
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        rows = await db.execute_fetchall(
+            """SELECT * FROM sentiment_logs
+               ORDER BY created_at DESC
+               LIMIT ?""",
+            [limit]
+        )
+        logs = []
+        for r in rows:
+            d = dict(r)
+            if d.get("raw_data"):
+                try:
+                    d["raw_data"] = json.loads(d["raw_data"])
+                except Exception:
+                    pass
+            logs.append(d)
+        return logs

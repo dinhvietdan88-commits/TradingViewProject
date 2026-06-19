@@ -270,6 +270,8 @@ from data.query_service import (  # noqa: E402, F401
     get_briefs,
     get_brief_by_id,
     get_db_counts,
+    get_latest_sentiment_log,
+    get_recent_sentiments,
 )
 
 

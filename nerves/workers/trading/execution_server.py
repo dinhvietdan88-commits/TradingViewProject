@@ -25,6 +25,32 @@ import database
 log = logging.getLogger(__name__)
 
 
+def generate_sentiment_bar(score: float) -> str:
+    """Map a score between -1.0 and 1.0 to a progress bar [🔴────🔘────🟢]."""
+    score = max(-1.0, min(1.0, score))
+    steps = 10
+    normalized = (score + 1.0) / 2.0
+    idx = int(round(normalized * steps))
+    
+    bar_chars = ["─"] * 9
+    bar_chars[4] = "⬜"
+    
+    indicator = "⚪"
+    if score > 0.4:
+        indicator = "🟢"
+    elif score < -0.4:
+        indicator = "🔴"
+        
+    if idx == 0:
+        return f"[🔴{''.join(bar_chars[1:])}🟢]"  # Active is the left red itself
+    elif idx == 10:
+        return f"[🔴{''.join(bar_chars[:-1])}🟢]"  # Active is the right green itself
+        
+    char_idx = idx - 1
+    bar_chars[char_idx] = indicator
+    return f"[🔴{''.join(bar_chars)}🟢]"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize database and exchange registry on startup."""
@@ -237,6 +263,63 @@ async def execute_trade(request: Request):
             except Exception:
                 pass
 
+            # Sentiment Analysis integration (Phase 2 Option B)
+            sentiment_details = ""
+            if getattr(config, "SENTIMENT_ENABLED", True):
+                try:
+                    from analyzer.sentiment_analyzer import SentimentAnalyzer
+                    sent_analyzer = SentimentAnalyzer()
+                    sent_res = await sent_analyzer.analyze_symbol(symbol_val)
+                    if sent_res.get("enabled"):
+                        combined = sent_res.get("combined_score", 0.0)
+                        bar = generate_sentiment_bar(combined)
+                        
+                        twitter = sent_res["breakdown"].get("twitter", 0.0)
+                        rss = sent_res["breakdown"].get("rss", 0.0)
+                        fng_score = sent_res["breakdown"].get("fear_greed", 0.0)
+                        funding = sent_res["breakdown"].get("funding", 0.0)
+                        
+                        fng_raw = sent_res["raw_data"].get("fear_greed", {})
+                        fng_val = fng_raw.get("value", 50)
+                        fng_sentiment = fng_raw.get("sentiment", "Neutral")
+                        
+                        fng_emoji = "⚪"
+                        if fng_score > 0.4:
+                            fng_emoji = "🟢"
+                        elif fng_score < -0.4:
+                            fng_emoji = "🔴"
+                            
+                        funding_raw = sent_res["raw_data"].get("funding_rates", {})
+                        rates_dict = funding_raw.get("rates", {})
+                        oi_str = funding_raw.get("oi", "N/A")
+                        
+                        binance_rate = rates_dict.get("Binance", "0.0000%")
+                        
+                        fund_emoji = "⚪"
+                        if funding > 0.4:
+                            fund_emoji = "🟢"
+                        elif funding < -0.4:
+                            fund_emoji = "🔴"
+                            
+                        sentiment_label = "Trung lập"
+                        if combined > 0.4:
+                            sentiment_label = "Tích cực"
+                        elif combined < -0.4:
+                            sentiment_label = "Tiêu cực"
+                            
+                        sentiment_details = (
+                            f"• Tâm lý: <code>{bar} {combined:+.2f} ({sentiment_label})</code>\n"
+                            f"├── 🐦 Social (Twitter): <code>{twitter:+.2f}</code>\n"
+                            f"├── 📰 News (RSS Feeds): <code>{rss:+.2f}</code>\n"
+                            f"├── 📈 Fear & Greed: <code>{fng_emoji} {fng_sentiment} ({fng_val})</code>\n"
+                            f"└── 💳 Market Funding: <code>{fund_emoji} Long Bias (Binance: {binance_rate} / OI: {oi_str})</code>"
+                        )
+                except Exception as sent_err:
+                    log.warning(f"Failed to generate sentiment details for Telegram: {sent_err}")
+                    
+            if not sentiment_details:
+                sentiment_details = "• Tâm lý: <code>N/A (Lỗi phân tích hoặc tắt)</code>"
+
             msg_text = render_template(
                 "A",
                 symbol=symbol_val,
@@ -247,6 +330,7 @@ async def execute_trade(request: Request):
                 stage=stage_val,
                 vcp_status=vcp_status,
                 volume_ratio=volume_ratio,
+                sentiment_details=sentiment_details,
                 ai_provider="Claude RAG",
                 ai_advice=analysis_text[:800],
                 stop_loss=sl_val,
