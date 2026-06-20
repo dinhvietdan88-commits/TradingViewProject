@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > Bao cao mau Forward-Test cho chien luoc **Angati SuperTrend VBS** voi 3 cap: BTC · ETH · SOL
-> Tao luc: **2026-06-20 17:40 UTC** · Muc dich: So sanh va kiem tra template truoc khi chay live
+> Tao luc: **2026-06-20 19:50 UTC** · Muc dich: So sanh va kiem tra template truoc khi chay live
 
 ---
 
@@ -87,4 +87,4 @@
 > Khi Forward Test dang chay thuc te, bao cao nay se duoc tu dong cap nhat tu `forward_trades.db`.
 > Lien he Angati System de xem bao cao live.
 
-*Angati Forward-Test Report Generator · v5.4 · 2026-06-20 17:40 UTC*
+*Angati Forward-Test Report Generator · v5.4 · 2026-06-20 19:50 UTC*
