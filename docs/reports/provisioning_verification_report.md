@@ -1,6 +1,6 @@
 # Provisioning Verification Report
 
-**Generated at**: 2026-06-09T23:48:21Z
+**Generated at**: 2026-06-19T17:34:21Z
 **Target Server(s)**: all
 
 ## Summary
@@ -16,7 +16,7 @@
 
 | ID | Description | Status | Details |
 |----|-------------|--------|---------|
-| 11.1.1 | Debian 12 Minimal đã cài | **FAIL** | OS mismatch: Paramiko connection failed: [Errno None] Unable to connect to port 22 on 100.92.13.100 |
+| 11.1.1 | Debian 12 Minimal đã cài | **FAIL** | OS mismatch: Paramiko connection failed: timed out |
 | 11.1.2 | apt update && apt upgrade | **FAIL** | Apt upgrade check failed: SSH connection failed: cached connection failure for Server A. |
 | 11.1.3 | User botuser tạo, không dùng root | **FAIL** | User botuser not found. |
 | 11.1.4 | SSH key-only auth, PasswordAuthentication no | **PASS** | SSH hardened (root disallowed or password authentication disabled). |
@@ -65,7 +65,7 @@
 
 ```json
 {
-  "timestamp": "2026-06-09T23:48:21Z",
+  "timestamp": "2026-06-19T17:34:21Z",
   "summary": {
     "passed": 8,
     "failed": 36,
@@ -77,7 +77,7 @@
       "passed": false,
       "status": "FAIL",
       "description": "Debian 12 Minimal \u0111\u00e3 c\u00e0i",
-      "msg": "OS mismatch: Paramiko connection failed: [Errno None] Unable to connect to port 22 on 100.92.13.100"
+      "msg": "OS mismatch: Paramiko connection failed: timed out"
     },
     "11.1.2": {
       "passed": false,

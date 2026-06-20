@@ -1090,3 +1090,88 @@ Xây dựng một kịch bản CLI helper bằng Python đặt tại `C:\Users\p
 - [ ] Lệnh `uv run C:\Users\pesil\.gemini\config\skillsngati-prr-compliance\prr_audit.py check` chạy thành công Ruff và Semgrep (sử dụng `--jobs=1` và bỏ qua `.venv`), không bị treo hoặc chết tiến trình.
 - [ ] Lệnh `uv run C:\Users\pesil\.gemini\config\skills\angati-prr-compliance\prr_audit.py smoke-test` chạy thành công mô phỏng E2E và ghi nhận kết quả xác minh đường truyền.
 - [ ] Lệnh `uv run C:\Users\pesil\.gemini\config\skills\angati-prr-compliance\prr_audit.py audit` hoàn tất và báo cáo Server C gaps sạch lỗi.\n
+
+## Follow-up — 2026-06-19T21:10:01+07:00
+
+Verify code compliance with all security standards, organize changes into logical commits, and push to the remote branch eat/decentralized-macro-filter.
+
+Working directory: c:\Users\pesil\working\mj_trading\TradingViewProject
+Integrity mode: development
+
+## Requirements
+
+### R1. Security & Code Quality Gate Compliance
+- Run the local quality gate checks (sec-02 check command).
+- Address any remaining security findings or ruff lint errors in the current workspace files.
+- Run regression tests for security guards (sec-04).
+
+### R2. Commit Organization & Push
+- Group modified and untracked files into logical, clean Conventional Commit groups using git-commit-organizer.
+- Push the committed changes on branch eat/decentralized-macro-filter to remote dinhvietdan88-commits/TradingViewProject.
+
+## Acceptance Criteria
+
+### Security & Quality
+- local_security_gate.py check passes with 0 failures.
+- 	est_sec4_runtime_guard.py regression tests pass 100%.
+
+### Git Push
+- All code changes are committed and pushed successfully to the remote eat/decentralized-macro-filter branch.
+
+## Follow-up — 2026-06-20T00:47:43+07:00
+
+Verify code compliance with security standards (sec-01, sec-02, sec-03, sec-04), summarize the implemented features, and push the branch `feat/decentralized-macro-filter` to the remote repository.
+
+Working directory: c:\Users\pesil\working\mj_trading\TradingViewProject
+Integrity mode: development
+
+## Requirements
+
+### R1. Security & Quality Gate Compliance (sec-01, sec-02)
+- Run the local quality gate checks (`sec-02` check command) to ensure zero critical or high security issues remain.
+- Audit all files to verify that IDE-level formatting and inline sanitizers (`sec-01`) are properly applied.
+
+### R2. Pre-commit Hooks Integration (sec-03)
+- Verify and setup git hook integration (`sec-03`) to ensure pre-commit checks are active.
+
+### R3. Runtime Guard Regression Testing (sec-04)
+- Run the full suite of runtime guard tests (`sec-04`) to ensure zero security regressions.
+
+### R4. Push Branch
+- Push the local branch `feat/decentralized-macro-filter` to remote repository `origin`.
+
+## Acceptance Criteria
+
+### Quality & Security Gates
+- [ ] `local_security_gate.py check` passes without high/critical issues.
+- [ ] `test_sec4_runtime_guard.py` regression tests pass 100% (57/57 tests).
+
+### Git Remote Push
+- [ ] Branch `feat/decentralized-macro-filter` is pushed successfully to remote `origin`.
+
+## Follow-up — 2026-06-20T22:02:02+07:00
+
+Triển khai phương án Giao dịch Crypto (BTC, ETH, SOL) cho chế độ Forward Test (tiền ảo chạy thời gian thực) với cơ sở dữ liệu (database) riêng biệt, đồng thời nhận tín hiệu từ Server A. Các cơ sở dữ liệu hiện tại vẫn phải cập nhật liên tục để phục vụ chế độ Back-test.
+
+Working directory: `C:\Users\pesil\.gemini\antigravity\worktrees\TradingViewProject\forward-test-crypto-integration`
+
+## Requirements
+
+### R1. Thiết lập CSDL riêng cho Forward Test
+Hệ thống cần có một cơ sở dữ liệu (SQLite) riêng biệt cho chế độ Forward Test (ví dụ `forward_trades.db`), phân tách hoàn toàn khỏi database phục vụ Back-test/Live (`trades.db`).
+
+### R2. Nhận tín hiệu thời gian thực từ Server A
+Tích hợp cơ chế tiếp nhận tín hiệu giao dịch thời gian thực gửi từ Server A (thông qua webhook hoặc hàng đợi tín hiệu tương ứng) và lưu trữ chúng vào CSDL Forward Test.
+
+### R3. Cập nhật song song CSDL hiện tại phục vụ Back-test
+Đảm bảo các dữ liệu OHLCV, lịch sử chỉ báo và tín hiệu chung vẫn được cập nhật liên tục vào database hiện tại để không gây ảnh hưởng đến tính năng Back-test.
+
+## Acceptance Criteria
+
+### Tách biệt dữ liệu
+- [ ] Database Forward Test lưu trữ các tín hiệu, lệnh giao dịch giả lập (paper trades) và trạng thái vị thế riêng biệt.
+- [ ] Database Back-test tiếp tục cập nhật dữ liệu lịch sử bình thường không bị gián đoạn.
+
+### Nhận tín hiệu và Giao dịch giả lập
+- [ ] Xử lý thành công tín hiệu BTC, ETH, SOL từ Server A gửi tới.
+- [ ] Thực hiện khớp lệnh giả lập (Paper Trading) thời gian thực dựa trên giá thị trường hiện tại.

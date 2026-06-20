@@ -75,6 +75,17 @@ async def test_sentiment_analyzer_mock_flow():
         assert "twitter" in result["breakdown"]
         assert "rss" in result["breakdown"]
         assert "glassnode" in result["breakdown"]
+        assert "fear_greed" in result["breakdown"]
+        assert "funding" in result["breakdown"]
+        
+        # Verify raw data contains all 5 sources
+        assert "raw_data" in result
+        raw = result["raw_data"]
+        assert "twitter" in raw
+        assert "rss" in raw
+        assert "glassnode" in raw
+        assert "fear_greed" in raw
+        assert "funding_rates" in raw
 
         # Verify db persistence
         async with database.aiosqlite.connect(config.DB_PATH) as db:

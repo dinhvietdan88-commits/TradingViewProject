@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any
+from typing import Optional, Dict, Any, List
 
 import aiosqlite
 
@@ -14,52 +14,70 @@ log = logging.getLogger(__name__)
 
 
 async def get_trades(
-    symbol: str | None = None,
+    symbol: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
-    from_date: str | None = None,
-    to_date: str | None = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
     demo: bool = False,
-) -> dict[str, Any]:
+    mode: Optional[str] = None,
+) -> Dict[str, Any]:
     """Truy van lich su giao dich voi pagination va filter."""
-    params = [
-        symbol.upper() if symbol else None,
-        symbol,
-        from_date,
-        from_date,
-        to_date,
-        to_date,
-        1 if demo else 0,
-    ]
+    conditions = []
+    params: list = []
 
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    if symbol:
+        conditions.append("t.symbol = ?")
+        params.append(symbol.upper())
+    if from_date:
+        conditions.append("t.created_at >= ?")
+        params.append(from_date)
+    if to_date:
+        conditions.append("t.created_at <= ?")
+        params.append(to_date)
+    if not demo:
+        conditions.append(
+            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
+        )
+
+    where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
         # Count total
-        sql_count = """
-            SELECT COUNT(*) as cnt FROM trades t
-            WHERE (t.symbol = ? OR ? IS NULL)
-              AND (t.created_at >= ? OR ? IS NULL)
-              AND (t.created_at <= ? OR ? IS NULL)
-              AND (? = 1 OR (LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%')))
-        """
-        row = await db.execute_fetchall(sql_count, params)
+        sql_query = f"SELECT COUNT(*) as cnt FROM trades t {where}"  # noqa: S608
+        row = await db.execute_fetchall(sql_query, params)
         total = row[0][0] if row else 0
 
         # Fetch page
         limit = min(limit, 200)
-        sql_fetch = """
-            SELECT t.*, s.action as signal_action, s.payload as signal_payload
-            FROM trades t LEFT JOIN signals s ON s.id = t.signal_id
-            WHERE (t.symbol = ? OR ? IS NULL)
-              AND (t.created_at >= ? OR ? IS NULL)
-              AND (t.created_at <= ? OR ? IS NULL)
-              AND (? = 1 OR (LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%')))
-            ORDER BY t.created_at DESC LIMIT ? OFFSET ?
-        """
-        rows = await db.execute_fetchall(sql_fetch, params + [limit, offset])
+        sql_query = f"""SELECT t.*, s.action as signal_action, s.payload as signal_payload,
+                       sl.twitter_score, sl.rss_score, sl.glassnode_score, sl.combined_score as sentiment_score, sl.raw_data as sentiment_raw
+                FROM trades t
+                LEFT JOIN signals s ON s.id = t.signal_id
+                LEFT JOIN sentiment_logs sl ON sl.id = (
+                    SELECT id FROM sentiment_logs
+                    WHERE symbol = t.symbol
+                    AND created_at <= t.created_at
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                )
+                {where}
+                ORDER BY t.created_at DESC
+                LIMIT ? OFFSET ?"""  # noqa: S608
+        rows = await db.execute_fetchall(sql_query, params + [limit, offset])
 
-        trades = [dict(r) for r in rows]
+        trades = []
+        for r in rows:
+            d = dict(r)
+            if d.get("sentiment_raw"):
+                try:
+                    d["sentiment_raw"] = json.loads(d["sentiment_raw"])
+                except Exception:  # noqa: S110
+                    pass
+            trades.append(d)
 
     return {"trades": trades, "total": total, "limit": limit, "offset": offset}
 
@@ -69,20 +87,29 @@ async def get_trades(
 # ═══════════════════════════════════════════════════════════════
 
 
-async def get_stats(symbol: str | None = None, demo: bool = False) -> dict[str, Any]:
+async def get_stats(
+    symbol: Optional[str] = None, demo: bool = False, mode: Optional[str] = None
+) -> Dict[str, Any]:
     """Tinh metrics hieu suat: Win Rate, Profit Factor, Drawdown."""
-    params = [symbol.upper() if symbol else None, symbol, 1 if demo else 0]
+    conditions = ["t.status = 'FILLED'"]
+    params: list = []
 
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    if symbol:
+        conditions.append("t.symbol = ?")
+        params.append(symbol.upper())
+    if not demo:
+        conditions.append(
+            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
+        )
+
+    where = f"WHERE {' AND '.join(conditions)}"
+
+    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
-        sql = """
-            SELECT pnl FROM trades t
-            WHERE t.status = 'FILLED' AND t.pnl IS NOT NULL
-              AND (t.symbol = ? OR ? IS NULL)
-              AND (? = 1 OR (LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%')))
-        """
-        rows = await db.execute_fetchall(sql, params)
+        sql_query = f"SELECT pnl FROM trades t {where} AND pnl IS NOT NULL"  # noqa: S608
+        rows = await db.execute_fetchall(sql_query, params)
 
         pnl_list = [r[0] for r in rows]
 
@@ -136,7 +163,7 @@ async def get_stats(symbol: str | None = None, demo: bool = False) -> dict[str, 
         }
 
 
-def _build_mode_stats(pnl_list: list) -> dict[str, Any]:
+def _build_mode_stats(pnl_list: list) -> Dict[str, Any]:
     """Compute performance metrics for a given list of PnL values."""
     if not pnl_list:
         return {
@@ -173,36 +200,31 @@ def _build_mode_stats(pnl_list: list) -> dict[str, Any]:
     }
 
 
-async def get_stats_by_mode(demo: bool = False) -> dict[str, Any]:
-    """Performance metrics grouped by strategy mode (MTT vs MIS).
+async def get_stats_by_mode(
+    demo: bool = False, mode: Optional[str] = None
+) -> Dict[str, Any]:
+    """Performance metrics grouped by strategy mode (MTT vs MIS)."""
+    where_conds = ["t.status = 'FILLED'", "t.pnl IS NOT NULL"]
+    if not demo:
+        where_conds.append(
+            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
+        )
+    where_clause = " AND ".join(where_conds)
 
-    JOINs trades → signals to access the signals.mode column (added Phase 2).
-    Returns:
-        {
-            "overall":  { ...metrics... },     # All FILLED trades regardless of mode
-            "by_mode": {
-                "MTT":   { ...metrics... },    # Daily Trend Follower signals
-                "MIS":   { ...metrics... },    # 1H Momentum/Mean Reversion signals
-                "OTHER": { ...metrics... },    # Empty or unknown mode
-            }
-        }
-    """
-    params = [1 if demo else 0]
-
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
-        sql = """
+        sql_query = f"""
             SELECT t.pnl,
-            CASE
-              WHEN s.mode IS NULL OR TRIM(s.mode) = '' THEN 'OTHER'
-              ELSE UPPER(TRIM(s.mode))
-            END AS mode
+                   CASE
+                     WHEN s.mode IS NULL OR TRIM(s.mode) = '' THEN 'OTHER'
+                     ELSE UPPER(TRIM(s.mode))
+                   END AS mode
             FROM trades t
             LEFT JOIN signals s ON s.id = t.signal_id
-            WHERE t.status = 'FILLED' AND t.pnl IS NOT NULL
-              AND (? = 1 OR (LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%')))
-        """
-        rows = await db.execute_fetchall(sql, params)
+            WHERE {where_clause}
+            """  # noqa: S608
+        rows = await db.execute_fetchall(sql_query)
 
     all_rows = [(float(r["pnl"]), r["mode"]) for r in rows]
 
@@ -211,11 +233,11 @@ async def get_stats_by_mode(demo: bool = False) -> dict[str, Any]:
     overall = _build_mode_stats(all_pnl)
 
     # Per-mode buckets
-    mode_map: dict[str, list] = {}
+    mode_map: Dict[str, list] = {}
     for pnl, mode in all_rows:
         mode_map.setdefault(mode, []).append(pnl)
 
-    by_mode: dict[str, Any] = {}
+    by_mode: Dict[str, Any] = {}
     for mode_key in sorted(mode_map.keys()):
         by_mode[mode_key] = _build_mode_stats(mode_map[mode_key])
 
@@ -234,31 +256,46 @@ async def get_stats_by_mode(demo: bool = False) -> dict[str, Any]:
 
 async def get_recent_trades(
     limit: int = 10,
-    symbol: str | None = None,
+    symbol: Optional[str] = None,
     demo: bool = False,
-) -> list[dict[str, Any]]:
-    """Return the last N FILLED trades with signal mode for the /backtest history panel.
+    mode: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Return the last N FILLED trades with signal mode for the /backtest history panel."""
+    conditions = ["t.status = 'FILLED'", "t.pnl IS NOT NULL"]
+    params: list = []
+    if symbol:
+        conditions.append("t.symbol = ?")
+        params.append(symbol.upper())
+    if not demo:
+        conditions.append(
+            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
+        )
 
-    Columns returned per trade:
-        id, created_at, symbol, side, mode, executed_price,
-        stop_loss_price, take_profit_price, pnl, status, exchange
-    """
-    params = [symbol.upper() if symbol else None, symbol, 1 if demo else 0, limit]
+    where = f"WHERE {' AND '.join(conditions)}"
+    params.append(limit)
 
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
-        sql = """
-            SELECT t.id, t.created_at, t.symbol, t.side,
-            COALESCE(NULLIF(TRIM(s.mode), ''), 'OTHER') AS mode,
-            t.executed_price, t.stop_loss_price, t.take_profit_price,
-            t.pnl, t.status, t.exchange
-            FROM trades t LEFT JOIN signals s ON s.id = t.signal_id
-            WHERE t.status = 'FILLED' AND t.pnl IS NOT NULL
-              AND (t.symbol = ? OR ? IS NULL)
-              AND (? = 1 OR (LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%')))
-            ORDER BY t.created_at DESC LIMIT ?
-        """
-        rows = await db.execute_fetchall(sql, params)
+        sql_query = f"""
+            SELECT t.id,
+                   t.created_at,
+                   t.symbol,
+                   t.side,
+                   COALESCE(NULLIF(TRIM(s.mode), ''), 'OTHER') AS mode,
+                   t.executed_price,
+                   t.stop_loss_price,
+                   t.take_profit_price,
+                   t.pnl,
+                   t.status,
+                   t.exchange
+            FROM trades t
+            LEFT JOIN signals s ON s.id = t.signal_id
+            {where}
+            ORDER BY t.created_at DESC
+            LIMIT ?
+            """  # noqa: S608
+        rows = await db.execute_fetchall(sql_query, params)
     return [dict(r) for r in rows]
 
 
@@ -268,23 +305,30 @@ async def get_recent_trades(
 
 
 async def get_equity_curve(
-    symbol: str | None = None, demo: bool = False
-) -> dict[str, Any]:
+    symbol: Optional[str] = None, demo: bool = False, mode: Optional[str] = None
+) -> Dict[str, Any]:
     """Tra ve equity curve data cho Chart.js."""
-    params = [symbol.upper() if symbol else None, symbol, 1 if demo else 0]
+    conditions = ["t.status = 'FILLED'", "t.pnl IS NOT NULL"]
+    params: list = []
 
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    if symbol:
+        conditions.append("t.symbol = ?")
+        params.append(symbol.upper())
+    if not demo:
+        conditions.append(
+            "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
+        )
+
+    where = f"WHERE {' AND '.join(conditions)}"
+
+    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
-        sql = """
-            SELECT t.created_at, t.pnl, t.symbol, t.side
-            FROM trades t
-            WHERE t.status = 'FILLED' AND t.pnl IS NOT NULL
-              AND (t.symbol = ? OR ? IS NULL)
-              AND (? = 1 OR (LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%')))
-            ORDER BY t.created_at ASC
-        """
-        rows = await db.execute_fetchall(sql, params)
+        sql_query = f"""SELECT t.created_at, t.pnl, t.symbol, t.side
+                FROM trades t {where}
+                ORDER BY t.created_at ASC"""  # noqa: S608
+        rows = await db.execute_fetchall(sql_query, params)
 
         labels = []
         cumulative_pnl = []
@@ -328,7 +372,7 @@ async def get_equity_curve(
 async def get_briefs(
     limit: int = 20,
     offset: int = 0,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """Truy vấn lịch sử morning briefs với pagination."""
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -351,19 +395,19 @@ async def get_briefs(
             if d.get("scan_data"):
                 try:
                     d["scan_data"] = json.loads(d["scan_data"])
-                except ValueError as e:
-                    log.warning("Ignored: %s", e)
+                except Exception:  # noqa: S110
+                    pass
             if d.get("vision_data"):
                 try:
                     d["vision_data"] = json.loads(d["vision_data"])
-                except ValueError as e:
-                    log.warning("Ignored: %s", e)
+                except Exception:  # noqa: S110
+                    pass
             briefs.append(d)
 
     return {"briefs": briefs, "total": total, "limit": limit, "offset": offset}
 
 
-async def get_brief_by_id(brief_id: int) -> dict[str, Any] | None:
+async def get_brief_by_id(brief_id: int) -> Optional[Dict[str, Any]]:
     """Lấy chi tiết một brief theo ID."""
     async with aiosqlite.connect(config.DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -376,23 +420,18 @@ async def get_brief_by_id(brief_id: int) -> dict[str, Any] | None:
         if d.get("scan_data"):
             try:
                 d["scan_data"] = json.loads(d["scan_data"])
-            except ValueError as e:
-                log.warning("Ignored: %s", e)
+            except Exception:  # noqa: S110
+                pass
         if d.get("vision_data"):
             try:
                 d["vision_data"] = json.loads(d["vision_data"])
-            except ValueError as e:
-                log.warning("Ignored: %s", e)
+            except Exception:  # noqa: S110
+                pass
         return d
 
 
-async def get_db_counts() -> dict[str, int]:
-    """Đếm tổng records trong mỗi bảng cho system status.
-
-    SEC-003 fix: Explicit allowlist guard before table name interpolation.
-    SQLite does not support parameterized table names, so we validate against
-    a hardcoded frozenset to prevent injection if this list ever becomes dynamic.
-    """
+async def get_db_counts() -> Dict[str, int]:
+    """Đếm tổng records trong mỗi bảng cho system status."""
     _ALLOWED_TABLES = frozenset({"signals", "trades", "briefs"})
     async with aiosqlite.connect(config.DB_PATH) as db:
         counts = {}
@@ -407,6 +446,55 @@ async def get_db_counts() -> dict[str, int]:
                 raise ValueError(f"Disallowed table name: {table!r}")
             counts[f"{table}_count"] = rows[0][0] if rows else 0
         return counts
+
+
+async def get_latest_sentiment_log(symbol: str) -> Optional[Dict[str, Any]]:
+    """Retrieve the latest sentiment log for a given symbol."""
+    clean_symbol = symbol.split(":")[-1].split(".")[0]
+    if "_" in clean_symbol:
+        clean_symbol = clean_symbol.split("_")[0]
+
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        rows = await db.execute_fetchall(
+            """SELECT * FROM sentiment_logs
+               WHERE symbol = ?
+               ORDER BY created_at DESC
+               LIMIT 1""",
+            [clean_symbol],
+        )
+        if not rows:
+            return None
+        d = dict(rows[0])
+        if d.get("raw_data"):
+            try:
+                d["raw_data"] = json.loads(d["raw_data"])
+            except Exception:  # noqa: S110
+                pass
+        return d
+
+
+async def get_recent_sentiments(limit: int = 20) -> List[Dict[str, Any]]:
+    """Retrieve the recent sentiment logs across all symbols."""
+    limit = min(limit, 100)
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        rows = await db.execute_fetchall(
+            """SELECT * FROM sentiment_logs
+               ORDER BY created_at DESC
+               LIMIT ?""",
+            [limit],
+        )
+        logs = []
+        for r in rows:
+            d = dict(r)
+            if d.get("raw_data"):
+                try:
+                    d["raw_data"] = json.loads(d["raw_data"])
+                except Exception:  # noqa: S110
+                    pass
+            logs.append(d)
+        return logs
 
 
 async def get_sentiment_history(symbol: str, limit: int = 30) -> list[dict[str, Any]]:
@@ -463,6 +551,7 @@ async def get_signals(
     state: str | None = None,
     limit: int = 50,
     offset: int = 0,
+    mode: Optional[str] = None,
 ) -> dict[str, Any]:
     """Truy van danh sach signals de phuc vu Ledger Dashboard UI."""
     query_parts = []
@@ -476,11 +565,16 @@ async def get_signals(
         query_parts.append("state = ?")
         params.append(state.upper())
 
+    if mode:
+        query_parts.append("mode = ?")
+        params.append(mode)
+
     where_clause = " WHERE " + " AND ".join(query_parts) if query_parts else ""
 
     limit = min(limit, 200)
 
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
         # Lay tong so record

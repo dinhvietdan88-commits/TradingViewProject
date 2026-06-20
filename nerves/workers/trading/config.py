@@ -24,6 +24,7 @@ SENTRY_PROFILES_SAMPLE_RATE = float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.
 
 # Database (Sprint 4)
 DB_PATH = os.getenv("DB_PATH", "trades.db")
+FORWARD_DB_PATH = os.getenv("FORWARD_DB_PATH", "forward_trades.db")
 DB_TIMEOUT = float(os.getenv("DB_TIMEOUT", "60.0"))
 
 # Rate Limiting & Concurrency (Stress Testing)
@@ -75,6 +76,23 @@ RISK_PER_TRADE = float(os.getenv("RISK_PER_TRADE", "0.02"))  # 2% per trade
 STOP_LOSS_PCT = float(os.getenv("STOP_LOSS_PCT", "0.08"))  # 8% SL
 TAKE_PROFIT_PCT = float(os.getenv("TAKE_PROFIT_PCT", "0.20"))  # 20% TP → R:R ≥ 2.5
 MAX_QUOTE_QTY = float(os.getenv("MAX_QUOTE_QTY", "1000"))  # Max trade size limit
+
+# Strategy Crystallization Parameters (Sprint 7.6.3 / Gold Council Verdict)
+ATR_SL_MULTIPLIER = float(os.getenv("ATR_SL_MULTIPLIER", "1.5"))
+ATR_TP_MULTIPLIER = float(os.getenv("ATR_TP_MULTIPLIER", "3.0"))
+CHANDELIER_TRAILING_MULTIPLIER = float(
+    os.getenv("CHANDELIER_TRAILING_MULTIPLIER", "2.5")
+)
+REGIME_VOLATILITY_WINDOW = int(os.getenv("REGIME_VOLATILITY_WINDOW", "50"))
+AI_CONFIDENCE_THRESHOLD_HIL_MIN = int(
+    os.getenv("AI_CONFIDENCE_THRESHOLD_HIL_MIN", "50")
+)
+AI_CONFIDENCE_THRESHOLD_HIL_MAX = int(
+    os.getenv("AI_CONFIDENCE_THRESHOLD_HIL_MAX", "79")
+)
+S5_MIN_TT_SCORE = int(os.getenv("S5_MIN_TT_SCORE", "5"))
+S6_MIN_TT_SCORE = int(os.getenv("S6_MIN_TT_SCORE", "5"))
+S6_MIN_RSI = float(os.getenv("S6_MIN_RSI", "50.0"))
 
 # Notifications
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")

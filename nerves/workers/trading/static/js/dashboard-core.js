@@ -170,6 +170,43 @@ async function loadKPIs() {
   `;
 }
 
+// ═══ COLOR SCHEME FOR COMBINED SENTIMENT SCORE ═══
+function getScoreStyle(score) {
+  if (score === null || score === undefined || isNaN(score)) {
+    return 'color: #9ca3af; background: rgba(156, 163, 175, 0.1);';
+  }
+  const val = Math.max(-1, Math.min(1, parseFloat(score)));
+  let h, s, l;
+  if (val < 0) {
+    h = 0; // Red
+    s = Math.round(10 + Math.abs(val) * 70); // 10% to 80%
+    l = Math.round(65 - Math.abs(val) * 15); // 65% to 50%
+  } else {
+    h = 135; // Green
+    s = Math.round(10 + val * 60); // 10% to 70%
+    l = Math.round(65 - val * 15); // 65% to 50%
+  }
+  return `color: hsl(${h}, ${s}%, ${l}%); background: hsla(${h}, ${s}%, ${l}%, 0.1);`;
+}
+
+function getScoreColor(score) {
+  if (score === null || score === undefined || isNaN(score)) {
+    return '#9ca3af';
+  }
+  const val = Math.max(-1, Math.min(1, parseFloat(score)));
+  let h, s, l;
+  if (val < 0) {
+    h = 0;
+    s = Math.round(10 + Math.abs(val) * 70);
+    l = Math.round(65 - Math.abs(val) * 15);
+  } else {
+    h = 135;
+    s = Math.round(10 + val * 60);
+    l = Math.round(65 - val * 15);
+  }
+  return `hsl(${h}, ${s}%, ${l}%)`;
+}
+
 // ═══ TRADES TABLE — USE /trades ENDPOINT ═══
 let tradePage = 1;
 
@@ -196,36 +233,45 @@ async function loadTrades(page = 1) {
     const pnl = t.pnl || 0;
     const dt = t.created_at || '—';
     const status = (t.status || '—').toUpperCase();
-
     // Sentiment styling and tooltip
-    const scoreVal = t.combined_score ? parseFloat(t.combined_score) : NaN;
-    let scoreDisplay = '—';
-
-    if (!isNaN(scoreVal)) {
-      const scoreColor = getScoreColor(scoreVal);
-      const scoreText = (scoreVal >= 0 ? '+' : '') + scoreVal.toFixed(2);
-
-      let twitter = '—', rss = '—', fng = '—', glassnode = '—', ccxt = '—';
-      if (t.signal_payload) {
-        try {
-          const payloadObj = JSON.parse(t.signal_payload);
-          const stats = payloadObj.sentiment_stats;
-          if (stats && stats.breakdown) {
-            const bd = stats.breakdown;
-            twitter = bd.twitter !== undefined ? (bd.twitter >= 0 ? '+' : '') + bd.twitter.toFixed(2) : '—';
-            rss = bd.rss !== undefined ? (bd.rss >= 0 ? '+' : '') + bd.rss.toFixed(2) : '—';
-            glassnode = bd.glassnode !== undefined && stats.sources.glassnode !== 'glassnode_not_applicable' ? (bd.glassnode >= 0 ? '+' : '') + bd.glassnode.toFixed(2) : 'N/A';
-            ccxt = bd.ccxt !== undefined ? (bd.ccxt >= 0 ? '+' : '') + bd.ccxt.toFixed(2) : '—';
-
-            if (stats.raw_metrics && stats.raw_metrics.fng_value !== undefined) {
-              fng = `${stats.raw_metrics.fng_value} (${stats.sources.fng || 'Neutral'})`;
-            }
-          }
-        } catch (e) {
-          console.error("Error parsing signal_payload for tooltip", e);
+    const rawScore = t.sentiment_score !== undefined && t.sentiment_score !== null ? t.sentiment_score : t.combined_score;
+    const scoreColor = getScoreColor(rawScore);
+    const scoreText = (rawScore !== null && rawScore !== undefined) ? (rawScore >= 0 ? '+' : '') + rawScore.toFixed(2) : '—';
+    
+    let twitter = '—', rss = '—', fng = '—', glassnode = '—', funding = '—';
+    if (t.sentiment_raw) {
+      try {
+        const raw = typeof t.sentiment_raw === 'string' ? JSON.parse(t.sentiment_raw) : t.sentiment_raw;
+        const tw = raw.twitter || {};
+        const rssData = raw.rss || {};
+        const fngData = raw.fear_greed || raw.fng || {};
+        const gn = raw.glassnode || {};
+        const fund = raw.funding_rates || raw.ccxt || {};
+        
+        twitter = tw.score !== undefined ? (tw.score >= 0 ? '+' : '') + tw.score.toFixed(2) : '—';
+        rss = rssData.score !== undefined ? (rssData.score >= 0 ? '+' : '') + rssData.score.toFixed(2) : '—';
+        glassnode = gn.score !== undefined && gn.source !== 'glassnode_not_applicable' ? (gn.score >= 0 ? '+' : '') + gn.score.toFixed(2) : 'N/A';
+        
+        const fngVal = fngData.value !== undefined ? fngData.value : '—';
+        const fngLabel = fngData.sentiment || fngData.classification || '—';
+        fng = fngVal !== '—' ? `${fngVal} (${fngLabel})` : '—';
+        
+        if (fund.rates) {
+          funding = Object.entries(fund.rates)
+            .map(([ex, r]) => `${ex}: ${r}`)
+            .join(', ');
+        } else if (fund.funding_rate !== undefined) {
+          funding = (fund.funding_rate * 100).toFixed(4) + '%';
+        } else {
+          funding = '—';
         }
+      } catch (err) {
+        console.error('Error parsing sentiment_raw', err);
       }
+    }
 
+    let scoreDisplay = '—';
+    if (rawScore !== null && rawScore !== undefined) {
       scoreDisplay = `
         <div class="sentiment-cell" style="color:${scoreColor}">
           <strong>${scoreText}</strong>
@@ -238,10 +284,11 @@ async function loadTrades(page = 1) {
             <div class="sentiment-tooltip-row"><span>📰 News (RSS Feeds)</span><span class="val">${rss}</span></div>
             <div class="sentiment-tooltip-row"><span>📈 Fear & Greed</span><span class="val">${fng}</span></div>
             <div class="sentiment-tooltip-row"><span>🔍 Glassnode NUPL</span><span class="val">${glassnode}</span></div>
-            <div class="sentiment-tooltip-row"><span>💳 CCXT Funding</span><span class="val">${ccxt}</span></div>
+            <div class="sentiment-tooltip-row"><span>💳 Market Funding</span><span class="val" style="font-size:0.65rem; max-width:140px; text-align:right; word-break:break-all">${funding}</span></div>
           </div>
         </div>
       `;
+    }
     }
 
     return `<tr>

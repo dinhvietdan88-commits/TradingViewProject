@@ -8,6 +8,9 @@ import asyncio
 import logging
 from pathlib import Path
 import pandas as pd
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 # Ensure UTF-8 output on Windows terminal
@@ -22,10 +25,14 @@ if hasattr(sys.stderr, "reconfigure"):
     except Exception:  # noqa: S110
         pass
 
-PROJECT_ROOT = Path(r"c:\Users\pesil\working\mj_trading\TradingViewProject")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 vbs_replay_db_path = PROJECT_ROOT / "scratch" / "vbs_replay.db"
 signals_db_path = PROJECT_ROOT / "scratch" / "signal_queue_server_a.db"
 REPORTS_DIR = PROJECT_ROOT / "docs" / "reports" / "v2.1.0-7.6.3"
+
+sys.path.insert(0, str(PROJECT_ROOT / "nerves" / "workers" / "trading"))
+import config
+from symbol_config import get_symbol_config
 
 # Setup logging
 logging.basicConfig(
@@ -367,15 +374,28 @@ def simulate_trade_execution(
     is_trailing: bool = False,
     trailing_dist_atr: float = 0.0,
     daily_atr14: float = 0.0,
+    slippage_pct: float = 0.05,
 ) -> dict:
     """Simulate execution on hourly candles from start_idx."""
-    close_price = entry_price
-    close_time_ms = int(df_1h.iloc[-1]["timestamp"])
-    reason = "TIMEOUT"
-    exit_idx = len(df_1h) - 1
-
     action_lower = action.lower()
     is_long = action_lower in ("buy", "long")
+
+    # Apply entry slippage
+    if is_long:
+        entry_price = entry_price * (1.0 + slippage_pct / 100.0)
+    else:
+        entry_price = entry_price * (1.0 - slippage_pct / 100.0)
+
+    # Convert columns to numpy arrays for O(1) fast indexing
+    highs = df_1h["high"].values
+    lows = df_1h["low"].values
+    timestamps = df_1h["timestamp"].values
+    closes = df_1h["close"].values
+
+    close_price = entry_price
+    close_time_ms = int(timestamps[-1])
+    reason = "TIMEOUT"
+    exit_idx = len(df_1h) - 1
 
     # Initialize trailing stop variables
     # Trailing Stop = Highest High since entry - 2.5 * daily_atr14 (for long)
@@ -383,12 +403,14 @@ def simulate_trade_execution(
     highest_high = entry_price
     lowest_low = entry_price
     current_sl = sl_price
+    trailing_sl_history = []
 
     for i in range(start_idx, len(df_1h)):
-        row = df_1h.iloc[i]
-        high = float(row["high"])
-        low = float(row["low"])
-        ts = int(row["timestamp"])
+        high = float(highs[i])
+        low = float(lows[i])
+        ts = int(timestamps[i])
+
+        trailing_sl_history.append(current_sl)
 
         # Check stop loss & take profit first using current_sl and tp_price carried over
         if is_long:
@@ -447,7 +469,13 @@ def simulate_trade_execution(
 
     if reason == "TIMEOUT":
         exit_idx = len(df_1h) - 1
-        close_price = float(df_1h.iloc[exit_idx]["close"])
+        close_price = float(closes[exit_idx])
+
+    # Apply exit slippage
+    if is_long:
+        close_price = close_price * (1.0 - slippage_pct / 100.0)
+    else:
+        close_price = close_price * (1.0 + slippage_pct / 100.0)
 
     pnl_pct = (
         (close_price - entry_price) / entry_price
@@ -461,6 +489,7 @@ def simulate_trade_execution(
         "close_reason": reason,
         "pnl_pct": pnl_pct,
         "exit_idx": exit_idx,
+        "trailing_sl_history": trailing_sl_history,
     }
 
 
@@ -469,305 +498,392 @@ def simulate_trade_execution(
 # ═══════════════════════════════════════════════════════════════
 
 
-def run_campaign(signals: list[dict], data_dfs: dict) -> dict:
-    """Execute the backtest campaign for S1-S6 scenarios and calculate results."""
-    scenarios_trades = {f"S{i}": [] for i in range(1, 7)}
+def process_single_signal(signal: dict, data_dfs: dict) -> dict:
+    """Process a single signal across S1-S6 scenarios."""
+    vbs_id = signal["id"]
+    symbol = signal["symbol"]
+    action = signal["action"]
+    price = signal["price"]
+    received_at = signal["received_at"]
+    payload_json = signal["payload_json"]
 
-    for signal in signals:
-        vbs_id = signal["id"]
-        symbol = signal["symbol"]
-        action = signal["action"]
-        price = signal["price"]
-        received_at = signal["received_at"]
-        payload_json = signal["payload_json"]
+    # Basic validations - filter out mock/test signals (e.g. price = 100.0)
+    if action.lower() not in ("buy", "sell", "long", "short") or price <= 1000.0:
+        return None
 
-        # Basic validations
-        if action.lower() not in ("buy", "sell", "long", "short") or price <= 0:
-            continue
+    # Parse payload SL/TP
+    payload = json.loads(payload_json) if payload_json else {}
+    sl_val = payload.get("sl") or signal.get("sl")
+    tp_val = payload.get("tp") or signal.get("tp")
 
-        # Parse payload SL/TP
-        payload = json.loads(payload_json) if payload_json else {}
-        sl_val = payload.get("sl") or signal.get("sl")
-        tp_val = payload.get("tp") or signal.get("tp")
+    # Load Daily and Hourly Dataframes
+    df_1d = data_dfs.get(f"{symbol}_1d")
+    df_1h = data_dfs.get(f"{symbol}_1h")
 
-        # Load Daily and Hourly Dataframes
-        df_1d = data_dfs.get(f"{symbol}_1d")
-        df_1h = data_dfs.get(f"{symbol}_1h")
+    if df_1d is None or df_1h is None or len(df_1d) == 0 or len(df_1h) == 0:
+        return None
 
-        if df_1d is None or df_1h is None or len(df_1d) == 0 or len(df_1h) == 0:
-            continue
+    # Convert received_at to timestamp
+    dt_signal = datetime.datetime.strptime(
+        received_at.split(".")[0], "%Y-%m-%d %H:%M:%S"
+    )
+    dt_signal = dt_signal.replace(tzinfo=datetime.timezone.utc)
+    signal_time_ms = int(dt_signal.timestamp() * 1000)
 
-        # Convert received_at to timestamp
-        dt_signal = datetime.datetime.strptime(
-            received_at.split(".")[0], "%Y-%m-%d %H:%M:%S"
+    # Find signal start index in hourly data
+    start_idx = get_signal_start_index(df_1h, signal_time_ms)
+    if start_idx == -1:
+        return None
+
+    # Find daily row closed before signal
+    daily_row = get_last_closed_candle(df_1d, signal_time_ms, 86400000)
+    daily_price = daily_row["close"]
+    daily_atr = daily_row["atr14"]
+    daily_high52w = daily_row["high52w"]
+    daily_low52w = daily_row["low52w"]
+
+    daily_rsi = daily_row["rsi14"]
+    daily_macd = daily_row["macd_line"]
+    daily_macd_sig = daily_row["macd_signal"]
+
+    daily_ema20 = daily_row["ema20"]
+    daily_ema50 = daily_row["ema50"]
+    daily_ema100 = daily_row["ema100"]
+
+    is_long = action.lower() in ("buy", "long")
+
+    # Daily Trend Template score
+    tt_score = daily_row["tt_score_long"] if is_long else daily_row["tt_score_short"]
+
+    # VCP verification - check 5-day window prior to the breakout signal
+    daily_row_idx = int(daily_row.name)
+    vcp_slice = df_1d.iloc[max(0, daily_row_idx - 4) : daily_row_idx + 1]
+    vcp_window_met = False
+    for _, r in vcp_slice.iterrows():
+        r_vol = r["volume"]
+        r_vol_avg20 = r["volume_avg20"]
+        r_high = r["high"]
+        r_low = r["low"]
+        r_atr = r["atr14"]
+
+        r_vol_ratio = (r_vol / r_vol_avg20) if r_vol_avg20 and r_vol_avg20 > 0 else 1.0
+        r_range_ratio = ((r_high - r_low) / r_atr) if r_atr and r_atr > 0 else 1.0
+
+        if r_vol_ratio < 1.0 and r_range_ratio < 1.0:
+            vcp_window_met = True
+            break
+
+    if is_long:
+        near_boundary = (
+            (daily_price >= daily_high52w * 0.90) if daily_high52w else False
         )
-        dt_signal = dt_signal.replace(tzinfo=datetime.timezone.utc)
-        signal_time_ms = int(dt_signal.timestamp() * 1000)
+    else:
+        near_boundary = (daily_price <= daily_low52w * 1.10) if daily_low52w else False
+    vcp_met = vcp_window_met and near_boundary
 
-        # Find signal start index in hourly data
-        start_idx = get_signal_start_index(df_1h, signal_time_ms)
-        if start_idx == -1:
-            continue
-
-        # Find daily row closed before signal
-        daily_row = get_last_closed_candle(df_1d, signal_time_ms, 86400000)
-        daily_price = daily_row["close"]
-        daily_atr = daily_row["atr14"]
-        daily_high52w = daily_row["high52w"]
-        daily_low52w = daily_row["low52w"]
-
-        daily_rsi = daily_row["rsi14"]
-        daily_macd = daily_row["macd_line"]
-        daily_macd_sig = daily_row["macd_signal"]
-
-        daily_ema20 = daily_row["ema20"]
-        daily_ema50 = daily_row["ema50"]
-        daily_ema100 = daily_row["ema100"]
-
-        is_long = action.lower() in ("buy", "long")
-
-        # Daily Trend Template score
-        tt_score = (
-            daily_row["tt_score_long"] if is_long else daily_row["tt_score_short"]
-        )
-
-        # VCP verification - check 5-day window prior to the breakout signal
-        daily_row_idx = int(daily_row.name)
-        vcp_slice = df_1d.iloc[max(0, daily_row_idx - 4) : daily_row_idx + 1]
-        vcp_window_met = False
-        for _, r in vcp_slice.iterrows():
-            r_vol = r["volume"]
-            r_vol_avg20 = r["volume_avg20"]
-            r_high = r["high"]
-            r_low = r["low"]
-            r_atr = r["atr14"]
-
-            r_vol_ratio = (
-                (r_vol / r_vol_avg20) if r_vol_avg20 and r_vol_avg20 > 0 else 1.0
-            )
-            r_range_ratio = ((r_high - r_low) / r_atr) if r_atr and r_atr > 0 else 1.0
-
-            if r_vol_ratio < 1.0 and r_range_ratio < 1.0:
-                vcp_window_met = True
-                break
-
+    # Define baseline SL and TP
+    if not sl_val or not tp_val:
         if is_long:
-            near_boundary = (
-                (daily_price >= daily_high52w * 0.90) if daily_high52w else False
-            )
+            base_sl = price * 0.92
+            base_tp = price * 1.20
         else:
-            near_boundary = (
-                (daily_price <= daily_low52w * 1.10) if daily_low52w else False
-            )
-        vcp_met = vcp_window_met and near_boundary
+            base_sl = price * 1.08
+            base_tp = price * 0.80
+    else:
+        base_sl = float(sl_val)
+        base_tp = float(tp_val)
 
-        # ═══════════════════════════════════════════════════════════════
-        # SCENARIOS CRITERIA CHECK AND RUN SIMULATION
-        # ═══════════════════════════════════════════════════════════════
+    # ═══════════════════════════════════════════════════════════════
+    # CRYSTALLIZATION FRAMEWORK: L1-L5 CALCULATIONS
+    # ═══════════════════════════════════════════════════════════════
 
-        # Define baseline SL and TP
-        if not sl_val or not tp_val:
-            if is_long:
-                base_sl = price * 0.92
-                base_tp = price * 1.20
-            else:
-                base_sl = price * 1.08
-                base_tp = price * 0.80
-        else:
-            base_sl = float(sl_val)
-            base_tp = float(tp_val)
+    # 1. 1H Trend (T1H) contribution (from SMA-20 of the last 30 1H candles before signal time)
+    hourly_slice_before = df_1h.iloc[max(0, start_idx - 30) : start_idx]
+    if len(hourly_slice_before) >= 20:
+        sma20 = hourly_slice_before["close"].rolling(window=20).mean().iloc[-1]
+        t_1h = 1.0 if price > sma20 else -1.0
+    else:
+        t_1h = 1.0
 
-        # S1: Baseline Bypass AI
-        sim1 = simulate_trade_execution(
+    # 2. Combined Medium/Long-Term Trend Score (MLTS)
+    mta_weight = getattr(config, "MTA_MLTF_WEIGHT_1H", 0.15)
+    mlts = tt_score + mta_weight * t_1h
+
+    # 3. Dynamic Volatility Regime (Trending vs Chop)
+    vol_window = getattr(config, "REGIME_VOLATILITY_WINDOW", 50)
+    daily_slice_before = df_1d.iloc[
+        max(0, daily_row_idx - vol_window + 1) : daily_row_idx + 1
+    ]
+    if len(daily_slice_before) >= 2:
+        closes_slice = daily_slice_before["close"].values
+        mean_price = closes_slice.mean()
+        std_dev = closes_slice.std()
+        coef_of_variation = std_dev / mean_price if mean_price > 0 else 0.0
+    else:
+        coef_of_variation = 0.05
+
+    # Spread and Alignment for Regime identification
+    latest_ema20 = daily_row["ema20"]
+    latest_ema50 = daily_row["ema50"]
+    latest_ema100 = daily_row["ema100"]
+
+    is_trending_up = latest_ema20 > latest_ema50 > latest_ema100
+    is_trending_down = latest_ema20 < latest_ema50 < latest_ema100
+    ema_aligned = is_trending_up or is_trending_down
+    spread = abs(latest_ema20 - latest_ema100) / daily_price if daily_price > 0 else 0.0
+
+    # Determine Chop regime
+    is_chop = coef_of_variation < 0.015 or (not ema_aligned and spread < 0.02)
+
+    single_results = {}
+
+    # S1: Baseline Bypass AI
+    sim1 = simulate_trade_execution(df_1h, start_idx, action, price, base_sl, base_tp)
+    single_results["S1"] = {
+        "vbs_id": vbs_id,
+        "symbol": symbol,
+        "side": action.upper(),
+        "entry": price,
+        "sl": base_sl,
+        "tp": base_tp,
+        "close_price": sim1["close_price"],
+        "pnl_pct": sim1["pnl_pct"],
+        "outcome": sim1["close_reason"],
+        "received_at": received_at,
+        "start_idx": start_idx,
+        "exit_idx": sim1["exit_idx"],
+    }
+
+    # S2: Standard Minervini Filter
+    if tt_score >= 5 and vcp_met:
+        sim2 = simulate_trade_execution(
             df_1h, start_idx, action, price, base_sl, base_tp
         )
-        scenarios_trades["S1"].append(
-            {
+        single_results["S2"] = {
+            "vbs_id": vbs_id,
+            "symbol": symbol,
+            "side": action.upper(),
+            "entry": price,
+            "sl": base_sl,
+            "tp": base_tp,
+            "close_price": sim2["close_price"],
+            "pnl_pct": sim2["pnl_pct"],
+            "outcome": sim2["close_reason"],
+            "received_at": received_at,
+            "start_idx": start_idx,
+            "exit_idx": sim2["exit_idx"],
+        }
+
+    # S3: Short-term EMA Filter
+    ema_aligned_s3 = False
+    if is_long:
+        if (
+            daily_price > daily_ema20
+            and daily_ema20 > daily_ema50
+            and daily_ema50 > daily_ema100
+        ):
+            ema_aligned_s3 = True
+    else:
+        if (
+            daily_price < daily_ema20
+            and daily_ema20 < daily_ema50
+            and daily_ema50 < daily_ema100
+        ):
+            ema_aligned_s3 = True
+
+    if ema_aligned_s3:
+        sim3 = simulate_trade_execution(
+            df_1h, start_idx, action, price, base_sl, base_tp
+        )
+        single_results["S3"] = {
+            "vbs_id": vbs_id,
+            "symbol": symbol,
+            "side": action.upper(),
+            "entry": price,
+            "sl": base_sl,
+            "tp": base_tp,
+            "close_price": sim3["close_price"],
+            "pnl_pct": sim3["pnl_pct"],
+            "outcome": sim3["close_reason"],
+            "received_at": received_at,
+            "start_idx": start_idx,
+            "exit_idx": sim3["exit_idx"],
+        }
+
+    # S4: Tight SL / Trailing
+    sym_cfg = get_symbol_config(symbol)
+    sl_mul = sym_cfg.get("atr_sl_mul", 1.5)
+    tp_mul = sym_cfg.get("atr_tp_mul", 3.0)
+    trail_mul = sym_cfg.get("trail_atr_mul", 2.5)
+
+    if daily_atr and daily_atr > 0:
+        if is_long:
+            tight_sl = price - (sl_mul * daily_atr)
+            tight_tp = price + (tp_mul * daily_atr)
+        else:
+            tight_sl = price + (sl_mul * daily_atr)
+            tight_tp = price - (tp_mul * daily_atr)
+
+        sim4 = simulate_trade_execution(
+            df_1h,
+            start_idx,
+            action,
+            price,
+            tight_sl,
+            tight_tp,
+            is_trailing=True,
+            trailing_dist_atr=trail_mul,
+            daily_atr14=daily_atr,
+        )
+        single_results["S4"] = {
+            "vbs_id": vbs_id,
+            "symbol": symbol,
+            "side": action.upper(),
+            "entry": price,
+            "sl": tight_sl,
+            "tp": tight_tp,
+            "close_price": sim4["close_price"],
+            "pnl_pct": sim4["pnl_pct"],
+            "outcome": sim4["close_reason"],
+            "received_at": received_at,
+            "start_idx": start_idx,
+            "exit_idx": sim4["exit_idx"],
+        }
+
+    # S5: Multi-Timeframe Validation (using MLTS score incorporating 1H trend)
+    s5_min_tt_score = getattr(config, "S5_MIN_TT_SCORE", 5)
+    atr_sl_mult = getattr(config, "ATR_SL_MULTIPLIER", 1.5)
+    atr_tp_mult = getattr(config, "ATR_TP_MULTIPLIER", 3.0)
+    trail_mult = getattr(config, "CHANDELIER_TRAILING_MULTIPLIER", 2.5)
+
+    if mlts >= s5_min_tt_score:
+        # Check hourly execution trend (last closed hourly candle before signal)
+        hourly_row = get_last_closed_candle(df_1h, signal_time_ms, 3600000)
+        h_ema20 = hourly_row["ema20"]
+        h_ema50 = hourly_row["ema50"]
+        h_ema200 = hourly_row["ema200"]
+
+        hourly_aligned = False
+        if is_long:
+            if h_ema20 > h_ema50 and h_ema50 > h_ema200:
+                hourly_aligned = True
+        else:
+            if h_ema20 < h_ema50 and h_ema50 < h_ema200:
+                hourly_aligned = True
+
+        if hourly_aligned:
+            if daily_atr and daily_atr > 0:
+                s5_sl = (
+                    price - (atr_sl_mult * daily_atr)
+                    if is_long
+                    else price + (atr_sl_mult * daily_atr)
+                )
+                s5_tp = (
+                    price + (atr_tp_mult * daily_atr)
+                    if is_long
+                    else price - (atr_tp_mult * daily_atr)
+                )
+            else:
+                s5_sl = base_sl
+                s5_tp = base_tp
+
+            sim5 = simulate_trade_execution(
+                df_1h, start_idx, action, price, s5_sl, s5_tp
+            )
+            single_results["S5"] = {
                 "vbs_id": vbs_id,
                 "symbol": symbol,
                 "side": action.upper(),
                 "entry": price,
-                "sl": base_sl,
-                "tp": base_tp,
-                "close_price": sim1["close_price"],
-                "pnl_pct": sim1["pnl_pct"],
-                "outcome": sim1["close_reason"],
+                "sl": s5_sl,
+                "tp": s5_tp,
+                "close_price": sim5["close_price"],
+                "pnl_pct": sim5["pnl_pct"],
+                "outcome": sim5["close_reason"],
                 "received_at": received_at,
                 "start_idx": start_idx,
-                "exit_idx": sim1["exit_idx"],
+                "exit_idx": sim5["exit_idx"],
             }
-        )
 
-        # S2: Standard Minervini Filter
-        if tt_score >= 5 and vcp_met:
-            sim2 = simulate_trade_execution(
-                df_1h, start_idx, action, price, base_sl, base_tp
-            )
-            scenarios_trades["S2"].append(
-                {
-                    "vbs_id": vbs_id,
-                    "symbol": symbol,
-                    "side": action.upper(),
-                    "entry": price,
-                    "sl": base_sl,
-                    "tp": base_tp,
-                    "close_price": sim2["close_price"],
-                    "pnl_pct": sim2["pnl_pct"],
-                    "outcome": sim2["close_reason"],
-                    "received_at": received_at,
-                    "start_idx": start_idx,
-                    "exit_idx": sim2["exit_idx"],
-                }
-            )
-
-        # S3: Short-term EMA Filter
-        # Long: price > EMA20 > EMA50 > EMA100
-        # Short: price < EMA20 < EMA50 < EMA100
-        ema_aligned = False
+    # S6: Optimized Hybrid Mode (now incorporating Chop Filter / Volatility Regime and MLTS)
+    s6_min_tt_score = getattr(config, "S6_MIN_TT_SCORE", 5)
+    s6_min_rsi = getattr(config, "S6_MIN_RSI", 50.0)
+    if not is_chop and mlts >= s6_min_tt_score:
+        hybrid_aligned = False
         if is_long:
-            if (
-                daily_price > daily_ema20
-                and daily_ema20 > daily_ema50
-                and daily_ema50 > daily_ema100
-            ):
-                ema_aligned = True
+            if daily_rsi >= s6_min_rsi and daily_macd > daily_macd_sig:
+                hybrid_aligned = True
         else:
-            if (
-                daily_price < daily_ema20
-                and daily_ema20 < daily_ema50
-                and daily_ema50 < daily_ema100
-            ):
-                ema_aligned = True
+            if daily_rsi <= (100.0 - s6_min_rsi) and daily_macd < daily_macd_sig:
+                hybrid_aligned = True
 
-        if ema_aligned:
-            sim3 = simulate_trade_execution(
-                df_1h, start_idx, action, price, base_sl, base_tp
-            )
-            scenarios_trades["S3"].append(
-                {
-                    "vbs_id": vbs_id,
-                    "symbol": symbol,
-                    "side": action.upper(),
-                    "entry": price,
-                    "sl": base_sl,
-                    "tp": base_tp,
-                    "close_price": sim3["close_price"],
-                    "pnl_pct": sim3["pnl_pct"],
-                    "outcome": sim3["close_reason"],
-                    "received_at": received_at,
-                    "start_idx": start_idx,
-                    "exit_idx": sim3["exit_idx"],
-                }
-            )
-
-        # S4: Tight SL / Trailing
-        # Tighten SL to 1.5 * ATR14 and TP to 3.0 * ATR14 from entry price
-        # Chandelier trailing stop on hourly candles trailing highest high by 2.5 * ATR14
-        if daily_atr and daily_atr > 0:
-            if is_long:
-                tight_sl = price - (1.5 * daily_atr)
-                tight_tp = price + (3.0 * daily_atr)
-            else:
-                tight_sl = price + (1.5 * daily_atr)
-                tight_tp = price - (3.0 * daily_atr)
-
-            sim4 = simulate_trade_execution(
-                df_1h,
-                start_idx,
-                action,
-                price,
-                tight_sl,
-                tight_tp,
-                is_trailing=True,
-                trailing_dist_atr=2.5,
-                daily_atr14=daily_atr,
-            )
-            scenarios_trades["S4"].append(
-                {
-                    "vbs_id": vbs_id,
-                    "symbol": symbol,
-                    "side": action.upper(),
-                    "entry": price,
-                    "sl": tight_sl,
-                    "tp": tight_tp,
-                    "close_price": sim4["close_price"],
-                    "pnl_pct": sim4["pnl_pct"],
-                    "outcome": sim4["close_reason"],
-                    "received_at": received_at,
-                    "start_idx": start_idx,
-                    "exit_idx": sim4["exit_idx"],
-                }
-            )
-
-        # S5: Multi-Timeframe Validation
-        # Daily Trend Template score >= 5, AND hourly execution trend aligned (hourly EMA20 > EMA50 > EMA200 for long)
-        if tt_score >= 5:
-            # Check hourly execution trend (last closed hourly candle before signal)
-            hourly_row = get_last_closed_candle(df_1h, signal_time_ms, 3600000)
-            h_ema20 = hourly_row["ema20"]
-            h_ema50 = hourly_row["ema50"]
-            h_ema200 = hourly_row["ema200"]
-
-            hourly_aligned = False
-            if is_long:
-                if h_ema20 > h_ema50 and h_ema50 > h_ema200:
-                    hourly_aligned = True
-            else:
-                if h_ema20 < h_ema50 and h_ema50 < h_ema200:
-                    hourly_aligned = True
-
-            if hourly_aligned:
-                sim5 = simulate_trade_execution(
-                    df_1h, start_idx, action, price, base_sl, base_tp
+        if hybrid_aligned:
+            if daily_atr and daily_atr > 0:
+                s6_sl = (
+                    price - (atr_sl_mult * daily_atr)
+                    if is_long
+                    else price + (atr_sl_mult * daily_atr)
                 )
-                scenarios_trades["S5"].append(
-                    {
-                        "vbs_id": vbs_id,
-                        "symbol": symbol,
-                        "side": action.upper(),
-                        "entry": price,
-                        "sl": base_sl,
-                        "tp": base_tp,
-                        "close_price": sim5["close_price"],
-                        "pnl_pct": sim5["pnl_pct"],
-                        "outcome": sim5["close_reason"],
-                        "received_at": received_at,
-                        "start_idx": start_idx,
-                        "exit_idx": sim5["exit_idx"],
-                    }
+                s6_tp = (
+                    price + (atr_tp_mult * daily_atr)
+                    if is_long
+                    else price - (atr_tp_mult * daily_atr)
                 )
-
-        # S6: Optimized Hybrid Mode
-        # Daily Trend Template score >= 5, AND daily RSI 14 >= 50, AND daily MACD line > MACD signal line (for long)
-        if tt_score >= 5:
-            hybrid_aligned = False
-            if is_long:
-                if daily_rsi >= 50 and daily_macd > daily_macd_sig:
-                    hybrid_aligned = True
-            else:
-                if daily_rsi <= 50 and daily_macd < daily_macd_sig:
-                    hybrid_aligned = True
-
-            if hybrid_aligned:
                 sim6 = simulate_trade_execution(
-                    df_1h, start_idx, action, price, base_sl, base_tp
+                    df_1h,
+                    start_idx,
+                    action,
+                    price,
+                    s6_sl,
+                    s6_tp,
+                    is_trailing=True,
+                    trailing_dist_atr=trail_mult,
+                    daily_atr14=daily_atr,
                 )
-                scenarios_trades["S6"].append(
-                    {
-                        "vbs_id": vbs_id,
-                        "symbol": symbol,
-                        "side": action.upper(),
-                        "entry": price,
-                        "sl": base_sl,
-                        "tp": base_tp,
-                        "close_price": sim6["close_price"],
-                        "pnl_pct": sim6["pnl_pct"],
-                        "outcome": sim6["close_reason"],
-                        "received_at": received_at,
-                        "start_idx": start_idx,
-                        "exit_idx": sim6["exit_idx"],
-                    }
+            else:
+                s6_sl = base_sl
+                s6_tp = base_tp
+                sim6 = simulate_trade_execution(
+                    df_1h, start_idx, action, price, s6_sl, s6_tp
                 )
+
+            single_results["S6"] = {
+                "vbs_id": vbs_id,
+                "symbol": symbol,
+                "side": action.upper(),
+                "entry": price,
+                "sl": s6_sl,
+                "tp": s6_tp,
+                "close_price": sim6["close_price"],
+                "pnl_pct": sim6["pnl_pct"],
+                "outcome": sim6["close_reason"],
+                "received_at": received_at,
+                "start_idx": start_idx,
+                "exit_idx": sim6["exit_idx"],
+            }
+
+    return single_results
+
+
+def run_campaign(signals: list[dict], data_dfs: dict) -> dict:
+    """Execute the backtest campaign for S1-S6 scenarios and calculate results."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    scenarios_trades = {f"S{i}": [] for i in range(1, 7)}
+
+    def task(sig):
+        try:
+            return process_single_signal(sig, data_dfs)
+        except Exception as e:
+            log.error(f"Error processing signal {sig.get('id')}: {e}")
+            return None
+
+    with ThreadPoolExecutor() as executor:
+        results = executor.map(task, signals)
+        for res in results:
+            if res:
+                for scen, trade in res.items():
+                    scenarios_trades[scen].append(trade)
 
     return scenarios_trades
 
@@ -970,7 +1086,7 @@ async def main():
             "Candles already cached in SQLite, skipping CCXT sync. (Offline Enabled)"
         )
 
-    # 3. Load and Calculate indicators for all active symbols
+    # 3. Load and Calculate indicators for all active symbols concurrently
     data_dfs = {}
     df_btc_daily = None
 
@@ -979,10 +1095,11 @@ async def main():
         btc_symbol = "BTCUSDT" if "BTCUSDT" in active_symbols else "BTC/USDT"
         df_btc_daily = load_cached_candles(btc_symbol, "1d")
 
-    for sym in active_symbols:
+    from concurrent.futures import ThreadPoolExecutor
+
+    def process_single_symbol(sym):
         df_1d = load_cached_candles(sym, "1d")
         df_1h = load_cached_candles(sym, "1h")
-
         is_btc = sym in ("BTCUSDT", "BTC/USDT")
 
         # Calculate indicators
@@ -990,13 +1107,16 @@ async def main():
             df_1d, is_btc=is_btc, df_btc_daily=df_btc_daily
         )
         df_1h_ind = calculate_hourly_indicators(df_1h)
+        return sym, df_1d_ind, df_1h_ind
 
-        data_dfs[f"{sym}_1d"] = df_1d_ind
-        data_dfs[f"{sym}_1h"] = df_1h_ind
-
-        log.info(
-            f"Loaded and calculated indicators for {sym}: {len(df_1d_ind)} daily and {len(df_1h_ind)} hourly candles."
-        )
+    with ThreadPoolExecutor() as executor:
+        results = executor.map(process_single_symbol, active_symbols)
+        for sym, df_1d_ind, df_1h_ind in results:
+            data_dfs[f"{sym}_1d"] = df_1d_ind
+            data_dfs[f"{sym}_1h"] = df_1h_ind
+            log.info(
+                f"Loaded and calculated indicators for {sym}: {len(df_1d_ind)} daily and {len(df_1h_ind)} hourly candles."
+            )
 
     # 4. Load all signals from signal_queue_server_a.db
     if not os.path.exists(signals_db_path):
@@ -1050,7 +1170,7 @@ async def main():
 
     results_summary = []
 
-    for scen_code in ["S1", "S2", "S3", "S4", "S5", "S6"]:
+    def post_process_single_scenario(scen_code):
         meta = scenarios_meta[scen_code]
         trades = scenarios_trades[scen_code]
 
@@ -1103,19 +1223,20 @@ The chart below illustrates the cumulative equity curve performance for both Fix
         with open(scen_folder / "report.md", "w", encoding="utf-8") as f:
             f.write(report_content)
 
-        results_summary.append(
-            {
-                "scen_code": scen_code,
-                "title": meta["title"],
-                "folder": meta["folder"],
-                "fixed": res_fixed,
-                "dynamic": res_dynamic,
-            }
-        )
-
         log.info(
             f"Scenario {scen_code} complete. Trades: {len(trades)}. Fixed Profit: {res_fixed['pnl']:+.2f} USDT. Dynamic Profit: {res_dynamic['pnl']:+.2f} USDT."
         )
+        return {
+            "scen_code": scen_code,
+            "title": meta["title"],
+            "folder": meta["folder"],
+            "fixed": res_fixed,
+            "dynamic": res_dynamic,
+        }
+
+    for scen_code in ["S1", "S2", "S3", "S4", "S5", "S6"]:
+        res = post_process_single_scenario(scen_code)
+        results_summary.append(res)
 
     # 6. Copy Key trade charts to reports folder
     key_trades_folder = REPORTS_DIR / "key_trades"

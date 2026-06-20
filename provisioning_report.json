@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-09T23:48:21Z",
+  "timestamp": "2026-06-19T17:34:21Z",
   "summary": {
     "passed": 8,
     "failed": 36,
@@ -11,7 +11,7 @@
       "passed": false,
       "status": "FAIL",
       "description": "Debian 12 Minimal \u0111\u00e3 c\u00e0i",
-      "msg": "OS mismatch: Paramiko connection failed: [Errno None] Unable to connect to port 22 on 100.92.13.100"
+      "msg": "OS mismatch: Paramiko connection failed: timed out"
     },
     "11.1.2": {
       "passed": false,

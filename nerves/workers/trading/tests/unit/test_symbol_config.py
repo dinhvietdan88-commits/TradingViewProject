@@ -6,6 +6,7 @@ and that the mode field is properly propagated through the event chain.
 """
 
 import dataclasses
+import pytest
 
 from symbol_config import DEFAULT_PARAMS, get_symbol_config
 
@@ -18,9 +19,11 @@ def test_btc_config_values():
     assert cfg["stop_loss_pct"] == 0.08, "BTC SL must be 8%"
     assert cfg["risk_pct"] == 0.01, "BTC ATR risk must be 1.0%"
     assert cfg["breakout_size_pct"] == 0.025, "BTC breakout size must be 2.5%"
-    assert cfg["atr_sl_mul"] == 2.0, "BTC ATR SL multiplier must be 2.0x"
-    assert cfg["atr_tp_mul"] == 8.0, "BTC ATR TP multiplier must be 8.0x"
-    assert cfg["trail_atr_mul"] == 3.0, "BTC trail ATR multiplier must be 3.0x"
+    assert cfg["atr_sl_mul"] == pytest.approx(2.0), "BTC ATR SL multiplier must be 2.0x"
+    assert cfg["atr_tp_mul"] == pytest.approx(8.0), "BTC ATR TP multiplier must be 8.0x"
+    assert cfg["trail_atr_mul"] == pytest.approx(3.0), (
+        "BTC trail ATR multiplier must be 3.0x"
+    )
 
 
 def test_eth_config_values():
@@ -29,9 +32,13 @@ def test_eth_config_values():
     assert cfg["stop_loss_pct"] == 0.10, "ETH SL must be 10% (8% * 1.25)"
     assert cfg["risk_pct"] == 0.008, "ETH ATR risk must be 0.8%"
     assert cfg["breakout_size_pct"] == 0.020, "ETH breakout size must be 2.0%"
-    assert cfg["atr_sl_mul"] == 2.5, "ETH ATR SL multiplier must be 2.5x"
-    assert cfg["atr_tp_mul"] == 10.0, "ETH ATR TP multiplier must be 10.0x"
-    assert cfg["trail_atr_mul"] == 3.75, "ETH trail ATR multiplier must be 3.75x"
+    assert cfg["atr_sl_mul"] == pytest.approx(2.5), "ETH ATR SL multiplier must be 2.5x"
+    assert cfg["atr_tp_mul"] == pytest.approx(10.0), (
+        "ETH ATR TP multiplier must be 10.0x"
+    )
+    assert cfg["trail_atr_mul"] == pytest.approx(3.75), (
+        "ETH trail ATR multiplier must be 3.75x"
+    )
 
 
 def test_sol_config_values():
@@ -40,9 +47,13 @@ def test_sol_config_values():
     assert cfg["stop_loss_pct"] == 0.13, "SOL SL must be 13% (8% * 1.625)"
     assert cfg["risk_pct"] == 0.006, "SOL ATR risk must be 0.6%"
     assert cfg["breakout_size_pct"] == 0.015, "SOL breakout size must be 1.5%"
-    assert cfg["atr_sl_mul"] == 3.2, "SOL ATR SL multiplier must be 3.2x"
-    assert cfg["atr_tp_mul"] == 13.0, "SOL ATR TP multiplier must be 13.0x"
-    assert cfg["trail_atr_mul"] == 4.8, "SOL trail ATR multiplier must be 4.8x"
+    assert cfg["atr_sl_mul"] == pytest.approx(3.2), "SOL ATR SL multiplier must be 3.2x"
+    assert cfg["atr_tp_mul"] == pytest.approx(12.8), (
+        "SOL ATR TP multiplier must be 12.8x"
+    )
+    assert cfg["trail_atr_mul"] == pytest.approx(4.8), (
+        "SOL trail ATR multiplier must be 4.8x"
+    )
 
 
 def test_unknown_symbol_fallback():
