@@ -42,7 +42,11 @@ async def get_trades(
 
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
-    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    db_path = (
+        config.FORWARD_DB_PATH
+        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        else config.DB_PATH
+    )
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
@@ -104,7 +108,11 @@ async def get_stats(
 
     where = f"WHERE {' AND '.join(conditions)}"
 
-    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    db_path = (
+        config.FORWARD_DB_PATH
+        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        else config.DB_PATH
+    )
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
@@ -211,7 +219,11 @@ async def get_stats_by_mode(
         )
     where_clause = " AND ".join(where_conds)
 
-    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    db_path = (
+        config.FORWARD_DB_PATH
+        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        else config.DB_PATH
+    )
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
         sql_query = f"""
@@ -274,7 +286,11 @@ async def get_recent_trades(
     where = f"WHERE {' AND '.join(conditions)}"
     params.append(limit)
 
-    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    db_path = (
+        config.FORWARD_DB_PATH
+        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        else config.DB_PATH
+    )
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
         sql_query = f"""
@@ -321,7 +337,11 @@ async def get_equity_curve(
 
     where = f"WHERE {' AND '.join(conditions)}"
 
-    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    db_path = (
+        config.FORWARD_DB_PATH
+        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        else config.DB_PATH
+    )
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
@@ -573,7 +593,11 @@ async def get_signals(
 
     limit = min(limit, 200)
 
-    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    db_path = (
+        config.FORWARD_DB_PATH
+        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        else config.DB_PATH
+    )
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 

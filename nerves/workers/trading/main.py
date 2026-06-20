@@ -1660,7 +1660,11 @@ async def get_trade_analysis_endpoint(
 
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
-    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    db_path = (
+        config.FORWARD_DB_PATH
+        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        else config.DB_PATH
+    )
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
