@@ -536,6 +536,15 @@ class VpsAnalyzerWorker:
             f"circuit_threshold={llm_breaker.failure_threshold})"
         )
 
+        # Initialize SQLite databases (trades.db & forward_trades.db)
+        try:
+            import database
+
+            await database.init_db()
+            log.info("[VpsAnalyzer] SQLite databases initialized successfully.")
+        except Exception as exc:
+            log.error(f"[VpsAnalyzer] Failed to initialize SQLite databases: {exc}")
+
         # Initialize vector database
         try:
             db_ok = await rag.init_vector_db()
