@@ -188,6 +188,7 @@ async def _handle_pending_approval(
     exchange: str,
     confidence: int,
     analysis_text: str,
+    mode: str = "",
 ):
     """Handle interactive approval path for confidence 50-79 or hold_for_approval."""
     import hub.notification_hub as notification_hub
@@ -209,6 +210,7 @@ async def _handle_pending_approval(
         analysis_text=analysis_text,
         should_trade=True,
         interactive_required=True,
+        mode=mode,
     )
 
     # 2. Save event to PENDING_TRADES
@@ -338,6 +340,7 @@ async def _execute_immediate_trade(
     exchange: str,
     analysis_text: str,
     combined_score: str | None,
+    mode: str = "",
 ) -> JSONResponse:
     """Execute immediate trade through TradeEngine."""
     import asyncio
@@ -405,6 +408,7 @@ async def _execute_immediate_trade(
             approved_by="ServerC-Analyzer",
             analysis_text=analysis_text,
             combined_score=combined_score,
+            mode=mode,
         )
         await trade_engine.execute_trade(approved)
         await execution_done.wait()
@@ -482,6 +486,9 @@ async def execute_trade(request: Request):
                 },
             )
 
+    # Extract mode
+    mode = body.get("mode") or ""
+
     # Save signal to DB
     signal_id = await database.insert_signal(
         symbol=symbol,
@@ -490,6 +497,7 @@ async def execute_trade(request: Request):
         quote_qty=quote_qty,
         source_ip=request.client.host if request.client else "127.0.0.1",
         payload=body,
+        mode=mode,
         raw_analysis_text=analysis_text,
     )
 
@@ -511,6 +519,7 @@ async def execute_trade(request: Request):
                 exchange=exchange,
                 confidence=confidence,
                 analysis_text=analysis_text,
+                mode=mode,
             )
         else:
             return await _execute_immediate_trade(
@@ -524,6 +533,7 @@ async def execute_trade(request: Request):
                 exchange=exchange,
                 analysis_text=analysis_text,
                 combined_score=combined_score,
+                mode=mode,
             )
     except HTTPException:
         raise

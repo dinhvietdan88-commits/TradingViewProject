@@ -321,6 +321,7 @@ class AnalysisComplete(Event):
     interactive_required: bool = False  # True if Human approval is needed
     is_recovered: bool = False
     age_minutes: float = 0.0
+    mode: str = ""
 
 
 # ═══════════════════════════════════════════════════════════════

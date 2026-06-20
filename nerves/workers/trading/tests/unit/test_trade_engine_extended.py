@@ -685,3 +685,40 @@ async def test_weex_routing_success():
         from core.event_bus import bus as default_bus
 
         set_bus(default_bus)
+
+
+@pytest.mark.asyncio
+async def test_forward_mode_enforces_dry_run():
+    """Verify that when TradeApproved has mode='FORWARD', TradeEngine forces dry_run=True on the adapter."""
+    from engine.trade_engine import execute_trade, set_bus
+
+    test_bus = EventBus()
+    set_bus(test_bus)
+
+    adapter = _make_adapter()
+    adapter.dry_run = False
+    if hasattr(adapter, "_client"):
+        adapter._client.dry_run = False
+
+    try:
+        with (
+            patch("exchanges.router.get_router") as mock_get_router,
+            patch("engine.trade_engine.database") as mock_db,
+        ):
+            mock_router = MagicMock()
+            mock_router.resolve_exchange.return_value = adapter
+            mock_get_router.return_value = mock_router
+
+            mock_db.insert_trade = AsyncMock(return_value=40)
+            mock_db.update_trade_oco = AsyncMock()
+            mock_db.update_signal_status = AsyncMock()
+            mock_db.update_signal_state = AsyncMock()
+
+            # Test event mode containing FORWARD
+            await execute_trade(_make_event(mode="FORWARD", signal_id=400))
+            assert adapter.dry_run is True
+    finally:
+        from core.event_bus import bus as default_bus
+
+        set_bus(default_bus)
+

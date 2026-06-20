@@ -2249,6 +2249,7 @@ async def button_callback(update, context):
                         approved_by=f"Human (@{user})",
                         analysis_text=event.analysis_text,
                         exchange=getattr(event, "exchange", "binance"),
+                        mode=getattr(event, "mode", ""),
                     )
                 )
             )
