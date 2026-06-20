@@ -14,6 +14,7 @@ import config
 import database
 from data.routing import get_db_path_by_signal_id, get_db_path_by_trade_id
 
+
 @pytest.mark.asyncio
 async def test_routing_lookup_nonexistent_ids():
     """Verify that routing for nonexistent IDs gracefully defaults to the primary database."""
@@ -175,7 +176,9 @@ async def test_routing_collision_duplicate_ids():
     """
     # Set the primary DB sqlite_sequence to 1000000 so it also starts generating IDs from 1000001
     async with aiosqlite.connect(config.DB_PATH) as db:
-        await db.execute("INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('signals', 1000000)")
+        await db.execute(
+            "INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES ('signals', 1000000)"
+        )
         await db.commit()
 
     # 1. Insert a forward signal first (gets ID 1000001 in forward DB)
@@ -205,7 +208,9 @@ async def test_routing_collision_duplicate_ids():
     # 3. Call get_db_path_by_signal_id with signal_id = 1000001 (live_sig_id)
     # It will connect to forward_trades.db, find that ID 1000001 exists, and return config.FORWARD_DB_PATH!
     resolved_path = await get_db_path_by_signal_id(live_sig_id)
-    assert resolved_path == config.FORWARD_DB_PATH  # Collision! Returns FORWARD_DB_PATH instead of DB_PATH
+    assert (
+        resolved_path == config.FORWARD_DB_PATH
+    )  # Collision! Returns FORWARD_DB_PATH instead of DB_PATH
 
     # 4. Attempt to update the live signal state to "COMPLETED"
     # Because of the collision, it routes to forward_trades.db, updating the forward signal instead of the live signal.
@@ -225,4 +230,3 @@ async def test_routing_collision_duplicate_ids():
         async with db.execute("SELECT state FROM signals WHERE id = 1000001") as cursor:
             row = await cursor.fetchone()
             assert row["state"] == "INGESTED"  # Did not get updated due to collision!
-

@@ -126,9 +126,7 @@ async def test_forward_subsequent_trades_and_oco_routing():
 
     # Verify trade is NOT in live DB
     async with aiosqlite.connect(config.DB_PATH) as db:
-        async with db.execute(
-            "SELECT id FROM trades WHERE id = ?", (trade_id,)
-        ) as cur:
+        async with db.execute("SELECT id FROM trades WHERE id = ?", (trade_id,)) as cur:
             row = await cur.fetchone()
             assert row is None
 
@@ -156,9 +154,7 @@ async def test_forward_subsequent_trades_and_oco_routing():
 
     # Verify not modified in live DB
     async with aiosqlite.connect(config.DB_PATH) as db:
-        async with db.execute(
-            "SELECT id FROM trades WHERE id = ?", (trade_id,)
-        ) as cur:
+        async with db.execute("SELECT id FROM trades WHERE id = ?", (trade_id,)) as cur:
             row = await cur.fetchone()
             assert row is None
 
@@ -211,9 +207,7 @@ async def test_ohlcv_and_indicators_route_to_live_db():
             assert row is None
 
     # 2. Insert OHLCV batch
-    candles = [
-        ("BTCUSDT", 1700000000, 60000.0, 60100.0, 59900.0, 60050.0, 15.5)
-    ]
+    candles = [("BTCUSDT", 1700000000, 60000.0, 60100.0, 59900.0, 60050.0, 15.5)]
     await database.insert_ohlcv_batch(timeframe="5m", candles=candles)
 
     # Verify OHLCV in live DB

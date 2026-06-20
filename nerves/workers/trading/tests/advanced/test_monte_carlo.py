@@ -97,7 +97,7 @@ class TestMonteCarloSimulation:
         random.seed(42)
         trades = []
         for _ in range(45):
-            trades.append(random.uniform(0.12, 0.25))  # Thắng lớn
+            trades.append(random.uniform(0.12, 0.25))  # noqa: S311 # Thắng lớn
         for _ in range(55):
             trades.append(-0.08)  # Thua cố định
         return trades
@@ -110,7 +110,7 @@ class TestMonteCarloSimulation:
         assert results["max_dd_mean"] > 0
         assert results["probability_of_ruin"] < 100.0
 
-        print(f"\n--- Monte Carlo Type I (Shuffling) Results ---")
+        print("\n--- Monte Carlo Type I (Shuffling) Results ---")
         print(f"Mean Final Equity: {results['final_equity_mean']:.2f} USDT")
         print(f"95th Percentile Max Drawdown: {results['max_dd_95th_percentile']:.2f}%")
         print(f"Probability of Ruin (<50%): {results['probability_of_ruin']:.2f}%")
@@ -121,7 +121,7 @@ class TestMonteCarloSimulation:
         assert results["degraded_len"] == 90
         assert results["degraded_expectancy"] < results["original_expectancy"]
 
-        print(f"\n--- Monte Carlo Type II (Outlier Removal) Results ---")
+        print("\n--- Monte Carlo Type II (Outlier Removal) Results ---")
         print(f"Original Expectancy: {results['original_expectancy'] * 100:.2f}%")
         print(
             f"Degraded Expectancy (Drop 10% best trades): {results['degraded_expectancy'] * 100:.2f}%"
