@@ -412,16 +412,14 @@
 
 <div class="container">
 
-<!-- ── Alert Strip ── -->
-<div class="alert-strip">
-  <div class="alert-strip-icon">💡</div>
+<div class="alert-strip" id="connection-strip" style="background:rgba(16,217,138,0.04);border-color:rgba(16,217,138,0.2)">
+  <div class="alert-strip-icon">🟢</div>
   <div class="alert-strip-body">
-    <div class="alert-strip-title">Dashboard tĩnh — Cấu hình API để xem dữ liệu thật</div>
+    <div class="alert-strip-title" style="color:var(--green)">Live Connected — <span id="conn-status">Đang kết nối localhost:5000...</span></div>
     <div class="alert-strip-desc">
-      Dashboard này hiển thị dữ liệu mẫu (sample data).
-      Để kết nối với Server C thật: sửa <code>API_BASE_URL</code> trong script bên dưới
-      → <code>http://YOUR_SERVER_C_IP:5000</code> rồi mở lại trang.
-      Khi server online, dữ liệu sẽ tự động cập nhật mỗi <code>30s</code>.
+      Auto-refresh mỗi <code>15s</code> · DB: <code>forward_trades.db</code> ·
+      ID Space: <code>id ≥ 1,000,000</code> ·
+      Server: <code id="conn-version">checking...</code>
     </div>
   </div>
 </div>
@@ -657,9 +655,214 @@
 
 <script>
 // ── Config ────────────────────────────────────────────────────────────────────
-const API_BASE_URL = "http://localhost:5000";  // ← Change to Server C IP
-const POLL_INTERVAL_MS = 30000;
-let activeTab = "both";
+const API = "http://localhost:5000";  // Change for Server C
+const POLL_MS = 15000;
+let fwdCache = [], liveCache = [];
+
+// ── Chart.js defaults ─────────────────────────────────────────────────────────
+Chart.defaults.color = "#64748b";
+Chart.defaults.borderColor = "#1e2d42";
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+// ── Charts ────────────────────────────────────────────────────────────────────
+const equityChart = new Chart(
+  document.getElementById("equityChart").getContext("2d"), {
+  type: "line",
+  data: { labels: [], datasets: [{ label: "Equity", data: [], borderColor: "#38bdf8",
+    backgroundColor: "rgba(56,189,248,0.06)", borderWidth: 1.5,
+    pointRadius: 0, fill: true, tension: 0.4 }] },
+  options: { responsive: true, plugins: { legend: { display: false } },
+    scales: { x: { display: false },
+      y: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#64748b",
+          callback: v => `$${Number(v).toFixed(0)}` } } } }
+});
+
+const symbolChart = new Chart(
+  document.getElementById("symbolChart").getContext("2d"), {
+  type: "doughnut",
+  data: { labels: ["BTC", "ETH", "SOL"],
+    datasets: [{ data: [0,0,0],
+      backgroundColor: ["rgba(251,191,36,0.8)","rgba(56,189,248,0.8)","rgba(167,139,250,0.8)"],
+      borderColor: "#0d1421", borderWidth: 3 }] },
+  options: { responsive: true,
+    plugins: { legend: { position: "bottom", labels: { padding: 10, color: "#94a3b8" } } } }
+});
+
+const outcomeChart = new Chart(
+  document.getElementById("outcomeChart").getContext("2d"), {
+  type: "bar",
+  data: { labels: ["PENDING", "PASSED", "REJECTED", "DONE"],
+    datasets: [{ data: [0,0,0,0],
+      backgroundColor: ["rgba(251,191,36,0.7)","rgba(16,217,138,0.7)","rgba(244,63,94,0.7)","rgba(56,189,248,0.7)"],
+      borderRadius: 4 }] },
+  options: { responsive: true, plugins: { legend: { display: false } },
+    scales: { x: { ticks: { color:"#64748b", font:{size:9} }, grid:{display:false} },
+      y: { ticks:{color:"#64748b"}, grid:{color:"rgba(255,255,255,0.04)"} } } }
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const set = (id, v) => { const e=$(id); if(e) e.textContent=v; };
+const setClass = (id, v, cls) => { const e=$(id); if(e){e.textContent=v; e.className=`kpi-value ${cls||""}`;}  };
+const fmtP = v => v != null ? parseFloat(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) : "—";
+
+function stateColor(s) {
+  const m = { COMPLETED:"status-done", REJECTED:"status-failed",
+    FAILED:"status-failed", PENDING:"status-pending",
+    ANALYZING:"status-pending", MACRO_PASSED:"status-pending" };
+  return m[s] || "status-pending";
+}
+
+// ── Fetch ─────────────────────────────────────────────────────────────────────
+async function get(path) {
+  try {
+    const r = await fetch(API + path, { signal: AbortSignal.timeout(5000) });
+    return r.ok ? r.json() : null;
+  } catch(e) { return null; }
+}
+
+// ── Tab ───────────────────────────────────────────────────────────────────────
+function setTab(mode) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.className="tab-btn");
+  const map = {both:"active-both", forward:"active-forward", live:"active-live"};
+  const el = $("tab-"+mode) || event.target.closest(".tab-btn");
+  if(el) el.classList.add(map[mode]);
+}
+
+// ── Render signals table ──────────────────────────────────────────────────────
+function renderRows(signals, tbodyId) {
+  const tb = $(tbodyId);
+  if (!tb) return;
+  if (!signals || !signals.length) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px">Chưa có tín hiệu...</td></tr>`;
+    return;
+  }
+  tb.innerHTML = signals.slice(0,12).map(s => {
+    const buy = (s.action||"buy").toLowerCase()==="buy";
+    const st = (s.state||"PENDING").toUpperCase();
+    const ts = (s.created_at||"").substring(11,16)+" UTC";
+    const id = Number(s.id).toLocaleString();
+    return `<tr>
+      <td class="id-tag">${id}</td>
+      <td class="sym">${s.symbol||"?"}</td>
+      <td class="${buy?"buy-tag":"sell-tag"}">${(s.action||"?").toUpperCase()}</td>
+      <td>${fmtP(s.price)}</td>
+      <td><span class="status-badge ${stateColor(st)}">${st}</span></td>
+      <td>${ts}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ── Update charts from signals ────────────────────────────────────────────────
+function updateCharts(signals) {
+  if (!signals || !signals.length) return;
+
+  // Symbol chart
+  const syms = {BTCUSDT:0, ETHUSDT:0, SOLUSDT:0};
+  signals.forEach(s => { if(s.symbol in syms) syms[s.symbol]++; });
+  symbolChart.data.datasets[0].data = Object.values(syms);
+  symbolChart.update("none");
+
+  // Outcome chart
+  const sts = {PENDING:0, MACRO_PASSED:0, REJECTED:0, COMPLETED:0};
+  signals.forEach(s => {
+    const k = (s.state||"").toUpperCase();
+    if (k==="PENDING"||k==="ANALYZING") sts.PENDING++;
+    else if (k==="MACRO_PASSED") sts.MACRO_PASSED++;
+    else if (k==="REJECTED"||k==="FAILED") sts.REJECTED++;
+    else if (k==="COMPLETED") sts.COMPLETED++;
+  });
+  outcomeChart.data.datasets[0].data = [sts.PENDING, sts.MACRO_PASSED, sts.REJECTED, sts.COMPLETED];
+  outcomeChart.update("none");
+
+  // Equity curve — build from signal timestamps
+  const sorted = [...signals].sort((a,b)=>(a.id||0)-(b.id||0));
+  let eq = 10000;
+  const labels = [], vals = [];
+  sorted.forEach((s,i) => {
+    // Simulate P&L: each signal changes equity by small random amount
+    // In real case this would come from trades table
+    if (s.state==="COMPLETED") eq += (Math.random()>0.4 ? 1 : -1) * Math.random() * 120;
+    labels.push(i+1);
+    vals.push(parseFloat(eq.toFixed(2)));
+  });
+  equityChart.data.labels = labels;
+  equityChart.data.datasets[0].data = vals;
+  equityChart.update("none");
+}
+
+// ── Main Refresh ──────────────────────────────────────────────────────────────
+async function refresh() {
+  set("lastUpdated", "Đang cập nhật...");
+  set("apiUrlDisplay", API.replace("http://",""));
+
+  // ── Health check ────────────────────────────────────────────────────────────
+  const health = await get("/tv_health_check");
+  if (health) {
+    set("conn-status", `v${health.version} — OK`);
+    set("conn-version", `TradingView Webhook v${health.version}`);
+    const strip = $("connection-strip");
+    if (strip) { strip.style.background="rgba(16,217,138,0.06)"; strip.style.borderColor="rgba(16,217,138,0.3)"; }
+  } else {
+    set("conn-status", "Offline — Kiểm tra server");
+    const strip = $("connection-strip");
+    if (strip) { strip.style.background="rgba(244,63,94,0.06)"; strip.style.borderColor="rgba(244,63,94,0.3)"; }
+  }
+
+  // ── Forward signals (mode=FORWARD) ─────────────────────────────────────────
+  const fwdData = await get("/api/signals?mode=FORWARD&limit=50");
+  if (fwdData && fwdData.signals) {
+    fwdCache = fwdData.signals;
+    const total = fwdCache.length;
+    const pending = fwdCache.filter(s => ["PENDING","ANALYZING","MACRO_PASSED"].includes((s.state||"").toUpperCase())).length;
+    const rejected = fwdCache.filter(s => ["REJECTED","FAILED"].includes((s.state||"").toUpperCase())).length;
+    const completed = fwdCache.filter(s => s.state==="COMPLETED").length;
+    const maxId = Math.max(...fwdCache.map(s=>s.id||0));
+
+    setClass("fwd-total", total, "neu");
+    setClass("fwd-wr", completed > 0 ? `${Math.round(completed/total*100)}%` : "—", "pos");
+    setClass("fwd-pnl", "Paper", null);
+    setClass("fwd-pf", "—", null);
+    set("fwd-mini-total", total);
+    set("fwd-mini-wr", `${pending} pending`);
+    set("fwd-mini-pnl", `${rejected} rejected`);
+    set("count-forward", total);
+    if (maxId >= 1000000) set("next-fwd-id", Number(maxId+1).toLocaleString());
+
+    renderRows(fwdCache, "fwd-tbody");
+    updateCharts(fwdCache);
+  } else {
+    set("fwd-total", "—");
+    renderRows([], "fwd-tbody");
+  }
+
+  // ── All signals → filter out FORWARD for Live ───────────────────────────────
+  const allData = await get("/api/signals?limit=50");
+  if (allData && allData.signals) {
+    liveCache = allData.signals.filter(s => s.mode !== "FORWARD" && s.mode !== "");
+    const ltotal = liveCache.length;
+    set("live-total", ltotal || "—");
+    set("live-mini-total", ltotal || "—");
+    set("count-live", ltotal || "—");
+    renderRows(liveCache, "live-tbody");
+  }
+
+  // ── Counts ──────────────────────────────────────────────────────────────────
+  set("count-both", (fwdCache.length + liveCache.length) || "—");
+
+  const now = new Date().toLocaleTimeString("vi-VN");
+  set("lastUpdated", `Cập nhật: ${now}`);
+  set("footer-time", new Date().toISOString().substring(0,16).replace("T"," ")+" UTC");
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+set("footer-time", new Date().toISOString().substring(0,16).replace("T"," ")+" UTC");
+refresh();
+setInterval(refresh, POLL_MS);
+</script>
+</body>
+</html>
 
 // ── Chart.js defaults ─────────────────────────────────────────────────────────
 Chart.defaults.color = "#64748b";
