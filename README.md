@@ -1,8 +1,8 @@
-# 📈 TradingView Webhook Server — v6.0
+# 📈 TradingView Webhook Server — v7.0 (Forward-Test Edition)
 
-Hệ thống tự động nhận tín hiệu từ **TradingView Alerts**, thực thi lệnh trên **Binance**, phân tích bằng **RAG AI Agent**, scan **Trend Template + VCP**, và gửi **Morning Brief** tự động qua Telegram.
+Hệ thống tự động nhận tín hiệu từ **TradingView Alerts**, thực thi lệnh trên **Binance/WEEX**, phân tích bằng **RAG AI Agent**, scan **Trend Template + VCP**, gửi **Morning Brief** tự động qua Telegram, và hỗ trợ **Forward Test (Paper Trading)** thời gian thực song song với Back-test.
 
-> Dựa trên chiến lược **SEPA (Specific Entry Point Analysis)** của **Mark Minervini**.
+> Dựa trên chiến lược **SEPA (Specific Entry Point Analysis)** của **Mark Minervini** — kết hợp **SuperTrend VBS** cho Crypto (BTC · ETH · SOL).
 
 ---
 
@@ -15,17 +15,22 @@ TradingView Alert (Pine Script v5)
   Cloudflare Tunnel
         │
         ▼
-  FastAPI Webhook Server v6.0 (:5000)
+  Server A — Gateway VPS (signal_queue.db)
+        │
+        ▼
+  FastAPI Webhook Server v7.0 (:5000)  ← Server C
         │
         ├── 🔐 IP Whitelist + Secret Auth
-        ├── 💾 SQLite (signals + trades)
-        ├── 🧠 RAG Agent (ChromaDB + Claude)          ← [P5]
-        ├── 🖥️ TradingView MCP (CDP:9222)              ← [P6 NEW]
+        ├── 💾 SQLite Routing Layer (data/routing.py)
+        │     ├── trades.db          ← LIVE / BACKTEST
+        │     └── forward_trades.db  ← FORWARD TEST (paper) [NEW v7]
+        ├── 🧠 RAG Agent (ChromaDB + Claude)
+        ├── 🖥️ TradingView MCP (CDP:9222)
         │     ├── Trend Template Scanner (8 criteria)
         │     ├── VCP Detector (volume + range)
         │     └── Chart Screenshot capture
-        ├── ⏰ Morning Brief Scheduler (07:00 ICT)     ← [P6 NEW]
-        ├── 📊 Binance Order Execution
+        ├── ⏰ Morning Brief Scheduler (07:00 ICT)
+        ├── 📊 Binance / WEEX Order Execution
         └── 📱 Telegram / Discord (text + screenshot)
 ```
 
@@ -34,35 +39,44 @@ TradingView Alert (Pine Script v5)
 ## ⚡ Quick Start
 
 ```bash
-cd server
-pip install -r requirements.txt
-cp .env.example .env       # Cấu hình API keys
-python main.py             # Start server on :5000
+# 1. Cài đặt dependencies
+uv sync          # hoặc: pip install -r requirements.txt
+
+# 2. Cấu hình môi trường
+cp .env.production .env.local
+# Điền các API keys, secrets, webhook URL
+
+# 3. Chạy server
+uv run python nerves/workers/trading/main.py --port 5000
+
+# 4. (Tùy chọn) Kích hoạt Forward Test
+# Thêm trường "mode": "FORWARD" vào webhook payload
 ```
 
 ### 🛡️ Quality Gate & Security Check
-Trước khi commit hoặc push code, bắt buộc chạy cổng kiểm thử chất lượng cục bộ để đảm bảo tuân thủ tiêu chuẩn an ninh và độ phức tạp cyclomatic (Complexity <= 15):
+
+Trước khi commit hoặc push code, bắt buộc chạy cổng kiểm thử chất lượng cục bộ:
+
 ```bash
-# Thực hiện setup pre-commit và ruff
+# Setup pre-commit và ruff
 python scripts/local_security_gate.py setup
 
-# Chạy quét an ninh và lint nhanh
+# Quét an ninh nhanh
 python scripts/local_security_gate.py check --quick
 
-# Chạy quét an ninh đầy đủ (bao gồm phân tích tĩnh CodeQL + coverage)
+# Quét đầy đủ (CodeQL + coverage)
 python scripts/local_security_gate.py check
 ```
 
-### 📊 Giám sát Vận hành (Sentry / GlitchTip)
-Hệ thống tích hợp Sentry SDK để giám sát lỗi và hiệu năng thời gian thực. Cấu hình các biến môi trường sau trong `.env`:
-```env
-SENTRY_DSN=http://your-glitchtip-dsn
-SENTRY_TRACES_SAMPLE_RATE=0.1
-SENTRY_PROFILES_SAMPLE_RATE=0.05
-ENVIRONMENT=production
-```
-Mọi dữ liệu nhạy cảm (API Keys, Secrets, Passphrases) sẽ được lọc đệ quy và xóa tự động (`[SCRUBBED]`) trước khi đẩy telemetry lên server giám sát.
+### 📊 Sinh Báo Cáo Phân Tích
 
+```bash
+# Báo cáo Back-test (1100+ signals, HTML + Markdown)
+python scripts/generate_backtest_report.py
+
+# Báo cáo Forward-Test mẫu (28 paper trades, HTML + Markdown)
+python scripts/generate_forward_test_report.py
+```
 
 ---
 
@@ -70,42 +84,58 @@ Mọi dữ liệu nhạy cảm (API Keys, Secrets, Passphrases) sẽ được l�
 
 ```
 TradingViewProject/
-├── server/
-│   ├── main.py              # FastAPI v6.0 (17 endpoints)
-│   ├── rag.py               # [P5] RAG module (ChromaDB + Claude)
-│   ├── mcp_client.py        # [P6] TradingView MCP wrapper (CDP)
-│   ├── watchlist.py         # [P6] Watchlist CRUD + JSON persistence
-│   ├── analysis.py          # [P6] Trend Template + VCP detector
-│   ├── brief.py             # [P6] Morning Brief orchestrator
-│   ├── scheduler.py         # [P6] APScheduler cron (07:00 ICT)
-│   ├── config.py            # Environment config
-│   ├── database.py          # SQLite async operations
-│   ├── notifier.py          # Telegram (text + photo) + Discord
-│   ├── requirements.txt     # Python dependencies
-│   ├── .env.example         # Environment template
-│   └── static/
-│       └── dashboard.html   # Performance Dashboard UI
+├── nerves/workers/trading/      # Core server (FastAPI v7.0)
+│   ├── main.py                  # 17+ API endpoints
+│   ├── config.py                # Env config (thêm FORWARD_DB_PATH)
+│   ├── database.py              # SQLite migrator (dual-DB)
+│   ├── persistence_store.py     # CRUD với routing layer
+│   ├── query_service.py         # Query với routing layer
+│   ├── data/routing.py          # [NEW v7] Dynamic DB routing
+│   ├── gateway/webhook.py       # Webhook handler + mode detection
+│   ├── security/runtime_guard.py # SEC-04 runtime guards
+│   ├── trades.db                # ← LIVE / BACKTEST data
+│   └── forward_trades.db        # ← [NEW v7] FORWARD TEST data
 │
-├── tradingview-mcp/         # [P6] Git submodule — CDP bridge
+├── scripts/
+│   ├── local_security_gate.py       # SEC quality gate
+│   ├── generate_backtest_report.py  # [NEW] Back-test report generator
+│   └── generate_forward_test_report.py # [NEW] Forward-test report
 │
-├── pine/                    # Pine Script v5 strategies
-│   ├── V1/                  # Trend Template Indicator
-│   └── V2/                  # SEPA Strategy (Backtest)
+├── reports/                         # Báo cáo phân tích
+│   ├── backtest_signal_report.html  # [NEW] 1100 signals back-test
+│   ├── backtest_signal_report.md    # [NEW] Back-test summary
+│   ├── forward_test_sample_report.html # [NEW] Paper trading mẫu
+│   ├── forward_test_sample_report.md   # [NEW] Forward-test template
+│   ├── server_a_signals_report.md   # 285 signals từ Server A
+│   ├── strategy_summary.html        # Strategy overview
+│   ├── trade_replay.html            # Trade replay
+│   ├── walkforward_validation.html  # Walk-forward analysis
+│   └── trades_data.json             # Raw trade data (710 records)
+│
+├── tests/
+│   ├── unit/                        # Unit tests
+│   ├── integration/
+│   │   └── test_forward_test_routing.py # [NEW] Forward test routing
+│   └── stress/                      # Stress tests
 │
 ├── docs/
-│   ├── knowledge/
-│   │   └── trading_wizard/
-│   │       ├── chunks/      # 36 Minervini knowledge chunks (RAG source)
-│   │       ├── mindmaps/    # Strategy mind maps
-│   │       └── index.md
-│   ├── RAG_ARCHITECTURE_FLOW.md
-│   ├── TRADINGVIEW_ALERT_SETUP.md
-│   └── plans/
-│       ├── P4/README.md     # [P4] FastAPI Production Server
-│       ├── P5/              # [P5] RAG architecture + implementation log
-│       └── P6/              # [P6] 4 sprint docs + README
+│   ├── FORWARD_TEST_GUIDE.md    # [NEW] Hướng dẫn vận hành Forward Test
+│   ├── REPORTS_INDEX.md         # [NEW] Chỉ mục toàn bộ báo cáo
+│   ├── reports/v2.1.0-7.6.3/   # Back-test scenarios (S1-S6)
+│   └── knowledge/               # Minervini SEPA knowledge base
 │
-└── README.md                # ← Bạn đang đọc file này
+├── pine/                        # Pine Script v5 strategies
+│   ├── V1/                      # Trend Template Indicator
+│   └── V2/                      # SEPA Strategy + SuperTrend VBS
+│
+├── eWE/                         # Infrastructure setup guides
+│   ├── SETUPS/                  # Server A/B/C setup prompts
+│   └── reports/                 # Detailed scenario reports
+│
+├── compliance/                  # Approval audit trail
+├── Bao_Cao_Nghiem_Thu_Doc_Lap.md # SEC-04 independent audit
+├── Security_Scars_Report.md     # Security lessons learned
+└── README.md                    # ← Bạn đang đọc file này
 ```
 
 ---
@@ -116,37 +146,75 @@ TradingViewProject/
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
 | `GET`  | `/` | Dashboard UI |
-| `GET`  | `/tv_health_check` | Health check + version + feature flags |
+| `GET`  | `/tv_health_check` | Health check + version |
 | `POST` | `/webhook` | Nhận TradingView alerts |
 | `GET`  | `/trades` | Lịch sử giao dịch |
 | `GET`  | `/trades/stats` | Win Rate, Profit Factor, Drawdown |
-| `GET`  | `/trades/equity` | Equity curve data (Chart.js) |
+| `GET`  | `/trades/equity` | Equity curve data |
+| `GET`  | `/api/signals` | Danh sách tín hiệu |
 
-### P5 — RAG
+### Forward Test [NEW v7]
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| `GET`  | `/trades?mode=FORWARD` | Lệnh paper trading |
+| `GET`  | `/trades/stats?mode=FORWARD` | Thống kê Forward Test |
+| `GET`  | `/trades/equity?mode=FORWARD` | Equity curve Forward Test |
+| `GET`  | `/api/signals?mode=FORWARD` | Tín hiệu Forward Test |
+
+### RAG (P5)
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
 | `GET`  | `/api/rag/query?q=...` | Truy vấn Knowledge Base |
 | `GET`  | `/api/rag/status` | Trạng thái Vector DB |
 
-### P6 — MCP + Morning Brief
+### MCP + Morning Brief (P6)
 | Method | Endpoint | Mô tả |
 |--------|----------|-------|
-| `GET`  | `/api/mcp/status` | CDP connection health |
 | `GET`  | `/api/watchlist` | List symbols |
-| `POST` | `/api/watchlist` | Add symbol `{"symbol": "FPT"}` |
-| `DELETE`| `/api/watchlist/{symbol}` | Remove symbol |
-| `PUT`  | `/api/watchlist/sync` | Sync từ TradingView Desktop |
+| `POST` | `/api/watchlist` | Add symbol |
 | `GET`  | `/api/scan/watchlist` | Trend Template + VCP scan |
 | `POST` | `/api/brief/trigger` | Chạy Morning Brief ngay |
-| `GET`  | `/api/brief/latest` | Xem brief mới nhất |
 
 ---
 
-## 🧠 P5 — RAG & AI Agent (Knowledge Base Integration)
+## 🆕 v7.0 — Forward Test Integration
 
-### Tổng quan
+### Tách biệt Database
+```
+LIVE / BACKTEST mode  →  trades.db          (DB gốc, không thay đổi)
+FORWARD TEST mode     →  forward_trades.db  (DB riêng, ID từ 1.000.000)
+```
 
-Hệ thống RAG cho phép AI Agent tự động tra cứu bộ quy tắc của Mark Minervini mỗi khi nhận tín hiệu giao dịch từ TradingView. Kết quả phân tích được gửi kèm thông báo qua Telegram.
+### Webhook Payload cho Forward Test
+```json
+{
+  "secret": "your_webhook_secret",
+  "symbol": "BTCUSDT",
+  "action": "buy",
+  "price": "67500.00",
+  "quoteQty": 100.0,
+  "interval": "15",
+  "mode": "FORWARD",
+  "exchange": "binance",
+  "sl": "66000.00",
+  "tp": "70000.00"
+}
+```
+
+Trường `"mode": "FORWARD"` kích hoạt định tuyến sang `forward_trades.db`.
+
+### Kết quả Back-test (1100 Signals)
+| Chỉ Số | Giá Trị |
+| :--- | :--- |
+| Tổng tín hiệu | **1,100** |
+| Win Rate | **55.55%** |
+| Profit Factor | **2.138** |
+| Expectancy | **+3.27%/lệnh** |
+| Total P&L | **+3,592.89%** |
+
+---
+
+## 🧠 RAG & AI Agent (P5)
 
 ```mermaid
 flowchart LR
@@ -156,42 +224,15 @@ flowchart LR
     LLM -->|AI Analysis| TG[📱 Telegram]
 ```
 
-### Cách hoạt động
-
-1. **TradingView** bắn webhook khi Pine Script phát hiện VCP/Trend Template/Volume Surge
-2. **RAG Query Builder** tự động tạo câu truy vấn ngữ nghĩa từ payload
-3. **ChromaDB** tìm 3 đoạn kiến thức Minervini liên quan nhất (cosine similarity)
-4. **Claude** phân tích tín hiệu + context → đưa ra khuyến nghị Mua/Bán/Chờ
-5. **Telegram** nhận báo cáo đầy đủ kèm phân tích AI
-
-### Config RAG trong `.env`
-
 ```env
 ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxxxxx
 RAG_ENABLED=true
 RAG_TOP_K=3
 ```
 
-### Dependencies P5
-
-| Package | Chức năng |
-|---------|----------|
-| `chromadb` ≥0.5.0 | Vector Database (offline, persistent) |
-| `sentence-transformers` ≥3.0.0 | Embedding multilingual (tiếng Việt) |
-| `anthropic` ≥0.25.0 | Claude API client |
-
-> 📖 Chi tiết: xem [`architecture_mermaid.md`](docs/plans/P5/architecture_mermaid.md) và [`implementation_log.md`](docs/plans/P5/implementation_log.md)
-
 ---
 
-## 🖥️ P6 — TradingView MCP × Morning Brief
-
-### Tổng quan
-
-Tích hợp **TradingView Desktop** qua Chrome DevTools Protocol (CDP), kết hợp với RAG System để tạo:
-- **Morning Brief tự động** (07:00 ICT) — scan watchlist, chấm Trend Template, phát hiện VCP, gửi Telegram kèm screenshot chart
-- **Watchlist Scanner API** — CRUD symbols, scan on-demand
-- **Analysis Engine** — 8 tiêu chí Minervini Trend Template + VCP detector
+## 🖥️ MCP × Morning Brief (P6)
 
 ```mermaid
 flowchart LR
@@ -203,8 +244,6 @@ flowchart LR
     AI --> TG[📱 Telegram\nBrief + Screenshot]
 ```
 
-### Config P6 trong `.env`
-
 ```env
 MCP_ENABLED=true
 BRIEF_ENABLED=true
@@ -212,19 +251,39 @@ BRIEF_CRON_TIME=07:00
 WATCHLIST_SYMBOLS=BTCUSDT,ETHUSDT,SOLUSDT
 ```
 
-### Dependencies P6
+---
 
-| Package | Chức năng |
-|---------|----------|
-| `apscheduler` ≥3.10.4 | Cron scheduler (07:00 ICT daily) |
-| `pillow` ≥10.0.0 | Image processing cho screenshot |
-| `requests` ≥2.31.0 | Telegram photo upload |
+## 🗺️ Roadmap
 
-> 📖 Chi tiết: xem [`docs/plans/P6/`](docs/plans/P6/) (4 sprint docs)
+### ✅ Completed
+- [x] P4: FastAPI Production Server (7 sprints)
+- [x] **P5: RAG & Vector Database — ChromaDB + Claude AI**
+- [x] **P6: TradingView MCP × Morning Brief (4 sprints)**
+- [x] **P7: Security Hardening (SEC-01 → SEC-04)**
+  - [x] SEC-01: Ruff inline diagnostics
+  - [x] SEC-02: Pre-commit hooks + local gate
+  - [x] SEC-04: Runtime Guards (SSRF, Path Traversal) — 56/56 PASSED
+- [x] **P8: Forward Test Integration** ← **NEW v7.0**
+  - [x] Tách biệt DB: `forward_trades.db` (paper) vs `trades.db` (live)
+  - [x] Dynamic routing layer (`data/routing.py`)
+  - [x] API mode parameter: `?mode=FORWARD`
+  - [x] 930 unit/integration/stress tests — 100% PASSED
+  - [x] Back-test report: 1,100 signals (WR 55.55%, PF 2.138)
+  - [x] Forward-test sample report: 28 paper trades (WR 64.29%, PF 3.147)
+
+### 🚧 In Progress
+- [ ] Forward Test live run (kết nối Server A → Server C → `forward_trades.db`)
+- [ ] Dashboard UI cập nhật hiển thị dual-mode (LIVE + FORWARD)
+
+### 🗓️ Planned
+- [ ] P9: Binance OCO Orders (Stop-Loss + Take-Profit tự động)
+- [ ] P10: WebSocket real-time price stream
+- [ ] P11: Multi-strategy Support (RSI, MACD, Custom indicators)
+- [ ] P12: Production CI/CD Pipeline (GitHub Actions + Docker)
 
 ---
 
-## 📋 Webhook Payload (TradingView)
+## 📋 Webhook Payload Reference
 
 ```json
 {
@@ -233,44 +292,14 @@ WATCHLIST_SYMBOLS=BTCUSDT,ETHUSDT,SOLUSDT
   "symbol": "{{ticker}}",
   "price": "{{close}}",
   "quoteQty": 50,
-  "time": "{{timenow}}"
+  "time": "{{timenow}}",
+  "mode": "FORWARD",
+  "sl": "{{strategy.order.contracts}}",
+  "tp": "{{plot_1}}"
 }
 ```
 
-Xem chi tiết: [`docs/TRADINGVIEW_ALERT_SETUP.md`](docs/TRADINGVIEW_ALERT_SETUP.md)
-
----
-
-## 🗺️ Roadmap
-
-### ✅ Completed
-- [x] P4 Sprint 1: FastAPI Async + IP Whitelist middleware
-- [x] P4 Sprint 2: Dynamic order sizing + Async Binance (aiohttp)
-- [x] P4 Sprint 3: Real-time Telegram/Discord notifications
-- [x] P4 Sprint 4: Trade Logging SQLite
-- [x] P4 Sprint 5: TradingView MCP submodule setup
-- [x] P4 Sprint 6: Performance Dashboard (Web UI)
-- [x] P4 Sprint 7: Server Testing (pytest)
-- [x] **P5: RAG & Vector Database — ChromaDB + Claude AI**
-- [x] **P6: TradingView MCP × RAG Morning Brief** ← NEW
-  - [x] Sprint 6.1: MCP Foundation (MCPClient wrapper)
-  - [x] Sprint 6.2: Watchlist Management (CRUD + JSON)
-  - [x] Sprint 6.3: Analysis Engine (Trend Template + VCP)
-  - [x] Sprint 6.4: Morning Brief + Scheduler (07:00 ICT)
-
-### 🚧 In Progress
-- [ ] **feat/p6-mcp-morning-brief** — End-to-end test with TradingView Desktop
-- [ ] **feat/minervini-strategy** — Pine Script V2 Backtest + VCP
-
-### 🗓️ Planned — Binance SDK Upgrade
-- [ ] **feat/binance-oco-orders** — OCO Orders: Stop-Loss + Take-Profit tự động
-- [ ] **feat/binance-websocket-stream** — WebSocket real-time price stream
-- [ ] **feat/binance-futures-margin** — Futures / Margin trading support
-
-### 🔭 Backlog
-- [ ] P7: Portfolio Risk Management Module
-- [ ] P8: Production Deployment (VPS + CI/CD)
-- [ ] P9: Multi-strategy Support (RSI, MACD, Custom)
+Xem chi tiết: [`docs/FORWARD_TEST_GUIDE.md`](docs/FORWARD_TEST_GUIDE.md)
 
 ---
 
@@ -283,3 +312,5 @@ Xem chi tiết: [`docs/TRADINGVIEW_ALERT_SETUP.md`](docs/TRADINGVIEW_ALERT_SETUP
 - [ChromaDB Documentation](https://docs.trychroma.com/)
 - [TradingView MCP (CDP)](https://github.com/tradesdontlie/tradingview-mcp)
 - [APScheduler Docs](https://apscheduler.readthedocs.io/)
+- [Binance API Docs](https://binance-docs.github.io/apidocs/)
+- [WEEX API Reference](lobes/knowledge/weex/weex_api_index.md)

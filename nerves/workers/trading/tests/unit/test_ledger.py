@@ -98,5 +98,5 @@ def test_api_get_signals():
         assert data["signals"][0]["symbol"] == "BTCUSDT"
         assert data["signals"][0]["rejection_reason"] == "macro_trend_conflict"
         mock_get.assert_called_once_with(
-            symbol="BTCUSDT", state="REJECTED", limit=5, offset=0
+            symbol="BTCUSDT", state="REJECTED", limit=5, offset=0, mode=None
         )
