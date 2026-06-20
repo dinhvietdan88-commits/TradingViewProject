@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📊 Angati — Live Forward Test Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c14;
+    --surface: #0d1421;
+    --surface2: #111827;
+    --surface3: #1a2232;
+    --border: #1e2d42;
+    --border2: #243350;
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --text-dim: #374151;
+    --green: #10d98a;
+    --green2: #06b672;
+    --red: #f43f5e;
+    --red2: #e11d48;
+    --yellow: #fbbf24;
+    --blue: #38bdf8;
+    --blue2: #0ea5e9;
+    --purple: #a78bfa;
+    --orange: #fb923c;
+    --cyan: #22d3ee;
+    --live-color: #10d98a;
+    --forward-color: #38bdf8;
+    --grad-green: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+    --grad-blue: linear-gradient(135deg, #0c2340 0%, #0e3460 100%);
+    --grad-header: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    overflow-x: hidden;
+  }
+
+  /* ── Animated Background ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 30%, rgba(56,189,248,0.04) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 30% at 80% 70%, rgba(16,217,138,0.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--grad-header);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(20px);
+  }
+  .header-left h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--green) 0%, var(--blue) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.02em;
+  }
+  .header-left .subtitle {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16,217,138,0.1);
+    border: 1px solid rgba(16,217,138,0.3);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--green);
+  }
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+  .api-url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+  }
+  .last-updated {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+
+  /* ── Mode Tabs ── */
+  .mode-tabs {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    gap: 4px;
+  }
+  .tab-btn {
+    padding: 10px 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab-btn.active-forward {
+    color: var(--blue);
+    border-bottom-color: var(--blue);
+    background: rgba(56,189,248,0.05);
+  }
+  .tab-btn.active-live {
+    color: var(--green);
+    border-bottom-color: var(--green);
+    background: rgba(16,217,138,0.05);
+  }
+  .tab-btn.active-both {
+    color: var(--purple);
+    border-bottom-color: var(--purple);
+    background: rgba(167,139,250,0.05);
+  }
+  .tab-count {
+    display: inline-block;
+    background: var(--surface3);
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 0.68rem;
+    margin-left: 6px;
+  }
+
+  /* ── Layout ── */
+  .container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 24px 32px;
+    position: relative; z-index: 1;
+  }
+  .section { margin-bottom: 28px; }
+  .section-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── KPI Cards ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .kpi-card:hover::before { opacity: 1; }
+  .kpi-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .kpi-card.forward::before { background: var(--blue); }
+  .kpi-card.live::before { background: var(--green); }
+  .kpi-card.neutral::before { background: var(--purple); }
+  .kpi-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .kpi-value { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+  .kpi-sub { font-size: 0.68rem; color: var(--text-muted); margin-top: 6px; }
+  .kpi-mode {
+    position: absolute; top: 8px; right: 10px;
+    font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em;
+    padding: 2px 6px; border-radius: 6px;
+  }
+  .kpi-mode.fw { background: rgba(56,189,248,0.15); color: var(--blue); }
+  .kpi-mode.lv { background: rgba(16,217,138,0.15); color: var(--green); }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+  .neu { color: var(--blue); }
+
+  /* ── Dual Panel ── */
+  .dual-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .panel-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    overflow: hidden;
+  }
+  .panel-card.forward-panel { border-top: 3px solid var(--blue); }
+  .panel-card.live-panel { border-top: 3px solid var(--green); }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .panel-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+  .panel-title.fw { color: var(--blue); }
+  .panel-title.lv { color: var(--green); }
+  .panel-badge {
+    font-size: 0.68rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+  .panel-badge.fw { background: rgba(56,189,248,0.1); color: var(--blue); border: 1px solid rgba(56,189,248,0.2); }
+  .panel-badge.lv { background: rgba(16,217,138,0.1); color: var(--green); border: 1px solid rgba(16,217,138,0.2); }
+
+  /* ── Mini KPI Row ── */
+  .mini-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .mini-kpi {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+  }
+  .mini-kpi-label { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .mini-kpi-val { font-size: 1.1rem; font-weight: 700; margin-top: 3px; }
+
+  /* ── Signal Table ── */
+  .signal-table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 7px 10px;
+    border-bottom: 1px solid rgba(30,45,66,0.5);
+    font-size: 0.77rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  tr:hover td { background: rgba(30,45,66,0.4); }
+  tr:last-child td { border-bottom: none; }
+  .sym { color: var(--blue); font-weight: 700; font-family: 'Inter', sans-serif; }
+  .buy-tag  { color: var(--green); font-weight: 700; }
+  .sell-tag { color: var(--red); font-weight: 700; }
+  .id-tag { color: var(--text-muted); font-size: 0.68rem; }
+  .mode-tag-fw { background: rgba(56,189,248,0.12); color: var(--blue); padding: 2px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 600; font-family: 'Inter', sans-serif; }
+  .mode-tag-lv { background: rgba(16,217,138,0.12); color: var(--green); padding: 2px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 600; font-family: 'Inter', sans-serif; }
+  .status-badge { padding: 2px 7px; border-radius: 6px; font-size: 0.65rem; font-weight: 600; font-family: 'Inter', sans-serif; }
+  .status-pending  { background: rgba(251,191,36,0.15); color: var(--yellow); }
+  .status-done     { background: rgba(16,217,138,0.12); color: var(--green); }
+  .status-failed   { background: rgba(244,63,94,0.12); color: var(--red); }
+
+  /* ── Charts ── */
+  .chart-row { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 14px; }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .chart-card h3 { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; font-weight: 500; }
+  .chart-card canvas { max-height: 180px; }
+
+  /* ── Alert Panel ── */
+  .alert-strip {
+    background: rgba(56,189,248,0.04);
+    border: 1px solid rgba(56,189,248,0.15);
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .alert-strip-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+  .alert-strip-body { flex: 1; }
+  .alert-strip-title { font-size: 0.8rem; font-weight: 700; color: var(--blue); margin-bottom: 4px; }
+  .alert-strip-desc { font-size: 0.74rem; color: var(--text-muted); line-height: 1.5; }
+  .alert-strip code { font-family: 'JetBrains Mono', monospace; background: var(--surface3); padding: 1px 6px; border-radius: 4px; color: var(--cyan); font-size: 0.72rem; }
+
+  /* ── Config Panel ── */
+  .config-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .config-item {
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .config-key { font-size: 0.68rem; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .config-val { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--cyan); }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    padding: 20px 32px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 1100px) {
+    .dual-panel { grid-template-columns: 1fr; }
+    .chart-row { grid-template-columns: 1fr; }
+    .config-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 700px) {
+    .container { padding: 16px; }
+    .header { padding: 14px 16px; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .mini-kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .config-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div class="header">
+  <div class="header-left">
+    <h1>📊 Angati Forward Test Dashboard</h1>
+    <div class="subtitle">BTC · ETH · SOL · Paper Trading Live Monitor · v7.1</div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      FORWARD LIVE
+    </div>
+    <div class="api-url" id="apiUrlDisplay">localhost:5000</div>
+    <div class="last-updated" id="lastUpdated">Updating...</div>
+  </div>
+</div>
+
+<!-- ── Tabs ── -->
+<div class="mode-tabs">
+  <button class="tab-btn active-both" onclick="setTab('both')">
+    🔀 Cả Hai <span class="tab-count" id="count-both">-</span>
+  </button>
+  <button class="tab-btn" onclick="setTab('forward')" id="tab-forward">
+    📄 Forward Test <span class="tab-count" id="count-forward">-</span>
+  </button>
+  <button class="tab-btn" onclick="setTab('live')" id="tab-live">
+    ⚡ Live Trading <span class="tab-count" id="count-live">-</span>
+  </button>
+</div>
+
+<div class="container">
+
+<!-- ── Alert Strip ── -->
+<div class="alert-strip">
+  <div class="alert-strip-icon">💡</div>
+  <div class="alert-strip-body">
+    <div class="alert-strip-title">Dashboard tĩnh — Cấu hình API để xem dữ liệu thật</div>
+    <div class="alert-strip-desc">
+      Dashboard này hiển thị dữ liệu mẫu (sample data).
+      Để kết nối với Server C thật: sửa <code>API_BASE_URL</code> trong script bên dưới
+      → <code>http://YOUR_SERVER_C_IP:5000</code> rồi mở lại trang.
+      Khi server online, dữ liệu sẽ tự động cập nhật mỗi <code>30s</code>.
+    </div>
+  </div>
+</div>
+
+<!-- ── Overview KPIs ── -->
+<div class="section">
+  <div class="section-title">📈 Tổng Quan</div>
+  <div class="kpi-grid">
+    <div class="kpi-card forward">
+      <div class="kpi-mode fw">FWD</div>
+      <div class="kpi-label">Forward Signals</div>
+      <div class="kpi-value neu" id="fwd-total">3</div>
+      <div class="kpi-sub">id ≥ 1,000,000</div>
+    </div>
+    <div class="kpi-card forward">
+      <div class="kpi-mode fw">FWD</div>
+      <div class="kpi-label">Win Rate</div>
+      <div class="kpi-value pos" id="fwd-wr">—</div>
+      <div class="kpi-sub">Paper trades</div>
+    </div>
+    <div class="kpi-card forward">
+      <div class="kpi-mode fw">FWD</div>
+      <div class="kpi-label">P&L (Paper)</div>
+      <div class="kpi-value pos" id="fwd-pnl">—</div>
+      <div class="kpi-sub">Virtual $10,000</div>
+    </div>
+    <div class="kpi-card forward">
+      <div class="kpi-mode fw">FWD</div>
+      <div class="kpi-label">Profit Factor</div>
+      <div class="kpi-value neu" id="fwd-pf">—</div>
+      <div class="kpi-sub">Gross P / Gross L</div>
+    </div>
+    <div class="kpi-card live">
+      <div class="kpi-mode lv">LIVE</div>
+      <div class="kpi-label">Live Signals</div>
+      <div class="kpi-value pos" id="live-total">—</div>
+      <div class="kpi-sub">Real trades</div>
+    </div>
+    <div class="kpi-card live">
+      <div class="kpi-mode lv">LIVE</div>
+      <div class="kpi-label">Win Rate</div>
+      <div class="kpi-value pos" id="live-wr">—</div>
+      <div class="kpi-sub">Real execution</div>
+    </div>
+    <div class="kpi-card live">
+      <div class="kpi-mode lv">LIVE</div>
+      <div class="kpi-label">P&L (Real)</div>
+      <div class="kpi-value pos" id="live-pnl">—</div>
+      <div class="kpi-sub">Actual USDT</div>
+    </div>
+    <div class="kpi-card neutral">
+      <div class="kpi-mode">SEQ</div>
+      <div class="kpi-label">Next FWD ID</div>
+      <div class="kpi-value neu" id="next-fwd-id">1,000,004</div>
+      <div class="kpi-sub">Auto-increment</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Dual Panel: Forward + Live ── -->
+<div class="section">
+  <div class="section-title">📋 Tín Hiệu Gần Nhất</div>
+  <div class="dual-panel">
+
+    <!-- Forward Panel -->
+    <div class="panel-card forward-panel">
+      <div class="panel-header">
+        <div class="panel-title fw">📄 Forward Test Signals</div>
+        <div class="panel-badge fw">PAPER TRADING</div>
+      </div>
+      <div class="mini-kpi-row">
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">Tổng</div>
+          <div class="mini-kpi-val neu" id="fwd-mini-total">3</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">Win Rate</div>
+          <div class="mini-kpi-val pos" id="fwd-mini-wr">—%</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">P&L</div>
+          <div class="mini-kpi-val" id="fwd-mini-pnl">—</div>
+        </div>
+      </div>
+      <div class="signal-table-wrap">
+        <table id="fwd-table">
+          <thead>
+            <tr>
+              <th>#ID</th><th>Symbol</th><th>Side</th>
+              <th>Price</th><th>Status</th><th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="fwd-tbody">
+            <tr>
+              <td class="id-tag">1,000,003</td>
+              <td class="sym">SOLUSDT</td>
+              <td class="buy-tag">BUY</td>
+              <td>152.40</td>
+              <td><span class="status-badge status-pending">PENDING</span></td>
+              <td>03:08 UTC</td>
+            </tr>
+            <tr>
+              <td class="id-tag">1,000,002</td>
+              <td class="sym">ETHUSDT</td>
+              <td class="sell-tag">SELL</td>
+              <td>3,482.00</td>
+              <td><span class="status-badge status-pending">PENDING</span></td>
+              <td>03:07 UTC</td>
+            </tr>
+            <tr>
+              <td class="id-tag">1,000,001</td>
+              <td class="sym">BTCUSDT</td>
+              <td class="buy-tag">BUY</td>
+              <td>67,250.00</td>
+              <td><span class="status-badge status-pending">PENDING</span></td>
+              <td>03:06 UTC</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Live Panel -->
+    <div class="panel-card live-panel">
+      <div class="panel-header">
+        <div class="panel-title lv">⚡ Live Trading Signals</div>
+        <div class="panel-badge lv">REAL MONEY</div>
+      </div>
+      <div class="mini-kpi-row">
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">Tổng</div>
+          <div class="mini-kpi-val pos" id="live-mini-total">—</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">Win Rate</div>
+          <div class="mini-kpi-val pos" id="live-mini-wr">—%</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">P&L</div>
+          <div class="mini-kpi-val" id="live-mini-pnl">—</div>
+        </div>
+      </div>
+      <div class="signal-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#ID</th><th>Symbol</th><th>Side</th>
+              <th>Price</th><th>Status</th><th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="live-tbody">
+            <tr>
+              <td colspan="6" style="text-align:center; color: var(--text-muted); padding: 24px;">
+                Chờ tín hiệu Live từ Server C...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Charts ── -->
+<div class="section">
+  <div class="section-title">📉 Phân Tích Hiệu Năng</div>
+  <div class="chart-row">
+    <div class="chart-card">
+      <h3>Equity Curve — Forward Test (Virtual $10,000)</h3>
+      <canvas id="equityChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Phân Bổ Symbol</h3>
+      <canvas id="symbolChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Outcome Distribution</h3>
+      <canvas id="outcomeChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ── Config Panel ── -->
+<div class="section">
+  <div class="section-title">⚙️ Cấu Hình Hiện Tại</div>
+  <div class="config-grid">
+    <div class="config-item">
+      <div class="config-key">Forward DB Path</div>
+      <div class="config-val">nerves/workers/trading/forward_trades.db</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Initial Capital</div>
+      <div class="config-val">$10,000.00 USDT</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Position Size</div>
+      <div class="config-val">$100 / signal</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Symbols</div>
+      <div class="config-val">BTCUSDT · ETHUSDT · SOLUSDT</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Signal ID Namespace</div>
+      <div class="config-val">≥ 1,000,000 (FORWARD)</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Mode Field</div>
+      <div class="config-val">"mode": "FORWARD"</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Branch</div>
+      <div class="config-val">forward-test-crypto-integration</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Indicators Active</div>
+      <div class="config-val">G-A007, MIS-V3, SuperTrend</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Pine Lib Version</div>
+      <div class="config-val">VBS_Webhook_Lib v4 (+mode)</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<div class="footer">
+  Angati Forward Test Dashboard · v7.1 · Branch: forward-test-crypto-integration ·
+  <span id="footer-time"></span>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const API_BASE_URL = "http://localhost:5000";  // ← Change to Server C IP
+const POLL_INTERVAL_MS = 30000;
+let activeTab = "both";
+
+// ── Chart.js defaults ─────────────────────────────────────────────────────────
+Chart.defaults.color = "#64748b";
+Chart.defaults.borderColor = "#1e2d42";
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+// ── Sample equity data ────────────────────────────────────────────────────────
+const equityLabels = Array.from({length: 30}, (_, i) => i + 1);
+let equity = 10000;
+const equityData = equityLabels.map(() => {
+  equity += (Math.random() - 0.42) * 80;
+  return parseFloat(equity.toFixed(2));
+});
+
+// ── Charts ────────────────────────────────────────────────────────────────────
+const eCtx = document.getElementById("equityChart").getContext("2d");
+const equityChart = new Chart(eCtx, {
+  type: "line",
+  data: {
+    labels: equityLabels,
+    datasets: [{
+      label: "Forward Equity",
+      data: equityData,
+      borderColor: "#38bdf8",
+      backgroundColor: "rgba(56,189,248,0.06)",
+      borderWidth: 1.5,
+      pointRadius: 0,
+      fill: true,
+      tension: 0.4
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { display: false },
+      y: { grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#64748b" } }
+    }
+  }
+});
+
+const sCtx = document.getElementById("symbolChart").getContext("2d");
+new Chart(sCtx, {
+  type: "doughnut",
+  data: {
+    labels: ["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+    datasets: [{
+      data: [1, 1, 1],
+      backgroundColor: ["rgba(251,191,36,0.8)", "rgba(56,189,248,0.8)", "rgba(167,139,250,0.8)"],
+      borderColor: "#0d1421", borderWidth: 3
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: "bottom", labels: { padding: 10 } } }
+  }
+});
+
+const oCtx = document.getElementById("outcomeChart").getContext("2d");
+new Chart(oCtx, {
+  type: "bar",
+  data: {
+    labels: ["Pending", "TP", "SL", "Timeout"],
+    datasets: [{
+      data: [3, 0, 0, 0],
+      backgroundColor: [
+        "rgba(251,191,36,0.7)",
+        "rgba(16,217,138,0.7)",
+        "rgba(244,63,94,0.7)",
+        "rgba(167,139,250,0.7)"
+      ],
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: "#64748b" }, grid: { display: false } },
+      y: { ticks: { color: "#64748b" }, grid: { color: "rgba(255,255,255,0.04)" } }
+    }
+  }
+});
+
+// ── Tab Management ────────────────────────────────────────────────────────────
+function setTab(mode) {
+  activeTab = mode;
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.className = "tab-btn";
+  });
+  const active = {
+    "both": "active-both",
+    "forward": "active-forward",
+    "live": "active-live"
+  }[mode];
+  event.target.closest(".tab-btn").classList.add(active);
+}
+
+// ── API Fetcher ───────────────────────────────────────────────────────────────
+async function fetchStats(mode) {
+  try {
+    const r = await fetch(`${API_BASE_URL}/trades/stats?mode=${mode}`, { signal: AbortSignal.timeout(5000) });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+
+async function fetchSignals(mode, limit = 10) {
+  try {
+    const r = await fetch(`${API_BASE_URL}/api/signals?mode=${mode}&limit=${limit}`, { signal: AbortSignal.timeout(5000) });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+
+// ── UI Updaters ───────────────────────────────────────────────────────────────
+function fmtPnl(v) {
+  if (v == null) return "—";
+  return `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
+}
+
+function fmtNum(v, fallback = "—") {
+  return v != null ? v.toLocaleString() : fallback;
+}
+
+function updateKpi(id, val, isPositive = null) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = val;
+  if (isPositive === true) el.className = "kpi-value pos";
+  if (isPositive === false) el.className = "kpi-value neg";
+}
+
+function renderSignalRows(data, tbodyId, mode) {
+  const tbody = document.getElementById(tbodyId);
+  if (!data || !data.signals || data.signals.length === 0) return;
+
+  const isForward = mode === "FORWARD";
+  tbody.innerHTML = data.signals.map(s => {
+    const isBuy = (s.action || "").toLowerCase() === "buy";
+    const statusCls = s.state === "COMPLETED" ? "status-done" : s.state === "FAILED" ? "status-failed" : "status-pending";
+    const modeTag = isForward ? `<span class="mode-tag-fw">FWD</span>` : `<span class="mode-tag-lv">LIVE</span>`;
+    const ts = (s.created_at || "").substring(11, 16) + " UTC";
+    const price = parseFloat(s.price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    return `<tr>
+      <td class="id-tag">${Number(s.id).toLocaleString()}</td>
+      <td class="sym">${s.symbol || "?"}</td>
+      <td class="${isBuy ? "buy-tag" : "sell-tag"}">${(s.action || "?").toUpperCase()}</td>
+      <td>${price}</td>
+      <td><span class="status-badge ${statusCls}">${s.state || "PENDING"}</span></td>
+      <td>${ts}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ── Main Poll Loop ────────────────────────────────────────────────────────────
+async function refresh() {
+  document.getElementById("lastUpdated").textContent = "Refreshing...";
+  document.getElementById("apiUrlDisplay").textContent = API_BASE_URL.replace("http://", "");
+
+  // Forward stats
+  const fwdStats = await fetchStats("FORWARD");
+  const fwdSignals = await fetchSignals("FORWARD");
+
+  if (fwdStats) {
+    updateKpi("fwd-total", fmtNum(fwdStats.total), null);
+    updateKpi("fwd-wr", fwdStats.win_rate != null ? `${fwdStats.win_rate}%` : "—", fwdStats.win_rate >= 50);
+    updateKpi("fwd-pnl", fmtPnl(fwdStats.total_pnl), fwdStats.total_pnl >= 0);
+    updateKpi("fwd-pf", fwdStats.profit_factor ?? "—", fwdStats.profit_factor >= 1.3);
+    document.getElementById("fwd-mini-total").textContent = fmtNum(fwdStats.total);
+    document.getElementById("fwd-mini-wr").textContent = fwdStats.win_rate != null ? `${fwdStats.win_rate}%` : "—%";
+    document.getElementById("fwd-mini-pnl").textContent = fmtPnl(fwdStats.total_pnl);
+    document.getElementById("count-forward").textContent = fwdStats.total ?? "—";
+  }
+
+  if (fwdSignals) renderSignalRows(fwdSignals, "fwd-tbody", "FORWARD");
+
+  // Live stats
+  const liveStats = await fetchStats("LIVE");
+  const liveSignals = await fetchSignals("LIVE");
+
+  if (liveStats) {
+    updateKpi("live-total", fmtNum(liveStats.total), null);
+    updateKpi("live-wr", liveStats.win_rate != null ? `${liveStats.win_rate}%` : "—", liveStats.win_rate >= 50);
+    updateKpi("live-pnl", fmtPnl(liveStats.total_pnl), liveStats.total_pnl >= 0);
+    document.getElementById("live-mini-total").textContent = fmtNum(liveStats.total);
+    document.getElementById("live-mini-wr").textContent = liveStats.win_rate != null ? `${liveStats.win_rate}%` : "—%";
+    document.getElementById("live-mini-pnl").textContent = fmtPnl(liveStats.total_pnl);
+    document.getElementById("count-live").textContent = liveStats.total ?? "—";
+  }
+
+  if (liveSignals) renderSignalRows(liveSignals, "live-tbody", "LIVE");
+
+  // Total count
+  const totalFwd = fwdStats?.total ?? 3;
+  const totalLive = liveStats?.total ?? 0;
+  document.getElementById("count-both").textContent = totalFwd + totalLive;
+
+  // Next FWD ID
+  if (fwdStats?.max_id) {
+    document.getElementById("next-fwd-id").textContent = Number(fwdStats.max_id + 1).toLocaleString();
+  }
+
+  const now = new Date().toLocaleTimeString("vi-VN");
+  document.getElementById("lastUpdated").textContent = `Cập nhật: ${now}`;
+  document.getElementById("footer-time").textContent = `Tạo: ${new Date().toISOString().substring(0, 16).replace("T", " ")} UTC`;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.getElementById("footer-time").textContent = new Date().toISOString().substring(0, 16).replace("T", " ") + " UTC";
+refresh();
+setInterval(refresh, POLL_INTERVAL_MS);
+</script>
+</body>
+</html>
