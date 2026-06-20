@@ -46,7 +46,7 @@ async def test_webhook_rate_limit_and_burst_load(client, mocker):
     rate_limited_count = status_codes.count(429)
 
     print(
-        f"Bắn 50 requests tốn {duration:.3f}s. Thành công: {success_count}, Bị chặn: {rate_limited_count}"
+        f"Sent 50 requests in {duration:.3f}s. Success: {success_count}, Blocked: {rate_limited_count}"
     )
 
     # Rate limit là 15 req/phút. Do bắn đồng thời, có thể có chút race condition ở dict state,
