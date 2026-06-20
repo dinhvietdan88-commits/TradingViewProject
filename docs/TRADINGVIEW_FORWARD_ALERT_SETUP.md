@@ -57,7 +57,7 @@ Sau khi Alert kích hoạt (Alert Fires), bạn có thể kiểm tra xem tín hi
 ### Cách 1: Gọi API Xem Danh Sách Tín Hiệu
 Gửi yêu cầu HTTP GET tới Server C (hoặc localhost nếu chạy thử nghiệm):
 ```bash
-curl "http://<SERVER_C_IP>:5000/api/signals?mode=FORWARD"
+curl "http://<SERVER_C_IP>:5000/api/signals?mode=FORWARD" 
 ```
 
 ### Cách 2: Truy Vấn Trực Tiếp Vào SQLite DB
