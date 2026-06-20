@@ -75,6 +75,9 @@ os.environ["TELEGRAM_CHAT_ID"] = ""
 os.environ["DISCORD_WEBHOOK_URL"] = ""
 os.environ["ENABLE_IP_WHITELIST"] = "false"
 os.environ["MTA_ENABLED"] = "false"
+os.environ["ATR_SL_MULTIPLIER"] = "2.0"
+os.environ["ATR_TP_MULTIPLIER"] = "8.0"
+os.environ["CHANDELIER_TRAILING_MULTIPLIER"] = "3.0"
 
 
 @pytest.fixture(autouse=True)
