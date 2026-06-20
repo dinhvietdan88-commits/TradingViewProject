@@ -17,4 +17,4 @@ Tài liệu kiểm định Walk-Forward cuốn chiếu đánh giá khả năng t
 - **Walk-Forward Efficiency (WFE) Trung bình**: **25.00%**
 - **Đánh giá độ tin cậy**: ⚠️ CẦN TỐI ƯU HÓA LẠI (WFE < 60%) - Có dấu hiệu Overfitting khi đổi chế độ nến.
 
-*Báo cáo được tạo tự động bởi walk_forward_runner.py vào 2026-06-20 20:30:33*
+*Báo cáo được tạo tự động bởi walk_forward_runner.py vào 2026-06-20 21:10:09*

@@ -13,8 +13,8 @@ Phân tích trên **370 lệnh giao dịch** được tạo ra từ kịch bản
 
 - **Equity Trung bình cuối kỳ**: **2597.62 USDT**
 - **Equity Trung vị**: **2597.62 USDT**
-- **Mức sụt giảm vốn lớn nhất (Max Drawdown) Trung bình**: **75.31%**
-- **Max Drawdown tệ nhất (95th Percentile)**: **77.30%**
+- **Mức sụt giảm vốn lớn nhất (Max Drawdown) Trung bình**: **75.29%**
+- **Max Drawdown tệ nhất (95th Percentile)**: **77.24%**
 - **Xác suất cháy tài khoản (Ruin Probability - giảm 50% vốn)**: **100.00%**
 
 ### B. Outlier Removal (Type II) - Loại bỏ 10% lệnh thắng tốt nhất
@@ -63,5 +63,5 @@ Tài liệu kiểm định Walk-Forward cuốn chiếu đánh giá khả năng t
 - **Walk-Forward Efficiency (WFE) Trung bình**: **25.00%**
 - **Đánh giá độ tin cậy**: ⚠️ CẦN TỐI ƯU HÓA LẠI (WFE < 60%) - Có dấu hiệu Overfitting khi đổi chế độ nến.
 
-*Báo cáo được tạo tự động bởi walk_forward_runner.py vào 2026-06-20 20:30:33*
+*Báo cáo được tạo tự động bởi walk_forward_runner.py vào 2026-06-20 21:10:09*
 

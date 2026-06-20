@@ -13,8 +13,8 @@ Multi-timeframe validation: Daily Trend Template score >= 5, AND hourly executio
 
 | Sizing Mode | Executed Trades | Final Equity (USDT) | Net Profit (USDT) | Win Rate (%) | Profit Factor | Max Drawdown (%) | Expectancy |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Fixed Sizing ($100)** | 289 | 10114.13 | +114.13 | 49.8% | 1.12 | 8.72% | 0.3949 |
-| **Dynamic Sizing (2% Risk)** | 289 | 12501.74 | +2501.74 | 49.8% | 1.02 | 91.28% | 8.6565 |
+| **Fixed Sizing ($100)** | 289 | 10342.06 | +342.06 | 51.2% | 1.40 | 7.55% | 1.1836 |
+| **Dynamic Sizing (2% Risk)** | 289 | 194850.11 | +184850.11 | 51.2% | 1.06 | 93.73% | 639.6198 |
 
 ---
 
@@ -27,5 +27,5 @@ The chart below illustrates the cumulative equity curve performance for both Fix
 
 ## 4. Scenario Breakdown Analysis
 - **Filter Restrictiveness**: This scenario filtered out 726 signals out of 1015 (Skip Rate: 71.5%).
-- **Compounding Sizing Effect**: Dynamic compounding sizing led to an equity of **$12501.74** compared to **$10114.13** in Fixed Sizing.
-- **Profitability Verdict**: PROFITABLE with a Profit Factor of **1.02** and expectancy **8.6565** under Dynamic Sizing.
+- **Compounding Sizing Effect**: Dynamic compounding sizing led to an equity of **$194850.11** compared to **$10342.06** in Fixed Sizing.
+- **Profitability Verdict**: PROFITABLE with a Profit Factor of **1.06** and expectancy **639.6198** under Dynamic Sizing.

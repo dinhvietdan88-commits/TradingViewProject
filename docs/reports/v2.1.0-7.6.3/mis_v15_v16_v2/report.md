@@ -13,8 +13,8 @@ Hybrid momentum pullback: Daily Trend Template score >= 5, daily RSI 14 >= 50 (l
 
 | Sizing Mode | Executed Trades | Final Equity (USDT) | Net Profit (USDT) | Win Rate (%) | Profit Factor | Max Drawdown (%) | Expectancy |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Fixed Sizing ($100)** | 370 | 8908.46 | -1091.54 | 25.9% | 0.28 | 14.54% | -2.9501 |
-| **Dynamic Sizing (2% Risk)** | 370 | 627.48 | -9372.52 | 25.9% | 0.66 | 97.81% | -25.3311 |
+| **Fixed Sizing ($100)** | 370 | 9479.25 | -520.75 | 28.1% | 0.62 | 12.55% | -1.4074 |
+| **Dynamic Sizing (2% Risk)** | 370 | 6392.48 | -3607.52 | 28.1% | 0.99 | 98.70% | -9.7501 |
 
 ---
 
@@ -27,5 +27,5 @@ The chart below illustrates the cumulative equity curve performance for both Fix
 
 ## 4. Scenario Breakdown Analysis
 - **Filter Restrictiveness**: This scenario filtered out 645 signals out of 1015 (Skip Rate: 63.5%).
-- **Compounding Sizing Effect**: Dynamic compounding sizing led to an equity of **$627.48** compared to **$8908.46** in Fixed Sizing.
-- **Profitability Verdict**: UNPROFITABLE with a Profit Factor of **0.66** and expectancy **-25.3311** under Dynamic Sizing.
+- **Compounding Sizing Effect**: Dynamic compounding sizing led to an equity of **$6392.48** compared to **$9479.25** in Fixed Sizing.
+- **Profitability Verdict**: UNPROFITABLE with a Profit Factor of **0.99** and expectancy **-9.7501** under Dynamic Sizing.
