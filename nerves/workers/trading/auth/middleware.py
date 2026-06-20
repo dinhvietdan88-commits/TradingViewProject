@@ -21,12 +21,16 @@ log = logging.getLogger(__name__)
 PUBLIC_PATHS = (
     "/webhook",  # TradingView webhook
     "/health",  # Health check
+    "/tv_health_check",  # TV health check (public)
     "/auth/",  # Auth flow itself
     "/static/",  # Static assets (CSS/JS/images)
     "/favicon.ico",
     "/docs",  # FastAPI Swagger
     "/openapi.json",
     "/redoc",
+    # ── Dashboard read-only endpoints (no auth needed for monitoring) ──
+    "/api/signals",   # Signal list for dashboard_live.html
+    "/trades/stats",  # Stats for dashboard_live.html
 )
 
 # Paths that require authentication
