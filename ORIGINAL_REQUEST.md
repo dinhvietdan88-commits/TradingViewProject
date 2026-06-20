@@ -1148,3 +1148,30 @@ Integrity mode: development
 
 ### Git Remote Push
 - [ ] Branch `feat/decentralized-macro-filter` is pushed successfully to remote `origin`.
+
+## Follow-up — 2026-06-20T22:02:02+07:00
+
+Triển khai phương án Giao dịch Crypto (BTC, ETH, SOL) cho chế độ Forward Test (tiền ảo chạy thời gian thực) với cơ sở dữ liệu (database) riêng biệt, đồng thời nhận tín hiệu từ Server A. Các cơ sở dữ liệu hiện tại vẫn phải cập nhật liên tục để phục vụ chế độ Back-test.
+
+Working directory: `C:\Users\pesil\.gemini\antigravity\worktrees\TradingViewProject\forward-test-crypto-integration`
+
+## Requirements
+
+### R1. Thiết lập CSDL riêng cho Forward Test
+Hệ thống cần có một cơ sở dữ liệu (SQLite) riêng biệt cho chế độ Forward Test (ví dụ `forward_trades.db`), phân tách hoàn toàn khỏi database phục vụ Back-test/Live (`trades.db`).
+
+### R2. Nhận tín hiệu thời gian thực từ Server A
+Tích hợp cơ chế tiếp nhận tín hiệu giao dịch thời gian thực gửi từ Server A (thông qua webhook hoặc hàng đợi tín hiệu tương ứng) và lưu trữ chúng vào CSDL Forward Test.
+
+### R3. Cập nhật song song CSDL hiện tại phục vụ Back-test
+Đảm bảo các dữ liệu OHLCV, lịch sử chỉ báo và tín hiệu chung vẫn được cập nhật liên tục vào database hiện tại để không gây ảnh hưởng đến tính năng Back-test.
+
+## Acceptance Criteria
+
+### Tách biệt dữ liệu
+- [ ] Database Forward Test lưu trữ các tín hiệu, lệnh giao dịch giả lập (paper trades) và trạng thái vị thế riêng biệt.
+- [ ] Database Back-test tiếp tục cập nhật dữ liệu lịch sử bình thường không bị gián đoạn.
+
+### Nhận tín hiệu và Giao dịch giả lập
+- [ ] Xử lý thành công tín hiệu BTC, ETH, SOL từ Server A gửi tới.
+- [ ] Thực hiện khớp lệnh giả lập (Paper Trading) thời gian thực dựa trên giá thị trường hiện tại.
