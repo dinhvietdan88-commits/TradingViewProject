@@ -97,7 +97,9 @@ async def init_test_db(tmp_path):
     import database
 
     config.DB_PATH = str(tmp_path / "test_auto.db")
+    config.FORWARD_DB_PATH = str(tmp_path / "test_forward_auto.db")
     os.environ["DB_PATH"] = config.DB_PATH
+    os.environ["FORWARD_DB_PATH"] = config.FORWARD_DB_PATH
     await database.init_db()
     yield
 
@@ -120,6 +122,7 @@ async def client(tmp_path):
 
     # Point to per-test temp DB file
     config.DB_PATH = str(tmp_path / "test.db")
+    config.FORWARD_DB_PATH = str(tmp_path / "test_forward.db")
     config.WEBHOOK_SECRET = "test-secret"  # noqa: S105
     config.TELEGRAM_BOT_ENABLED = False
     config.BRIEF_ENABLED = False
@@ -127,6 +130,7 @@ async def client(tmp_path):
     config.RAG_ENABLED = False
     config.DASHBOARD_TOKEN = ""
     os.environ["DB_PATH"] = config.DB_PATH
+    os.environ["FORWARD_DB_PATH"] = config.FORWARD_DB_PATH
 
     await database.init_db()
 
