@@ -3,7 +3,6 @@ Integration tests for Forward Test DB Routing.
 """
 
 import pytest
-import os
 import aiosqlite
 import config
 import database
