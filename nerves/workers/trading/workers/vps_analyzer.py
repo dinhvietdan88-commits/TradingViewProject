@@ -784,7 +784,13 @@ class VpsAnalyzerWorker:
         payload = signal.get("payload", {})
         queue_id = signal.get("queue_id")
 
-        log.info(f"[VpsAnalyzer] Analysing #{queue_id}: {symbol} {action} @ {price}")
+        mode = ""
+        if isinstance(payload, dict):
+            mode = payload.get("mode") or signal.get("mode") or ""
+        else:
+            mode = signal.get("mode") or ""
+
+        log.info(f"[VpsAnalyzer] Analysing #{queue_id}: {symbol} {action} @ {price} | mode: {mode}")
 
         # ── Validate basics ────────────────────────────────────────────────────
         try:
@@ -1177,6 +1183,7 @@ class VpsAnalyzerWorker:
                 <= ai_conf
                 <= config.AI_CONFIDENCE_THRESHOLD_HIL_MAX
             ),
+            "mode": mode,
         }
 
         log.info(
