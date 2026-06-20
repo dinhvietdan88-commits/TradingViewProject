@@ -590,13 +590,13 @@ async def execute_trade(event: TradeApproved) -> None:
         if isinstance(payload_mode, str) and (
             payload_mode.startswith("TEST")
             or payload_mode.startswith("DEMO")
-            or payload_mode == "FORWARD"
+            or "FORWARD" in payload_mode.upper()
         ):
             is_test_signal = True
     if isinstance(event_mode, str) and (
         event_mode.startswith("TEST")
         or event_mode.startswith("DEMO")
-        or event_mode == "FORWARD"
+        or "FORWARD" in event_mode.upper()
     ):
         is_test_signal = True
 
