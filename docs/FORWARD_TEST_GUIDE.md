@@ -351,4 +351,4 @@ python scripts/fix_forward_db_sequence.py
 
 ---
 
-*Tài liệu này được cập nhật lần cuối: 2026-06-21 · Angati v7.0 · Branch: `forward-test-crypto-integration`*
+*Tài liệu này được cập nhật lần cuối: 2026-06-21 · Angati v7.0 · Branch: `main`*
