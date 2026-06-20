@@ -24,6 +24,7 @@ SENTRY_PROFILES_SAMPLE_RATE = float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.
 
 # Database (Sprint 4)
 DB_PATH = os.getenv("DB_PATH", "trades.db")
+FORWARD_DB_PATH = os.getenv("FORWARD_DB_PATH", "forward_trades.db")
 DB_TIMEOUT = float(os.getenv("DB_TIMEOUT", "60.0"))
 
 # Rate Limiting & Concurrency (Stress Testing)

@@ -20,6 +20,7 @@ async def get_trades(
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
     demo: bool = False,
+    mode: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Truy van lich su giao dich voi pagination va filter."""
     conditions = []
@@ -41,7 +42,8 @@ async def get_trades(
 
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
         # Count total
@@ -85,7 +87,9 @@ async def get_trades(
 # ═══════════════════════════════════════════════════════════════
 
 
-async def get_stats(symbol: Optional[str] = None, demo: bool = False) -> Dict[str, Any]:
+async def get_stats(
+    symbol: Optional[str] = None, demo: bool = False, mode: Optional[str] = None
+) -> Dict[str, Any]:
     """Tinh metrics hieu suat: Win Rate, Profit Factor, Drawdown."""
     conditions = ["t.status = 'FILLED'"]
     params: list = []
@@ -100,7 +104,8 @@ async def get_stats(symbol: Optional[str] = None, demo: bool = False) -> Dict[st
 
     where = f"WHERE {' AND '.join(conditions)}"
 
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
         sql_query = f"SELECT pnl FROM trades t {where} AND pnl IS NOT NULL"  # noqa: S608
@@ -195,7 +200,9 @@ def _build_mode_stats(pnl_list: list) -> Dict[str, Any]:
     }
 
 
-async def get_stats_by_mode(demo: bool = False) -> Dict[str, Any]:
+async def get_stats_by_mode(
+    demo: bool = False, mode: Optional[str] = None
+) -> Dict[str, Any]:
     """Performance metrics grouped by strategy mode (MTT vs MIS)."""
     where_conds = ["t.status = 'FILLED'", "t.pnl IS NOT NULL"]
     if not demo:
@@ -204,7 +211,8 @@ async def get_stats_by_mode(demo: bool = False) -> Dict[str, Any]:
         )
     where_clause = " AND ".join(where_conds)
 
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
         sql_query = f"""
             SELECT t.pnl,
@@ -250,6 +258,7 @@ async def get_recent_trades(
     limit: int = 10,
     symbol: Optional[str] = None,
     demo: bool = False,
+    mode: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Return the last N FILLED trades with signal mode for the /backtest history panel."""
     conditions = ["t.status = 'FILLED'", "t.pnl IS NOT NULL"]
@@ -265,7 +274,8 @@ async def get_recent_trades(
     where = f"WHERE {' AND '.join(conditions)}"
     params.append(limit)
 
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
         sql_query = f"""
             SELECT t.id,
@@ -295,7 +305,7 @@ async def get_recent_trades(
 
 
 async def get_equity_curve(
-    symbol: Optional[str] = None, demo: bool = False
+    symbol: Optional[str] = None, demo: bool = False, mode: Optional[str] = None
 ) -> Dict[str, Any]:
     """Tra ve equity curve data cho Chart.js."""
     conditions = ["t.status = 'FILLED'", "t.pnl IS NOT NULL"]
@@ -311,7 +321,8 @@ async def get_equity_curve(
 
     where = f"WHERE {' AND '.join(conditions)}"
 
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
         sql_query = f"""SELECT t.created_at, t.pnl, t.symbol, t.side
@@ -540,6 +551,7 @@ async def get_signals(
     state: str | None = None,
     limit: int = 50,
     offset: int = 0,
+    mode: Optional[str] = None,
 ) -> dict[str, Any]:
     """Truy van danh sach signals de phuc vu Ledger Dashboard UI."""
     query_parts = []
@@ -553,11 +565,16 @@ async def get_signals(
         query_parts.append("state = ?")
         params.append(state.upper())
 
+    if mode:
+        query_parts.append("mode = ?")
+        params.append(mode)
+
     where_clause = " WHERE " + " AND ".join(query_parts) if query_parts else ""
 
     limit = min(limit, 200)
 
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
         # Lay tong so record

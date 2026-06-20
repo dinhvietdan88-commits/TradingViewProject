@@ -45,7 +45,8 @@ async def insert_signal(
             log.warning(f"Failed to dynamically calculate crystallized features: {e}")
             analysis_features = None
 
-    async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
+    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    async with aiosqlite.connect(db_path, timeout=config.DB_TIMEOUT) as db:
         cursor = await db.execute(
             """INSERT INTO signals (symbol, action, price, quote_qty, source_ip, payload, mode, vbs_queue_id, analysis_features, raw_analysis_text)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -76,7 +77,10 @@ async def insert_signal(
 
 async def update_signal_status(signal_id: int, processed: int):
     """Cap nhat trang thai signal: 0=pending, 1=success, 2=failed."""
-    async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
+    from data.routing import get_db_path_by_signal_id
+
+    db_path = await get_db_path_by_signal_id(signal_id)
+    async with aiosqlite.connect(db_path, timeout=config.DB_TIMEOUT) as db:
         await db.execute(
             "UPDATE signals SET processed = ? WHERE id = ?",
             (processed, signal_id),
@@ -88,7 +92,10 @@ async def update_signal_state(
     signal_id: int, state: str, rejection_reason: str | None = None
 ):
     """Cap nhat trang thai signal state (Ledger) kem theo ly do tu choi neu co."""
-    async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
+    from data.routing import get_db_path_by_signal_id
+
+    db_path = await get_db_path_by_signal_id(signal_id)
+    async with aiosqlite.connect(db_path, timeout=config.DB_TIMEOUT) as db:
         if rejection_reason:
             await db.execute(
                 "UPDATE signals SET state = ?, rejection_reason = ? WHERE id = ?",
@@ -171,7 +178,10 @@ async def insert_trade(
     vbs_queue_id: int | None = None,
 ) -> int:
     """Luu ket qua giao dich Binance/Bybit."""
-    async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
+    from data.routing import get_db_path_by_signal_id
+
+    db_path = await get_db_path_by_signal_id(signal_id)
+    async with aiosqlite.connect(db_path, timeout=config.DB_TIMEOUT) as db:
         # Auto-resolve vbs_queue_id from signals if not provided
         if vbs_queue_id is None:
             try:
@@ -225,7 +235,10 @@ async def update_trade_oco(
     order_type: str = "OCO",
 ) -> None:
     """Cập nhật OCO details cho một trade."""
-    async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
+    from data.routing import get_db_path_by_trade_id
+
+    db_path = await get_db_path_by_trade_id(trade_id)
+    async with aiosqlite.connect(db_path, timeout=config.DB_TIMEOUT) as db:
         await db.execute(
             """UPDATE trades SET
                stop_loss_price = ?, take_profit_price = ?,

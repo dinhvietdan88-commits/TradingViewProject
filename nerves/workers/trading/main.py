@@ -1133,6 +1133,7 @@ async def get_signals_endpoint(
     ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    mode: str | None = Query(None, description="Filter by mode, e.g. FORWARD|MTT|MIS"),
 ):
     """Fetch webhook signals with states and rejection reasons for the Ledger dashboard tab."""
     try:
@@ -1141,6 +1142,7 @@ async def get_signals_endpoint(
             state=state,
             limit=limit,
             offset=offset,
+            mode=mode,
         )
         return res
     except Exception as e:
@@ -1579,6 +1581,7 @@ async def get_trades_endpoint(
     from_date: str | None = Query(None, description="ISO format: 2026-01-01"),
     to_date: str | None = Query(None, description="ISO format: 2026-12-31"),
     demo: bool = Query(False, description="Include mock/demo trades"),
+    mode: str | None = Query(None, description="Filter by mode: FORWARD|MTT|MIS"),
 ):
     """Truy van lich su giao dich."""
     return await database.get_trades(
@@ -1588,6 +1591,7 @@ async def get_trades_endpoint(
         from_date=from_date,
         to_date=to_date,
         demo=demo,
+        mode=mode,
     )
 
 
@@ -1596,9 +1600,10 @@ async def get_trades_endpoint(
 async def get_stats_endpoint(
     symbol: str | None = Query(None, description="Filter theo cap giao dich"),
     demo: bool = Query(False, description="Include mock/demo trades"),
+    mode: str | None = Query(None, description="Filter by mode: FORWARD|MTT|MIS"),
 ):
     """Tinh metrics hieu suat: Win Rate, Profit Factor, Drawdown."""
-    return await database.get_stats(symbol=symbol, demo=demo)
+    return await database.get_stats(symbol=symbol, demo=demo, mode=mode)
 
 
 # ═══ EQUITY CURVE ENDPOINT ════════════════════════════════════
@@ -1606,9 +1611,10 @@ async def get_stats_endpoint(
 async def get_equity_endpoint(
     symbol: str | None = Query(None, description="Filter theo cap giao dich"),
     demo: bool = Query(False, description="Include mock/demo trades"),
+    mode: str | None = Query(None, description="Filter by mode: FORWARD|MTT|MIS"),
 ):
     """Tra ve equity curve data cho Chart.js."""
-    return await database.get_equity_curve(symbol=symbol, demo=demo)
+    return await database.get_equity_curve(symbol=symbol, demo=demo, mode=mode)
 
 
 # ═══ TRADE ANALYSIS ENDPOINT ═════════════════════════════════
@@ -1625,6 +1631,7 @@ async def get_trade_analysis_endpoint(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     demo: bool = Query(False, description="Include mock/demo trades"),
+    mode: str | None = Query(None, description="Filter by mode: FORWARD|MTT|MIS"),
 ):
     """Trade analysis with advanced filtering — powers Trade Analysis tab."""
     # Build filter conditions
@@ -1643,6 +1650,9 @@ async def get_trade_analysis_endpoint(
     if to_date:
         conditions.append("t.created_at <= ?")
         params.append(to_date)
+    if mode:
+        conditions.append("s.mode = ?")
+        params.append(mode)
     if not demo:
         conditions.append(
             "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
@@ -1650,11 +1660,17 @@ async def get_trade_analysis_endpoint(
 
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
         # Total count
-        query_count = "".join(["SELECT COUNT(*) as cnt FROM trades t ", where])
+        query_count = "".join(
+            [
+                "SELECT COUNT(*) as cnt FROM trades t LEFT JOIN signals s ON s.id = t.signal_id ",
+                where,
+            ]
+        )
         row = await db.execute_fetchall(query_count, params)
         total = row[0][0] if row else 0
 
@@ -1676,7 +1692,7 @@ async def get_trade_analysis_endpoint(
         filled_where = f"{where} AND" if where else "WHERE"
         query_stats = "".join(
             [
-                "SELECT pnl, symbol FROM trades t ",
+                "SELECT t.pnl, t.symbol FROM trades t LEFT JOIN signals s ON s.id = t.signal_id ",
                 filled_where,
                 " t.status = 'FILLED' AND t.pnl IS NOT NULL",
             ]

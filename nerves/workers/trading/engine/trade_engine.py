@@ -177,8 +177,10 @@ async def execute_trade(event: TradeApproved) -> None:
         import aiosqlite
 
         import config
+        from data.routing import get_db_path_by_signal_id
 
-        async with aiosqlite.connect(config.DB_PATH) as db:
+        db_path = await get_db_path_by_signal_id(event.signal_id)
+        async with aiosqlite.connect(db_path) as db:
             db.row_factory = aiosqlite.Row
             async with db.execute(
                 "SELECT action, payload FROM signals WHERE id = ?", (event.signal_id,)
@@ -194,6 +196,12 @@ async def execute_trade(event: TradeApproved) -> None:
                         original_payload = {}
     except Exception as exc:
         log.warning(f"TradeEngine: Failed to fetch original signal details: {exc}")
+
+    event_mode = (
+        getattr(event, "mode", "")
+        or (original_payload.get("mode") if original_payload else "")
+        or ""
+    )
 
     is_breakout = (
         (original_action in {"bo", "breakout_long"})
@@ -345,10 +353,10 @@ async def execute_trade(event: TradeApproved) -> None:
     try:
         import inspect
 
-        dd_val = database.get_rolling_drawdown(20)
+        dd_val = database.get_rolling_drawdown(20, mode=event_mode)
         rolling_dd = await dd_val if inspect.isawaitable(dd_val) else 0.0
 
-        pf_val = database.get_recent_profit_factor(5)
+        pf_val = database.get_recent_profit_factor(5, mode=event_mode)
         recent_pf = await pf_val if inspect.isawaitable(pf_val) else 1.0
 
         sm_val = database.get_setting("safe_mode_active", "false")
@@ -398,7 +406,7 @@ async def execute_trade(event: TradeApproved) -> None:
         ) and not isinstance(database.get_risk_settings, AsyncMock)
 
         if is_legacy_mock:
-            daily_loss_val = database.get_daily_loss(actual_exchange)
+            daily_loss_val = database.get_daily_loss(actual_exchange, mode=event_mode)
             daily_loss = (
                 await daily_loss_val if inspect.isawaitable(daily_loss_val) else 0.0
             )
@@ -408,7 +416,7 @@ async def execute_trade(event: TradeApproved) -> None:
         else:
             risk_set = await database.get_risk_settings(actual_exchange)
             cb_state = risk_set.get("state", "CLOSED")
-            daily_loss_val = database.get_daily_loss(actual_exchange)
+            daily_loss_val = database.get_daily_loss(actual_exchange, mode=event_mode)
             daily_loss = (
                 await daily_loss_val if inspect.isawaitable(daily_loss_val) else 0.0
             )
@@ -580,12 +588,15 @@ async def execute_trade(event: TradeApproved) -> None:
             is_test_signal = True
         payload_mode = original_payload.get("mode", "")
         if isinstance(payload_mode, str) and (
-            payload_mode.startswith("TEST") or payload_mode.startswith("DEMO")
+            payload_mode.startswith("TEST")
+            or payload_mode.startswith("DEMO")
+            or payload_mode == "FORWARD"
         ):
             is_test_signal = True
-    event_mode = getattr(event, "mode", "") or ""
     if isinstance(event_mode, str) and (
-        event_mode.startswith("TEST") or event_mode.startswith("DEMO")
+        event_mode.startswith("TEST")
+        or event_mode.startswith("DEMO")
+        or event_mode == "FORWARD"
     ):
         is_test_signal = True
 

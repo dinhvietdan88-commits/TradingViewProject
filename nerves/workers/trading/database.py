@@ -232,24 +232,53 @@ CREATE INDEX IF NOT EXISTS idx_ohlcv_1d_sym_time_desc ON ohlcv_1d(symbol, timest
 
 
 async def init_db():
-    """Tao bang khi khoi dong server."""
-    async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
-        await db.execute("PRAGMA journal_mode=WAL")
-        await db.executescript(_SCHEMA)
-        await db.commit()
+    """Tao bang khi khoi dong server cho ca trades.db va forward_trades.db."""
+    for db_path in [config.DB_PATH, config.FORWARD_DB_PATH]:
+        async with aiosqlite.connect(db_path, timeout=config.DB_TIMEOUT) as db:
+            await db.execute("PRAGMA journal_mode=WAL")
+            await db.executescript(_SCHEMA)
+            await db.commit()
 
-        # Sprint 7.2: Extend trades table (backward-compatible)
-        for col_def in [
-            "ALTER TABLE trades ADD COLUMN stop_loss_price REAL",
-            "ALTER TABLE trades ADD COLUMN take_profit_price REAL",
-            "ALTER TABLE trades ADD COLUMN oco_order_id TEXT",
-            "ALTER TABLE trades ADD COLUMN order_type TEXT DEFAULT 'MARKET'",
-            "ALTER TABLE trades ADD COLUMN combined_score TEXT",
-            "ALTER TABLE trades ADD COLUMN exchange TEXT DEFAULT 'binance'",
-            "ALTER TABLE trades ADD COLUMN vbs_queue_id INTEGER",
-        ]:
+            # Sprint 7.2: Extend trades table (backward-compatible)
+            for col_def in [
+                "ALTER TABLE trades ADD COLUMN stop_loss_price REAL",
+                "ALTER TABLE trades ADD COLUMN take_profit_price REAL",
+                "ALTER TABLE trades ADD COLUMN oco_order_id TEXT",
+                "ALTER TABLE trades ADD COLUMN order_type TEXT DEFAULT 'MARKET'",
+                "ALTER TABLE trades ADD COLUMN combined_score TEXT",
+                "ALTER TABLE trades ADD COLUMN exchange TEXT DEFAULT 'binance'",
+                "ALTER TABLE trades ADD COLUMN vbs_queue_id INTEGER",
+            ]:
+                try:
+                    await db.execute(col_def)
+                    await db.commit()
+                except sqlite3.OperationalError as e:
+                    import logging
+
+                    logging.getLogger(__name__).warning(
+                        "Ignored: %s", e
+                    )  # Column already exists
+
+            # v6.1: Extend indicator_signals table (backward-compatible, REQ 7.1)
+            for col_def in [
+                "ALTER TABLE indicator_signals ADD COLUMN interval TEXT",
+                "ALTER TABLE indicator_signals ADD COLUMN price REAL",
+                "ALTER TABLE indicator_signals ADD COLUMN source_ip TEXT",
+                "ALTER TABLE indicator_signals ADD COLUMN exchange TEXT DEFAULT 'binance'",
+            ]:
+                try:
+                    await db.execute(col_def)
+                    await db.commit()
+                except sqlite3.OperationalError as e:
+                    import logging
+
+                    logging.getLogger(__name__).warning(
+                        "Ignored: %s", e
+                    )  # Column already exists
+
+            # v7.0: Add mode column to signals (backward-compatible — Phase 2 MTT/MIS tracking)
             try:
-                await db.execute(col_def)
+                await db.execute("ALTER TABLE signals ADD COLUMN mode TEXT")
                 await db.commit()
             except sqlite3.OperationalError as e:
                 import logging
@@ -258,92 +287,90 @@ async def init_db():
                     "Ignored: %s", e
                 )  # Column already exists
 
-        # v6.1: Extend indicator_signals table (backward-compatible, REQ 7.1)
-        for col_def in [
-            "ALTER TABLE indicator_signals ADD COLUMN interval TEXT",
-            "ALTER TABLE indicator_signals ADD COLUMN price REAL",
-            "ALTER TABLE indicator_signals ADD COLUMN source_ip TEXT",
-            "ALTER TABLE indicator_signals ADD COLUMN exchange TEXT DEFAULT 'binance'",
-        ]:
+            # VPS Buffer: Add vbs_queue_id column to signals
             try:
-                await db.execute(col_def)
+                await db.execute("ALTER TABLE signals ADD COLUMN vbs_queue_id INTEGER")
                 await db.commit()
             except sqlite3.OperationalError as e:
                 import logging
 
-                logging.getLogger(__name__).warning(
-                    "Ignored: %s", e
-                )  # Column already exists
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
-        # v7.0: Add mode column to signals (backward-compatible — Phase 2 MTT/MIS tracking)
-        try:
-            await db.execute("ALTER TABLE signals ADD COLUMN mode TEXT")
-            await db.commit()
-        except sqlite3.OperationalError as e:
-            import logging
+            try:
+                await db.execute(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS idx_signals_vbs_queue_id ON signals(vbs_queue_id)"
+                )
+                await db.commit()
+            except sqlite3.OperationalError as e:
+                import logging
 
-            logging.getLogger(__name__).warning(
-                "Ignored: %s", e
-            )  # Column already exists
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
-        # VPS Buffer: Add vbs_queue_id column to signals
-        try:
-            await db.execute("ALTER TABLE signals ADD COLUMN vbs_queue_id INTEGER")
-            await db.commit()
-        except sqlite3.OperationalError as e:
-            import logging
+            # Unified State Ledger: Add state column to signals
+            try:
+                await db.execute(
+                    "ALTER TABLE signals ADD COLUMN state TEXT DEFAULT 'INGESTED'"
+                )
+                await db.commit()
+            except sqlite3.OperationalError as e:
+                import logging
 
-            logging.getLogger(__name__).warning("Ignored: %s", e)
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
-        try:
-            await db.execute(
-                "CREATE UNIQUE INDEX IF NOT EXISTS idx_signals_vbs_queue_id ON signals(vbs_queue_id)"
-            )
-            await db.commit()
-        except sqlite3.OperationalError as e:
-            import logging
+            # Unified State Ledger: Add rejection_reason column to signals
+            try:
+                await db.execute("ALTER TABLE signals ADD COLUMN rejection_reason TEXT")
+                await db.commit()
+            except sqlite3.OperationalError as e:
+                import logging
 
-            logging.getLogger(__name__).warning("Ignored: %s", e)
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
-        # Unified State Ledger: Add state column to signals
-        try:
-            await db.execute(
-                "ALTER TABLE signals ADD COLUMN state TEXT DEFAULT 'INGESTED'"
-            )
-            await db.commit()
-        except sqlite3.OperationalError as e:
-            import logging
+            # Dynamic ALTER TABLE for analysis_features column on signals table
+            try:
+                await db.execute(
+                    "ALTER TABLE signals ADD COLUMN analysis_features TEXT"
+                )
+                await db.commit()
+            except sqlite3.OperationalError as e:
+                import logging
 
-            logging.getLogger(__name__).warning("Ignored: %s", e)
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
-        # Unified State Ledger: Add rejection_reason column to signals
-        try:
-            await db.execute("ALTER TABLE signals ADD COLUMN rejection_reason TEXT")
-            await db.commit()
-        except sqlite3.OperationalError as e:
-            import logging
+            # Dynamic ALTER TABLE for raw_analysis_text column on signals table
+            try:
+                await db.execute(
+                    "ALTER TABLE signals ADD COLUMN raw_analysis_text TEXT"
+                )
+                await db.commit()
+            except sqlite3.OperationalError as e:
+                import logging
 
-            logging.getLogger(__name__).warning("Ignored: %s", e)
+                logging.getLogger(__name__).warning("Ignored: %s", e)
 
-        # Dynamic ALTER TABLE for analysis_features column on signals table
-        try:
-            await db.execute("ALTER TABLE signals ADD COLUMN analysis_features TEXT")
-            await db.commit()
-        except sqlite3.OperationalError as e:
-            import logging
+            if db_path == config.FORWARD_DB_PATH:
+                try:
+                    async with db.execute(
+                        "SELECT seq FROM sqlite_sequence WHERE name = 'signals'"
+                    ) as cur:
+                        row = await cur.fetchone()
+                        if not row:
+                            await db.execute(
+                                "INSERT INTO sqlite_sequence (name, seq) VALUES ('signals', 1000000)"
+                            )
+                    async with db.execute(
+                        "SELECT seq FROM sqlite_sequence WHERE name = 'trades'"
+                    ) as cur:
+                        row = await cur.fetchone()
+                        if not row:
+                            await db.execute(
+                                "INSERT INTO sqlite_sequence (name, seq) VALUES ('trades', 1000000)"
+                            )
+                    await db.commit()
+                except Exception as seq_err:
+                    log.warning(f"Failed to initialize sqlite_sequence: {seq_err}")
 
-            logging.getLogger(__name__).warning("Ignored: %s", e)
-
-        # Dynamic ALTER TABLE for raw_analysis_text column on signals table
-        try:
-            await db.execute("ALTER TABLE signals ADD COLUMN raw_analysis_text TEXT")
-            await db.commit()
-        except sqlite3.OperationalError as e:
-            import logging
-
-            logging.getLogger(__name__).warning("Ignored: %s", e)
-
-    log.info(f"Database initialized: {config.DB_PATH}")
+        log.info(f"Database initialized: {db_path}")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -526,12 +553,13 @@ async def set_setting(key: str, value: str) -> None:
         log.warning(f"Failed to set setting {key} to {value}: {e}")
 
 
-async def get_rolling_drawdown(limit: int = 20) -> float:
+async def get_rolling_drawdown(limit: int = 20, mode: str | None = None) -> float:
     """
     Tính toán phần trăm sụt giảm tài khoản (Drawdown) dựa trên các giao dịch đóng gần nhất.
     """
     try:
-        async with aiosqlite.connect(config.DB_PATH) as db:
+        db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+        async with aiosqlite.connect(db_path) as db:
             db.row_factory = aiosqlite.Row
             # Lấy 20 giao dịch có PnL (chỉ tính các giao dịch đã đóng/có pnl)
             async with db.execute(
@@ -567,12 +595,13 @@ async def get_rolling_drawdown(limit: int = 20) -> float:
         return 0.0
 
 
-async def get_recent_profit_factor(limit: int = 5) -> float:
+async def get_recent_profit_factor(limit: int = 5, mode: str | None = None) -> float:
     """
     Tính Profit Factor của N lệnh gần nhất.
     """
     try:
-        async with aiosqlite.connect(config.DB_PATH) as db:
+        db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+        async with aiosqlite.connect(db_path) as db:
             db.row_factory = aiosqlite.Row
             async with db.execute(
                 "SELECT pnl FROM trades WHERE pnl IS NOT NULL ORDER BY id DESC LIMIT ?",
@@ -596,12 +625,15 @@ async def get_recent_profit_factor(limit: int = 5) -> float:
         return 1.0
 
 
-async def get_daily_loss(exchange: str, window_hours: int = 24) -> float:
+async def get_daily_loss(
+    exchange: str, window_hours: int = 24, mode: str | None = None
+) -> float:
     """
     Tính toán tổng số lỗ (PnL âm) của một sàn giao dịch cụ thể trong vòng N giờ qua.
     """
     try:
-        async with aiosqlite.connect(config.DB_PATH) as db:
+        db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+        async with aiosqlite.connect(db_path) as db:
             db.row_factory = aiosqlite.Row
             query = (
                 "SELECT pnl FROM trades "
