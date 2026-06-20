@@ -790,7 +790,9 @@ class VpsAnalyzerWorker:
         else:
             mode = signal.get("mode") or ""
 
-        log.info(f"[VpsAnalyzer] Analysing #{queue_id}: {symbol} {action} @ {price} | mode: {mode}")
+        log.info(
+            f"[VpsAnalyzer] Analysing #{queue_id}: {symbol} {action} @ {price} | mode: {mode}"
+        )
 
         # ── Validate basics ────────────────────────────────────────────────────
         try:

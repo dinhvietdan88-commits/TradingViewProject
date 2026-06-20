@@ -721,4 +721,3 @@ async def test_forward_mode_enforces_dry_run():
         from core.event_bus import bus as default_bus
 
         set_bus(default_bus)
-

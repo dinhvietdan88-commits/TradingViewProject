@@ -10,7 +10,7 @@ signals_db_path = PROJECT_ROOT / "scratch" / "signal_queue_server_a.db"
 
 # Import các hàm mô phỏng
 sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
-from run_vbs_backtest_campaign import (
+from run_vbs_backtest_campaign import (  # noqa: E402
     load_cached_candles,
     get_last_closed_candle,
     get_signal_start_index,
@@ -97,8 +97,7 @@ class TestSlippageDecay:
                 if start_idx == -1:
                     continue
 
-                daily_row = get_last_closed_candle(df_1d, signal_time_ms, 86400000)
-                daily_atr = daily_row["atr14"]
+                get_last_closed_candle(df_1d, signal_time_ms, 86400000)
 
                 is_long = action.lower() in ("buy", "long")
 
@@ -137,7 +136,7 @@ class TestSlippageDecay:
             }
 
         # In kết quả phân rã
-        print(f"\n--- Slippage Decay Results ---")
+        print("\n--- Slippage Decay Results ---")
         for slip, res in results.items():
             print(
                 f"Slippage: {slip * 100:.2f}% | Trades: {res['trades']} | Net P&L: {res['total_pnl']:.2f} USDT | PF: {res['profit_factor']:.2f}"

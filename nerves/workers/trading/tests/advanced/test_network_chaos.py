@@ -1,9 +1,7 @@
-import asyncio
 import sqlite3
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-import config
 from workers.vps_analyzer import VpsAnalyzerWorker
 
 pytestmark = pytest.mark.asyncio

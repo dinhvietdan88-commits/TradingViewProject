@@ -150,14 +150,18 @@ async def test_corrupted_database_files(caplog):
     with caplog.at_level(logging.WARNING):
         routed_path = await get_db_path_by_signal_id(sig_id)
         assert routed_path == config.DB_PATH
-        assert any("Error checking signal_id" in record.message for record in caplog.records)
+        assert any(
+            "Error checking signal_id" in record.message for record in caplog.records
+        )
 
     # 4. Try to resolve routing for a trade ID
     caplog.clear()
     with caplog.at_level(logging.WARNING):
         routed_trade_path = await get_db_path_by_trade_id(1)
         assert routed_trade_path == config.DB_PATH
-        assert any("Error checking trade_id" in record.message for record in caplog.records)
+        assert any(
+            "Error checking trade_id" in record.message for record in caplog.records
+        )
 
 
 @pytest.mark.asyncio
