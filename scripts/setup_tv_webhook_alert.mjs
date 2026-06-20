@@ -10,20 +10,43 @@
  */
 
 import CDP from '../tradingview-mcp/node_modules/chrome-remote-interface/index.js';
+import fs from 'fs';
+import path from 'path';
 
 const CDP_PORT = 9222;
 const CDP_HOST = '127.0.0.1';
 
 const WEBHOOK_URL = 'https://trading.utopiavn.co/ingest?secret=9ea7c89fbfd63a8a2bc8644e99da54fc5b2c7e098fe1d9e2b10a4e320f781a7b';
 
+function getWebhookSecret() {
+  try {
+    const envPath = path.resolve(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf8');
+      const match = content.match(/^WEBHOOK_SECRET\s*=\s*(.+)$/m);
+      if (match) {
+        return match[1].trim();
+      }
+    }
+  } catch (e) {
+    console.error('⚠️ Error reading .env file:', e.message);
+  }
+  return 'your_webhook_secret_here';
+}
+
+const WEBHOOK_SECRET = getWebhookSecret();
+
 const ALERT_MESSAGE = JSON.stringify({
+  secret: WEBHOOK_SECRET,
   symbol: '{{ticker}}',
   action: '{{strategy.order.action}}',
   price: '{{close}}',
-  exchange: 'binance',
+  quoteQty: 100,
   interval: '{{interval}}',
-  source: 'tradingview',
-  time: '{{timenow}}'
+  mode: 'FORWARD',
+  exchange: 'BINANCE',
+  sl: '{{plot_0}}',
+  tp: '{{plot_1}}'
 });
 
 const args = process.argv.slice(2);
@@ -81,6 +104,18 @@ async function listAlerts(client) {
 
 async function openAlertDialog(client) {
   console.log('\n🔔 Opening Create Alert dialog (Alt+A)...');
+
+  // Check if dialog is already open (idempotency check)
+  const alreadyOpen = await evalInPage(client, `
+    !!(document.querySelector('[role="dialog"]')
+      || document.querySelector('[class*="alert-dialog"]')
+      || document.querySelector('[class*="AlertDialog"]')
+      || document.querySelector('[data-name="alert-dialog"]'))
+  `);
+  if (alreadyOpen) {
+    console.log('  ✅ Dialog is already open. Skipping click/shortcut.');
+    return true;
+  }
 
   // Focus the page first
   await evalInPage(client, `window.focus(); document.body.click();`);
@@ -201,9 +236,31 @@ async function fillWebhookSection(client) {
 async function fillAlertMessage(client, message) {
   console.log('\n📝 Setting Alert Message...');
 
+  // Click on the "Message" row first to open the sub-panel (new TradingView UI)
+  const clickedMessageRow = await evalInPage(client, `
+    (function() {
+      var elements = document.querySelectorAll('*');
+      for (var el of elements) {
+        if (el.textContent.trim() === 'Message' && el.children.length === 0) {
+          var row = el.closest('[class*="row" i]') || el.parentElement;
+          if (row) {
+            row.click();
+            return 'clicked_row';
+          }
+          el.click();
+          return 'clicked_element';
+        }
+      }
+      return 'not_found';
+    })()
+  `);
+  console.log(`  Click Message row: ${clickedMessageRow}`);
+  await sleep(800);
+
   const msgSet = await evalInPage(client, `
     (function() {
-      var textarea = document.querySelector('textarea[placeholder*="message" i]')
+      var textarea = document.querySelector('textarea')
+        || document.querySelector('textarea[placeholder*="message" i]')
         || document.querySelector('[class*="alert"] textarea')
         || document.querySelector('[class*="Message"] textarea');
       if (textarea) {
@@ -272,10 +329,8 @@ async function main() {
       return;
     }
 
-    // Check if webhook alert already exists
-    const hasWebhook = alertData.alerts.some(a =>
-      (a.message || '').includes('trading.utopiavn.co')
-    );
+    // We disable hasWebhook check to always allow configuring a new FORWARD mode alert message
+    const hasWebhook = false;
     if (hasWebhook) {
       console.log('\n✅ Webhook alert already configured! No action needed.');
       return;
@@ -291,8 +346,9 @@ async function main() {
     }
     await takeScreenshot(client, 'dialog_opened');
 
-    // Fill webhook
-    const webhookOk = await fillWebhookSection(client);
+    // Keep pre-configured Webhook URL, do not modify it as requested
+    console.log('\n🔗 Skipping Webhook URL configuration (using pre-configured URL in TradingView)...');
+    const webhookOk = true;
 
     // Fill message
     await fillAlertMessage(client, ALERT_MESSAGE);
