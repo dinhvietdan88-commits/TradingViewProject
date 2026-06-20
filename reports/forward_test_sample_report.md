@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > Bao cao mau Forward-Test cho chien luoc **Angati SuperTrend VBS** voi 3 cap: BTC · ETH · SOL
-> Tao luc: **2026-06-20 19:50 UTC** · Muc dich: So sanh va kiem tra template truoc khi chay live
+> Tao luc: **2026-06-20 20:34 UTC** · Muc dich: So sanh va kiem tra ket qua live
 
 ---
 
@@ -82,9 +82,37 @@
 
 ---
 
+## 📡 Nhat Ky Tin Hieu (Signal Log)
+
+| #ID | Thoi Gian | Symbol | Action | Price | Qty | Mode | Trang Thai | Ly Do |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| #1000021 | 2026-06-20 20:34:03 | SOLUSDT | BUY | 81,487.27 | 100.00000 | MTT | REJECTED | duplicate_signal |
+| #1000020 | 2026-06-20 20:34:00 | ETHUSDT | SELL | 82,206.71 | 100.00000 | MIS | REJECTED | duplicate_signal |
+| #1000019 | 2026-06-20 20:33:57 | BTCUSDT | BUY | 83,105.47 | 100.00000 | MTT | REJECTED | duplicate_signal |
+| #1000018 | 2026-06-20 20:33:32 | SOLUSDT | BUY | 90,796.01 | 100.00000 | MTT | REJECTED | low_confidence |
+| #1000017 | 2026-06-20 20:33:30 | ETHUSDT | SELL | 90,826.77 | 100.00000 | MIS | REJECTED | mean_reversion_indicators_failed |
+| #1000016 | 2026-06-20 20:33:27 | BTCUSDT | BUY | 91,663.91 | 100.00000 | MTT | REJECTED | duplicate_signal |
+| #1000015 | 2026-06-20 20:33:05 | BTCUSDT | SELL | 81,954.89 | 100.00000 | MIS | REJECTED | mean_reversion_indicators_failed |
+| #1000014 | 2026-06-20 20:33:03 | SOLUSDT | SELL | 91,651.52 | 100.00000 | MTT | REJECTED | low_confidence |
+| #1000013 | 2026-06-20 20:33:00 | ETHUSDT | BUY | 86,431.07 | 100.00000 | MIS | REJECTED | mean_reversion_indicators_failed |
+| #1000012 | 2026-06-20 20:32:58 | BTCUSDT | BUY | 85,211.46 | 100.00000 | MTT | REJECTED | macro_trend_conflict |
+| #1000011 | 2026-06-20 20:30:57 | ETHUSDT | BUY | 86,330.01 | 100.00000 | MTT | REJECTED | sepa_trend_template_failed |
+| #1000010 | 2026-06-20 20:30:54 | BTCUSDT | SELL | 89,316.02 | 100.00000 | MIS | REJECTED | mean_reversion_indicators_failed |
+| #1000009 | 2026-06-20 20:30:51 | SOLUSDT | BUY | 90,796.01 | 100.00000 | MTT | REJECTED | duplicate_signal |
+| #1000008 | 2026-06-20 20:30:49 | ETHUSDT | SELL | 90,826.77 | 100.00000 | MIS | REJECTED | mean_reversion_indicators_failed |
+| #1000007 | 2026-06-20 20:30:46 | BTCUSDT | BUY | 91,663.91 | 100.00000 | MTT | REJECTED | macro_trend_conflict |
+| #1000006 | 2026-06-20 20:30:43 | SOLUSDT | BUY | 89,725.99 | 100.00000 | MIS | REJECTED | low_confidence |
+| #1000005 | 2026-06-20 20:20:15 | SOLUSDT | BUY | 81,487.27 | 100.00000 | FORWARD | REJECTED | duplicate_signal |
+| #1000004 | 2026-06-20 20:20:12 | ETHUSDT | SELL | 82,206.71 | 100.00000 | FORWARD | MACRO_PASSED | - |
+| #1000003 | 2026-06-20 20:20:09 | BTCUSDT | BUY | 83,105.47 | 100.00000 | FORWARD | REJECTED | macro_trend_conflict |
+| #1000002 | 2026-06-20 20:20:06 | SOLUSDT | BUY | 86,350.00 | 100.00000 | FORWARD | MACRO_PASSED | - |
+| #1000001 | 2026-06-20 20:20:03 | ETHUSDT | BUY | 86,330.01 | 100.00000 | FORWARD | MACRO_PASSED | - |
+
+---
+
 > [!IMPORTANT]
-> Day la **bao cao TINH** tao tu du lieu gia lap.
+> Day la báo cáo TINH tạo từ dữ liệu giả lập.
 > Khi Forward Test dang chay thuc te, bao cao nay se duoc tu dong cap nhat tu `forward_trades.db`.
 > Lien he Angati System de xem bao cao live.
 
-*Angati Forward-Test Report Generator · v5.4 · 2026-06-20 19:50 UTC*
+*Angati Forward-Test Report Generator · v7.0 · 2026-06-20 20:34 UTC*
