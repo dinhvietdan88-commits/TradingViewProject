@@ -9,6 +9,15 @@ import database
 from data.routing import get_db_path_by_signal_id, get_db_path_by_trade_id
 
 
+@pytest.fixture(autouse=True)
+def disable_forward_test_enabled():
+    """Ensure FORWARD_TEST_ENABLED is False for isolation tests."""
+    original = getattr(config, "FORWARD_TEST_ENABLED", False)
+    config.FORWARD_TEST_ENABLED = False
+    yield
+    config.FORWARD_TEST_ENABLED = original
+
+
 @pytest.mark.asyncio
 async def test_db_routing_signals_and_trades_isolation():
     """Verify that signals and trades are correctly routed based on mode."""
