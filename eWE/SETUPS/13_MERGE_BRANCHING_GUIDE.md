@@ -68,6 +68,7 @@ dev/ai/dashboard-v2   ──┘
 *   **Quy tắc:**
     1.  Không được push trực tiếp lên `develop`. Mọi thay đổi phải thông qua **Pull Request (PR)** từ các nhánh con.
     2.  Nhánh `develop` được giữ nguyên tên để bảo toàn cấu hình CI/CD hiện có và tránh làm sập pipeline. Khi PR vào `develop`, hệ thống CI sẽ tự động chạy `test_depth: quick` (unit tests nhẹ, ~3 phút).
+    3.  **Chốt chặn PR (Branch Protection):** Bật tính năng bảo vệ nhánh trên GitHub cho `develop`. Bắt buộc phải có PR review (ít nhất 1 người phê duyệt) và trạng thái kiểm thử của CI (`ci-gate`) báo xanh mới được phép merge.
 
 ### Nhánh Sửa Lỗi: `fix/*` và `hotfix/*`
 *   **Mục tiêu:** Sửa lỗi hệ thống cục bộ hoặc khẩn cấp.
@@ -87,13 +88,16 @@ dev/ai/dashboard-v2   ──┘
 *   **Quy tắc:**
     1.  Khi các tính năng trên `develop` đã ổn định và sẵn sàng cho một chu kỳ phát hành, tạo PR để merge từ `develop` sang `release/stage-1`.
     2.  Hành động này kích hoạt [ci.yml](file:///c:/Users/pesil/working/mj_trading/TradingViewProject/.github/workflows/ci.yml) với mức độ `test_depth: full` (chạy toàn bộ 575+ tests gồm E2E & Security, ~20 phút).
-    3.  Khi CI thành công, [staging.yml](file:///c:/Users/pesil/working/mj_trading/TradingViewProject/.github/workflows/staging.yml) sẽ tự động deploy bản build mới lên môi trường Staging và chạy **Staging Smoke Tests** (kiểm thử liveness, kết nối API, CDP Keep-Alive).
+    3.  **Tự động hóa Staging (Auto-Deploy):** Khi CI vượt qua, hệ thống sẽ tự động build Docker image và deploy bản build mới lên server Staging trước khi tự động kích hoạt bộ chạy **Staging Smoke Tests** (`staging.yml`) kiểm thử liveness và kết nối các cổng API.
 
 ### Nhánh 4: `main` (Production Branch)
 *   **Mục tiêu:** Nhánh chứa mã nguồn ổn định nhất đang chạy trực tiếp trên các máy chủ giao dịch sản xuất.
 *   **Quy tắc:**
     1.  Chỉ merge từ `release/stage-1` vào `main` sau khi tất cả các kiểm thử khói trên Staging đạt trạng thái **PASS**.
-    2.  Sau khi merge vào `main`, workflow [deploy.yml](file:///c:/Users/pesil/working/mj_trading/TradingViewProject/.github/workflows/deploy.yml) sẽ tự động kích hoạt để build Docker images mới và cập nhật trực tiếp lên các VPS sản xuất (**Server A + Server C**) mà không cần bất kỳ can thiệp thủ công nào.
+    2.  **Cơ chế Phát hành (Tag-based & Manual Approval Gate):** Thay vì deploy tự động trực tiếp trên lệnh merge vào `main`, hệ thống áp dụng cơ chế:
+        *   *Bước 1:* Merge PR vào `main` để đồng bộ codebase.
+        *   *Bước 2:* Tạo và đẩy thẻ phiên bản (tag release), ví dụ: `git tag v1.0.0` && `git push origin v1.0.0` để kích hoạt tiến trình deploy.
+        *   *Bước 3 (Manual Gate):* Tiến trình deploy sẽ tạm dừng để chờ phê duyệt thủ công (Manual Approval Gate) thông qua cấu hình **GitHub Environments** (môi trường `production`). Chỉ sau khi quản trị viên ấn **Approve**, Docker image mới được đóng gói và cập nhật trực tiếp lên các VPS sản xuất (**Server A + Server C**) với cơ chế tự động rollback nếu kiểm tra sức khỏe thất bại.
 
 ---
 

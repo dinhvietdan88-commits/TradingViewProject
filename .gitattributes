@@ -1,0 +1,15 @@
+# Auto-resolve documentation conflicts by union (keep both sets of changes)
+*.md merge=union
+eWE/**/*.md merge=union
+docs/**/*.md merge=union
+
+# Enforce LF line endings for text/code files to prevent CRLF vs LF conflicts across OS environments
+*.yml text eol=lf
+*.yaml text eol=lf
+*.py text eol=lf
+*.js text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
