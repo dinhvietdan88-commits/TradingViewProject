@@ -600,8 +600,10 @@ async def execute_trade(event: TradeApproved) -> None:
     ):
         is_test_signal = True
 
-    if is_test_signal:
-        log.info("TradeEngine: Test signal detected. Forcing dry_run=True on adapter.")
+    if is_test_signal or config.FORWARD_TEST_ENABLED:
+        log.info(
+            "TradeEngine: Forward test or test signal detected. Forcing dry_run=True on adapter."
+        )
         adapter.dry_run = True
         if hasattr(adapter, "_client") and adapter._client is not None:
             adapter._client.dry_run = True

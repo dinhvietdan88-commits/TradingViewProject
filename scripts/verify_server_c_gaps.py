@@ -57,6 +57,7 @@ def start_daemon(workspace_root):
     env["PORT"] = PORT
     env["HF_HUB_OFFLINE"] = "1"
     env["TRANSFORMERS_OFFLINE"] = "1"
+    env["PYTHONUNBUFFERED"] = "1"
     # Set PYTHONPATH
     trading_path = workspace_root / "nerves" / "workers" / "trading"
     env["PYTHONPATH"] = str(trading_path)
@@ -72,7 +73,7 @@ def start_daemon(workspace_root):
         creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
 
     proc = subprocess.Popen(  # nosec
-        [sys.executable, str(daemon_script)],
+        [sys.executable, "-u", str(daemon_script)],
         cwd=str(trading_path),
         env=env,
         stdout=subprocess.PIPE,
