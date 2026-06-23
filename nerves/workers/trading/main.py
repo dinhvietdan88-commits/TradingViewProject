@@ -248,7 +248,11 @@ async def lifespan(app: FastAPI):
     import analyzer.ai_analyzer  # noqa: F401 — @bus.on(AlertTriggered)
     import data.indicator_persistence  # noqa: F401 — @bus.on(IndicatorSignalReceived) DI-1
     import engine.trade_engine  # noqa: F401 — @bus.on(SignalValidated)
-    import engine.paper_engine  # noqa: F401 — @bus.on(SignalReceived)
+
+    try:
+        import engine.paper_engine  # noqa: F401 — @bus.on(SignalReceived)
+    except ImportError:
+        log.warning("engine.paper_engine not available on this branch.")
     import hub.notification_hub  # noqa: F401 — @bus.on(SignalRejected)
     import processor.signal_enricher  # noqa: F401 — @bus.on(IndicatorSignalValidated)
     import processor.signal_processor  # noqa: F401 — @bus.on(SignalReceived)
