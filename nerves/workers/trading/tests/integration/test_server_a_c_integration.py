@@ -300,6 +300,16 @@ async def test_server_a_c_integration_flow(test_db, worker):
     assert status == "ACKED"
     assert ack_status == "executed"
 
+    # 4. Verify Server C forwarded the trade with mode=FORWARD
+    assert len(worker._session.post_calls) > 0, "No trade forwarded to Server B"
+    trade_call = None
+    for call_url, call_json in worker._session.post_calls:
+        if "execute-trade" in call_url:
+            trade_call = call_json
+            break
+    assert trade_call is not None, "execute-trade call not found"
+    assert trade_call.get("mode") == "FORWARD", f"Expected mode=FORWARD in forwarded trade, got {trade_call.get('mode')}"
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
