@@ -31,6 +31,16 @@ gitGraph
     merge release/stage-1 id: "Merge to Production" tag: "Production Deploy (deploy.yml)"
 ```
 
+### 1.1. Sơ đồ Luồng Luân Chuyển Mã Nguồn (Code Flow)
+
+```text
+[Sprint Branches]           [Integration]       [Staging / Release]        [Production]
+
+dev/infra/binance-oco ──┐
+                        ├─➔ (Merge PR) ➔ develop ──➔ release/stage-1 ──➔ main (v2.2.0 Deploy)
+dev/ai/dashboard-v2   ──┘
+```
+
 ---
 
 ## 2. Quy Định và Vai Trò Của Từng Nhánh
