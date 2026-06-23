@@ -15,13 +15,13 @@ gitGraph
     checkout develop
     commit id: "Sync dev"
     
-    branch feat/p7b-ai-vision-ux
-    checkout feat/p7b-ai-vision-ux
+    branch ai/p7b-ai-vision-ux
+    checkout ai/p7b-ai-vision-ux
     commit id: "Pillow optimization"
     commit id: "Risk manager UI"
     
     checkout develop
-    merge feat/p7b-ai-vision-ux id: "Merge PR to Dev" tag: "CI Gate: quick/standard"
+    merge ai/p7b-ai-vision-ux id: "Merge PR to Dev" tag: "CI Gate: quick/standard"
     
     branch release/stage-1
     checkout release/stage-1
@@ -35,23 +35,42 @@ gitGraph
 
 ## 2. Quy Định và Vai Trò Của Từng Nhánh
 
-### Nhánh 1: `feat/*` (Feature Branches)
-*   **Mục tiêu:** Nơi các kỹ sư phát triển tính năng mới độc lập (ví dụ: `feat/p7b-ai-vision-ux`).
+### Nhánh 1: Nhánh Tính Năng Con (Feature Branches - Quy chuẩn 2-Nhánh-1-Quy-tắc)
+*   **Mục tiêu:** Nơi các kỹ sư phát triển tính năng độc lập, phân nhóm rõ ràng theo tiền tố:
+    *   **Nhóm A: Nhánh `infra/*` (Infrastructure & Core)**
+        *   *Phạm vi:* Chứa hạ tầng, refactor, logic lõi (Core Logic) và thuật toán giao dịch (Strategy).
+        *   *Mục tiêu:* Độ ổn định cao tuyệt đối. (Ví dụ: `infra/strategy-crystallization`).
+    *   **Nhóm B: Nhánh `ai/*` (AI & UX)**
+        *   *Phạm vi:* Chứa các tính năng trí tuệ nhân tạo, giao diện người dùng (UI/UX) và tương tác.
+        *   *Mục tiêu:* Tốc độ phát triển và trải nghiệm người dùng nhanh chóng. (Ví dụ: `ai/p7b-ai-vision-ux`).
+    *   *Tiền tố cũ:* Khai tử hoàn toàn tiền tố `feat/*` và `feature/*`.
 *   **Quy tắc:**
     1.  Tách nhánh từ `develop`.
-    2.  **Trước khi commit:** Bắt buộc chạy kiểm thử bảo mật và chất lượng tĩnh cục bộ:
+    2.  **Trước khi commit:** Bắt buộc chạy kiểm thử chất lượng và bảo mật cục bộ:
         ```bash
-        python -m security.cli scan
-        # Hoặc sử dụng công cụ angati qa:
-        angati qa nerves/workers/trading/your_file.py
+        python scripts/local_security_gate.py check
         ```
-    3.  Đảm bảo mã nguồn đạt tiêu chuẩn **0 lỗi Ruff Lint** trước khi đẩy lên GitHub.
+        Để tự động hóa, chạy `python scripts/local_security_gate.py setup` một lần để cài đặt pre-commit hooks.
+    3.  Đảm bảo mã nguồn đạt tiêu chuẩn **0 lỗi Ruff Lint** và vượt qua các cổng Mini-MDASH trước khi push.
 
-### Nhánh 2: `develop` (Integration Branch)
-*   **Mục tiêu:** Điểm tích hợp chung cho tất cả các nhánh tính năng đang phát triển song song.
+### Nhánh 2: `develop` (Integration Branch - Giữ nguyên trạng)
+*   **Mục tiêu:** Điểm tích hợp chung cho cả nhánh `infra/*` và `ai/*` đang phát triển song song.
 *   **Quy tắc:**
-    1.  Không được push trực tiếp lên `develop`. Mọi thay đổi phải thông qua **Pull Request (PR)** từ nhánh `feat/*`.
-    2.  Khi tạo PR vào `develop`, hệ thống CI sẽ tự động kích hoạt [ci.yml](file:///c:/Users/pesil/working/mj_trading/TradingViewProject/.github/workflows/ci.yml) với mức độ `test_depth: quick` (chỉ chạy unit tests nhẹ, thời gian chạy ~3 phút) để phát hiện sớm các xung đột logic cơ bản.
+    1.  Không được push trực tiếp lên `develop`. Mọi thay đổi phải thông qua **Pull Request (PR)** từ các nhánh con.
+    2.  Nhánh `develop` được giữ nguyên tên để bảo toàn cấu hình CI/CD hiện có và tránh làm sập pipeline. Khi PR vào `develop`, hệ thống CI sẽ tự động chạy `test_depth: quick` (unit tests nhẹ, ~3 phút).
+
+### Nhánh Sửa Lỗi: `fix/*` và `hotfix/*`
+*   **Mục tiêu:** Sửa lỗi hệ thống cục bộ hoặc khẩn cấp.
+*   **Quy tắc:**
+    1.  Để hỗ trợ CI/CD chạy đúng bộ kiểm thử Standard (~8 phút) hoặc Hotfix+Deploy, **bắt buộc** giữ nguyên tiền tố `fix/*` hoặc `hotfix/*`.
+    2.  Phân luồng lỗi theo cấu trúc:
+        *   `fix/infra-<topic>` (Sửa lỗi Core/Hạ tầng - Nhóm A)
+        *   `fix/ai-<topic>` (Sửa lỗi AI/UX - Nhóm B)
+        *   `hotfix/<infra-hoặc-ai>-<topic>` (Sửa lỗi khẩn cấp trực tiếp lên production)
+
+### Nhánh Nghiên Cứu: `research/*` hoặc `spike/*`
+*   **Mục tiêu:** Thử nghiệm thuật toán, phân tích số liệu không tích hợp trực tiếp vào production.
+*   **Quy tắc:** Bắt buộc dùng tiền tố `research/` hoặc `spike/` để CI/CD bỏ qua kiểm thử (`test_depth: skip`).
 
 ### Nhánh 3: `release/stage-1` (Release & Staging Branch)
 *   **Mục tiêu:** Môi trường tiền sản xuất (Staging) để xác thực hệ thống với dữ liệu thực tế và chạy kiểm thử khói.
