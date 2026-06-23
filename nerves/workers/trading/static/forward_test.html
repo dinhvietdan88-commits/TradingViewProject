@@ -276,9 +276,9 @@
   .chart-signal-info .sig-price { color: var(--green); }
   .chart-signal-info .sig-action-buy { color: var(--green); font-weight: 700; }
   .chart-signal-info .sig-action-sell { color: var(--red); font-weight: 700; }
-  #fwd-tbody tr { cursor: pointer; transition: background 0.15s; }
-  #fwd-tbody tr:hover { background: rgba(34,211,238,0.06) !important; }
-  #fwd-tbody tr.active-signal { background: rgba(34,211,238,0.12) !important; border-left: 3px solid var(--cyan); }
+  #fwd-tbody tr, #live-tbody tr { cursor: pointer; transition: background 0.15s; }
+  #fwd-tbody tr:hover, #live-tbody tr:hover { background: rgba(34,211,238,0.06) !important; }
+  #fwd-tbody tr.active-signal, #live-tbody tr.active-signal { background: rgba(34,211,238,0.12) !important; border-left: 3px solid var(--cyan); }
   .server-stats-badge {
     display: flex; align-items: center; gap: 6px;
     padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600;
@@ -1794,6 +1794,18 @@ function renderRows(signals, tbodyId) {
       <td>${ts}</td>
     </tr>`;
   }).join("");
+
+  if (activeSignalId !== null) {
+    const row = tb.querySelector(`tr[data-signal-id="${activeSignalId}"]`);
+    if (row) {
+      row.classList.add('active-signal');
+      activeSignalRow = row;
+    } else {
+      activeSignalRow = null;
+    }
+  } else {
+    activeSignalRow = null;
+  }
 }
 
 // —"?—"? Update Equity Chart from Real Data —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
@@ -2738,6 +2750,7 @@ let currentSignalStatusFilter = 'ALL';
 let currentLiveStatusFilter = 'ALL';
 let idSortDirection = 'desc'; // 'desc' or 'asc'
 let activeSignalRow = null;
+let activeSignalId = null;
 let chartSignalMarkers = [];
 let fwdGlobalStats = null;
 let liveGlobalStats = null;
@@ -3047,16 +3060,30 @@ function addForwardSignalMarkers(symbol) {
     
     // Check if any signal in this hour group matches the chart status filter
     const filter = currentChartStatusFilter.toUpperCase();
-    let isMatching = false;
+    let isStatusMatching = false;
     if (filter === 'ALL') {
-      isMatching = true;
+      isStatusMatching = true;
     } else {
-      isMatching = g.states.some(st => {
+      isStatusMatching = g.states.some(st => {
         if (filter === 'COMPLETED') return st === 'COMPLETED';
         if (filter === 'REJECTED') return ['REJECTED', 'FAILED'].includes(st);
         if (filter === 'PENDING') return ['PENDING', 'ANALYZING', 'MACRO_PASSED', 'INGESTED'].includes(st);
         return st === filter;
       });
+    }
+
+    // Determine highlight state when activeSignalId is selected
+    let isSelectedSignalGroup = false;
+    if (activeSignalId !== null) {
+      isSelectedSignalGroup = g.ids.includes(activeSignalId);
+    }
+
+    let isMatching = false;
+    if (activeSignalId !== null) {
+      // If an ID is selected, only highlight its group
+      isMatching = isSelectedSignalGroup;
+    } else {
+      isMatching = isStatusMatching;
     }
 
     let label = '';
@@ -3073,8 +3100,8 @@ function addForwardSignalMarkers(symbol) {
     if (isMatching) {
       color = isBuy ? '#26a69a' : '#ef5350';
     } else {
-      // Fade color out if not matching the selected status filter
-      color = isBuy ? 'rgba(38, 166, 154, 0.12)' : 'rgba(239, 83, 80, 0.12)';
+      // Fade color out significantly if not selected
+      color = isBuy ? 'rgba(38, 166, 154, 0.05)' : 'rgba(239, 83, 80, 0.05)';
     }
 
     if (isMatching) {
@@ -3084,7 +3111,7 @@ function addForwardSignalMarkers(symbol) {
         color: color,
         shape: isBuy ? 'arrowUp' : 'arrowDown',
         text: label,
-        size: 1
+        size: 1.2
       };
     } else {
       return {
@@ -3093,7 +3120,7 @@ function addForwardSignalMarkers(symbol) {
         color: color,
         shape: 'circle',
         text: '',
-        size: 0.25
+        size: 0.15
       };
     }
   }).sort((a, b) => a.time - b.time);
@@ -3237,65 +3264,91 @@ function switchSignalLimit(limit) {
 }
 
 function onSignalRowClick(rowEl, signal) {
-  // Highlight active row
-  if (activeSignalRow) activeSignalRow.classList.remove('active-signal');
-  rowEl.classList.add('active-signal');
-  activeSignalRow = rowEl;
+  const signalId = signal.id;
+  const isDeselect = (activeSignalId === signalId);
 
-  // Update chart info overlay
-  const infoPanel = document.getElementById('chartSignalInfo');
-  const isBuy = (signal.action || '').toLowerCase() === 'buy';
-  document.getElementById('chartSigId').textContent = `#${Number(signal.id).toLocaleString()}`;
-  const actionEl = document.getElementById('chartSigAction');
-  actionEl.textContent = (signal.action || '?').toUpperCase();
-  actionEl.className = isBuy ? 'sig-action-buy' : 'sig-action-sell';
-  document.getElementById('chartSigPrice').textContent = fmtP(signal.price);
-  infoPanel.style.display = 'flex';
-  infoPanel.style.gap = '6px';
-  infoPanel.style.alignItems = 'center';
+  if (isDeselect) {
+    // Deselect active row
+    rowEl.classList.remove('active-signal');
+    activeSignalRow = null;
+    activeSignalId = null;
 
-  // Switch chart to signal's symbol if different
-  const sym = (signal.symbol || 'BTCUSDT').toUpperCase();
-  if (sym !== currentChartSymbol) {
-    switchChartSymbol(sym);
-  }
+    // Hide chart overlay info
+    const infoPanel = document.getElementById('chartSignalInfo');
+    if (infoPanel) infoPanel.style.display = 'none';
 
-  // Scroll chart to signal's time
-  if (signal.created_at) {
-    const tsMs = new Date(signal.created_at.replace(' ', 'T') + 'Z').getTime();
-    const ts = tsMs / 1000;
-    const hoursBefore = 24 * 3600; // 24 hours before
-    const hoursAfter = 12 * 3600;  // 12 hours after
-
-    // P0: If this signal's timestamp is outside current chart range, reload with startTime
-    const candles = window.currentChartCandles || [];
-    const chartMin = candles.length ? candles[0].time : 0;
-    const chartMax = candles.length ? candles[candles.length - 1].time : 0;
-    if (ts < chartMin || ts > chartMax) {
-      // Signal is outside chart range → reload chart centered on this signal
-      loadSignalChart(sym, tsMs);
-    }
-
-    signalChart.timeScale().setVisibleRange({
-      from: ts - hoursBefore,
-      to: ts + hoursAfter,
-    });
-
-    // Add entry price line
+    // Remove entry price line
     try {
       if (window._entryPriceLine) {
         signalCandleSeries.removePriceLine(window._entryPriceLine);
+        window._entryPriceLine = null;
       }
-      window._entryPriceLine = signalCandleSeries.createPriceLine({
-        price: signal.price,
-        color: isBuy ? '#26a69a' : '#ef5350',
-        lineWidth: 2,
-        lineStyle: LightweightCharts.LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: isBuy ? 'BUY ENTRY' : 'SELL ENTRY',
+    } catch (e) { console.warn('Remove price line error:', e); }
+  } else {
+    // Highlight active row
+    if (activeSignalRow) activeSignalRow.classList.remove('active-signal');
+    rowEl.classList.add('active-signal');
+    activeSignalRow = rowEl;
+    activeSignalId = signalId;
+
+    // Update chart info overlay
+    const infoPanel = document.getElementById('chartSignalInfo');
+    const isBuy = (signal.action || '').toLowerCase() === 'buy';
+    document.getElementById('chartSigId').textContent = `#${Number(signal.id).toLocaleString()}`;
+    const actionEl = document.getElementById('chartSigAction');
+    actionEl.textContent = (signal.action || '?').toUpperCase();
+    actionEl.className = isBuy ? 'sig-action-buy' : 'sig-action-sell';
+    document.getElementById('chartSigPrice').textContent = fmtP(signal.price);
+    infoPanel.style.display = 'flex';
+    infoPanel.style.gap = '6px';
+    infoPanel.style.alignItems = 'center';
+
+    // Switch chart to signal's symbol if different
+    const sym = (signal.symbol || 'BTCUSDT').toUpperCase();
+    if (sym !== currentChartSymbol) {
+      switchChartSymbol(sym);
+    }
+
+    // Scroll chart to signal's time
+    if (signal.created_at) {
+      const tsMs = new Date(signal.created_at.replace(' ', 'T') + 'Z').getTime();
+      const ts = tsMs / 1000;
+      const hoursBefore = 24 * 3600; // 24 hours before
+      const hoursAfter = 12 * 3600;  // 12 hours after
+
+      // P0: If this signal's timestamp is outside current chart range, reload with startTime
+      const candles = window.currentChartCandles || [];
+      const chartMin = candles.length ? candles[0].time : 0;
+      const chartMax = candles.length ? candles[candles.length - 1].time : 0;
+      if (ts < chartMin || ts > chartMax) {
+        // Signal is outside chart range → reload chart centered on this signal
+        loadSignalChart(sym, tsMs);
+      }
+
+      signalChart.timeScale().setVisibleRange({
+        from: ts - hoursBefore,
+        to: ts + hoursAfter,
       });
-    } catch (e) { console.warn('Price line error:', e); }
+
+      // Add entry price line
+      try {
+        if (window._entryPriceLine) {
+          signalCandleSeries.removePriceLine(window._entryPriceLine);
+        }
+        window._entryPriceLine = signalCandleSeries.createPriceLine({
+          price: signal.price,
+          color: isBuy ? '#26a69a' : '#ef5350',
+          lineWidth: 2,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: isBuy ? 'BUY ENTRY' : 'SELL ENTRY',
+        });
+      } catch (e) { console.warn('Price line error:', e); }
+    }
   }
+
+  // Update chart markers to trigger selection highlighting/dimming
+  addForwardSignalMarkers(currentChartSymbol);
 }
 
 // —"?—"? Server Stats Badge —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
