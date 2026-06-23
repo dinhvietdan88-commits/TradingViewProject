@@ -580,6 +580,9 @@ async def execute_trade(event: TradeApproved) -> None:
 
     # ── Test signal dynamic dry_run override ────────────────
     is_test_signal = False
+    if getattr(config, "FORWARD_TEST_ENABLED", False):
+        is_test_signal = True
+
     if original_payload:
         if (
             original_payload.get("is_test") is True

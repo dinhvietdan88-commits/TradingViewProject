@@ -210,16 +210,20 @@ class VpsSignalConsumer:
         action = signal["action"]
         payload = signal["payload"]
 
-        # Enforce mode=FORWARD routing for all signals consumed from VBS Gateway (Server A)
-        mode = "FORWARD"
-        if isinstance(payload, dict):
-            payload["mode"] = "FORWARD"
-        else:
-            payload = {"mode": "FORWARD"}
-            signal["payload"] = payload
+        # Enforce mode=FORWARD routing if forward testing is globally enabled
+        mode = (
+            payload.get("mode", "").strip().upper() if isinstance(payload, dict) else ""
+        )
+        if getattr(config, "FORWARD_TEST_ENABLED", False):
+            mode = "FORWARD"
+            if isinstance(payload, dict):
+                payload["mode"] = "FORWARD"
+            else:
+                payload = {"mode": "FORWARD"}
+                signal["payload"] = payload
 
         log.info(
-            f"[VpsConsumer] Processing signal #{queue_id} for {symbol} {action.upper()} (age: {age_minutes}m) | forced mode: FORWARD"
+            f"[VpsConsumer] Processing signal #{queue_id} for {symbol} {action.upper()} (age: {age_minutes}m) | mode: {mode}"
         )
 
         # 1. TTL / Stale check
