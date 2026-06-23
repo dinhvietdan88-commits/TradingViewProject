@@ -2,9 +2,11 @@ name: Staging Smoke Test
 
 on:
   push:
-    branches: [main]
+    branches:
+      - "release/*"
   pull_request:
-    branches: [main]
+    branches:
+      - "release/*"
   workflow_dispatch:
     inputs:
       smoke_url:
