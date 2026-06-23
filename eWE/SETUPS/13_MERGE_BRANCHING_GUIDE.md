@@ -15,13 +15,13 @@ gitGraph
     checkout develop
     commit id: "Sync dev"
     
-    branch ai/p7b-ai-vision-ux
-    checkout ai/p7b-ai-vision-ux
+    branch dev/ai/p7b-ai-vision-ux
+    checkout dev/ai/p7b-ai-vision-ux
     commit id: "Pillow optimization"
     commit id: "Risk manager UI"
     
     checkout develop
-    merge ai/p7b-ai-vision-ux id: "Merge PR to Dev" tag: "CI Gate: quick/standard"
+    merge dev/ai/p7b-ai-vision-ux id: "Merge PR to Dev" tag: "CI Gate: quick/standard"
     
     branch release/stage-1
     checkout release/stage-1
@@ -36,14 +36,14 @@ gitGraph
 ## 2. Quy Định và Vai Trò Của Từng Nhánh
 
 ### Nhánh 1: Nhánh Tính Năng Con (Feature Branches - Quy chuẩn 2-Nhánh-1-Quy-tắc)
-*   **Mục tiêu:** Nơi các kỹ sư phát triển tính năng độc lập, phân nhóm rõ ràng theo tiền tố:
-    *   **Nhóm A: Nhánh `infra/*` (Infrastructure & Core)**
+*   **Mục tiêu:** Nơi các kỹ sư phát triển tính năng độc lập, phân nhóm rõ ràng dưới tiền tố chung `dev/`:
+    *   **Nhóm A: Nhánh `dev/infra/*` (Infrastructure & Core)**
         *   *Phạm vi:* Chứa hạ tầng, refactor, logic lõi (Core Logic) và thuật toán giao dịch (Strategy).
-        *   *Mục tiêu:* Độ ổn định cao tuyệt đối. (Ví dụ: `infra/strategy-crystallization`).
-    *   **Nhóm B: Nhánh `ai/*` (AI & UX)**
+        *   *Mục tiêu:* Độ ổn định cao tuyệt đối. (Ví dụ: `dev/infra/strategy-crystallization`).
+    *   **Nhóm B: Nhánh `dev/ai/*` (AI & UX)**
         *   *Phạm vi:* Chứa các tính năng trí tuệ nhân tạo, giao diện người dùng (UI/UX) và tương tác.
-        *   *Mục tiêu:* Tốc độ phát triển và trải nghiệm người dùng nhanh chóng. (Ví dụ: `ai/p7b-ai-vision-ux`).
-    *   *Tiền tố cũ:* Khai tử hoàn toàn tiền tố `feat/*` và `feature/*`.
+        *   *Mục tiêu:* Tốc độ phát triển và trải nghiệm người dùng nhanh chóng. (Ví dụ: `dev/ai/p7b-ai-vision-ux`).
+    *   *Tiền tố cũ:* Khai tử hoàn toàn các tiền tố độc lập `feat/*`, `feature/*`, `infra/*` và `ai/*`. Mọi phát triển mới bắt buộc nằm dưới tiền tố `dev/`.
 *   **Quy tắc:**
     1.  Tách nhánh từ `develop`.
     2.  **Trước khi commit:** Bắt buộc chạy kiểm thử chất lượng và bảo mật cục bộ:
@@ -54,7 +54,7 @@ gitGraph
     3.  Đảm bảo mã nguồn đạt tiêu chuẩn **0 lỗi Ruff Lint** và vượt qua các cổng Mini-MDASH trước khi push.
 
 ### Nhánh 2: `develop` (Integration Branch - Giữ nguyên trạng)
-*   **Mục tiêu:** Điểm tích hợp chung cho cả nhánh `infra/*` và `ai/*` đang phát triển song song.
+*   **Mục tiêu:** Điểm tích hợp chung cho cả nhánh `dev/infra/*` và `dev/ai/*` đang phát triển song song.
 *   **Quy tắc:**
     1.  Không được push trực tiếp lên `develop`. Mọi thay đổi phải thông qua **Pull Request (PR)** từ các nhánh con.
     2.  Nhánh `develop` được giữ nguyên tên để bảo toàn cấu hình CI/CD hiện có và tránh làm sập pipeline. Khi PR vào `develop`, hệ thống CI sẽ tự động chạy `test_depth: quick` (unit tests nhẹ, ~3 phút).
