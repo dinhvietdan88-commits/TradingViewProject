@@ -93,6 +93,8 @@ def _stats_cache_set(key: tuple, value: dict) -> None:
         now = _time.monotonic()
         for k in [k for k, (_, exp) in list(_stats_cache.items()) if exp < now]:
             _stats_cache.pop(k, None)
+        while len(_stats_cache) > 50:
+            _stats_cache.pop(next(iter(_stats_cache)), None)
 
 
 def push_sse_event(event_type: str, data: dict) -> None:
@@ -1391,10 +1393,16 @@ def _klines_cache_set(key: str, candles: list, is_historical: bool = True) -> No
         now = _time.monotonic()
         for k in [k for k, (_, exp) in list(_klines_cache.items()) if exp < now]:
             _klines_cache.pop(k, None)
+        while len(_klines_cache) > 200:
+            _klines_cache.pop(next(iter(_klines_cache)), None)
 
 
 async def _klines_from_sqlite(
-    symbol: str, interval: str, start_time_ms: int | None, limit: int
+    symbol: str,
+    interval: str,
+    start_time_ms: int | None,
+    end_time_ms: int | None,
+    limit: int,
 ) -> list | None:
     """L2: Try to fetch candles from local SQLite ohlcv tables.
 
@@ -1431,11 +1439,16 @@ async def _klines_from_sqlite(
                 if start_time_ms:
                     query += " AND timestamp >= ?"
                     params.append(start_time_ms)
+                if end_time_ms:
+                    query += " AND timestamp <= ?"
+                    params.append(end_time_ms)
                 query += " ORDER BY timestamp ASC LIMIT ?"
                 params.append(limit)
 
                 rows = await db.execute_fetchall(query, params)
-                if rows and len(rows) >= 5:  # Need at least 5 candles for useful chart
+                if rows and len(rows) >= min(
+                    5, limit
+                ):  # Need at least 5 candles for useful chart
                     candles = [
                         {
                             "time": int(r[0]) // 1000,
@@ -1606,7 +1619,7 @@ async def get_klines(
     is_historical = bool(start_time and (now_ms - start_time) > 2 * 3600 * 1000)
 
     # L1: Check in-memory cache
-    cache_key = f"kl:{symbol_clean}:{interval}:{start_time or 'latest'}:{limit}"
+    cache_key = f"kl:{symbol_clean}:{interval}:{start_time or 'latest'}:{end_time or 'latest'}:{limit}"
     cached = _klines_cache_get(cache_key)
     if cached:
         return {
@@ -1618,7 +1631,9 @@ async def get_klines(
         }
 
     # L2: Check SQLite ohlcv tables
-    db_candles = await _klines_from_sqlite(symbol_clean, interval, start_time, limit)
+    db_candles = await _klines_from_sqlite(
+        symbol_clean, interval, start_time, end_time, limit
+    )
     if db_candles:
         _klines_cache_set(cache_key, db_candles, is_historical=is_historical)
         return {

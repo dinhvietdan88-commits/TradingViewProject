@@ -2780,11 +2780,7 @@ async function getCachedCandles(symbol, interval, startTimeMs) {
   try {
     const db = await openOhlcvCacheDB();
     if (!db) return null;
-    // Group cache by day to keep key granularity manageable
-    const dayKey = startTimeMs
-      ? new Date(startTimeMs).toISOString().slice(0, 10)
-      : 'latest';
-    const key = `${symbol}:${interval}:${dayKey}`;
+    const key = `${symbol}:${interval}:${startTimeMs || 'latest'}`;
     return new Promise(resolve => {
       const tx = db.transaction('candles', 'readonly');
       const req = tx.objectStore('candles').get(key);
@@ -2806,10 +2802,7 @@ async function setCachedCandles(symbol, interval, startTimeMs, candles, isHistor
   try {
     const db = await openOhlcvCacheDB();
     if (!db || !candles || candles.length < 5) return;
-    const dayKey = startTimeMs
-      ? new Date(startTimeMs).toISOString().slice(0, 10)
-      : 'latest';
-    const key = `${symbol}:${interval}:${dayKey}`;
+    const key = `${symbol}:${interval}:${startTimeMs || 'latest'}`;
     return new Promise(resolve => {
       const tx = db.transaction('candles', 'readwrite');
       tx.objectStore('candles').put({
@@ -2956,7 +2949,7 @@ async function loadSignalChart(symbol, signalTimestampMs) {
     startTimeMs = Math.max(startTimeMs, Date.now() - maxLookbackMs);
   }
 
-  const isHistorical = startTimeMs && (Date.now() - startTimeMs > 2 * 3600 * 1000);
+  const isHistorical = false;
 
   try {
     // P2: L0 — Check IndexedDB cache first
