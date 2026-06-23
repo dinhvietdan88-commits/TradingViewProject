@@ -28,11 +28,12 @@ library("VBS_Webhook_Lib", overlay=true)
 // @param exchange     Exchange prefix (e.g. "BINANCE")
 // @param confidence   Confidence score 0-100
 // @param metadata     Additional JSON metadata string (without outer braces)
+// @param mode         Trading mode: "FORWARD" (paper) or "LIVE" (real money). Default: "FORWARD"
 // @returns            Complete JSON payload string
 export build_payload(string secret, string indicatorName, string symbol,
      string action, string signalType, string direction,
      float price, string interval, string exchange,
-     int confidence, string metadata) =>
+     int confidence, string metadata, string mode = "FORWARD") =>
     p = '{"secret":"' + secret + '"'
     p += ',"source":"indicator"'
     p += ',"indicator_name":"' + indicatorName + '"'
@@ -44,6 +45,7 @@ export build_payload(string secret, string indicatorName, string symbol,
     p += ',"interval":"' + interval + '"'
     p += ',"exchange":"' + exchange + '"'
     p += ',"confidence_score":' + str.tostring(confidence)
+    p += ',"mode":"' + mode + '"'
     p += ',"metadata":{' + metadata + '}}'
     p
 

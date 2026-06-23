@@ -74,6 +74,9 @@ services:
       # Telegram notifications from AI Core
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      # Database paths inside writable persistent volume
+      - DB_PATH=/logs/trades.db
+      - FORWARD_DB_PATH=/logs/forward_trades.db
       # V2 Hardening — Logging & Monitoring
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FILE=/logs/analyzer.log

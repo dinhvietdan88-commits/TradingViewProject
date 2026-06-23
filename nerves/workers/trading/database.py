@@ -558,7 +558,11 @@ async def get_rolling_drawdown(limit: int = 20, mode: str | None = None) -> floa
     Tính toán phần trăm sụt giảm tài khoản (Drawdown) dựa trên các giao dịch đóng gần nhất.
     """
     try:
-        db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+        db_path = (
+            config.FORWARD_DB_PATH
+            if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+            else config.DB_PATH
+        )
         async with aiosqlite.connect(db_path) as db:
             db.row_factory = aiosqlite.Row
             # Lấy 20 giao dịch có PnL (chỉ tính các giao dịch đã đóng/có pnl)
@@ -600,7 +604,11 @@ async def get_recent_profit_factor(limit: int = 5, mode: str | None = None) -> f
     Tính Profit Factor của N lệnh gần nhất.
     """
     try:
-        db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+        db_path = (
+            config.FORWARD_DB_PATH
+            if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+            else config.DB_PATH
+        )
         async with aiosqlite.connect(db_path) as db:
             db.row_factory = aiosqlite.Row
             async with db.execute(
@@ -632,7 +640,11 @@ async def get_daily_loss(
     Tính toán tổng số lỗ (PnL âm) của một sàn giao dịch cụ thể trong vòng N giờ qua.
     """
     try:
-        db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+        db_path = (
+            config.FORWARD_DB_PATH
+            if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+            else config.DB_PATH
+        )
         async with aiosqlite.connect(db_path) as db:
             db.row_factory = aiosqlite.Row
             query = (

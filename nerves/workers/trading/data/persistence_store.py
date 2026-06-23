@@ -45,7 +45,11 @@ async def insert_signal(
             log.warning(f"Failed to dynamically calculate crystallized features: {e}")
             analysis_features = None
 
-    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    db_path = (
+        config.FORWARD_DB_PATH
+        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        else config.DB_PATH
+    )
     async with aiosqlite.connect(db_path, timeout=config.DB_TIMEOUT) as db:
         cursor = await db.execute(
             """INSERT INTO signals (symbol, action, price, quote_qty, source_ip, payload, mode, vbs_queue_id, analysis_features, raw_analysis_text)
