@@ -93,6 +93,8 @@ def _stats_cache_set(key: tuple, value: dict) -> None:
         now = _time.monotonic()
         for k in [k for k, (_, exp) in list(_stats_cache.items()) if exp < now]:
             _stats_cache.pop(k, None)
+        while len(_stats_cache) > 50:
+            _stats_cache.pop(next(iter(_stats_cache)), None)
 
 
 def push_sse_event(event_type: str, data: dict) -> None:
@@ -162,6 +164,18 @@ async def lifespan(app: FastAPI):
 
     await database.init_db()
     log.info("Database ready.")
+
+    if not _is_pytest:
+        try:
+            from engine.paper_engine import run_paper_trading_simulation
+
+            log.info("Running paper trade simulation on startup...")
+            await run_paper_trading_simulation()
+            log.info("Paper trade simulation completed on startup.")
+        except Exception as startup_sim_err:
+            log.warning(
+                f"Failed to run paper trade simulation on startup: {startup_sim_err}"
+            )
 
     # ── Angati SRA Server Integration ─────────────────────────────────────────
     try:
@@ -234,6 +248,7 @@ async def lifespan(app: FastAPI):
     import analyzer.ai_analyzer  # noqa: F401 — @bus.on(AlertTriggered)
     import data.indicator_persistence  # noqa: F401 — @bus.on(IndicatorSignalReceived) DI-1
     import engine.trade_engine  # noqa: F401 — @bus.on(SignalValidated)
+    import engine.paper_engine  # noqa: F401 — @bus.on(SignalReceived)
     import hub.notification_hub  # noqa: F401 — @bus.on(SignalRejected)
     import processor.signal_enricher  # noqa: F401 — @bus.on(IndicatorSignalValidated)
     import processor.signal_processor  # noqa: F401 — @bus.on(SignalReceived)
@@ -377,9 +392,30 @@ async def lifespan(app: FastAPI):
         except Exception as vbs_err:
             log.exception(f"VPS Buffer Consumer: ⚠️ Initialization failed: {vbs_err}")
 
+    # ── Active Position Monitor (WebSocket Tracker) ────────────────
+    if not _is_pytest:
+        try:
+            from engine.active_position_monitor import active_position_monitor
+
+            await active_position_monitor.start()
+            app.state.active_position_monitor = active_position_monitor
+            log.info("Active Position Monitor: WebSocket tracking service started.")
+        except Exception as apm_err:
+            log.warning(
+                f"Active Position Monitor: Failed to start background tracker: {apm_err}"
+            )
+
     yield
 
     # ── Shutdown ──────────────────────────────────────────────
+    # Stop Active Position Monitor WebSocket tracking service
+    if hasattr(app.state, "active_position_monitor"):
+        try:
+            await app.state.active_position_monitor.stop()
+            log.info("Active Position Monitor: WebSocket tracking service stopped.")
+        except Exception as apm_err:
+            log.warning(f"Active Position Monitor: Error stopping tracker: {apm_err}")
+
     # Stop VBS Consumer background task
     if hasattr(app.state, "vps_consumer_task"):
         app.state.vps_consumer_task.cancel()
@@ -421,11 +457,20 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
+# ── P10: AuthMiddleware (replaces legacy dashboard_auth_middleware) ───────────
+app.add_middleware(
+    AuthMiddleware, auth_service=getattr(app.state, "auth_service", None)
+)
+
 # ── CORS Middleware — allows dashboard_live.html (file:// origin) ────────────
+# NOTE: "*" does NOT match Origin: null (sent by file:// pages per the CORS spec).
+# We explicitly add "null" so Chrome/Edge allow fetch() from local HTML files.
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*", "null"],
+    allow_origin_regex=r".*",  # catch-all fallback for any local origin
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
@@ -436,11 +481,6 @@ app.include_router(_webhook_router)
 
 # ── P10: Auth router ─────────────────────────────────────────────────────────
 app.include_router(_auth_router)
-
-# ── P10: AuthMiddleware (replaces legacy dashboard_auth_middleware) ───────────
-app.add_middleware(
-    AuthMiddleware, auth_service=getattr(app.state, "auth_service", None)
-)
 
 
 # ── No-cache override for JS files — MUST be declared BEFORE app.mount ───────
@@ -574,6 +614,18 @@ async def daemon_dashboard():
 async def studio():
     """Serve Custom Trading View Studio & Telegram Template Editor."""
     return FileResponse(str(STATIC_DIR / "studio.html"))
+
+
+@app.get("/forward-test")
+async def forward_test_dashboard():
+    """Forward Test Dashboard — migrated from port-8080 dashboard_live.html.
+
+    Replaces the standalone Python HTTP server (port 8080).
+    All API calls use same-origin relative URLs → no CORS needed.
+    Data is filtered to mode=FORWARD (forward_trades.db).
+    Access: http://localhost:5000/forward-test
+    """
+    return FileResponse(str(STATIC_DIR / "forward_test.html"))
 
 
 @app.get("/")
@@ -1141,7 +1193,7 @@ async def get_signals_endpoint(
         None,
         description="Filter by state: INGESTED|MACRO_PASSED|STRATEGY_PASSED|COMPLETED|REJECTED",
     ),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     mode: str | None = Query(None, description="Filter by mode, e.g. FORWARD|MTT|MIS"),
 ):
@@ -1161,6 +1213,666 @@ async def get_signals_endpoint(
             status_code=500,
             detail=f"Internal server error querying signals: {e}",
         ) from e
+
+
+@app.get("/api/forward/sync-settings")
+async def get_forward_sync_settings():
+    try:
+        import json
+
+        val = await database.get_setting("sync_settings", "{}")
+        settings = json.loads(val)
+        if "position_sizing_mode" not in settings:
+            settings["position_sizing_mode"] = "fixed"
+        if "position_sizing_value" not in settings:
+            settings["position_sizing_value"] = 100.0
+        return {"success": True, "settings": settings}
+    except Exception as e:
+        log.error(f"Error fetching sync settings: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/forward/sync-settings")
+async def post_forward_sync_settings(body: dict):
+    try:
+        import json
+
+        sizing_mode = body.get("position_sizing_mode", "fixed")
+        if sizing_mode not in ("fixed", "dynamic"):
+            sizing_mode = "fixed"
+        body["position_sizing_mode"] = sizing_mode
+
+        try:
+            sizing_val = float(body.get("position_sizing_value", 100.0))
+        except (ValueError, TypeError):
+            sizing_val = 100.0
+        body["position_sizing_value"] = sizing_val
+
+        settings_json = json.dumps(body)
+        await database.set_setting(
+            "sync_settings", settings_json, db_path=config.DB_PATH
+        )
+        await database.set_setting(
+            "sync_settings", settings_json, db_path=config.FORWARD_DB_PATH
+        )
+        return {"success": True}
+    except Exception as e:
+        log.error(f"Error saving sync settings: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/forward/run-paper-engine")
+async def run_paper_engine():
+    try:
+        from engine.paper_engine import run_paper_trading_simulation
+
+        res = await run_paper_trading_simulation()
+        return res
+    except Exception as e:
+        log.error(f"Error running paper trade simulation: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error running paper trade simulation: {e}",
+        ) from e
+
+
+@app.get("/api/forward/production-signals")
+async def get_forward_production_signals(
+    symbol: str | None = Query(None, description="Filter by symbol, e.g., BTCUSDT"),
+    source: str | None = Query(
+        None, description="Filter by source inside signal payload"
+    ),
+    start_id: int | None = Query(
+        None, description="Filter by start signal ID (inclusive)"
+    ),
+    end_id: int | None = Query(None, description="Filter by end signal ID (inclusive)"),
+    limit: int = Query(100, ge=1, le=1000, description="Max signals to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+):
+    try:
+        import aiosqlite
+        import json
+
+        conditions = []
+        params = []
+
+        if symbol:
+            from security.sanitizers import sanitize_symbol
+
+            symbol = sanitize_symbol(symbol)
+            conditions.append("UPPER(symbol) = ?")
+            params.append(symbol.upper())
+
+        if source:
+            conditions.append("LOWER(json_extract(payload, '$.source')) = ?")
+            params.append(source.strip().lower())
+
+        if start_id is not None:
+            conditions.append("id >= ?")
+            params.append(start_id)
+
+        if end_id is not None:
+            conditions.append("id <= ?")
+            params.append(end_id)
+
+        where_clause = ""
+        if conditions:
+            where_clause = "WHERE " + " AND ".join(conditions)
+
+        limit = min(max(limit, 1), 1000)
+        offset = max(offset, 0)
+
+        async with aiosqlite.connect(config.DB_PATH) as db:
+            db.row_factory = aiosqlite.Row
+
+            # Get total count for pagination
+            count_query = "SELECT COUNT(*) as cnt FROM signals "
+            if where_clause:
+                count_query += where_clause
+            count_row = await db.execute_fetchall(count_query, params)
+            total = count_row[0][0] if count_row else 0
+
+            query = (
+                "SELECT id, created_at, symbol, action, price, quote_qty, "
+                "source_ip, payload, mode, processed, vbs_queue_id, state, "
+                "rejection_reason, analysis_features, raw_analysis_text "
+                "FROM signals "
+            )
+            if where_clause:
+                query += where_clause + " "
+            query += "ORDER BY id ASC LIMIT ? OFFSET ?"
+
+            rows = await db.execute_fetchall(query, params + [limit, offset])
+
+        signals = []
+        for r in rows:
+            d = dict(r)
+            if d.get("payload"):
+                try:
+                    d["payload"] = json.loads(d["payload"])
+                except Exception as e:
+                    log.debug(f"Failed to parse payload: {e}")
+            signals.append(d)
+
+        return {
+            "success": True,
+            "signals": signals,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+    except Exception as e:
+        log.error(f"Error fetching production signals: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# ── Klines Multi-Layer Cache (P3) ─────────────────────────────────────────────
+# L1: In-memory TTL cache | L2: SQLite ohlcv | L3: Binance API (paginated)
+_klines_cache: dict[str, tuple] = {}  # key → (candles_list, expire_at)
+_KLINES_TTL_HISTORICAL = 300.0  # 5 min for completed candles
+_KLINES_TTL_LIVE = 30.0  # 30s for current/recent candles
+_KLINES_MAX_LOOKBACK_DAYS = 90  # Hard cap: never fetch more than 90 days
+_KLINES_MAX_REQUESTS = 3  # Max Binance API requests per chart load
+
+
+def _klines_cache_get(key: str):
+    """L1: Check in-memory TTL cache for klines."""
+    entry = _klines_cache.get(key)
+    if entry and _time.monotonic() < entry[1]:
+        return entry[0]
+    _klines_cache.pop(key, None)
+    return None
+
+
+def _klines_cache_set(key: str, candles: list, is_historical: bool = True) -> None:
+    """L1: Store klines in in-memory TTL cache."""
+    ttl = _KLINES_TTL_HISTORICAL if is_historical else _KLINES_TTL_LIVE
+    _klines_cache[key] = (candles, _time.monotonic() + ttl)
+    # Prune stale entries (keep cache small, max 200 entries)
+    if len(_klines_cache) > 200:
+        now = _time.monotonic()
+        for k in [k for k, (_, exp) in list(_klines_cache.items()) if exp < now]:
+            _klines_cache.pop(k, None)
+        while len(_klines_cache) > 200:
+            _klines_cache.pop(next(iter(_klines_cache)), None)
+
+
+async def _klines_from_sqlite(
+    symbol: str,
+    interval: str,
+    start_time_ms: int | None,
+    end_time_ms: int | None,
+    limit: int,
+) -> list | None:
+    """L2: Try to fetch candles from local SQLite ohlcv tables.
+
+    Falls back to ohlcv_1d for daily data, and ohlcv_1h for hourly (if table exists).
+    Returns LightweightCharts-format candles or None if insufficient data.
+    """
+    # Map interval to table name
+    table_map = {"1d": "ohlcv_1d", "1h": "ohlcv_1h", "5m": "ohlcv_5m"}
+    table = table_map.get(interval)
+
+    # For 1h interval, also try ohlcv_1d as fallback (daily candles give context)
+    tables_to_try = []
+    if table:
+        tables_to_try.append(table)
+    if interval in ("1h", "4h") and "ohlcv_1d" not in tables_to_try:
+        tables_to_try.append("ohlcv_1d")
+
+    if not tables_to_try:
+        return None
+
+    try:
+        async with aiosqlite.connect(config.DB_PATH) as db:
+            for tbl in tables_to_try:
+                # Check if table exists
+                cur = await db.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                    (tbl,),
+                )
+                if not await cur.fetchone():
+                    continue
+
+                query = f"SELECT timestamp, open, high, low, close, volume FROM {tbl} WHERE symbol = ?"  # noqa: S608
+                params: list = [symbol]
+                if start_time_ms:
+                    query += " AND timestamp >= ?"
+                    params.append(start_time_ms)
+                    if end_time_ms:
+                        query += " AND timestamp <= ?"
+                        params.append(end_time_ms)
+                    query += " ORDER BY timestamp ASC LIMIT ?"
+                    params.append(limit)
+                    need_reverse = False
+                else:
+                    if end_time_ms:
+                        query += " AND timestamp <= ?"
+                        params.append(end_time_ms)
+                    query += " ORDER BY timestamp DESC LIMIT ?"
+                    params.append(limit)
+                    need_reverse = True
+
+                rows = await db.execute_fetchall(query, params)
+                if rows and len(rows) >= min(
+                    5, limit
+                ):  # Need at least 5 candles for useful chart
+                    if need_reverse:
+                        rows = list(reversed(rows))
+                    candles = [
+                        {
+                            "time": int(r[0]) // 1000,
+                            "open": float(r[1]),
+                            "high": float(r[2]),
+                            "low": float(r[3]),
+                            "close": float(r[4]),
+                            "volume": float(r[5]),
+                        }
+                        for r in rows
+                    ]
+                    log.info(
+                        f"Klines L2 HIT: {symbol} {interval} → {tbl} returned {len(candles)} candles"
+                    )
+                    return candles
+    except Exception as e:
+        log.warning(f"Klines L2 SQLite error: {e}")
+    return None
+
+
+async def _klines_from_binance_paginated(
+    symbol: str,
+    interval: str,
+    start_time_ms: int | None,
+    end_time_ms: int | None,
+    limit: int,
+) -> list:
+    """L3: Fetch candles from Binance with pagination guard.
+
+    Max 3 requests per call (= 3000 candles ≈ 125 days for 1h).
+    Hard cap: 90 days lookback from now.
+    """
+    import httpx
+
+    now_ms = int(_time.time() * 1000)
+    max_lookback_ms = _KLINES_MAX_LOOKBACK_DAYS * 24 * 3600 * 1000
+
+    # Enforce hard lookback cap
+    if start_time_ms:
+        start_time_ms = max(start_time_ms, now_ms - max_lookback_ms)
+
+    all_candles: list = []
+    current_start = start_time_ms
+    requests_made = 0
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            while requests_made < _KLINES_MAX_REQUESTS:
+                params: dict = {
+                    "symbol": symbol,
+                    "interval": interval,
+                    "limit": 1000,
+                }
+                if current_start:
+                    params["startTime"] = current_start
+                if end_time_ms and requests_made == 0:
+                    params["endTime"] = end_time_ms
+
+                resp = await client.get(
+                    "https://api.binance.com/api/v3/klines", params=params
+                )
+                resp.raise_for_status()
+                raw = resp.json()
+                requests_made += 1
+
+                if not raw:
+                    break
+
+                batch = [
+                    {
+                        "time": int(k[0]) // 1000,
+                        "open": float(k[1]),
+                        "high": float(k[2]),
+                        "low": float(k[3]),
+                        "close": float(k[4]),
+                        "volume": float(k[5]),
+                    }
+                    for k in raw
+                ]
+                all_candles.extend(batch)
+
+                # Stop if this is the last page or we have enough
+                if len(raw) < 1000 or len(all_candles) >= limit:
+                    break
+
+                # Advance startTime for next page
+                current_start = int(raw[-1][0]) + 1
+
+        log.info(
+            f"Klines L3 Binance: {symbol} {interval} → {requests_made} requests, {len(all_candles)} candles"
+        )
+    except Exception as e:
+        log.error(f"Klines L3 Binance paginated error: {e}")
+
+    return all_candles[-limit:] if len(all_candles) > limit else all_candles
+
+
+async def _save_klines_to_sqlite(symbol: str, interval: str, candles: list) -> None:
+    """Background task: persist fetched candles to SQLite for future L2 cache hits."""
+    table_map = {"1h": "ohlcv_1h", "1d": "ohlcv_1d", "5m": "ohlcv_5m"}
+    table = table_map.get(interval)
+    if not table or not candles:
+        return
+
+    try:
+        async with aiosqlite.connect(config.DB_PATH) as db:
+            # Create table if not exists (same schema as ohlcv_5m/ohlcv_1d)
+            await db.execute(
+                f"""CREATE TABLE IF NOT EXISTS {table} (
+                    symbol TEXT NOT NULL,
+                    timestamp INTEGER NOT NULL,
+                    open REAL NOT NULL,
+                    high REAL NOT NULL,
+                    low REAL NOT NULL,
+                    close REAL NOT NULL,
+                    volume REAL NOT NULL,
+                    PRIMARY KEY (symbol, timestamp)
+                )"""
+            )
+            await db.execute(
+                f"CREATE INDEX IF NOT EXISTS idx_{table}_timestamp ON {table}(timestamp)"
+            )
+            await db.execute(
+                f"CREATE INDEX IF NOT EXISTS idx_{table}_sym_time_desc ON {table}(symbol, timestamp DESC)"
+            )
+
+            # Upsert candles (INSERT OR REPLACE)
+            sql = f"INSERT OR REPLACE INTO {table} (symbol, timestamp, open, high, low, close, volume) VALUES (?, ?, ?, ?, ?, ?, ?)"  # noqa: S608
+            await db.executemany(
+                sql,
+                [
+                    (
+                        symbol,
+                        c["time"] * 1000,  # back to ms
+                        c["open"],
+                        c["high"],
+                        c["low"],
+                        c["close"],
+                        c["volume"],
+                    )
+                    for c in candles
+                ],
+            )
+            await db.commit()
+            log.info(
+                f"Klines L2 SAVED: {symbol} {interval} → {len(candles)} candles to {table}"
+            )
+    except Exception as e:
+        log.warning(f"Klines L2 save error: {e}")
+
+
+@app.get("/api/klines")
+async def get_klines(
+    symbol: str = Query(..., description="Symbol e.g. BTCUSDT"),
+    interval: str = Query("1h", description="Kline interval: 1m,5m,15m,1h,4h,1d"),
+    start_time: int | None = Query(
+        None, alias="startTime", description="Start time ms"
+    ),
+    end_time: int | None = Query(None, alias="endTime", description="End time ms"),
+    limit: int = Query(1000, ge=1, le=3000, description="Max klines"),
+):
+    """Smart OHLCV endpoint with 3-layer cache: L1 Memory → L2 SQLite → L3 Binance.
+
+    Features:
+    - 90-day hard lookback cap to prevent Binance rate-limit abuse
+    - Max 3 paginated Binance requests per call (≈125 days for 1h)
+    - Automatic SQLite persistence for future cache hits
+    - In-memory TTL cache (5min historical, 30s live)
+    """
+    symbol_clean = symbol.upper().replace(":", "")
+    now_ms = int(_time.time() * 1000)
+
+    # Determine if this is a historical or live request
+    is_historical = bool(start_time and (now_ms - start_time) > 2 * 3600 * 1000)
+
+    # L1: Check in-memory cache
+    cache_key = f"kl:{symbol_clean}:{interval}:{start_time or 'latest'}:{end_time or 'latest'}:{limit}"
+    cached = _klines_cache_get(cache_key)
+    if cached:
+        return {
+            "success": True,
+            "candles": cached,
+            "symbol": symbol_clean,
+            "source": "memory_cache",
+            "count": len(cached),
+        }
+
+    # L2: Check SQLite ohlcv tables
+    db_candles = await _klines_from_sqlite(
+        symbol_clean, interval, start_time, end_time, limit
+    )
+    if db_candles:
+        _klines_cache_set(cache_key, db_candles, is_historical=is_historical)
+        return {
+            "success": True,
+            "candles": db_candles,
+            "symbol": symbol_clean,
+            "source": "db_cache",
+            "count": len(db_candles),
+        }
+
+    # L3: Fetch from Binance (paginated, with guards)
+    candles = await _klines_from_binance_paginated(
+        symbol_clean, interval, start_time, end_time, limit
+    )
+
+    if candles:
+        # Save to L1 memory cache
+        _klines_cache_set(cache_key, candles, is_historical=is_historical)
+        # Save to L2 SQLite in background (non-blocking)
+        asyncio.ensure_future(_save_klines_to_sqlite(symbol_clean, interval, candles))
+
+    return {
+        "success": bool(candles),
+        "candles": candles,
+        "symbol": symbol_clean,
+        "source": "binance_api",
+        "count": len(candles),
+    }
+
+
+@app.get("/api/forward/server-stats")
+async def get_forward_server_stats():
+    """Return signal counts from both trades.db and forward_trades.db."""
+    import aiosqlite
+
+    try:
+        stats = {}
+        async with aiosqlite.connect(config.DB_PATH) as db:
+            row = await db.execute_fetchall("SELECT COUNT(*) FROM signals")
+            stats["production_total"] = row[0][0] if row else 0
+            row2 = await db.execute_fetchall("SELECT MAX(id) FROM signals")
+            stats["production_max_id"] = row2[0][0] if row2 and row2[0][0] else 0
+            row3 = await db.execute_fetchall(
+                "SELECT COUNT(DISTINCT symbol) FROM signals"
+            )
+            stats["production_symbols"] = row3[0][0] if row3 else 0
+
+        async with aiosqlite.connect(config.FORWARD_DB_PATH) as fdb:
+            row = await fdb.execute_fetchall("SELECT COUNT(*) FROM signals")
+            stats["forward_total"] = row[0][0] if row else 0
+            row2 = await fdb.execute_fetchall("SELECT MAX(id) FROM signals")
+            stats["forward_max_id"] = row2[0][0] if row2 and row2[0][0] else 0
+
+        return {"success": True, **stats}
+    except Exception as e:
+        log.error(f"Server stats error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def _get_id_based_signals(ids: list, existing_ids: set) -> list:
+    import aiosqlite
+
+    ids_to_query = []
+    for i in ids:
+        try:
+            val = int(i)
+            if val not in existing_ids:
+                ids_to_query.append(val)
+        except (ValueError, TypeError):
+            continue
+
+    if not ids_to_query:
+        return []
+
+    placeholders = ",".join("?" for _ in ids_to_query)
+    query = (
+        "SELECT id, created_at, symbol, action, price, quote_qty, "
+        "source_ip, payload, processed, vbs_queue_id, state, "
+        "rejection_reason, analysis_features, raw_analysis_text "
+        "FROM signals WHERE id IN (" + placeholders + ")"
+    )
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(query, ids_to_query) as cursor:
+            db_rows = await cursor.fetchall()
+    return list(db_rows)
+
+
+async def _parse_sync_settings():
+    import json
+
+    settings_str = await database.get_setting("sync_settings", "{}")
+    settings = json.loads(settings_str)
+    symbols = [
+        s.strip().upper() for s in settings.get("symbols", "").split(",") if s.strip()
+    ]
+    sources = [
+        s.strip().lower() for s in settings.get("sources", "").split(",") if s.strip()
+    ]
+    start_id = settings.get("start_id")
+    end_id = settings.get("end_id")
+    start_id = (
+        int(start_id) if start_id is not None and str(start_id).strip() != "" else None
+    )
+    end_id = int(end_id) if end_id is not None and str(end_id).strip() != "" else None
+    return symbols, sources, start_id, end_id
+
+
+def _build_settings_sync_query(symbols, start_id, end_id):
+    query = (
+        "SELECT id, created_at, symbol, action, price, quote_qty, "
+        "source_ip, payload, processed, vbs_queue_id, state, "
+        "rejection_reason, analysis_features, raw_analysis_text "
+        "FROM signals WHERE 1=1"
+    )
+    params = []
+    if start_id:
+        query += " AND id >= ?"
+        params.append(start_id)
+    if end_id:
+        query += " AND id <= ?"
+        params.append(end_id)
+    if symbols:
+        placeholders = ",".join("?" for _ in symbols)
+        query += " AND UPPER(symbol) IN (" + placeholders + ")"
+        params.extend(symbols)
+    return query, params
+
+
+def _match_source_filter(r, sources) -> bool:
+    if not sources:
+        return True
+    import json
+
+    payload_str = r["payload"]
+    payload_dict = {}
+    if payload_str:
+        try:
+            payload_dict = json.loads(payload_str)
+        except Exception as e:
+            log.debug(f"Failed to parse payload: {e}")
+    sig_source = payload_dict.get("source", "").strip().lower()
+    return sig_source in sources
+
+
+async def _get_settings_based_signals(existing_ids: set) -> list:
+    import aiosqlite
+
+    symbols, sources, start_id, end_id = await _parse_sync_settings()
+    query, params = _build_settings_sync_query(symbols, start_id, end_id)
+
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(query, params) as cursor:
+            db_rows = await cursor.fetchall()
+
+    signals_to_insert = []
+    for r in db_rows:
+        if r["id"] not in existing_ids and _match_source_filter(r, sources):
+            signals_to_insert.append(r)
+    return signals_to_insert
+
+
+async def _insert_forward_signals(signals_to_insert: list) -> int:
+    if not signals_to_insert:
+        return 0
+    import aiosqlite
+
+    synced_count = 0
+    async with aiosqlite.connect(config.FORWARD_DB_PATH) as f_db:
+        for sig in signals_to_insert:
+            await f_db.execute(
+                """INSERT OR IGNORE INTO signals
+                (id, created_at, symbol, action, price, quote_qty, source_ip, payload, mode, processed, vbs_queue_id, state, rejection_reason, analysis_features, raw_analysis_text)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    sig["id"],
+                    sig["created_at"],
+                    sig["symbol"],
+                    sig["action"],
+                    sig["price"],
+                    sig["quote_qty"],
+                    sig["source_ip"],
+                    sig["payload"],
+                    "FORWARD",
+                    sig["processed"],
+                    sig["vbs_queue_id"],
+                    sig["state"],
+                    sig["rejection_reason"],
+                    sig["analysis_features"],
+                    sig["raw_analysis_text"],
+                ),
+            )
+            synced_count += 1
+        await f_db.commit()
+    return synced_count
+
+
+@app.post("/api/forward/sync-now")
+async def post_forward_sync_now(body: dict | None = None):
+    try:
+        import aiosqlite
+
+        existing_ids = set()
+        async with aiosqlite.connect(config.FORWARD_DB_PATH) as f_db:
+            async with f_db.execute("SELECT id FROM signals") as cursor:
+                rows = await cursor.fetchall()
+                for r in rows:
+                    existing_ids.add(r[0])
+
+        body = body or {}
+        ids = body.get("ids")
+
+        if ids is not None:
+            signals_to_insert = await _get_id_based_signals(ids, existing_ids)
+        else:
+            signals_to_insert = await _get_settings_based_signals(existing_ids)
+
+        synced_count = await _insert_forward_signals(signals_to_insert)
+        return {"success": True, "synced_count": synced_count}
+    except Exception as e:
+        log.error(f"Error during manual sync: {e}")
+        return {"success": False, "error": str(e)}
 
 
 @app.get("/api/chart-markers")

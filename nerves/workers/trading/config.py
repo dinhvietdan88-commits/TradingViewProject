@@ -26,6 +26,7 @@ SENTRY_PROFILES_SAMPLE_RATE = float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.
 DB_PATH = os.getenv("DB_PATH", "trades.db")
 FORWARD_DB_PATH = os.getenv("FORWARD_DB_PATH", "forward_trades.db")
 DB_TIMEOUT = float(os.getenv("DB_TIMEOUT", "60.0"))
+FORWARD_TEST_ENABLED = os.getenv("FORWARD_TEST_ENABLED", "false").lower() == "true"
 
 # Rate Limiting & Concurrency (Stress Testing)
 DISABLE_RATE_LIMIT = os.getenv("DISABLE_RATE_LIMIT", "false").lower() == "true"
