@@ -1439,16 +1439,26 @@ async def _klines_from_sqlite(
                 if start_time_ms:
                     query += " AND timestamp >= ?"
                     params.append(start_time_ms)
-                if end_time_ms:
-                    query += " AND timestamp <= ?"
-                    params.append(end_time_ms)
-                query += " ORDER BY timestamp ASC LIMIT ?"
-                params.append(limit)
+                    if end_time_ms:
+                        query += " AND timestamp <= ?"
+                        params.append(end_time_ms)
+                    query += " ORDER BY timestamp ASC LIMIT ?"
+                    params.append(limit)
+                    need_reverse = False
+                else:
+                    if end_time_ms:
+                        query += " AND timestamp <= ?"
+                        params.append(end_time_ms)
+                    query += " ORDER BY timestamp DESC LIMIT ?"
+                    params.append(limit)
+                    need_reverse = True
 
                 rows = await db.execute_fetchall(query, params)
                 if rows and len(rows) >= min(
                     5, limit
                 ):  # Need at least 5 candles for useful chart
+                    if need_reverse:
+                        rows = list(reversed(rows))
                     candles = [
                         {
                             "time": int(r[0]) // 1000,
@@ -1567,6 +1577,12 @@ async def _save_klines_to_sqlite(symbol: str, interval: str, candles: list) -> N
                     volume REAL NOT NULL,
                     PRIMARY KEY (symbol, timestamp)
                 )"""
+            )
+            await db.execute(
+                f"CREATE INDEX IF NOT EXISTS idx_{table}_timestamp ON {table}(timestamp)"
+            )
+            await db.execute(
+                f"CREATE INDEX IF NOT EXISTS idx_{table}_sym_time_desc ON {table}(symbol, timestamp DESC)"
             )
 
             # Upsert candles (INSERT OR REPLACE)

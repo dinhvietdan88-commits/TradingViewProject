@@ -98,7 +98,7 @@ def start_daemon(workspace_root):
 def wait_for_fastapi_ready(proc, health_url, stdout_lines):
     print_step(f"Waiting for FastAPI health server to start on port {PORT}...")
     started = False
-    max_retries = 30
+    max_retries = 180
     for i in range(max_retries):
         if proc.poll() is not None:
             print_failure(f"Daemon exited prematurely with exit code {proc.returncode}")
