@@ -818,10 +818,270 @@
     height: 14px;
     accent-color: var(--blue);
   }
+    --primary-color: var(--blue);
+    --primary-glow: rgba(56, 189, 248, 0.15);
+    --success-color: var(--green);
+    --success-bg: rgba(16, 217, 138, 0.12);
+    --danger-color: var(--red);
+    --danger-bg: rgba(244, 63, 94, 0.12);
+    --warning-color: var(--yellow);
+    --warning-bg: rgba(251, 191, 36, 0.12);
+    --cyan-color: var(--cyan);
+    --purple-color: var(--purple);
+    --panel-bg: var(--surface);
+    --panel-border: var(--border);
+    --text-color: var(--text);
+    --text-dim: var(--text-muted);
+    --card-radius: 12px;
+  }
+
   .btn-primary:disabled, .btn-secondary:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     box-shadow: none;
+  }
+
+  /* Double Expansion Detail Row & Modal Replay from Backtest Dashboard */
+  .expand-detail-row:hover { background: rgba(20, 26, 38, 0.45) !important; }
+  .spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(56, 189, 248, 0.1);
+    border-top: 3px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  
+  .cell-green { color: var(--success-color); font-weight: 600; }
+  .cell-red { color: var(--danger-color); font-weight: 600; }
+  
+  .badge-tp {
+    background: var(--success-bg); color: var(--success-color);
+    padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;
+    font-family: 'Inter', sans-serif;
+  }
+  .badge-sl {
+    background: var(--danger-bg); color: var(--danger-color);
+    padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;
+    font-family: 'Inter', sans-serif;
+  }
+  .badge-to {
+    background: var(--warning-bg); color: var(--warning-color);
+    padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;
+    font-family: 'Inter', sans-serif;
+  }
+  
+  .side-long { color: var(--success-color); font-weight: 600; }
+  .side-short { color: var(--danger-color); font-weight: 600; }
+
+  .stage2-split {
+    display: flex; gap: 16px; width: 100%;
+  }
+  .stage2-chart-side {
+    flex: 1.2; min-width: 0;
+  }
+  .stage2-analysis-side {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .analysis-card {
+    background: rgba(20, 26, 38, 0.5);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 12px;
+    flex: 1;
+  }
+  .analysis-card-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 8px;
+    border-left: 2px solid var(--purple-color); padding-left: 6px;
+  }
+  .analysis-chart-box {
+    height: 130px; position: relative;
+  }
+  .analysis-chart-box canvas {
+    width: 100% !important; height: 100% !important;
+  }
+
+  /* MODAL POPUP (V2.3) */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(8, 10, 16, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 99999;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .modal-overlay.active {
+    opacity: 1; pointer-events: auto;
+  }
+  .modal-container {
+    width: 90%; max-width: 1400px; height: 85%;
+    background: #0d1117;
+    border: 1px solid var(--panel-border);
+    border-radius: var(--card-radius);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+    display: flex; flex-direction: column; overflow: hidden;
+    transform: scale(0.96);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .modal-overlay.active .modal-container {
+    transform: scale(1);
+  }
+  .modal-header h3 {
+    font-size: 14px; font-weight: 700; color: #ffffff;
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(90deg, var(--cyan-color), var(--purple-color));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .modal-close {
+    background: none; border: none; color: var(--text-muted);
+    font-size: 24px; cursor: pointer; transition: color 0.2s;
+  }
+  .modal-close:hover { color: var(--danger-color); }
+  .modal-body { flex: 1; position: relative; background: #0d1117; }
+  .modal-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 24px; background: #161b22;
+    border-top: 1px solid var(--panel-border);
+  }
+  .modal-nav-btn {
+    background: rgba(42, 58, 89, 0.3);
+    border: 1px solid var(--panel-border);
+    color: var(--text-color);
+    padding: 8px 18px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: all 0.2s;
+    outline: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .modal-nav-btn:hover:not(:disabled) {
+    background: rgba(41, 98, 255, 0.25);
+    border-color: var(--primary-color);
+    color: #ffffff;
+  }
+  .modal-nav-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+  }
+  .modal-counter {
+    font-size: 13px; font-weight: 500; color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .mini-pill {
+    background: rgba(20, 26, 38, 0.8);
+    border: 1px solid var(--panel-border);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    color: var(--text-color);
+    font-family: 'JetBrains Mono', monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .mini-sc-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    display: inline-block;
+  }
+  .mini-sc-badge.exec {
+    background: var(--success-bg);
+    color: var(--success-color);
+    border: 1px solid rgba(38, 166, 154, 0.3);
+  }
+  .mini-sc-badge.filt {
+    background: var(--danger-bg);
+    color: var(--danger-color);
+    border: 1px solid rgba(239, 83, 80, 0.3);
+    opacity: 0.7;
+  }
+  .tt-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    height: 100%;
+  }
+  .tt-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    padding: 3px 6px;
+    font-size: 10px;
+    color: var(--text-color);
+    transition: all 0.15s ease;
+  }
+  .tt-item.pass {
+    background: rgba(38, 166, 154, 0.04);
+    border-color: rgba(38, 166, 154, 0.2);
+  }
+  .tt-item.fail {
+    background: rgba(239, 83, 80, 0.02);
+    border-color: rgba(239, 83, 80, 0.12);
+    opacity: 0.6;
+  }
+  .tt-icon {
+    font-weight: bold;
+    font-size: 11px;
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .tt-icon.pass {
+    color: var(--success-color);
+  }
+  .tt-icon.fail {
+    color: var(--danger-color);
+  }
+  .tt-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+  }
+
+  .nav-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(41, 98, 255, 0.08);
+    color: var(--cyan-color);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  .nav-link-btn:hover {
+    background: rgba(41, 98, 255, 0.2);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 10px rgba(41, 98, 255, 0.2);
+    transform: translateY(-1px);
+    color: #ffffff;
+  }
+
+  /* Collapse mode details row styles */
+  .trade-table-wrap.collapsed-view {
+    max-height: 520px;
+  }
+  #fwd-tbody tr.row-expanded, #live-tbody tr.row-expanded {
+    background: rgba(41, 98, 255, 0.09) !important;
   }
 </style>
 </head>
@@ -1026,16 +1286,23 @@
         <table id="fwd-table">
           <thead>
             <tr>
-              <th onclick="toggleIdSort()" style="cursor: pointer; user-select: none;">#ID <span class="id-sort-indicator">▼</span></th><th>Symbol</th><th>Side</th>
-              <th>Price</th>
+              <th onclick="toggleIdSort()" style="cursor: pointer; user-select: none;">#ID <span class="id-sort-indicator">▼</span></th>
+              <th>Symbol</th>
+              <th>Side</th>
+              <th>Entry</th>
+              <th>SL</th>
+              <th>TP</th>
+              <th>Exit</th>
+              <th>PnL %</th>
               <th style="padding: 0;">
                 <select id="fwdStatusFilter" class="table-header-select" onchange="switchSignalStatusFilter(this.value)">
-                  <option value="ALL">Status ▼</option>
+                  <option value="ALL">Outcome ▼</option>
                   <option value="COMPLETED">COMPLETED</option>
                   <option value="REJECTED">REJECTED</option>
                   <option value="PENDING">PENDING</option>
                 </select>
               </th>
+              <th>Bars</th>
               <th>Time</th>
             </tr>
           </thead>
@@ -1101,16 +1368,23 @@
         <table id="live-table">
           <thead>
             <tr>
-              <th onclick="toggleIdSort()" style="cursor: pointer; user-select: none;">#ID <span class="id-sort-indicator">▼</span></th><th>Symbol</th><th>Side</th>
-              <th>Price</th>
+              <th onclick="toggleIdSort()" style="cursor: pointer; user-select: none;">#ID <span class="id-sort-indicator">▼</span></th>
+              <th>Symbol</th>
+              <th>Side</th>
+              <th>Entry</th>
+              <th>SL</th>
+              <th>TP</th>
+              <th>Exit</th>
+              <th>PnL %</th>
               <th style="padding: 0;">
                 <select id="liveStatusFilter" class="table-header-select" onchange="switchLiveStatusFilter(this.value)">
-                  <option value="ALL">Status ▼</option>
+                  <option value="ALL">Outcome ▼</option>
                   <option value="COMPLETED">COMPLETED</option>
                   <option value="REJECTED">REJECTED</option>
                   <option value="PENDING">PENDING</option>
                 </select>
               </th>
+              <th>Bars</th>
               <th>Time</th>
             </tr>
           </thead>
@@ -1516,6 +1790,16 @@ const API = "";  // Same-origin: served by FastAPI, no absolute URL needed
 const POLL_MS = 15000;
 let fwdCache = [], liveCache = [], currentMode = "both";
 
+// Global caches & selections for expandable row simulator
+let MINI_CHARTS = {};
+let MINI_CANDLE_SERIES = {};
+let SELECTED_TRADE_SCENARIO = {};
+let SELECTED_SCENARIO = 'S4';
+let TRADE_SIM_CACHE = {};
+let ANALYSIS_CHARTS = {};
+let modalTradeList = [];
+let modalCurrentIndex = -1;
+
 // —"?—"? S6 Baseline Constants (from eWE/reports VBS 627-signal backtest) —"?—"?—"?—"?—"?—"?—"?—"?—"?
 const S6_BASELINE = {
   win_rate: 77.8,
@@ -1694,6 +1978,7 @@ function setTab(mode) {
 }
 
 // —"?—"? Render signals table —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+// —"?—"? Render signals table —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
 function renderRows(signals, tbodyId) {
   const tb = $(tbodyId);
   if (!tb) return;
@@ -1770,28 +2055,180 @@ function renderRows(signals, tbodyId) {
   }
 
   if (!signals || !signals.length) {
-    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px">Chưa có tín hiệu...</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="11" style="text-align:center;color:#64748b;padding:20px">Chưa có tín hiệu...</td></tr>`;
     return;
   }
 
   if (!sorted.length) {
-    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px">Không có tín hiệu khớp bộ lọc...</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="11" style="text-align:center;color:#64748b;padding:20px">Không có tín hiệu khớp bộ lọc...</td></tr>`;
     return;
   }
 
+  const tradesArray = (tbodyId === 'fwd-tbody') ? window.allFwdTradesGlobal : window.allLiveTradesGlobal;
+
   tb.innerHTML = sorted.slice(0, signalLimit).map(s => {
+    // Find corresponding trade
+    const t = tradesArray ? tradesArray.find(x => x.signal_id === s.id) : null;
+    
     const buy = (s.action||"buy").toLowerCase()==="buy";
     const st = (s.state||"PENDING").toUpperCase();
-    const ts = (s.created_at||"").substring(11,16)+" UTC";
-    const id = Number(s.id).toLocaleString();
-    const clickAttr = `onclick="onSignalRowClick(this, ${JSON.stringify(s).replace(/"/g, '&quot;')})"`;
-    return `<tr ${clickAttr} data-signal-id="${s.id}">
-      <td class="id-tag">${id}</td>
+    const ts = s.created_at ? s.created_at.substring(5, 16) : '—';
+    const id = s.id;
+    
+    // Parse SL/TP if from signal payload
+    let payload = {};
+    if (s.payload) {
+      try {
+        payload = typeof s.payload === 'string' ? JSON.parse(s.payload) : s.payload;
+      } catch(e) {}
+    }
+    
+    // Values
+    const entryPrice = t ? t.entry : s.price;
+    const slVal = t ? t.sl : (payload.sl || s.sl || null);
+    const tpVal = t ? t.tp : (payload.tp || s.tp || null);
+    const closePrice = t ? t.close_price : null;
+    
+    let pnlStr = '—';
+    let pnlClass = '';
+    if (t && t.pnl_pct !== undefined && t.pnl_pct !== null) {
+      const pnlPct = t.pnl_pct * 100;
+      pnlClass = pnlPct >= 0 ? 'cell-green' : 'cell-red';
+      pnlStr = `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%`;
+    } else if (st === 'REJECTED' || st === 'FAILED') {
+      pnlStr = '—';
+    }
+    
+    let badgeClass = 'badge-to', badgeLabel = 'PENDING';
+    if (t) {
+      if (t.outcome === 'TAKE_PROFIT') { badgeClass = 'badge-tp'; badgeLabel = 'TP ✓'; }
+      else if (t.outcome === 'STOP_LOSS' || t.outcome === 'TRAILING_STOP') { badgeClass = 'badge-sl'; badgeLabel = 'SL ✗'; }
+      else { badgeClass = 'badge-to'; badgeLabel = t.outcome || 'TIMEOUT'; }
+    } else {
+      if (st === 'REJECTED' || st === 'FAILED') {
+        badgeClass = 'badge-sl'; badgeLabel = 'REJECTED';
+      } else if (st === 'PENDING' || st === 'ANALYZING' || st === 'MACRO_PASSED' || st === 'INGESTED') {
+        badgeClass = 'badge-to'; badgeLabel = 'PENDING';
+      } else {
+        badgeClass = 'badge-to'; badgeLabel = st;
+      }
+    }
+    
+    const bars = t && t.exit_idx !== undefined && t.start_idx !== undefined ? t.exit_idx - t.start_idx : '—';
+
+    return `
+    <tr id="trade_row_${s.id}" onclick="toggleTradeRow(event, ${s.id})" style="cursor: pointer; transition: background-color 0.15s ease;" data-signal-id="${s.id}">
+      <td>
+        <a href="javascript:void(0)" onclick="openReplayModal(${s.id})" 
+           style="color: var(--cyan); text-decoration: underline; font-weight: 600; cursor: pointer;">
+          #${id.toLocaleString()}
+        </a>
+      </td>
       <td class="sym">${s.symbol||"?"}</td>
-      <td class="${buy?"buy-tag":"sell-tag"}">${(s.action||"?").toUpperCase()}</td>
-      <td>${fmtP(s.price)}</td>
-      <td><span class="status-badge ${stateColor(st)}">${st}</span></td>
-      <td>${ts}</td>
+      <td class="${buy?"side-long":"side-short"}">${buy?"LONG":"SHORT"}</td>
+      <td>$${(entryPrice || 0).toLocaleString(undefined, {maximumFractionDigits: 1})}</td>
+      <td style="color:var(--red)">$${slVal ? slVal.toLocaleString(undefined, {maximumFractionDigits: 1}) : '—'}</td>
+      <td style="color:var(--cyan)">$${tpVal ? tpVal.toLocaleString(undefined, {maximumFractionDigits: 1}) : '—'}</td>
+      <td>${closePrice ? '$' + closePrice.toLocaleString(undefined, {maximumFractionDigits: 1}) : '—'}</td>
+      <td class="${pnlClass}">${pnlStr}</td>
+      <td><span class="${badgeClass}">${badgeLabel}</span></td>
+      <td>${bars}</td>
+      <td style="color: var(--text-muted); font-size: 10px;">${ts}</td>
+    </tr>
+    <!-- Expandable Detail Row -->
+    <tr class="expand-detail-row" id="expand_row_${s.id}" style="display: none; background: rgba(20, 26, 38, 0.45);">
+      <td colspan="11" style="padding: 0; border-bottom: 1px solid var(--panel-border);">
+        <div class="expand-container" style="padding: 20px; display: flex; flex-direction: column; gap: 16px; white-space: normal;">
+          <!-- Loading State -->
+          <div id="expand_loading_${s.id}" style="display: flex; justify-content: center; align-items: center; padding: 20px;">
+            <div class="spinner"></div>
+            <span style="margin-left: 12px; font-size: 12px; color: var(--text-muted);">Simulating and fetching metrics...</span>
+          </div>
+          <!-- Expanded Content -->
+          <div id="expand_content_${s.id}" style="display: none;">
+            <!-- 1*: Mini-Expand Section -->
+            <div class="mini-expand-container" id="mini_expand_${s.id}" style="display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; background: rgba(20, 26, 38, 0.35); border-radius: 10px; border: 1px dashed rgba(42, 58, 89, 0.4);">
+              <!-- Injected dynamically -->
+            </div>
+            
+            <!-- Divider 1*: Mini-expand to default-expand -->
+            <div class="expand-arrow-divider-1star" style="display: flex; justify-content: center; align-items: center; border-top: 1px solid rgba(42, 58, 89, 0.1); padding-top: 8px; margin-top: 12px;">
+              <button class="arrow-btn" onclick="toggleStage1Details(event, ${s.id})" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px 20px; transition: color 0.2s; outline: none; display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+                <span>Show Validation Details</span>
+                <span class="arrow-icon" id="arrow_icon_1star_${s.id}" style="display: inline-block; font-size: 12px; transition: transform 0.2s ease;">▼</span>
+              </button>
+            </div>
+            
+            <!-- 1: Default-Expand Container (Gates & Context) -->
+            <div class="stage-1-details-container" id="stage_1_details_${s.id}" style="display: none; flex-direction: column; gap: 16px; margin-top: 12px; border-top: 1px dashed rgba(42, 58, 89, 0.2); padding-top: 16px;">
+              <div class="stage-1-grid" style="display: flex; flex-wrap: wrap; gap: 24px;">
+                <!-- Left Column: Scenario Gates -->
+                <div class="gates-column" style="flex: 1.2; min-width: 320px;">
+                  <div class="expand-section-title" style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #ffffff; margin-bottom: 12px; border-left: 2px solid var(--primary-color); padding-left: 6px; letter-spacing: 0.5px;">Scenario Validation Gates (S1 ~ S6)</div>
+                  <div class="scenario-mini-grid" id="mini_scenarios_${s.id}" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+                    <!-- Populated dynamically -->
+                  </div>
+                </div>
+                <!-- Right Column: Context Indicators -->
+                <div class="context-column" style="flex: 1; min-width: 280px;">
+                  <div class="expand-section-title" style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #ffffff; margin-bottom: 12px; border-left: 2px solid var(--purple-color); padding-left: 6px; letter-spacing: 0.5px;">Daily Market Context at Entry</div>
+                  <div class="context-mini-grid" id="mini_context_${s.id}" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 8px;">
+                    <!-- Populated dynamically -->
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Divider with dynamic down arrow for Stage 2 -->
+              <div class="expand-arrow-divider" style="display: flex; justify-content: center; align-items: center; border-top: 1px solid rgba(42, 58, 89, 0.2); padding-top: 10px; margin-top: 16px;">
+                <button class="arrow-btn" onclick="toggleStage2(event, ${s.id})" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px 20px; transition: color 0.2s; outline: none; display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+                  <span>Show Hourly Candlestick Replay</span>
+                  <span class="arrow-icon" id="arrow_icon_${s.id}" style="display: inline-block; font-size: 12px; transition: transform 0.2s ease;">▼</span>
+                </button>
+              </div>
+              
+              <!-- Stage 2: Interactive mini chart + Analysis side-by-side -->
+              <div class="stage-2-container" id="stage_2_${s.id}" style="display: none; flex-direction: column; gap: 12px; margin-top: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div style="display: flex; align-items: center; gap: 12px;">
+                    <div class="expand-section-title" style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #ffffff; border-left: 2px solid var(--cyan-color); padding-left: 6px; letter-spacing: 0.5px;">Hourly Candlestick Replay & Scenario Analysis</div>
+                    <span class="scenario-indicator" id="scenario_indicator_${s.id}" style="display:none; font-size: 10px; font-weight: 700; padding: 2px 10px; border-radius: 6px; background: rgba(41, 98, 255, 0.15); border: 1px solid rgba(41, 98, 255, 0.4); color: var(--primary-color); letter-spacing: 0.5px; transition: all 0.2s ease;"></span>
+                  </div>
+                  <button class="nav-link-btn" onclick="openReplayModal(${s.id})" style="padding: 4px 12px; font-size: 11px;">
+                    <span>🎬 Expand Full Replay</span>
+                  </button>
+                </div>
+                <div class="stage2-split">
+                  <!-- LEFT: Candlestick Chart -->
+                  <div class="stage2-chart-side">
+                    <div id="mini_chart_container_${s.id}" style="width: 100%; height: 300px; border-radius: 8px; overflow: hidden; background: #131722; border: 1px solid var(--panel-border);"></div>
+                  </div>
+                  <!-- RIGHT: Scenario Analysis Charts -->
+                  <div class="stage2-analysis-side" id="analysis_panel_${s.id}">
+                    <div class="analysis-card" style="cursor: pointer;">
+                      <div class="analysis-card-title">📊 Scenario P&L Comparison <span style="font-size:8px; font-weight:400; color:var(--text-dim);">(click bar to switch)</span></div>
+                      <div class="analysis-chart-box"><canvas id="analysis_pnl_${s.id}"></canvas></div>
+                    </div>
+                    <div class="analysis-card" id="card2_wrapper_${s.id}">
+                      <div class="analysis-card-title" id="card2_title_${s.id}">📈 EMA Overlay (20 / 50 / 200)</div>
+                      <div class="analysis-chart-box" id="card2_chart_box_${s.id}">
+                        <canvas id="analysis_ema_${s.id}"></canvas>
+                      </div>
+                      <div id="card2_custom_box_${s.id}" style="display: none; padding: 4px; font-size: 11px; overflow-y: auto; height: 130px;"></div>
+                    </div>
+                    <div class="analysis-card" id="card3_wrapper_${s.id}">
+                      <div class="analysis-card-title" id="card3_title_${s.id}">📉 Volume Profile</div>
+                      <div class="analysis-chart-box" id="card3_chart_box_${s.id}">
+                        <canvas id="analysis_vol_${s.id}"></canvas>
+                      </div>
+                      <div id="card3_custom_box_${s.id}" style="display: none; padding: 4px; font-size: 11px; overflow-y: auto; height: 130px;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </td>
     </tr>`;
   }).join("");
 
@@ -2780,7 +3217,11 @@ async function getCachedCandles(symbol, interval, startTimeMs) {
   try {
     const db = await openOhlcvCacheDB();
     if (!db) return null;
-    const key = `${symbol}:${interval}:${startTimeMs || 'latest'}`;
+    // Group cache by day to keep key granularity manageable
+    const dayKey = startTimeMs
+      ? new Date(startTimeMs).toISOString().slice(0, 10)
+      : 'latest';
+    const key = `${symbol}:${interval}:${dayKey}`;
     return new Promise(resolve => {
       const tx = db.transaction('candles', 'readonly');
       const req = tx.objectStore('candles').get(key);
@@ -2802,7 +3243,10 @@ async function setCachedCandles(symbol, interval, startTimeMs, candles, isHistor
   try {
     const db = await openOhlcvCacheDB();
     if (!db || !candles || candles.length < 5) return;
-    const key = `${symbol}:${interval}:${startTimeMs || 'latest'}`;
+    const dayKey = startTimeMs
+      ? new Date(startTimeMs).toISOString().slice(0, 10)
+      : 'latest';
+    const key = `${symbol}:${interval}:${dayKey}`;
     return new Promise(resolve => {
       const tx = db.transaction('candles', 'readwrite');
       tx.objectStore('candles').put({
@@ -2949,7 +3393,7 @@ async function loadSignalChart(symbol, signalTimestampMs) {
     startTimeMs = Math.max(startTimeMs, Date.now() - maxLookbackMs);
   }
 
-  const isHistorical = false;
+  const isHistorical = startTimeMs && (Date.now() - startTimeMs > 2 * 3600 * 1000);
 
   try {
     // P2: L0 — Check IndexedDB cache first
@@ -3280,16 +3724,6 @@ function onSignalRowClick(rowEl, signal) {
   } else {
     // Highlight active row
     if (activeSignalRow) activeSignalRow.classList.remove('active-signal');
-    rowEl.classList.add('active-signal');
-    activeSignalRow = rowEl;
-    activeSignalId = signalId;
-
-    // Update chart info overlay
-    const infoPanel = document.getElementById('chartSignalInfo');
-    const isBuy = (signal.action || '').toLowerCase() === 'buy';
-    document.getElementById('chartSigId').textContent = `#${Number(signal.id).toLocaleString()}`;
-    const actionEl = document.getElementById('chartSigAction');
-    actionEl.textContent = (signal.action || '?').toUpperCase();
     actionEl.className = isBuy ? 'sig-action-buy' : 'sig-action-sell';
     document.getElementById('chartSigPrice').textContent = fmtP(signal.price);
     infoPanel.style.display = 'flex';
@@ -3355,7 +3789,1531 @@ async function loadServerStats() {
   }
 }
 
-// —"?—"? Boot —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+// ─── REPLAY POP-UP MODAL & DOUBLE EXPANSION (V2.3) ───
+function getAdjacentTradesData() {
+    if (modalCurrentIndex === -1 || modalTradeList.length === 0) return [];
+    const adj = [];
+    if (modalCurrentIndex > 0) {
+        adj.push(modalTradeList[modalCurrentIndex - 1]);
+    }
+    if (modalCurrentIndex < modalTradeList.length - 1) {
+        adj.push(modalTradeList[modalCurrentIndex + 1]);
+    }
+    return adj;
+}
+window.getAdjacentTradesData = getAdjacentTradesData;
+
+function getParamsQueryString() {
+    const base_sl = document.getElementById('base_sl')?.value || 8.0;
+    const base_tp = document.getElementById('base_tp')?.value || 20.0;
+    const s4_sl_atr = document.getElementById('s4_sl_atr')?.value || 1.5;
+    const s4_tp_atr = document.getElementById('s4_tp_atr')?.value || 3.0;
+    const s4_trail_atr = document.getElementById('s4_trail_atr')?.value || 2.5;
+    const slippage_pct = document.getElementById('slippage_pct')?.value || 0.05;
+    const s5_min_tt_score = document.getElementById('s5_min_tt_score')?.value || 5;
+    const s6_min_tt_score = document.getElementById('s6_min_tt_score')?.value || 5;
+    const s6_min_rsi = document.getElementById('s6_min_rsi')?.value || 50.0;
+    const mta_mltf_weight_1h = document.getElementById('mta_mltf_weight_1h')?.value || 0.15;
+    const regime_volatility_window = document.getElementById('regime_volatility_window')?.value || 50;
+    const hil_min_threshold = document.getElementById('hil_min_threshold')?.value || 50.0;
+    const hil_max_threshold = document.getElementById('hil_max_threshold')?.value || 79.0;
+    const atr_sl_multiplier = document.getElementById('atr_sl_multiplier')?.value || 1.5;
+    const atr_tp_multiplier = document.getElementById('atr_tp_multiplier')?.value || 3.0;
+    const chandelier_trailing_multiplier = document.getElementById('chandelier_trailing_multiplier')?.value || 2.5;
+
+    return `&base_sl_pct=${base_sl}&base_tp_pct=${base_tp}&s4_sl_atr_mult=${s4_sl_atr}&s4_tp_atr_mult=${s4_tp_atr}&s4_trail_atr_mult=${s4_trail_atr}&slippage_pct=${slippage_pct}&s5_min_tt_score=${s5_min_tt_score}&s6_min_tt_score=${s6_min_tt_score}&s6_min_rsi=${s6_min_rsi}&mta_mltf_weight_1h=${mta_mltf_weight_1h}&regime_volatility_window=${regime_volatility_window}&hil_min_threshold=${hil_min_threshold}&hil_max_threshold=${hil_max_threshold}&atr_sl_multiplier=${atr_sl_multiplier}&atr_tp_multiplier=${atr_tp_multiplier}&chandelier_trailing_multiplier=${chandelier_trailing_multiplier}`;
+}
+
+function getFilteredV22Trades() {
+    const cache = (currentMode === "live") ? liveCache : fwdCache;
+    const filterVal = (currentMode === "live") ? currentLiveStatusFilter : currentSignalStatusFilter;
+    const symbolFilter = (currentMode === "live") ? currentLiveSymbol : currentSignalSymbol;
+    
+    let filtered = cache || [];
+    if (symbolFilter && symbolFilter !== 'ALL') {
+        filtered = filtered.filter(s => (s.symbol || '').toUpperCase() === symbolFilter.toUpperCase());
+    }
+    
+    if (filterVal && filterVal !== 'ALL') {
+        filtered = filtered.filter(s => {
+            const st = (s.state || '').toUpperCase();
+            if (filterVal === 'COMPLETED') return st === 'COMPLETED';
+            if (filterVal === 'REJECTED') return ['REJECTED', 'FAILED'].includes(st);
+            if (filterVal === 'PENDING') return ['PENDING', 'ANALYZING', 'MACRO_PASSED', 'INGESTED'].includes(st);
+            return st === filterVal;
+        });
+    }
+    
+    const sorted = [...filtered].sort((a, b) => {
+        if (idSortDirection === 'asc') return a.id - b.id;
+        return b.id - a.id;
+    });
+    
+    return sorted.map(s => ({
+        vbs_id: s.id,
+        symbol: s.symbol,
+        side: (s.action || 'buy').toUpperCase()
+    }));
+}
+
+function openReplayModal(vbsId) {
+    const scenario = SELECTED_SCENARIO;
+    modalTradeList = getFilteredV22Trades();
+    modalCurrentIndex = modalTradeList.findIndex(t => t.vbs_id === vbsId);
+    
+    if (modalCurrentIndex === -1) {
+        modalCurrentIndex = 0;
+    }
+    
+    const trade = modalTradeList[modalCurrentIndex];
+    if (!trade) return;
+    
+    const iframe = document.getElementById('replay_iframe');
+    const modal = document.getElementById('replay_modal');
+    
+    modal.style.display = 'flex';
+    setTimeout(() => {
+        modal.classList.add('active');
+    }, 10);
+    
+    const paramsQuery = getParamsQueryString();
+    iframe.src = `/reports/trade_replay?signal_id=${trade.vbs_id}&scenario=${scenario}${paramsQuery}`;
+    
+    updateModalUI(trade);
+}
+
+function closeReplayModal() {
+    const modal = document.getElementById('replay_modal');
+    modal.classList.remove('active');
+    setTimeout(() => {
+        modal.style.display = 'none';
+        document.getElementById('replay_iframe').src = '';
+    }, 300);
+}
+
+function navigateModal(direction) {
+    if (modalCurrentIndex === -1 || modalTradeList.length === 0) return;
+    
+    let newIndex = modalCurrentIndex + direction;
+    if (newIndex < 0 || newIndex >= modalTradeList.length) return;
+    
+    modalCurrentIndex = newIndex;
+    const trade = modalTradeList[modalCurrentIndex];
+    const scenario = SELECTED_SCENARIO;
+    
+    const iframe = document.getElementById('replay_iframe');
+    const paramsQuery = getParamsQueryString();
+    iframe.src = `/reports/trade_replay?signal_id=${trade.vbs_id}&scenario=${scenario}${paramsQuery}`;
+    
+    updateModalUI(trade);
+}
+
+function updateModalUI(trade) {
+    const isLong = trade.side === 'BUY' || trade.side === 'LONG';
+    const dot = isLong ? '🟢' : '🔴';
+    const symbolStr = trade.symbol || 'BTCUSDT';
+    
+    document.getElementById('modal_title').innerHTML = `${dot} VBS #${trade.vbs_id} &mdash; ${symbolStr} ${isLong ? 'LONG' : 'SHORT'}`;
+    document.getElementById('modal_counter').textContent = `${modalCurrentIndex + 1} / ${modalTradeList.length}`;
+    
+    document.getElementById('modal_prev_btn').disabled = (modalCurrentIndex === 0);
+    document.getElementById('modal_next_btn').disabled = (modalCurrentIndex === modalTradeList.length - 1);
+}
+
+// Keyboard arrow key navigation on parent page
+document.addEventListener("keydown", e => {
+    const modal = document.getElementById('replay_modal');
+    if (modal && modal.classList.contains('active')) {
+        if (e.key === "ArrowLeft") {
+            navigateModal(-1);
+        } else if (e.key === "ArrowRight") {
+            navigateModal(1);
+        }
+    }
+});
+
+// Window postMessage handler to receive key events from inside the iframe
+window.addEventListener('message', (e) => {
+    if (e.data && e.data.type === 'keydown') {
+        const modal = document.getElementById('replay_modal');
+        if (modal && modal.classList.contains('active')) {
+            if (e.data.key === 'ArrowLeft') {
+                navigateModal(-1);
+            } else if (e.data.key === 'ArrowRight') {
+                navigateModal(1);
+            }
+        }
+    }
+});
+
+// Expandable row functions
+function toggleTradeRow(event, vbsId) {
+    if (event.target.tagName.toLowerCase() === 'a' || event.target.tagName.toLowerCase() === 'button' || event.target.closest('a') || event.target.closest('button')) {
+        return;
+    }
+    
+    const row = document.getElementById(`expand_row_${vbsId}`);
+    const tradeRow = document.getElementById(`trade_row_${vbsId}`);
+    const tableWrap = tradeRow.closest('.signal-table-wrap');
+    if (!row || !tradeRow) return;
+    
+    const isVisible = row.style.display !== 'none';
+    if (isVisible) {
+        row.style.display = 'none';
+        tradeRow.classList.remove('row-expanded');
+        
+        // Reset sub-expansions
+        const stage1Details = document.getElementById(`stage_1_details_${vbsId}`);
+        const arrow1star = document.getElementById(`arrow_icon_1star_${vbsId}`);
+        if (stage1Details) stage1Details.style.display = 'none';
+        if (arrow1star) arrow1star.style.transform = 'rotate(0deg)';
+        
+        const stage2 = document.getElementById(`stage_2_${vbsId}`);
+        const arrow2 = document.getElementById(`arrow_icon_${vbsId}`);
+        if (stage2) stage2.style.display = 'none';
+        if (arrow2) arrow2.style.transform = 'rotate(0deg)';
+        
+        if (tableWrap) tableWrap.classList.add('collapsed-view');
+    } else {
+        // Close other expanded rows first
+        document.querySelectorAll('.expand-detail-row').forEach(r => r.style.display = 'none');
+        document.querySelectorAll('#fwd-tbody tr, #live-tbody tr').forEach(r => r.classList.remove('row-expanded'));
+        
+        row.style.display = 'table-row';
+        tradeRow.classList.add('row-expanded');
+        if (tableWrap) tableWrap.classList.remove('collapsed-view');
+        loadTradeDetailRow(vbsId);
+    }
+}
+
+function toggleStage1Details(event, vbsId) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    const container = document.getElementById(`stage_1_details_${vbsId}`);
+    const arrow = document.getElementById(`arrow_icon_1star_${vbsId}`);
+    if (!container || !arrow) return;
+    
+    const isVisible = container.style.display !== 'none';
+    if (isVisible) {
+        container.style.display = 'none';
+        arrow.style.transform = 'rotate(0deg)';
+    } else {
+        container.style.display = 'flex';
+        arrow.style.transform = 'rotate(180deg)';
+    }
+}
+
+async function loadTradeDetailRow(vbsId) {
+    const loading = document.getElementById(`expand_loading_${vbsId}`);
+    const content = document.getElementById(`expand_content_${vbsId}`);
+    if (!loading || !content) return;
+    
+    if (TRADE_SIM_CACHE[vbsId]) {
+        loading.style.display = 'none';
+        content.style.display = 'block';
+        renderStage1Data(vbsId, TRADE_SIM_CACHE[vbsId]);
+        return;
+    }
+    
+    loading.style.display = 'flex';
+    content.style.display = 'none';
+    
+    const payload = {
+        base_sl_pct: parseFloat(document.getElementById('base_sl')?.value || 8.0),
+        base_tp_pct: parseFloat(document.getElementById('base_tp')?.value || 20.0),
+        s4_sl_atr_mult: parseFloat(document.getElementById('s4_sl_atr')?.value || 1.5),
+        s4_tp_atr_mult: parseFloat(document.getElementById('s4_tp_atr')?.value || 3.0),
+        s4_trail_atr_mult: parseFloat(document.getElementById('s4_trail_atr')?.value || 2.5),
+        slippage_pct: parseFloat(document.getElementById('slippage_pct')?.value || 0.05),
+        s2_min_tt_score: 5,
+        s5_min_tt_score: parseInt(document.getElementById('s5_min_tt_score')?.value || 5),
+        s6_min_tt_score: parseInt(document.getElementById('s6_min_tt_score')?.value || 5),
+        s6_min_rsi: parseFloat(document.getElementById('s6_min_rsi')?.value || 50.0),
+        mta_mltf_weight_1h: parseFloat(document.getElementById('mta_mltf_weight_1h')?.value || 0.15),
+        regime_volatility_window: parseInt(document.getElementById('regime_volatility_window')?.value || 50),
+        hil_min_threshold: parseFloat(document.getElementById('hil_min_threshold')?.value || 50.0),
+        hil_max_threshold: parseFloat(document.getElementById('hil_max_threshold')?.value || 79.0),
+        atr_sl_multiplier: parseFloat(document.getElementById('atr_sl_multiplier')?.value || 1.5),
+        atr_tp_multiplier: parseFloat(document.getElementById('atr_tp_multiplier')?.value || 3.0),
+        chandelier_trailing_multiplier: parseFloat(document.getElementById('chandelier_trailing_multiplier')?.value || 2.5)
+    };
+    
+    try {
+        const res = await fetch(`/api/simulate/${vbsId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("Simulation fetch failed.");
+        const data = await res.json();
+        TRADE_SIM_CACHE[vbsId] = data;
+        
+        loading.style.display = 'none';
+        content.style.display = 'block';
+        renderStage1Data(vbsId, data);
+    } catch (e) {
+        loading.innerHTML = `<span style="color:var(--danger-color); font-size:11px; font-weight:600;">Error: ${e.message}</span>`;
+    }
+}
+
+function renderStage1Data(vbsId, data) {
+    const miniExpand = document.getElementById(`mini_expand_${vbsId}`);
+    if (miniExpand) {
+        const ctx = data.market_context;
+        const macdBullish = (ctx.daily_macd - ctx.daily_macd_sig) > 0;
+        
+        let scPills = '';
+        for (const [code, sc] of Object.entries(data.scenarios)) {
+            const status = sc.executed ? 'exec' : 'filt';
+            const statusLabel = sc.executed ? 'EXEC' : 'FILT';
+            scPills += `<span class="mini-sc-badge ${status}">${code}: ${statusLabel}</span>`;
+        }
+        
+        const vcpClass = ctx.vcp_met ? 'v-green' : '';
+        const macdClass = macdBullish ? 'v-green' : 'v-red';
+        
+        miniExpand.innerHTML = `
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                <span style="font-weight: 700; font-size: 9px; color: var(--text-dim); text-transform: uppercase; margin-right: 4px; letter-spacing: 0.5px;">Context</span>
+                <span class="mini-pill">Trend: <strong>${ctx.tt_score}/8</strong></span>
+                <span class="mini-pill">VCP: <strong class="${vcpClass}">${ctx.vcp_met ? 'YES' : 'NO'}</strong></span>
+                <span class="mini-pill">RSI: <strong>${ctx.daily_rsi.toFixed(1)}</strong></span>
+                <span class="mini-pill">MACD: <strong class="${macdClass}">${macdBullish ? 'BULL' : 'BEAR'}</strong></span>
+                <span class="mini-pill">ATR: <strong>$${Math.round(ctx.daily_atr).toLocaleString()}</strong></span>
+                <span class="mini-pill">Vol Ratio: <strong>${ctx.volume_ratio.toFixed(1)}x</strong></span>
+                <span class="mini-pill">Range Ratio: <strong>${ctx.range_ratio.toFixed(1)}x</strong></span>
+                <span class="mini-pill">Close: <strong>$${Math.round(ctx.daily_close).toLocaleString()}</strong></span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 6px; margin-top: 2px;">
+                <span style="font-weight: 700; font-size: 9px; color: var(--text-dim); text-transform: uppercase; margin-right: 4px; letter-spacing: 0.5px;">Scenarios</span>
+                ${scPills}
+            </div>
+        `;
+    }
+
+    const scenariosGrid = document.getElementById(`mini_scenarios_${vbsId}`);
+    if (!scenariosGrid) return;
+    let scHtml = '';
+    
+    const scNames = {
+        S1: 'Baseline Bypass', S2: 'Minervini Filter', S3: 'EMA Filter',
+        S4: 'Tight SL / Trailing', S5: 'Multi-Timeframe', S6: 'Optimized Hybrid'
+    };
+    
+    for (const [code, sc] of Object.entries(data.scenarios)) {
+        let cardBg = 'rgba(255, 255, 255, 0.02)';
+        let borderStyle = '1px solid rgba(42, 58, 89, 0.3)';
+        let statusBadge = '';
+        let metricsHtml = '';
+        
+        if (sc.executed) {
+            statusBadge = `<span style="font-size: 8px; font-weight: 700; color: var(--success-color); background: var(--success-bg); padding: 1px 6px; border-radius: 4px;">EXECUTED</span>`;
+            const pnl = sc.pnl_pct * 100;
+            const pnlClass = pnl >= 0 ? 'v-green' : 'v-red';
+            const pnlStr = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
+            metricsHtml = `
+                <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 4px;">
+                    <span style="color: var(--text-dim);">P&L:</span>
+                    <span class="${pnlClass}" style="font-weight: 600;">${pnlStr}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 10px;">
+                    <span style="color: var(--text-dim);">Exit:</span>
+                    <span style="color: #ffffff; font-family: monospace;">$${Math.round(sc.close_price).toLocaleString()}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 10px;">
+                    <span style="color: var(--text-dim);">Bars:</span>
+                    <span style="color: #ffffff;">${sc.bars}</span>
+                </div>`;
+            cardBg = 'rgba(38, 166, 154, 0.03)';
+            borderStyle = '1px solid rgba(38, 166, 154, 0.25)';
+        } else {
+            statusBadge = `<span style="font-size: 8px; font-weight: 700; color: var(--danger-color); background: var(--danger-bg); padding: 1px 6px; border-radius: 4px;">FILTERED</span>`;
+            metricsHtml = `
+                <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px; line-height: 1.3; font-style: italic;">
+                    ${sc.reason || 'Filtered by strategy rule'}
+                </div>`;
+            cardBg = 'rgba(239, 83, 80, 0.02)';
+            borderStyle = '1px solid rgba(239, 83, 80, 0.25)';
+        }
+        
+        scHtml += `
+            <div style="background: ${cardBg}; border: ${borderStyle}; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 4px;">
+                    <span style="font-size: 11px; font-weight: 700; color: #ffffff;">${code}</span>
+                    ${statusBadge}
+                </div>
+                <div style="font-size: 10px; font-weight: 500; color: var(--text-muted); margin-top: 4px;">${scNames[code]}</div>
+                ${metricsHtml}
+            </div>`;
+    }
+    scenariosGrid.innerHTML = scHtml;
+    
+    const ctx = data.market_context;
+    const contextGrid = document.getElementById(`mini_context_${vbsId}`);
+    if (!contextGrid) return;
+    
+    const macdBullish = (ctx.daily_macd - ctx.daily_macd_sig) > 0;
+    const vcpClass = ctx.vcp_met ? 'v-green' : '';
+    const macdClass = macdBullish ? 'v-green' : 'v-red';
+    
+    contextGrid.innerHTML = `
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">Trend Score</div><div class="context-value" style="font-size:12px;">${ctx.tt_score}/8</div></div>
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">VCP Met</div><div class="context-value ${vcpClass}" style="font-size:12px;">${ctx.vcp_met ? 'YES' : 'NO'}</div></div>
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">Daily RSI</div><div class="context-value" style="font-size:12px;">${ctx.daily_rsi.toFixed(1)}</div></div>
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">MACD State</div><div class="context-value ${macdClass}" style="font-size:12px;">${macdBullish ? 'BULL' : 'BEAR'}</div></div>
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">Daily ATR</div><div class="context-value" style="font-size:12px;">$${Math.round(ctx.daily_atr).toLocaleString()}</div></div>
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">Vol Ratio</div><div class="context-value" style="font-size:12px;">${ctx.volume_ratio.toFixed(1)}x</div></div>
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">Range Ratio</div><div class="context-value" style="font-size:12px;">${ctx.range_ratio.toFixed(1)}x</div></div>
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">Daily Close</div><div class="context-value" style="font-size:12px;">$${Math.round(ctx.daily_close).toLocaleString()}</div></div>
+    `;
+}
+
+function toggleStage2(event, vbsId) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    const container = document.getElementById(`stage_2_${vbsId}`);
+    const arrow = document.getElementById(`arrow_icon_${vbsId}`);
+    const tableWrap = document.querySelector('.trade-table-wrap');
+    if (!container || !arrow) return;
+    
+    const isVisible = container.style.display !== 'none';
+    if (isVisible) {
+        container.style.display = 'none';
+        arrow.style.transform = 'rotate(0deg)';
+        if (tableWrap) tableWrap.classList.add('collapsed-view');
+    } else {
+        container.style.display = 'flex';
+        arrow.style.transform = 'rotate(180deg)';
+        if (tableWrap) tableWrap.classList.remove('collapsed-view');
+        initMiniChart(vbsId);
+        renderAnalysisCharts(vbsId);
+    }
+}
+
+function initMiniChart(vbsId, forceScenario) {
+    const containerId = `mini_chart_container_${vbsId}`;
+    const chartDiv = document.getElementById(containerId);
+    if (!chartDiv) return;
+    
+    if (MINI_CHARTS[vbsId]) {
+        MINI_CHARTS[vbsId].remove();
+        MINI_CHARTS[vbsId] = null;
+        MINI_CANDLE_SERIES[vbsId] = null;
+        chartDiv.innerHTML = '';
+    } else if (chartDiv.children.length > 0) {
+        return; 
+    }
+    
+    const data = TRADE_SIM_CACHE[vbsId];
+    if (!data) return;
+    
+    const scCode = forceScenario || SELECTED_TRADE_SCENARIO[vbsId] || SELECTED_SCENARIO || 'S4';
+    SELECTED_TRADE_SCENARIO[vbsId] = scCode;
+    
+    const miniChart = LightweightCharts.createChart(chartDiv, {
+        layout: { backgroundColor: '#131722', background: { type: 'solid', color: '#131722' }, textColor: '#d1d4dc', fontSize: 10 },
+        grid: { vertLines: { color: '#2a2e39', style: 1 }, horzLines: { color: '#2a2e39', style: 1 } },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+        rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.1, bottom: 0.2 } },
+        timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false },
+    });
+    
+    const miniCandlestickSeries = miniChart.addSeries(LightweightCharts.CandlestickSeries, {
+        upColor: '#26a69a', downColor: '#ef5350', borderVisible: false,
+        wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+    });
+    
+    const raw = data.candles;
+    miniCandlestickSeries.setData(raw.map(c => ({
+        time: c.timestamp / 1000,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close
+    })));
+    
+    miniChart.timeScale().fitContent();
+    
+    const sc = data.scenarios[scCode] || data.scenarios['S1'];
+    const info = data.signal_info;
+    
+    const isLong = info.action === 'BUY' || info.action === 'LONG';
+    const entryTime = raw[info.relative_entry_idx].timestamp / 1000;
+    
+    const markers = [];
+    markers.push({
+        time: entryTime,
+        position: isLong ? 'belowBar' : 'aboveBar',
+        color: isLong ? '#26a69a' : '#ef5350',
+        shape: isLong ? 'arrowUp' : 'arrowDown',
+        text: `ENTRY (${scCode})`
+    });
+    
+    miniCandlestickSeries.createPriceLine({
+        price: info.price,
+        color: '#26a69a',
+        lineWidth: 1.5,
+        lineStyle: LightweightCharts.LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: `ENTRY ${scCode}`
+    });
+    
+    if (sc && sc.executed) {
+        miniCandlestickSeries.createPriceLine({
+            price: sc.sl,
+            color: '#ef5350',
+            lineWidth: 1.2,
+            lineStyle: LightweightCharts.LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: `SL (${scCode})`
+        });
+        miniCandlestickSeries.createPriceLine({
+            price: sc.tp,
+            color: '#2962ff',
+            lineWidth: 1.2,
+            lineStyle: LightweightCharts.LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: `TP (${scCode})`
+        });
+        
+        const exitIdx = info.relative_entry_idx + sc.bars;
+        if (exitIdx < raw.length) {
+            const exitTime = raw[exitIdx].timestamp / 1000;
+            const isProfit = sc.pnl_pct > 0;
+            markers.push({
+                time: exitTime,
+                position: isLong ? 'aboveBar' : 'belowBar',
+                color: isProfit ? '#26a69a' : '#ef5350',
+                shape: isLong ? 'arrowDown' : 'arrowUp',
+                text: `${sc.outcome} (${scCode})`
+            });
+            
+            if (Math.abs(sc.close_price - sc.sl) > 0.01 && Math.abs(sc.close_price - sc.tp) > 0.01) {
+                miniCandlestickSeries.createPriceLine({
+                    price: sc.close_price,
+                    color: '#ff9800',
+                    lineWidth: 1.2,
+                    lineStyle: LightweightCharts.LineStyle.Dotted,
+                    axisLabelVisible: true,
+                    title: `EXIT (${scCode})`
+                });
+            }
+        }
+    } else {
+        markers.push({
+            time: entryTime,
+            position: isLong ? 'aboveBar' : 'belowBar',
+            color: '#64748B',
+            shape: 'circle',
+            text: `${scCode}: FILTERED`
+        });
+    }
+    
+    LightweightCharts.createSeriesMarkers(miniCandlestickSeries, markers);
+    
+    const entryIdx = info.relative_entry_idx;
+    const exitIdx = sc && sc.executed ? entryIdx + sc.bars : Math.min(entryIdx + 20, raw.length - 1);
+    const svIdx = Math.max(0, entryIdx - 8);
+    const evIdx = Math.min(raw.length - 1, exitIdx + 12);
+    
+    requestAnimationFrame(() => {
+        miniChart.timeScale().setVisibleRange({
+            from: raw[svIdx].timestamp / 1000,
+            to: raw[evIdx].timestamp / 1000
+        });
+    });
+    
+    MINI_CHARTS[vbsId] = miniChart;
+    MINI_CANDLE_SERIES[vbsId] = miniCandlestickSeries;
+    
+    updateScenarioIndicator(vbsId, scCode, sc);
+}
+
+function updateScenarioIndicator(vbsId, scCode, sc) {
+    const indicator = document.getElementById(`scenario_indicator_${vbsId}`);
+    if (!indicator) return;
+    
+    const scNames = {
+        S1: 'Baseline Bypass', S2: 'Minervini Filter', S3: 'EMA Filter',
+        S4: 'Tight SL / Trailing', S5: 'Multi-Timeframe', S6: 'Optimized Hybrid'
+    };
+    
+    if (sc && sc.executed) {
+        const pnl = (sc.pnl_pct * 100);
+        const pnlStr = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
+        const pnlColor = pnl >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
+        indicator.innerHTML = `Viewing: <strong>${scCode}</strong> ${scNames[scCode] || ''} — <span style="color:${pnlColor};font-weight:700;">${pnlStr} (${sc.outcome})</span>`;
+        indicator.style.display = 'inline-block';
+        indicator.style.borderColor = pnl >= 0 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)';
+        indicator.style.background = pnl >= 0 ? 'rgba(38, 166, 154, 0.08)' : 'rgba(239, 83, 80, 0.08)';
+    } else {
+        indicator.innerHTML = `Viewing: <strong>${scCode}</strong> ${scNames[scCode] || ''} — <span style="color:var(--text-dim);">FILTERED</span>`;
+        indicator.style.display = 'inline-block';
+        indicator.style.borderColor = 'rgba(100, 116, 139, 0.4)';
+        indicator.style.background = 'rgba(100, 116, 139, 0.08)';
+    }
+}
+
+function switchTradeScenario(vbsId, scenarioCode) {
+    SELECTED_TRADE_SCENARIO[vbsId] = scenarioCode;
+    initMiniChart(vbsId, scenarioCode);
+    renderAnalysisCharts(vbsId);
+}
+
+const formatUtcTime = (ts) => {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const da = String(d.getUTCDate()).padStart(2, '0');
+    const hr = String(d.getUTCHours()).padStart(2, '0');
+    const mi = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${mo}-${da} ${hr}:${mi}`;
+};
+
+const formatUtcDateShort = (ts) => {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const da = String(d.getUTCDate()).padStart(2, '0');
+    return `${mo}-${da}`;
+};
+
+const formatUtcDate = (ts) => {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const yr = d.getUTCFullYear();
+    const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const da = String(d.getUTCDate()).padStart(2, '0');
+    return `${yr}-${mo}-${da}`;
+};
+
+const entryExitLinesPlugin = {
+    id: 'entry_exit_lines',
+    afterDraw: (chart, args, options) => {
+        if (!options || !options.enabled) return;
+        const entryIdx = options.entryIdx;
+        const exitIdx = options.exitIdx;
+        const entryTime = options.entryTime;
+        const exitTime = options.exitTime;
+        
+        const ctx2d = chart.ctx;
+        const meta = chart.getDatasetMeta(0);
+        if (!meta || !meta.data || meta.data.length === 0) return;
+        
+        const yTop = chart.chartArea.top;
+        const yBottom = chart.chartArea.bottom;
+        
+        ctx2d.save();
+        
+        if (entryIdx !== undefined && entryIdx !== null && entryIdx >= 0 && entryIdx < meta.data.length) {
+            const el = meta.data[entryIdx];
+            if (el) {
+                const x = el.x;
+                ctx2d.beginPath();
+                ctx2d.moveTo(x, yTop);
+                ctx2d.lineTo(x, yBottom);
+                ctx2d.strokeStyle = 'rgba(38, 166, 154, 0.7)'; 
+                ctx2d.lineWidth = 1.5;
+                ctx2d.setLineDash([4, 3]);
+                ctx2d.stroke();
+                
+                ctx2d.fillStyle = 'rgba(38, 166, 154, 0.95)';
+                ctx2d.font = '8px JetBrains Mono, monospace';
+                ctx2d.textAlign = 'left';
+                ctx2d.fillText(`Entry: ${entryTime || ''}`, x + 4, yTop + 10);
+            }
+        }
+        
+        if (exitIdx !== undefined && exitIdx !== null && exitIdx >= 0 && exitIdx < meta.data.length) {
+            const el = meta.data[exitIdx];
+            if (el) {
+                const x = el.x;
+                ctx2d.beginPath();
+                ctx2d.moveTo(x, yTop);
+                ctx2d.lineTo(x, yBottom);
+                ctx2d.strokeStyle = 'rgba(239, 83, 80, 0.7)'; 
+                ctx2d.lineWidth = 1.5;
+                ctx2d.setLineDash([4, 3]);
+                ctx2d.stroke();
+                
+                ctx2d.fillStyle = 'rgba(239, 83, 80, 0.95)';
+                ctx2d.font = '8px JetBrains Mono, monospace';
+                
+                if (x > chart.width - 80) {
+                    ctx2d.textAlign = 'right';
+                    ctx2d.fillText(`Exit: ${exitTime || ''}`, x - 4, yTop + 22);
+                } else {
+                    ctx2d.textAlign = 'left';
+                    ctx2d.fillText(`Exit: ${exitTime || ''}`, x + 4, yTop + 22);
+                }
+            }
+        }
+        
+        ctx2d.restore();
+    }
+};
+
+function renderAnalysisCharts(vbsId) {
+    const data = TRADE_SIM_CACHE[vbsId];
+    if (!data) return;
+    
+    if (ANALYSIS_CHARTS[vbsId]) {
+        ANALYSIS_CHARTS[vbsId].forEach(c => {
+            try { c.destroy(); } catch (e) {}
+        });
+    }
+    ANALYSIS_CHARTS[vbsId] = [];
+    
+    const raw = data.candles;
+    const dailyRaw = data.daily_candles || [];
+    const scenarios = data.scenarios;
+    const info = data.signal_info;
+    const ctx_data = data.market_context;
+    
+    const selectedSc = SELECTED_TRADE_SCENARIO[vbsId] || SELECTED_SCENARIO || 'S4';
+    const scData = scenarios[selectedSc];
+
+    const c2Title = document.getElementById(`card2_title_${vbsId}`);
+    const c2ChartBox = document.getElementById(`card2_chart_box_${vbsId}`);
+    const c2CustomBox = document.getElementById(`card2_custom_box_${vbsId}`);
+    
+    const c3Title = document.getElementById(`card3_title_${vbsId}`);
+    const c3ChartBox = document.getElementById(`card3_chart_box_${vbsId}`);
+    const c3CustomBox = document.getElementById(`card3_custom_box_${vbsId}`);
+
+    if (c2ChartBox) c2ChartBox.style.display = 'block';
+    if (c2CustomBox) c2CustomBox.style.display = 'none';
+    if (c3ChartBox) c3ChartBox.style.display = 'block';
+    if (c3CustomBox) c3CustomBox.style.display = 'none';
+
+    const pnlCanvas = document.getElementById(`analysis_pnl_${vbsId}`);
+    if (pnlCanvas) {
+        const pnlCtx = pnlCanvas.getContext('2d');
+        const labels = [];
+        const pnlValues = [];
+        const bgColors = [];
+        const borderColors = [];
+        
+        for (const [code, sc] of Object.entries(scenarios)) {
+            labels.push(code);
+            if (sc.executed) {
+                const pnl = sc.pnl_pct * 100;
+                pnlValues.push(pnl);
+                bgColors.push(pnl >= 0 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)');
+                borderColors.push(pnl >= 0 ? '#26a69a' : '#ef5350');
+            } else {
+                pnlValues.push(0);
+                bgColors.push('rgba(100, 116, 139, 0.15)');
+                borderColors.push('rgba(100, 116, 139, 0.3)');
+            }
+        }
+        
+        const selectedIdx = labels.indexOf(selectedSc);
+        const highlightBorderWidths = labels.map((_, i) => i === selectedIdx ? 3 : 1.5);
+        const highlightBorderColors = borderColors.map((c, i) => {
+            if (i === selectedIdx) return '#FBBF24'; 
+            return c;
+        });
+        
+        const pnlChart = new Chart(pnlCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'P&L %',
+                    data: pnlValues,
+                    backgroundColor: bgColors,
+                    borderColor: highlightBorderColors,
+                    borderWidth: highlightBorderWidths,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const idx = elements[0].index;
+                        const clickedCode = labels[idx];
+                        switchTradeScenario(vbsId, clickedCode);
+                    }
+                },
+                onHover: (event, elements) => {
+                    event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(13,18,31,0.95)',
+                        borderColor: 'rgba(255,255,255,0.08)',
+                        borderWidth: 1,
+                        titleColor: '#F8FAFC', bodyColor: '#94A3B8',
+                        callbacks: {
+                            title: (items) => {
+                                const code = items[0]?.label;
+                                const isActive = code === selectedSc;
+                                return `${code} ${isActive ? '(ACTIVE)' : '— Click to switch'}`;
+                            },
+                            label: (ctx) => {
+                                const sc = scenarios[ctx.label];
+                                if (!sc || !sc.executed) return 'FILTERED — scenario not triggered';
+                                return `${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}% (${sc.outcome})`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: '#64748B', font: { size: 9, family: 'JetBrains Mono' } }, grid: { display: false } },
+                    y: {
+                        ticks: { color: '#64748B', font: { size: 8 }, callback: v => `${v.toFixed(1)}%` },
+                        grid: { color: 'rgba(255,255,255,0.03)' }
+                    }
+                }
+            }
+        });
+        ANALYSIS_CHARTS[vbsId].push(pnlChart);
+    }
+
+    const isLong = info.action === 'BUY' || info.action === 'LONG';
+    const emaCanvas = document.getElementById(`analysis_ema_${vbsId}`);
+    const volCanvas = document.getElementById(`analysis_vol_${vbsId}`);
+
+    if (selectedSc === 'S1') {
+        if (c2Title) c2Title.innerHTML = '📈 EMA Overlay (20 / 50 / 200)';
+        if (c3Title) c3Title.innerHTML = '📉 Hourly Volume Profile';
+        drawEmaOverlayChart(vbsId, emaCanvas, raw, info, selectedSc, scData);
+        drawVolumeProfileChart(vbsId, volCanvas, raw, true, info, scData);
+    } 
+    else if (selectedSc === 'S2') {
+        if (c2Title) c2Title.innerHTML = '📋 Trend Template Checklist';
+        if (c3Title) c3Title.innerHTML = '📊 VCP Contraction Ratios';
+
+        if (c2ChartBox) c2ChartBox.style.display = 'none';
+        if (c2CustomBox) {
+            c2CustomBox.style.display = 'block';
+            const tt = ctx_data.tt_details || {};
+            const keys = isLong ? 
+                ['Price > SMA150 & SMA200', 'SMA150 > SMA200', 'SMA200 Slope Up', 'SMA50 > SMA150 & SMA200', 'Price > SMA50', 'Price >= Low52w + 30%', 'Price >= High52w - 25%', 'RS Ratio vs BTC > 1'] :
+                ['Price < SMA150 & SMA200', 'SMA150 < SMA200', 'SMA200 Slope Down', 'SMA50 < SMA150 & SMA200', 'Price < SMA50', 'Price <= High52w - 30%', 'Price <= Low52w + 25%', 'RS Ratio vs BTC < 1'];
+            
+            let ttHtml = '<div class="tt-list">';
+            for (let i = 1; i <= 8; i++) {
+                const passed = tt[`c${i}`];
+                const cls = passed ? 'pass' : 'fail';
+                const icon = passed ? '✓' : '✗';
+                ttHtml += `
+                    <div class="tt-item ${cls}">
+                        <span class="tt-icon ${cls}">${icon}</span>
+                        <span class="tt-text" title="${keys[i-1]}">${keys[i-1]}</span>
+                    </div>`;
+            }
+            ttHtml += '</div>';
+            c2CustomBox.innerHTML = ttHtml;
+        }
+
+        drawVcpContractionChart(vbsId, volCanvas, ctx_data);
+    } 
+    else if (selectedSc === 'S3') {
+        if (c2Title) c2Title.innerHTML = '📈 Daily EMA Stack (20 / 50 / 100)';
+        if (c3Title) c3Title.innerHTML = '📉 Daily Volume Profile';
+        drawDailyEmaStackChart(vbsId, emaCanvas, dailyRaw, info, scData);
+        drawVolumeProfileChart(vbsId, volCanvas, dailyRaw, false, info, scData);
+    } 
+    else if (selectedSc === 'S4') {
+        if (c2Title) c2Title.innerHTML = '📏 ATR Channels & Trailing Stop';
+        if (c3Title) c3Title.innerHTML = '📉 Hourly Volume Profile';
+        drawAtrTrailingChart(vbsId, emaCanvas, raw, info, scData);
+        drawVolumeProfileChart(vbsId, volCanvas, raw, true, info, scData);
+    } 
+    else if (selectedSc === 'S5') {
+        if (c2Title) c2Title.innerHTML = '📋 Dual Trend Alignment Checklist';
+        if (c3Title) c3Title.innerHTML = '📈 Hourly EMA Stack (20 / 50 / 200)';
+        
+        if (c2ChartBox) c2ChartBox.style.display = 'none';
+        if (c2CustomBox) {
+            c2CustomBox.style.display = 'block';
+            const startHour = raw[info.relative_entry_idx] || {};
+            const h_ema20 = startHour.ema20 || 0;
+            const h_ema50 = startHour.ema50 || 0;
+            const h_ema200 = startHour.ema200 || 0;
+            const h_aligned = isLong ? (h_ema20 > h_ema50 && h_ema50 > h_ema200) : (h_ema20 < h_ema50 && h_ema50 < h_ema200);
+
+            const tt_score_ok = ctx_data.tt_score >= 5;
+
+            let h_desc = isLong ? `EMA20 ($${Math.round(h_ema20)}) > EMA50 ($${Math.round(h_ema50)}) > EMA200 ($${Math.round(h_ema200)})` :
+                                 `EMA20 ($${Math.round(h_ema20)}) < EMA50 ($${Math.round(h_ema50)}) < EMA200 ($${Math.round(h_ema200)})`;
+
+            c2CustomBox.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 10px; height: 100%; justify-content: center; padding: 4px 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: ${tt_score_ok ? 'rgba(38,166,154,0.04)' : 'rgba(239,83,80,0.02)'}; border: 1px solid ${tt_score_ok ? 'rgba(38,166,154,0.2)' : 'rgba(239,83,80,0.12)'}; border-radius: 8px;">
+                        <span class="tt-icon ${tt_score_ok ? 'pass' : 'fail'}" style="font-size:16px;">${tt_score_ok ? '✓' : '✗'}</span>
+                        <div>
+                            <div style="font-weight:700; font-size:11px; color:#ffffff;">1. Daily Trend Template Score</div>
+                            <div style="font-size:10px; color:var(--text-muted);">Score is ${ctx_data.tt_score}/8 (requires >= 5)</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: ${h_aligned ? 'rgba(38,166,154,0.04)' : 'rgba(239,83,80,0.02)'}; border: 1px solid ${h_aligned ? 'rgba(38,166,154,0.2)' : 'rgba(239,83,80,0.12)'}; border-radius: 8px;">
+                        <span class="tt-icon ${h_aligned ? 'pass' : 'fail'}" style="font-size:16px;">${h_aligned ? '✓' : '✗'}</span>
+                        <div>
+                            <div style="font-weight:700; font-size:11px; color:#ffffff;">2. Hourly EMA Alignment</div>
+                            <div style="font-size:9px; color:var(--text-muted); line-height: 1.2;">${h_desc}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        drawEmaOverlayChart(vbsId, volCanvas, raw, info, selectedSc, scData);
+    } 
+    else if (selectedSc === 'S6') {
+        if (c2Title) c2Title.innerHTML = '👁️ Daily RSI14 Chart';
+        if (c3Title) c3Title.innerHTML = '📊 Daily MACD Histogram';
+        drawDailyRsiChart(vbsId, emaCanvas, dailyRaw, ctx_data, info, scData);
+        drawDailyMacdChart(vbsId, volCanvas, dailyRaw, info, scData);
+    }
+}
+
+function drawEmaOverlayChart(vbsId, canvas, raw, info, selectedSc, sc) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const step = 1; 
+    const labels = [];
+    const closeData = [];
+    const ema20Data = [];
+    const ema50Data = [];
+    const ema200Data = [];
+    
+    for (let i = 0; i < raw.length; i += step) {
+        const c = raw[i];
+        const dt = new Date(c.timestamp);
+        labels.push(`${dt.getMonth()+1}/${dt.getDate()} ${dt.getHours()}h`);
+        closeData.push(c.close);
+        ema20Data.push(c.ema20 || null);
+        ema50Data.push(c.ema50 || null);
+        ema200Data.push(c.ema200 || null);
+    }
+    
+    const datasets = [
+        { label: 'Close', data: closeData, borderColor: '#d1d4dc', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+    ];
+    if (ema20Data.some(v => v !== null)) datasets.push({ label: 'EMA20', data: ema20Data, borderColor: '#FBBF24', borderWidth: 1.2, pointRadius: 0, tension: 0.2, borderDash: [3, 2] });
+    if (ema50Data.some(v => v !== null)) datasets.push({ label: 'EMA50', data: ema50Data, borderColor: '#38BDF8', borderWidth: 1.2, pointRadius: 0, tension: 0.2, borderDash: [3, 2] });
+    if (ema200Data.some(v => v !== null)) datasets.push({ label: 'EMA200', data: ema200Data, borderColor: '#C084FC', borderWidth: 1.2, pointRadius: 0, tension: 0.2, borderDash: [5, 3] });
+    
+    datasets.push({
+        label: 'Entry',
+        data: Array(labels.length).fill(info.price),
+        borderColor: '#26a69a',
+        borderWidth: 1,
+        pointRadius: 0,
+        borderDash: [6, 4],
+    });
+    
+    if (sc && sc.executed) {
+        datasets.push({
+            label: `SL`,
+            data: Array(labels.length).fill(sc.sl),
+            borderColor: '#ef5350',
+            borderWidth: 1,
+            pointRadius: 0,
+            borderDash: [4, 3],
+        });
+        datasets.push({
+            label: `TP`,
+            data: Array(labels.length).fill(sc.tp),
+            borderColor: '#2962ff',
+            borderWidth: 1,
+            pointRadius: 0,
+            borderDash: [4, 3],
+        });
+    }
+    
+    const entryIdx = info.relative_entry_idx;
+    const exitIdx = sc && sc.executed ? entryIdx + sc.bars : null;
+    const entryTime = formatUtcTime(raw[entryIdx]?.timestamp);
+    const exitTime = sc && sc.executed ? formatUtcTime(raw[exitIdx]?.timestamp || sc.close_time_ms) : '';
+    
+    const chartInst = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        plugins: [entryExitLinesPlugin],
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, labels: { color: '#94A3B8', font: { size: 8, family: 'Inter' }, boxWidth: 10 } },
+                tooltip: {
+                    backgroundColor: 'rgba(13,18,31,0.95)',
+                    callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString(undefined, {maximumFractionDigits: 0})}` }
+                },
+                entry_exit_lines: {
+                    enabled: true,
+                    entryIdx: entryIdx,
+                    exitIdx: exitIdx,
+                    entryTime: entryTime,
+                    exitTime: exitTime
+                }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    ticks: { color: '#64748B', font: { size: 8 }, callback: v => `$${(v/1000).toFixed(1)}k` },
+                    grid: { color: 'rgba(255,255,255,0.03)' }
+                }
+            }
+        }
+    });
+    ANALYSIS_CHARTS[vbsId].push(chartInst);
+}
+
+function drawVolumeProfileChart(vbsId, canvas, raw, isHourly, info, sc) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const step = 1; 
+    const labels = [];
+    const volData = [];
+    const volColors = [];
+    
+    for (let i = 0; i < raw.length; i += step) {
+        const c = raw[i];
+        const dt = new Date(c.timestamp);
+        labels.push(isHourly ? `${dt.getHours()}h` : `${dt.getMonth()+1}/${dt.getDate()}`);
+        volData.push(c.volume);
+        volColors.push(c.close >= c.open ? 'rgba(38, 166, 154, 0.35)' : 'rgba(239, 83, 80, 0.35)');
+    }
+    
+    let entryIdx = null;
+    let exitIdx = null;
+    let entryTime = '';
+    let exitTime = '';
+    
+    if (isHourly) {
+        if (info) {
+            entryIdx = info.relative_entry_idx;
+            entryTime = formatUtcTime(raw[entryIdx]?.timestamp);
+        }
+        if (sc && sc.executed && info) {
+            exitIdx = info.relative_entry_idx + sc.bars;
+            exitTime = formatUtcTime(raw[exitIdx]?.timestamp || sc.close_time_ms);
+        }
+    } else {
+        if (info) {
+            const entryHourTs = TRADE_SIM_CACHE[vbsId]?.candles[info.relative_entry_idx]?.timestamp;
+            if (entryHourTs) {
+                const entryDateStr = formatUtcDate(entryHourTs);
+                entryIdx = raw.findIndex(c => formatUtcDate(c.timestamp) === entryDateStr);
+                entryTime = formatUtcDateShort(entryHourTs);
+            }
+        }
+        if (sc && sc.executed && sc.close_time_ms) {
+            const exitDateStr = formatUtcDate(sc.close_time_ms);
+            exitIdx = raw.findIndex(c => formatUtcDate(c.timestamp) === exitDateStr);
+            exitTime = formatUtcDateShort(sc.close_time_ms);
+        }
+    }
+    
+    const chartInst = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Volume',
+                data: volData,
+                backgroundColor: volColors,
+                borderWidth: 0,
+                borderRadius: 2,
+            }]
+        },
+        plugins: [entryExitLinesPlugin],
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(13,18,31,0.95)',
+                    callbacks: { label: (ctx) => `Vol: ${ctx.parsed.y?.toLocaleString()}` }
+                },
+                entry_exit_lines: {
+                    enabled: true,
+                    entryIdx: entryIdx,
+                    exitIdx: exitIdx,
+                    entryTime: entryTime,
+                    exitTime: exitTime
+                }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    ticks: { color: '#64748B', font: { size: 8 }, callback: v => `${(v/1e6).toFixed(1)}M` },
+                    grid: { color: 'rgba(255,255,255,0.03)' }
+                }
+            }
+        }
+    });
+    ANALYSIS_CHARTS[vbsId].push(chartInst);
+}
+
+function drawVcpContractionChart(vbsId, canvas, ctx_data) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    const vol_ratio = ctx_data.volume_ratio;
+    const range_ratio = ctx_data.range_ratio;
+    
+    const chartInst = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Volume Ratio', 'Range Ratio'],
+            datasets: [{
+                data: [vol_ratio, range_ratio],
+                backgroundColor: [
+                    vol_ratio < 0.5 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)',
+                    range_ratio < 0.5 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
+                ],
+                borderColor: [
+                    vol_ratio < 0.5 ? '#26a69a' : '#ef5350',
+                    range_ratio < 0.5 ? '#26a69a' : '#ef5350'
+                ],
+                borderWidth: 1.5,
+                borderRadius: 6,
+                barPercentage: 0.5
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(13,18,31,0.95)',
+                    callbacks: {
+                        label: (c) => `${c.label}: ${c.parsed.y.toFixed(2)}x ${c.parsed.y < 0.5 ? '(CONTRACTED ✓)' : '(EXPANDED ✗)'}`
+                    }
+                }
+            },
+            scales: {
+                x: { ticks: { color: '#64748B', font: { size: 9, family: 'Inter' } }, grid: { display: false } },
+                y: {
+                    ticks: { color: '#64748B', font: { size: 8 } },
+                    grid: { color: 'rgba(255,255,255,0.03)' },
+                    suggestedMax: 1.0
+                }
+            }
+        },
+        plugins: [{
+            id: 'vcp_threshold_line',
+            afterDraw: (chart) => {
+                const yScale = chart.scales.y;
+                const yPos = yScale.getPixelForValue(0.5);
+                const ctx2d = chart.ctx;
+                ctx2d.save();
+                ctx2d.beginPath();
+                ctx2d.moveTo(chart.scales.x.left, yPos);
+                ctx2d.lineTo(chart.scales.x.right, yPos);
+                ctx2d.strokeStyle = 'rgba(255, 152, 0, 0.4)';
+                ctx2d.lineWidth = 1;
+                ctx2d.setLineDash([4, 4]);
+                ctx2d.stroke();
+                ctx2d.fillStyle = 'rgba(255, 152, 0, 0.7)';
+                ctx2d.font = '8px JetBrains Mono';
+                ctx2d.fillText('0.5 Limit', chart.scales.x.left + 5, yPos - 3);
+                ctx2d.restore();
+            }
+        }]
+    });
+    ANALYSIS_CHARTS[vbsId].push(chartInst);
+}
+
+function drawDailyEmaStackChart(vbsId, canvas, dailyRaw, info, sc) {
+    if (!canvas || dailyRaw.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    
+    const labels = [];
+    const closeData = [];
+    const ema20Data = [];
+    const ema50Data = [];
+    const ema100Data = [];
+    
+    dailyRaw.forEach(c => {
+        const dt = new Date(c.timestamp);
+        labels.push(`${dt.getMonth()+1}/${dt.getDate()}`);
+        closeData.push(c.close);
+        ema20Data.push(c.ema20 || null);
+        ema50Data.push(c.ema50 || null);
+        ema100Data.push(c.ema100 || null);
+    });
+    
+    let entryIdx = null;
+    let exitIdx = null;
+    let entryTime = '';
+    let exitTime = '';
+    
+    const data = TRADE_SIM_CACHE[vbsId];
+    if (data && info) {
+        const entryHourTs = data.candles[info.relative_entry_idx]?.timestamp;
+        if (entryHourTs) {
+            const entryDateStr = formatUtcDate(entryHourTs);
+            entryIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === entryDateStr);
+            entryTime = formatUtcDateShort(entryHourTs);
+        }
+    }
+    if (sc && sc.executed && sc.close_time_ms) {
+        const exitDateStr = formatUtcDate(sc.close_time_ms);
+        exitIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === exitDateStr);
+        exitTime = formatUtcDateShort(sc.close_time_ms);
+    }
+    
+    const chartInst = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Daily Close', data: closeData, borderColor: '#d1d4dc', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+                { label: 'Daily EMA20', data: ema20Data, borderColor: '#FBBF24', borderWidth: 1.2, pointRadius: 0, tension: 0.2 },
+                { label: 'Daily EMA50', data: ema50Data, borderColor: '#38BDF8', borderWidth: 1.2, pointRadius: 0, tension: 0.2 },
+                { label: 'Daily EMA100', data: ema100Data, borderColor: '#C084FC', borderWidth: 1.2, pointRadius: 0, tension: 0.2, borderDash: [3, 2] }
+            ]
+        },
+        plugins: [entryExitLinesPlugin],
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, labels: { color: '#94A3B8', font: { size: 8 }, boxWidth: 10 } },
+                tooltip: {
+                    backgroundColor: 'rgba(13,18,31,0.95)',
+                    callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString(undefined, {maximumFractionDigits: 0})}` }
+                },
+                entry_exit_lines: {
+                    enabled: true,
+                    entryIdx: entryIdx,
+                    exitIdx: exitIdx,
+                    entryTime: entryTime,
+                    exitTime: exitTime
+                }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    ticks: { color: '#64748B', font: { size: 8 }, callback: v => `$${(v/1000).toFixed(1)}k` },
+                    grid: { color: 'rgba(255,255,255,0.03)' }
+                }
+            }
+        }
+    });
+    ANALYSIS_CHARTS[vbsId].push(chartInst);
+}
+
+function drawAtrTrailingChart(vbsId, canvas, raw, info, sc) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    const step = 1; 
+    const labels = [];
+    const closeData = [];
+    const trailData = [];
+    
+    const entry_idx = info.relative_entry_idx;
+    const trailHistory = sc ? sc.trailing_sl_history || [] : [];
+    
+    for (let i = 0; i < raw.length; i += step) {
+        const c = raw[i];
+        const dt = new Date(c.timestamp);
+        labels.push(`${dt.getMonth()+1}/${dt.getDate()} ${dt.getHours()}h`);
+        closeData.push(c.close);
+        
+        let trailVal = null;
+        if (i >= entry_idx) {
+            const hist_idx = i - entry_idx;
+            if (hist_idx < trailHistory.length) {
+                trailVal = trailHistory[hist_idx];
+            }
+        }
+        trailData.push(trailVal);
+    }
+    
+    const datasets = [
+        { label: 'Close', data: closeData, borderColor: '#d1d4dc', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+        { label: 'Entry Price', data: Array(labels.length).fill(info.price), borderColor: '#26a69a', borderWidth: 1, pointRadius: 0, borderDash: [6, 4] }
+    ];
+    
+    if (trailHistory.length > 0) {
+        datasets.push({
+            label: 'Trailing Stop',
+            data: trailData,
+            borderColor: '#ff9800',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.05,
+            borderDash: [2, 2]
+        });
+    } else if (sc && sc.sl) {
+        datasets.push({
+            label: 'Static SL',
+            data: Array(labels.length).fill(sc.sl),
+            borderColor: '#ef5350',
+            borderWidth: 1.2,
+            pointRadius: 0,
+            borderDash: [4, 3]
+        });
+    }
+    
+    if (sc && sc.tp) {
+        datasets.push({
+            label: 'TP',
+            data: Array(labels.length).fill(sc.tp),
+            borderColor: '#2962ff',
+            borderWidth: 1.2,
+            pointRadius: 0,
+            borderDash: [4, 3]
+        });
+    }
+    
+    const entryIdx = info.relative_entry_idx;
+    const exitIdx = sc && sc.executed ? entryIdx + sc.bars : null;
+    const entryTime = formatUtcTime(raw[entryIdx]?.timestamp);
+    const exitTime = sc && sc.executed ? formatUtcTime(raw[exitIdx]?.timestamp || sc.close_time_ms) : '';
+    
+    const chartInst = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        plugins: [entryExitLinesPlugin],
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, labels: { color: '#94A3B8', font: { size: 8 }, boxWidth: 10 } },
+                tooltip: {
+                    backgroundColor: 'rgba(13,18,31,0.95)',
+                    callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString(undefined, {maximumFractionDigits: 0})}` }
+                },
+                entry_exit_lines: {
+                    enabled: true,
+                    entryIdx: entryIdx,
+                    exitIdx: exitIdx,
+                    entryTime: entryTime,
+                    exitTime: exitTime
+                }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    ticks: { color: '#64748B', font: { size: 8 }, callback: v => `$${(v/1000).toFixed(1)}k` },
+                    grid: { color: 'rgba(255,255,255,0.03)' }
+                }
+            }
+        }
+    });
+    ANALYSIS_CHARTS[vbsId].push(chartInst);
+}
+
+function drawDailyRsiChart(vbsId, canvas, dailyRaw, ctx_data, info, sc) {
+    if (!canvas || dailyRaw.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    
+    const labels = [];
+    const rsiData = [];
+    
+    dailyRaw.forEach(c => {
+        const dt = new Date(c.timestamp);
+        labels.push(`${dt.getMonth()+1}/${dt.getDate()}`);
+        rsiData.push(c.rsi14 || null);
+    });
+    
+    let entryIdx = null;
+    let exitIdx = null;
+    let entryTime = '';
+    let exitTime = '';
+    
+    const data = TRADE_SIM_CACHE[vbsId];
+    if (data && info) {
+        const entryHourTs = data.candles[info.relative_entry_idx]?.timestamp;
+        if (entryHourTs) {
+            const entryDateStr = formatUtcDate(entryHourTs);
+            entryIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === entryDateStr);
+            entryTime = formatUtcDateShort(entryHourTs);
+        }
+    }
+    if (sc && sc.executed && sc.close_time_ms) {
+        const exitDateStr = formatUtcDate(sc.close_time_ms);
+        exitIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === exitDateStr);
+        exitTime = formatUtcDateShort(sc.close_time_ms);
+    }
+    
+    const chartInst = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Daily RSI14',
+                data: rsiData,
+                borderColor: '#c084fc',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                tension: 0.1,
+                fill: false
+            }]
+        },
+        plugins: [entryExitLinesPlugin, {
+            id: 'rsi_threshold_line',
+            afterDraw: (chart) => {
+                const yScale = chart.scales.y;
+                const yPosThreshold = yScale.getPixelForValue(50.0);
+                const ctx2d = chart.ctx;
+                
+                ctx2d.save();
+                ctx2d.beginPath();
+                ctx2d.moveTo(chart.scales.x.left, yPosThreshold);
+                ctx2d.lineTo(chart.scales.x.right, yPosThreshold);
+                ctx2d.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx2d.lineWidth = 1;
+                ctx2d.stroke();
+                
+                ctx2d.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx2d.font = '8px JetBrains Mono';
+                ctx2d.fillText('50 Line', chart.scales.x.left + 5, yPosThreshold - 3);
+                ctx2d.restore();
+            }
+        }],
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(13,18,31,0.95)',
+                    callbacks: { label: (c) => `RSI: ${c.parsed.y.toFixed(2)}` }
+                },
+                entry_exit_lines: {
+                    enabled: true,
+                    entryIdx: entryIdx,
+                    exitIdx: exitIdx,
+                    entryTime: entryTime,
+                    exitTime: exitTime
+                }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    ticks: { color: '#64748B', font: { size: 8 } },
+                    grid: { color: 'rgba(255,255,255,0.03)' },
+                    min: 0, max: 100
+                }
+            }
+        }
+    });
+    ANALYSIS_CHARTS[vbsId].push(chartInst);
+}
+
+function drawDailyMacdChart(vbsId, canvas, dailyRaw, info, sc) {
+    if (!canvas || dailyRaw.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    
+    const labels = [];
+    const macdLine = [];
+    const macdSig = [];
+    const macdHist = [];
+    const histColors = [];
+    
+    dailyRaw.forEach(c => {
+        const dt = new Date(c.timestamp);
+        labels.push(`${dt.getMonth()+1}/${dt.getDate()}`);
+        macdLine.push(c.macd_line || null);
+        macdSig.push(c.macd_signal || null);
+        
+        const hist = (c.macd_line || 0) - (c.macd_signal || 0);
+        macdHist.push(hist);
+        histColors.push(hist >= 0 ? 'rgba(38, 166, 154, 0.4)' : 'rgba(239, 83, 80, 0.4)');
+    });
+    
+    let entryIdx = null;
+    let exitIdx = null;
+    let entryTime = '';
+    let exitTime = '';
+    
+    const data = TRADE_SIM_CACHE[vbsId];
+    if (data && info) {
+        const entryHourTs = data.candles[info.relative_entry_idx]?.timestamp;
+        if (entryHourTs) {
+            const entryDateStr = formatUtcDate(entryHourTs);
+            entryIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === entryDateStr);
+            entryTime = formatUtcDateShort(entryHourTs);
+        }
+    }
+    if (sc && sc.executed && sc.close_time_ms) {
+        const exitDateStr = formatUtcDate(sc.close_time_ms);
+        exitIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === exitDateStr);
+        exitTime = formatUtcDateShort(sc.close_time_ms);
+    }
+    
+    const chartInst = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Histogram',
+                    type: 'bar',
+                    data: macdHist,
+                    backgroundColor: histColors,
+                    borderWidth: 0,
+                    borderRadius: 2,
+                    order: 2
+                },
+                {
+                    label: 'MACD',
+                    type: 'line',
+                    data: macdLine,
+                    borderColor: '#38BDF8',
+                    borderWidth: 1.2,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    fill: false,
+                    order: 1
+                },
+                {
+                    label: 'Signal',
+                    type: 'line',
+                    data: macdSig,
+                    borderColor: '#ff9800',
+                    borderWidth: 1.2,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    fill: false,
+                    order: 1
+                }
+            ]
+        },
+        plugins: [entryExitLinesPlugin],
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, labels: { color: '#94A3B8', font: { size: 8 }, boxWidth: 10 } },
+                tooltip: {
+                    backgroundColor: 'rgba(13,18,31,0.95)',
+                    callbacks: {
+                        label: (c) => `${c.dataset.label}: ${c.parsed.y?.toFixed(1)}`
+                    }
+                },
+                entry_exit_lines: {
+                    enabled: true,
+                    entryIdx: entryIdx,
+                    exitIdx: exitIdx,
+                    entryTime: entryTime,
+                    exitTime: exitTime
+                }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    ticks: { color: '#64748B', font: { size: 8 } },
+                    grid: { color: 'rgba(255,255,255,0.03)' }
+                }
+            }
+        }
+    });
+    ANALYSIS_CHARTS[vbsId].push(chartInst);
+}
+
+// —"?—"? Boot —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
 set("footer-time", new Date().toISOString().substring(0,16).replace("T"," ")+" UTC");
 initSignalChart();
 setTab('both');
@@ -3364,5 +5322,24 @@ loadServerStats();
 setInterval(refresh, POLL_MS);
 setInterval(loadServerStats, 60000); // Update stats every 60s
 </script>
+
+<!-- Replay Modal Overlay -->
+<div id="replay_modal" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3 id="modal_title">Trade Replay Viewer</h3>
+            <button class="modal-close" onclick="closeReplayModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <iframe id="replay_iframe" src="" frameborder="0" style="width: 100%; height: 100%;"></iframe>
+        </div>
+        <div class="modal-footer">
+            <button id="modal_prev_btn" class="modal-nav-btn" onclick="navigateModal(-1)">&larr; Previous</button>
+            <span id="modal_counter" class="modal-counter">1 / 710</span>
+            <button id="modal_next_btn" class="modal-nav-btn" onclick="navigateModal(1)">Next &rarr;</button>
+        </div>
+    </div>
+</div>
+
 </body>
 </html>
