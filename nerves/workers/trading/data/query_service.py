@@ -40,23 +40,40 @@ async def get_trades(
             "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
         )
 
+    join_clause = ""
+    if mode:
+        conditions.append("s.mode = ?")
+        params.append(mode)
+        join_clause = "JOIN signals s ON t.signal_id = s.id"
+        if isinstance(mode, str) and mode.upper() == "FORWARD":
+            conditions.append("s.id >= 1000000")
+
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
-    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    db_path = (
+        config.FORWARD_DB_PATH
+        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        else config.DB_PATH
+    )
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
         # Count total
-        sql_query = f"SELECT COUNT(*) as cnt FROM trades t {where}"  # noqa: S608
+        sql_query = f"SELECT COUNT(*) as cnt FROM trades t {join_clause} {where}"  # noqa: S608
         row = await db.execute_fetchall(sql_query, params)
         total = row[0][0] if row else 0
 
         # Fetch page
         limit = min(limit, 200)
+        join_sql = (
+            "JOIN signals s ON s.id = t.signal_id"
+            if mode
+            else "LEFT JOIN signals s ON s.id = t.signal_id"
+        )
         sql_query = f"""SELECT t.*, s.action as signal_action, s.payload as signal_payload,
                        sl.twitter_score, sl.rss_score, sl.glassnode_score, sl.combined_score as sentiment_score, sl.raw_data as sentiment_raw
                 FROM trades t
-                LEFT JOIN signals s ON s.id = t.signal_id
+                {join_sql}
                 LEFT JOIN sentiment_logs sl ON sl.id = (
                     SELECT id FROM sentiment_logs
                     WHERE symbol = t.symbol
@@ -102,13 +119,27 @@ async def get_stats(
             "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
         )
 
+    join_clause = ""
+    if mode:
+        conditions.append("s.mode = ?")
+        params.append(mode)
+        join_clause = "JOIN signals s ON t.signal_id = s.id"
+        if isinstance(mode, str) and mode.upper() == "FORWARD":
+            conditions.append("s.id >= 1000000")
+
     where = f"WHERE {' AND '.join(conditions)}"
 
-    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    db_path = (
+        config.FORWARD_DB_PATH
+        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        else config.DB_PATH
+    )
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
-        sql_query = f"SELECT pnl FROM trades t {where} AND pnl IS NOT NULL"  # noqa: S608
+        sql_query = (
+            f"SELECT t.pnl FROM trades t {join_clause} {where} AND t.pnl IS NOT NULL"  # noqa: S608
+        )
         rows = await db.execute_fetchall(sql_query, params)
 
         pnl_list = [r[0] for r in rows]
@@ -209,9 +240,15 @@ async def get_stats_by_mode(
         where_conds.append(
             "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
         )
+    if isinstance(mode, str) and mode.upper() == "FORWARD":
+        where_conds.append("s.id >= 1000000")
     where_clause = " AND ".join(where_conds)
 
-    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    db_path = (
+        config.FORWARD_DB_PATH
+        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        else config.DB_PATH
+    )
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
         sql_query = f"""
@@ -270,13 +307,27 @@ async def get_recent_trades(
         conditions.append(
             "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
         )
+    if mode:
+        conditions.append("s.mode = ?")
+        params.append(mode)
+        if isinstance(mode, str) and mode.upper() == "FORWARD":
+            conditions.append("s.id >= 1000000")
 
     where = f"WHERE {' AND '.join(conditions)}"
     params.append(limit)
 
-    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    db_path = (
+        config.FORWARD_DB_PATH
+        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        else config.DB_PATH
+    )
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
+        join_sql = (
+            "JOIN signals s ON s.id = t.signal_id"
+            if mode
+            else "LEFT JOIN signals s ON s.id = t.signal_id"
+        )
         sql_query = f"""
             SELECT t.id,
                    t.created_at,
@@ -290,7 +341,7 @@ async def get_recent_trades(
                    t.status,
                    t.exchange
             FROM trades t
-            LEFT JOIN signals s ON s.id = t.signal_id
+            {join_sql}
             {where}
             ORDER BY t.created_at DESC
             LIMIT ?
@@ -319,14 +370,26 @@ async def get_equity_curve(
             "(LOWER(t.exchange) = 'weex' OR (t.order_type != 'DRY_RUN' AND t.order_id IS NOT NULL AND t.order_id NOT LIKE 'DRY-%' AND t.order_id NOT LIKE 'ORD%'))"
         )
 
+    join_clause = ""
+    if mode:
+        conditions.append("s.mode = ?")
+        params.append(mode)
+        join_clause = "JOIN signals s ON t.signal_id = s.id"
+        if isinstance(mode, str) and mode.upper() == "FORWARD":
+            conditions.append("s.id >= 1000000")
+
     where = f"WHERE {' AND '.join(conditions)}"
 
-    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    db_path = (
+        config.FORWARD_DB_PATH
+        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        else config.DB_PATH
+    )
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
-        sql_query = f"""SELECT t.created_at, t.pnl, t.symbol, t.side
-                FROM trades t {where}
+        sql_query = f"""SELECT t.created_at, t.pnl, t.symbol, t.side, t.signal_id
+                FROM trades t {join_clause} {where}
                 ORDER BY t.created_at ASC"""  # noqa: S608
         rows = await db.execute_fetchall(sql_query, params)
 
@@ -353,6 +416,7 @@ async def get_equity_curve(
                     "side": r[3],
                     "cumulative": round(running, 2),
                     "drawdown_pct": dd_pct,
+                    "signal_id": r[4],
                 }
             )
 
@@ -562,18 +626,30 @@ async def get_signals(
         params.append(symbol.upper())
 
     if state:
-        query_parts.append("state = ?")
-        params.append(state.upper())
+        states = [s.strip().upper() for s in state.split(",")]
+        if len(states) == 1:
+            query_parts.append("state = ?")
+            params.append(states[0])
+        else:
+            placeholders = ",".join("?" for _ in states)
+            query_parts.append(f"state IN ({placeholders})")
+            params.extend(states)
 
     if mode:
         query_parts.append("mode = ?")
         params.append(mode)
+        if isinstance(mode, str) and mode.upper() == "FORWARD":
+            query_parts.append("id >= 1000000")
 
     where_clause = " WHERE " + " AND ".join(query_parts) if query_parts else ""
 
-    limit = min(limit, 200)
+    limit = min(limit, 1000)
 
-    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    db_path = (
+        config.FORWARD_DB_PATH
+        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        else config.DB_PATH
+    )
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 

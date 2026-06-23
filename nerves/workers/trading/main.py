@@ -421,6 +421,16 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
+# ── CORS Middleware — allows dashboard_live.html (file:// origin) ────────────
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
+
 # ── WebhookGateway router (Component 8/8) ────────────────────────────────────
 app.include_router(_webhook_router)
 
@@ -1660,7 +1670,11 @@ async def get_trade_analysis_endpoint(
 
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
-    db_path = config.FORWARD_DB_PATH if mode == "FORWARD" else config.DB_PATH
+    db_path = (
+        config.FORWARD_DB_PATH
+        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        else config.DB_PATH
+    )
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 

@@ -1,0 +1,3172 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📊 Angati — Forward Test | localhost:5000</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="/static/lightweight-charts.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c14;
+    --surface: #0d1421;
+    --surface2: #111827;
+    --surface3: #1a2232;
+    --border: #1e2d42;
+    --border2: #243350;
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --text-dim: #374151;
+    --green: #10d98a;
+    --green2: #06b672;
+    --red: #f43f5e;
+    --red2: #e11d48;
+    --yellow: #fbbf24;
+    --blue: #38bdf8;
+    --blue2: #0ea5e9;
+    --purple: #a78bfa;
+    --orange: #fb923c;
+    --cyan: #22d3ee;
+    --live-color: #10d98a;
+    --forward-color: #38bdf8;
+    --grad-green: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+    --grad-blue: linear-gradient(135deg, #0c2340 0%, #0e3460 100%);
+    --grad-header: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    overflow-x: hidden;
+  }
+
+  /* —"?—"? Animated Background —"?—"? */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 30%, rgba(56,189,248,0.04) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 30% at 80% 70%, rgba(16,217,138,0.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* —"?—"? Header —"?—"? */
+  .header {
+    background: var(--grad-header);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(20px);
+  }
+  .header-left h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--green) 0%, var(--blue) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.02em;
+  }
+  .header-left .subtitle {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16,217,138,0.1);
+    border: 1px solid rgba(16,217,138,0.3);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--green);
+  }
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+  .api-url {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+  }
+  .last-updated {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+
+  /* —"?—"? Mode Tabs —"?—"? */
+  .mode-tabs {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    gap: 4px;
+  }
+  .tab-btn {
+    padding: 10px 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab-btn.active-forward {
+    color: var(--blue);
+    border-bottom-color: var(--blue);
+    background: rgba(56,189,248,0.05);
+  }
+  .tab-btn.active-live {
+    color: var(--green);
+    border-bottom-color: var(--green);
+    background: rgba(16,217,138,0.05);
+  }
+  .tab-btn.active-both {
+    color: var(--purple);
+    border-bottom-color: var(--purple);
+    background: rgba(167,139,250,0.05);
+  }
+  .tab-count {
+    display: inline-block;
+    background: var(--surface3);
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 0.68rem;
+    margin-left: 6px;
+  }
+
+  /* —"?—"? Layout —"?—"? */
+  .container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 24px 32px;
+    position: relative; z-index: 1;
+  }
+  .section { margin-bottom: 28px; }
+  .section-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* —"?—"? KPI Cards —"?—"? */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .kpi-card:hover::before { opacity: 1; }
+  .kpi-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .kpi-card.forward::before { background: var(--blue); }
+  .kpi-card.live::before { background: var(--green); }
+  .kpi-card.neutral::before { background: var(--purple); }
+  .kpi-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .kpi-value { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+  .kpi-sub { font-size: 0.68rem; color: var(--text-muted); margin-top: 6px; }
+  .kpi-mode {
+    position: absolute; top: 8px; right: 10px;
+    font-size: 0.6rem; font-weight: 700; letter-spacing: 0.04em;
+    padding: 2px 6px; border-radius: 6px;
+  }
+  .kpi-mode.fw { background: rgba(56,189,248,0.15); color: var(--blue); }
+  .kpi-mode.lv { background: rgba(16,217,138,0.15); color: var(--green); }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+  .neu { color: var(--blue); }
+
+  /* —"?—"? Dual Panel —"?—"? */
+  .dual-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .panel-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    overflow: hidden;
+  }
+  .panel-card.forward-panel { border-top: 3px solid var(--blue); }
+  .panel-card.live-panel { border-top: 3px solid var(--green); }
+  .panel-card.chart-panel { border-top: 3px solid var(--cyan); padding: 12px; }
+  .chart-panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px; padding: 0 4px;
+  }
+  .chart-panel-title { font-size: 0.85rem; font-weight: 700; color: var(--cyan); }
+  .chart-symbol-tabs { display: flex; gap: 4px; }
+  .chart-sym-btn {
+    padding: 3px 10px; border-radius: 6px; font-size: 0.68rem; font-weight: 600;
+    border: 1px solid var(--border); background: transparent; color: var(--text-muted);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .chart-sym-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+  .chart-sym-btn.active { background: rgba(34,211,238,0.15); border-color: var(--cyan); color: var(--cyan); }
+  .chart-container-wrap {
+    border-radius: 10px; overflow: hidden; background: #131722;
+    border: 1px solid rgba(42,58,89,0.4); position: relative;
+  }
+  .chart-signal-info {
+    position: absolute; top: 8px; left: 10px; z-index: 10;
+    background: rgba(13,20,33,0.85); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 12px; font-size: 0.72rem;
+    backdrop-filter: blur(8px); display: none;
+  }
+  .chart-signal-info .sig-id { color: var(--cyan); font-weight: 700; }
+  .chart-signal-info .sig-price { color: var(--green); }
+  .chart-signal-info .sig-action-buy { color: var(--green); font-weight: 700; }
+  .chart-signal-info .sig-action-sell { color: var(--red); font-weight: 700; }
+  #fwd-tbody tr { cursor: pointer; transition: background 0.15s; }
+  #fwd-tbody tr:hover { background: rgba(34,211,238,0.06) !important; }
+  #fwd-tbody tr.active-signal { background: rgba(34,211,238,0.12) !important; border-left: 3px solid var(--cyan); }
+  .server-stats-badge {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600;
+    background: rgba(167,139,250,0.1); color: var(--purple);
+    border: 1px solid rgba(167,139,250,0.25);
+  }
+  .server-stats-badge .stat-num { color: var(--text); font-family: 'JetBrains Mono', monospace; }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .panel-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+  .panel-title.fw { color: var(--blue); }
+  .panel-title.lv { color: var(--green); }
+  .panel-badge {
+    font-size: 0.68rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+  .panel-badge.fw { background: rgba(56,189,248,0.1); color: var(--blue); border: 1px solid rgba(56,189,248,0.2); }
+  .panel-badge.lv { background: rgba(16,217,138,0.1); color: var(--green); border: 1px solid rgba(16,217,138,0.2); }
+
+  /* —"?—"? Mini KPI Row —"?—"? */
+  .mini-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .mini-kpi {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+  }
+  .mini-kpi-label { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .mini-kpi-val { font-size: 1.1rem; font-weight: 700; margin-top: 3px; }
+
+  /* —"?—"? Signal Table —"?—"? */
+  .signal-table-wrap { overflow-x: auto; max-height: 520px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  .table-header-select {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.65rem;
+    font-weight: bold;
+    outline: none;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color 0.2s, background-color 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .table-header-select:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  .table-header-select option {
+    background-color: #131722;
+    color: #fff;
+    font-weight: normal;
+    text-transform: uppercase;
+  }
+  .table-header-select {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.65rem;
+    font-weight: bold;
+    outline: none;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color 0.2s, background-color 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .table-header-select:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  .table-header-select option {
+    background-color: #131722;
+    color: #fff;
+    font-weight: normal;
+    text-transform: uppercase;
+  }
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 7px 10px;
+    border-bottom: 1px solid rgba(30,45,66,0.5);
+    font-size: 0.77rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  tr:hover td { background: rgba(30,45,66,0.4); }
+  tr:last-child td { border-bottom: none; }
+  .sym { color: var(--blue); font-weight: 700; font-family: 'Inter', sans-serif; }
+  .buy-tag  { color: var(--green); font-weight: 700; }
+  .sell-tag { color: var(--red); font-weight: 700; }
+  .id-tag { color: var(--text-muted); font-size: 0.68rem; }
+  .mode-tag-fw { background: rgba(56,189,248,0.12); color: var(--blue); padding: 2px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 600; font-family: 'Inter', sans-serif; }
+  .mode-tag-lv { background: rgba(16,217,138,0.12); color: var(--green); padding: 2px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 600; font-family: 'Inter', sans-serif; }
+  .status-badge { padding: 2px 7px; border-radius: 6px; font-size: 0.65rem; font-weight: 600; font-family: 'Inter', sans-serif; }
+  .status-pending  { background: rgba(251,191,36,0.15); color: var(--yellow); }
+  .status-done     { background: rgba(16,217,138,0.12); color: var(--green); }
+  .status-failed   { background: rgba(244,63,94,0.12); color: var(--red); }
+
+  /* —"?—"? Charts —"?—"? */
+  .chart-row { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 14px; }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .chart-card h3 { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; font-weight: 500; }
+  .chart-card canvas { max-height: 180px; }
+
+  /* —"?—"? Alert Panel —"?—"? */
+  .alert-strip {
+    background: rgba(56,189,248,0.04);
+    border: 1px solid rgba(56,189,248,0.15);
+    border-radius: 12px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .alert-strip-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 1px; }
+  .alert-strip-body { flex: 1; }
+  .alert-strip-title { font-size: 0.8rem; font-weight: 700; color: var(--blue); margin-bottom: 4px; }
+  .alert-strip-desc { font-size: 0.74rem; color: var(--text-muted); line-height: 1.5; }
+  .alert-strip code { font-family: 'JetBrains Mono', monospace; background: var(--surface3); padding: 1px 6px; border-radius: 4px; color: var(--cyan); font-size: 0.72rem; }
+
+  /* —"?—"? Config Panel —"?—"? */
+  .config-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .config-item {
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .config-key { font-size: 0.68rem; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .config-val { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--cyan); }
+
+  /* —"?—"? Footer —"?—"? */
+  .footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    padding: 20px 32px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* —"?—"? Responsive —"?—"? */
+  @media (max-width: 1100px) {
+    .dual-panel { grid-template-columns: 1fr; }
+    .chart-row { grid-template-columns: 1fr; }
+    .config-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 700px) {
+    .container { padding: 16px; }
+    .header { padding: 14px 16px; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .mini-kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .mini-kpi-row-5 { grid-template-columns: repeat(2, 1fr); }
+    .config-grid { grid-template-columns: 1fr; }
+  }
+
+  /* —"?—"? Extended Mini-KPI Row (5 columns) —"?—"? */
+  .mini-kpi-row-5 {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 1100px) {
+    .mini-kpi-row-5 { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* —"?—"? Backtest Reference Section —"?—"? */
+  .backtest-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .backtest-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    transition: background 0.2s;
+  }
+  .backtest-toggle:hover { background: rgba(56,189,248,0.04); }
+  .backtest-toggle-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .backtest-toggle-chevron {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    transition: transform 0.3s;
+  }
+  .backtest-toggle-chevron.open { transform: rotate(90deg); }
+  .backtest-body {
+    display: none;
+    padding: 0 20px 20px;
+    animation: fadeSlide 0.3s ease;
+  }
+  .backtest-body.open { display: block; }
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* —"?—"? Benchmark Table —"?—"? */
+  .benchmark-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .benchmark-table th {
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .benchmark-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(30,45,66,0.5);
+    font-size: 0.78rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .benchmark-table tr:hover td { background: rgba(30,45,66,0.3); }
+  .benchmark-table tr:last-child td { border-bottom: none; }
+  .scenario-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 0.03em;
+  }
+  .scenario-badge.s1 { background: rgba(100,116,139,0.2); color: #94a3b8; }
+  .scenario-badge.s2 { background: rgba(16,217,138,0.15); color: var(--green); }
+  .scenario-badge.s3 { background: rgba(56,189,248,0.15); color: var(--blue); }
+  .scenario-badge.s4 { background: rgba(251,191,36,0.15); color: var(--yellow); }
+  .scenario-badge.s5 { background: rgba(167,139,250,0.15); color: var(--purple); }
+  .scenario-badge.s6 { background: rgba(251,146,60,0.15); color: var(--orange); }
+  .benchmark-highlight { background: rgba(251,146,60,0.04) !important; }
+  .benchmark-crown { font-size: 0.75rem; margin-left: 4px; }
+
+  /* —"?—"? Forward vs Backtest Tracker —"?—"? */
+  .comparison-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 16px;
+  }
+  .comparison-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 900px) {
+    .comparison-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  .comp-item {
+    background: var(--surface3);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+  .comp-label { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .comp-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .comp-fwd { font-size: 1rem; font-weight: 700; }
+  .comp-vs { font-size: 0.65rem; color: var(--text-muted); }
+  .comp-base { font-size: 0.8rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .comp-delta {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .delta-up { background: rgba(16,217,138,0.12); color: var(--green); }
+  .delta-down { background: rgba(244,63,94,0.12); color: var(--red); }
+  .delta-neutral { background: rgba(100,116,139,0.12); color: var(--text-muted); }
+
+  /* Settings Button in Header */
+  .settings-btn {
+    background: rgba(30, 45, 66, 0.4);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+  }
+  .settings-btn:hover {
+    background: rgba(56, 189, 248, 0.1);
+    border-color: var(--blue);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+  }
+
+  /* Glassmorphism Modal overlay */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    overflow: auto;
+    background-color: rgba(8, 12, 20, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* Modal Content Container */
+  .modal-content {
+    background: rgba(13, 20, 33, 0.85);
+    margin: 10% auto;
+    padding: 24px;
+    width: 90%;
+    max-width: 480px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    transition: box-shadow 0.3s ease-in-out;
+  }
+  .modal-content:hover {
+    box-shadow: 0 8px 32px 0 rgba(56, 189, 248, 0.2), 0 0 20px rgba(56, 189, 248, 0.15);
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+  }
+  .modal-header h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .close-btn {
+    color: var(--text-muted);
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .close-btn:hover {
+    color: var(--red);
+  }
+
+  /* Form Styles */
+  .form-group {
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .form-group label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    text-align: left;
+  }
+  .form-group input[type="text"],
+  .form-group input[type="number"] {
+    background: rgba(8, 12, 20, 0.5);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .form-group input:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+  }
+  .form-group-checkbox {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  .form-group-checkbox input {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 24px;
+  }
+  .btn-primary, .btn-secondary {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--blue);
+    color: #080c14;
+  }
+  .btn-primary:hover {
+    background: var(--blue2);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+  }
+  .btn-secondary {
+    background: rgba(30, 45, 66, 0.4);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover {
+    background: rgba(30, 45, 66, 0.7);
+  }
+  /* —"?—"? Settings Modal Custom Expansion & Layout —"?—"? */
+  .modal-content-wide {
+    max-width: 1000px !important;
+    width: 95%;
+  }
+  .modal-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .modal-divider {
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+  }
+  @media (min-width: 768px) {
+    .modal-grid {
+      grid-template-columns: 320px 1fr;
+    }
+    .modal-divider {
+      border-top: none;
+      border-left: 1px solid var(--border);
+      padding-top: 0;
+      padding-left: 24px;
+    }
+  }
+  .signal-preview-section {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .signal-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .signal-preview-title {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+  }
+  .signal-checkbox {
+    cursor: pointer;
+    width: 14px;
+    height: 14px;
+    accent-color: var(--blue);
+  }
+  .btn-primary:disabled, .btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- —"?—"? Header —"?—"? -->
+<div class="header">
+  <div class="header-left">
+    <h1>📊 Angati Forward Test Dashboard</h1>
+    <div class="subtitle">BTC · ETH · SOL · Paper Trading Live Monitor · v7.1</div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      FORWARD LIVE
+    </div>
+    <div class="api-url" id="apiUrlDisplay">localhost:5000/forward-test</div>
+    <a href="/dashboard" style="font-size:0.72rem;color:var(--text-muted);text-decoration:none;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface3);transition:color 0.2s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-muted)'">🏠 Dashboard</a>
+    <button class="settings-btn" onclick="openSettingsModal()">⚙️ Settings</button>
+    <div class="last-updated" id="lastUpdated">Updating...</div>
+  </div>
+</div>
+
+<!-- ─── Tabs ─── -->
+<div class="mode-tabs">
+  <button class="tab-btn active-both" onclick="setTab('both')">
+    📊 Cả Hai <span class="tab-count" id="count-both">-</span>
+  </button>
+  <button class="tab-btn" onclick="setTab('forward')" id="tab-forward">
+    📈 Forward Test <span class="tab-count" id="count-forward">-</span>
+  </button>
+  <button class="tab-btn" onclick="setTab('live')" id="tab-live">
+    ⚡ Live Trading <span class="tab-count" id="count-live">-</span>
+  </button>
+</div>
+
+<div class="container">
+
+<div class="alert-strip" id="connection-strip" style="background:rgba(16,217,138,0.04);border-color:rgba(16,217,138,0.2)">
+  <div class="alert-strip-icon">📡</div>
+  <div class="alert-strip-body">
+    <div class="alert-strip-title" style="color:var(--green)">Forward Test — <span id="conn-status">Đang kết nối localhost:5000/forward-test...</span></div>
+    <div class="alert-strip-desc">
+      Auto-refresh mỗi <code>15s</code> · DB: <code>forward_trades.db</code> ·
+      ID Space: <code>id &ge; 1,000,000</code> ·
+      Server: <code id="conn-version">checking...</code>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Overview KPIs ─── -->
+<div class="section">
+  <div class="section-title">📊 Tổng Quan — Forward Test Finance Report</div>
+  <div class="kpi-grid" style="grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));">
+    <div class="kpi-card forward">
+      <div class="kpi-mode fw">FWD</div>
+      <div class="kpi-label">Forward Signals</div>
+      <div class="kpi-value neu" id="fwd-total">3</div>
+      <div class="kpi-sub">id ≥ 1,000,000</div>
+    </div>
+    <div class="kpi-card forward">
+      <div class="kpi-mode fw">FWD</div>
+      <div class="kpi-label">Trades (W/L)</div>
+      <div class="kpi-value neu" id="fwd-trades-wl">—</div>
+      <div class="kpi-sub" id="fwd-trades-sub">FILLED trades</div>
+    </div>
+    <div class="kpi-card forward">
+      <div class="kpi-mode fw">FWD</div>
+      <div class="kpi-label">Win Rate</div>
+      <div class="kpi-value pos" id="fwd-wr">—</div>
+      <div class="kpi-sub">Paper trades</div>
+    </div>
+    <div class="kpi-card forward">
+      <div class="kpi-mode fw">FWD</div>
+      <div class="kpi-label">P&L (Paper)</div>
+      <div class="kpi-value pos" id="fwd-pnl">—</div>
+      <div class="kpi-sub">Virtual $10,000</div>
+    </div>
+    <div class="kpi-card forward">
+      <div class="kpi-mode fw">FWD</div>
+      <div class="kpi-label">Profit Factor</div>
+      <div class="kpi-value neu" id="fwd-pf">—</div>
+      <div class="kpi-sub">Gross P / Gross L</div>
+    </div>
+    <div class="kpi-card forward">
+      <div class="kpi-mode fw">FWD</div>
+      <div class="kpi-label">Expectancy</div>
+      <div class="kpi-value neu" id="fwd-expect">—</div>
+      <div class="kpi-sub">Avg P&L / l≥nh</div>
+    </div>
+    <div class="kpi-card forward">
+      <div class="kpi-mode fw">FWD</div>
+      <div class="kpi-label">Max Drawdown</div>
+      <div class="kpi-value neg" id="fwd-dd">—</div>
+      <div class="kpi-sub">Peak-to-trough</div>
+    </div>
+    <div class="kpi-card forward">
+      <div class="kpi-mode fw">FWD</div>
+      <div class="kpi-label">Best Trade</div>
+      <div class="kpi-value pos" id="fwd-best">—</div>
+      <div class="kpi-sub">Highest single P&L</div>
+    </div>
+    <div class="kpi-card forward">
+      <div class="kpi-mode fw">FWD</div>
+      <div class="kpi-label">Worst Trade</div>
+      <div class="kpi-value neg" id="fwd-worst">—</div>
+      <div class="kpi-sub">Lowest single P&L</div>
+    </div>
+    <div class="kpi-card forward">
+      <div class="kpi-mode fw">FWD</div>
+      <div class="kpi-label">Avg Win / Loss</div>
+      <div class="kpi-value neu" id="fwd-avgwl">—</div>
+      <div class="kpi-sub">Risk-reward ratio</div>
+    </div>
+  </div>
+
+  <!-- Live + Sequence KPIs -->
+  <div class="kpi-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); margin-top: 10px;">
+    <div class="kpi-card live">
+      <div class="kpi-mode lv">LIVE</div>
+      <div class="kpi-label">Live Signals</div>
+      <div class="kpi-value pos" id="live-total">—</div>
+      <div class="kpi-sub">Real trades</div>
+    </div>
+    <div class="kpi-card live">
+      <div class="kpi-mode lv">LIVE</div>
+      <div class="kpi-label">Win Rate</div>
+      <div class="kpi-value pos" id="live-wr">—</div>
+      <div class="kpi-sub">Real execution</div>
+    </div>
+    <div class="kpi-card live">
+      <div class="kpi-mode lv">LIVE</div>
+      <div class="kpi-label">P&L (Real)</div>
+      <div class="kpi-value pos" id="live-pnl">—</div>
+      <div class="kpi-sub">Actual USDT</div>
+    </div>
+    <div class="kpi-card neutral">
+      <div class="kpi-mode">SEQ</div>
+      <div class="kpi-label">Next FWD ID</div>
+      <div class="kpi-value neu" id="next-fwd-id">1,000,004</div>
+      <div class="kpi-sub">Auto-increment</div>
+    </div>
+  </div>
+</div>
+
+<!-- —"?—"? Dual Panel: Forward + Live —"?—"? -->
+<div class="section">
+  <div class="section-title">📊 Tín Hiệu Gần Nhất</div>
+  <div class="dual-panel">
+
+    <!-- Forward Panel -->
+    <div class="panel-card forward-panel" id="forwardPanelCard">
+      <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="panel-title fw">📈 Forward Test Signals</div>
+          <div class="panel-badge fw">PAPER TRADING</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 0.65rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">Show:</span>
+            <select id="fwdLimitSelect" class="table-header-select" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px;" onchange="switchSignalLimit(this.value)">
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200" selected>200</option>
+              <option value="500">500</option>
+              <option value="1000">1000</option>
+            </select>
+          </div>
+          <div class="chart-symbol-tabs" id="signalSymbolTabs">
+            <button class="chart-sym-btn active" onclick="switchSignalSymbolFilter('ALL')">ALL</button>
+            <button class="chart-sym-btn" onclick="switchSignalSymbolFilter('BTCUSDT')">BTC</button>
+            <button class="chart-sym-btn" onclick="switchSignalSymbolFilter('ETHUSDT')">ETH</button>
+            <button class="chart-sym-btn" onclick="switchSignalSymbolFilter('SOLUSDT')">SOL</button>
+            <button class="chart-sym-btn" onclick="switchSignalSymbolFilter('ADAUSDT')">ADA</button>
+            <button class="chart-sym-btn" onclick="switchSignalSymbolFilter('XRPUSDT')">XRP</button>
+          </div>
+        </div>
+      </div>
+      <div class="mini-kpi-row-5">
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">Tổng</div>
+          <div class="mini-kpi-val neu" id="fwd-mini-total">0</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">Đang chờ</div>
+          <div class="mini-kpi-val pos" id="fwd-mini-wr">—</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">Bị loại</div>
+          <div class="mini-kpi-val" id="fwd-mini-pnl">—</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">Max Drawdown</div>
+          <div class="mini-kpi-val neg" id="fwd-mini-dd">—</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">Avg W/L</div>
+          <div class="mini-kpi-val neu" id="fwd-mini-wl">—</div>
+        </div>
+      </div>
+      <div class="signal-table-wrap">
+        <table id="fwd-table">
+          <thead>
+            <tr>
+              <th onclick="toggleIdSort()" style="cursor: pointer; user-select: none;">#ID <span class="id-sort-indicator">▼</span></th><th>Symbol</th><th>Side</th>
+              <th>Price</th>
+              <th style="padding: 0;">
+                <select id="fwdStatusFilter" class="table-header-select" onchange="switchSignalStatusFilter(this.value)">
+                  <option value="ALL">Status ▼</option>
+                  <option value="COMPLETED">COMPLETED</option>
+                  <option value="REJECTED">REJECTED</option>
+                  <option value="PENDING">PENDING</option>
+                </select>
+              </th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="fwd-tbody">
+            <tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px">Chưa có tín hiện...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="fwd-table-note" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 8px; font-style: italic; border-top: 1px solid var(--border); padding-top: 8px;"></div>
+    </div>
+
+    <!-- Live Panel -->
+    <div class="panel-card live-panel" id="livePanelCard">
+      <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="panel-title lv">⚡ Live Trading Signals</div>
+          <div class="panel-badge lv">REAL-TIME</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 0.65rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em;">Show:</span>
+            <select id="liveLimitSelect" class="table-header-select" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px;" onchange="switchSignalLimit(this.value)">
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200" selected>200</option>
+              <option value="500">500</option>
+              <option value="1000">1000</option>
+            </select>
+          </div>
+          <div class="chart-symbol-tabs" id="liveSymbolTabs">
+            <button class="chart-sym-btn active" onclick="switchLiveSymbolFilter('ALL')">ALL</button>
+            <button class="chart-sym-btn" onclick="switchLiveSymbolFilter('BTCUSDT')">BTC</button>
+            <button class="chart-sym-btn" onclick="switchLiveSymbolFilter('ETHUSDT')">ETH</button>
+            <button class="chart-sym-btn" onclick="switchLiveSymbolFilter('SOLUSDT')">SOL</button>
+            <button class="chart-sym-btn" onclick="switchLiveSymbolFilter('ADAUSDT')">ADA</button>
+            <button class="chart-sym-btn" onclick="switchLiveSymbolFilter('XRPUSDT')">XRP</button>
+          </div>
+        </div>
+      </div>
+      <div class="mini-kpi-row-5">
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">Tổng</div>
+          <div class="mini-kpi-val neu" id="live-mini-total">0</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">Đang chờ</div>
+          <div class="mini-kpi-val pos" id="live-mini-wr">—</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">Bị loại</div>
+          <div class="mini-kpi-val" id="live-mini-pnl">—</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">Max Drawdown</div>
+          <div class="mini-kpi-val neg" id="live-mini-dd">—</div>
+        </div>
+        <div class="mini-kpi">
+          <div class="mini-kpi-label">Avg W/L</div>
+          <div class="mini-kpi-val neu" id="live-mini-wl">—</div>
+        </div>
+      </div>
+      <div class="signal-table-wrap">
+        <table id="live-table">
+          <thead>
+            <tr>
+              <th onclick="toggleIdSort()" style="cursor: pointer; user-select: none;">#ID <span class="id-sort-indicator">▼</span></th><th>Symbol</th><th>Side</th>
+              <th>Price</th>
+              <th style="padding: 0;">
+                <select id="liveStatusFilter" class="table-header-select" onchange="switchLiveStatusFilter(this.value)">
+                  <option value="ALL">Status ▼</option>
+                  <option value="COMPLETED">COMPLETED</option>
+                  <option value="REJECTED">REJECTED</option>
+                  <option value="PENDING">PENDING</option>
+                </select>
+              </th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="live-tbody">
+            <tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px">Chưa có tín hiện...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="live-table-note" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 8px; font-style: italic; border-top: 1px solid var(--border); padding-top: 8px;"></div>
+    </div>
+
+    <!-- Signal Entry Chart Panel -->
+    <div class="panel-card chart-panel" id="signalChartPanel">
+      <div class="chart-panel-header">
+        <div class="chart-panel-title">📊 Signal Entry Chart</div>
+        <div class="chart-symbol-tabs" id="chartStatusTabs">
+          <button class="chart-sym-btn active" onclick="switchChartStatusFilter('ALL')">ALL</button>
+          <button class="chart-sym-btn" onclick="switchChartStatusFilter('COMPLETED')">COMPLETED</button>
+          <button class="chart-sym-btn" onclick="switchChartStatusFilter('REJECTED')">REJECTED</button>
+          <button class="chart-sym-btn" onclick="switchChartStatusFilter('PENDING')">PENDING</button>
+        </div>
+      </div>
+      <div class="chart-container-wrap">
+        <div class="chart-signal-info" id="chartSignalInfo">
+          <span class="sig-id" id="chartSigId"></span>
+          <span class="sig-action-buy" id="chartSigAction"></span>
+          <span>@</span>
+          <span class="sig-price" id="chartSigPrice"></span>
+        </div>
+        <div id="signalChartContainer" style="width: 100%; height: 340px;"></div>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding: 0 4px;">
+        <div style="font-size: 0.68rem; color: var(--text-muted);" id="chartSignalCount">Click a signal row to view entry point</div>
+        <div class="server-stats-badge" id="serverStatsBadge">
+          📊 Server: <span class="stat-num" id="serverTotalSignals">—</span> signals
+          · <span class="stat-num" id="serverForwardSynced">—</span> synced
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- —"?—"? Charts —"?—"? -->
+<div class="section">
+  <div class="section-title">📊 Phân Tích Hi≥u N—fng</div>
+  <div class="chart-row">
+    <div class="chart-card">
+      <h3>Equity Curve — Forward Test (Virtual $10,000)</h3>
+      <canvas id="equityChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Phân bổ Symbol</h3>
+      <canvas id="symbolChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Outcome Distribution</h3>
+      <canvas id="outcomeChart"></canvas>
+    </div>
+  </div>
+  <div class="chart-row" style="margin-top: 20px;">
+    <div class="chart-card">
+      <h3>Monthly P&L</h3>
+      <canvas id="monthlyPnlChart" style="max-height: 140px;"></canvas>
+      <div id="monthlyPnlTableContainer" class="signal-table-wrap" style="margin-top: 10px; font-size: 0.72rem; max-height: 80px; overflow-y: auto;"></div>
+    </div>
+    <div class="chart-card">
+      <h3>Rolling Win Rate (Last 20 Trades)</h3>
+      <canvas id="rollingWinRateChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Symbol P&L Performance</h3>
+      <canvas id="symbolPnlChart" style="max-height: 140px;"></canvas>
+      <div id="symbolPnlTableContainer" class="signal-table-wrap" style="margin-top: 10px; font-size: 0.72rem; max-height: 80px; overflow-y: auto;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- —"?—"? Backtest Reference — Benchmark Comparison —"?—"? -->
+<div class="section">
+  <div class="section-title">📊 Báo Cáo Backtest — So Sánh Chuẩn</div>
+  <div class="backtest-section">
+    <button class="backtest-toggle" onclick="toggleBacktest()">
+      <div class="backtest-toggle-left">
+        <span>📊s</span>
+        <span>VBS 627-Signal Campaign — Comparative Scenarios Matrix (Fixed $100/pos)</span>
+      </div>
+      <span class="backtest-toggle-chevron" id="backtestChevron">▼—</span>
+    </button>
+    <div class="backtest-body" id="backtestBody">
+      <div class="signal-table-wrap">
+        <table class="benchmark-table">
+          <thead>
+            <tr>
+              <th>Scenario</th>
+              <th>Strategy</th>
+              <th>Trades</th>
+              <th>Win Rate</th>
+              <th>P&L (USDT)</th>
+              <th>Profit Factor</th>
+              <th>Max DD</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="scenario-badge s1">S1</span></td>
+              <td style="font-family:'Inter',sans-serif;font-size:0.75rem">Baseline Bypass AI</td>
+              <td>622</td>
+              <td>51.3%</td>
+              <td class="pos">+861.12</td>
+              <td>1.52</td>
+              <td>0.80%</td>
+              <td><span class="status-badge status-pending">BASELINE</span></td>
+            </tr>
+            <tr>
+              <td><span class="scenario-badge s2">S2</span></td>
+              <td style="font-family:'Inter',sans-serif;font-size:0.75rem">Strict Minervini SEPA</td>
+              <td>44</td>
+              <td>63.6%</td>
+              <td class="pos">+9.57</td>
+              <td>1.36</td>
+              <td>0.26%</td>
+              <td><span class="status-badge status-done">SAFE</span></td>
+            </tr>
+            <tr>
+              <td><span class="scenario-badge s3">S3</span></td>
+              <td style="font-family:'Inter',sans-serif;font-size:0.75rem">EMA Stack Filter</td>
+              <td>237</td>
+              <td>70.5%</td>
+              <td class="pos">+828.02</td>
+              <td>6.45</td>
+              <td>1.38%</td>
+              <td><span class="status-badge status-done">GOOD</span></td>
+            </tr>
+            <tr>
+              <td><span class="scenario-badge s4">S4</span></td>
+              <td style="font-family:'Inter',sans-serif;font-size:0.75rem">ATR Trailing Stop</td>
+              <td>622</td>
+              <td>51.6%</td>
+              <td class="pos" style="font-weight:700">+11,718.84</td>
+              <td style="font-weight:700">12.89</td>
+              <td>0.48%</td>
+              <td><span class="status-badge status-done">—Y≥ TOP P&L</span></td>
+            </tr>
+            <tr>
+              <td><span class="scenario-badge s5">S5</span></td>
+              <td style="font-family:'Inter',sans-serif;font-size:0.75rem">Multi-Timeframe Valid.</td>
+              <td>242</td>
+              <td>74.4%</td>
+              <td class="pos">+1,607.09</td>
+              <td>12.22</td>
+              <td>1.21%</td>
+              <td><span class="status-badge status-done">STABLE</span></td>
+            </tr>
+            <tr class="benchmark-highlight">
+              <td><span class="scenario-badge s6">S6</span><span class="benchmark-crown">—Y''</span></td>
+              <td style="font-family:'Inter',sans-serif;font-weight:600">Optimized Hybrid</td>
+              <td style="font-weight:700">315</td>
+              <td style="font-weight:700;color:var(--green)">77.8%</td>
+              <td class="pos" style="font-weight:700">+2,159.18</td>
+              <td style="font-weight:700;color:var(--orange)">15.20</td>
+              <td>1.23%</td>
+              <td><span class="status-badge status-done">—Y≥ BASELINE FWD</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Forward vs Backtest Tracker -->
+      <div class="comparison-card">
+        <div class="comparison-title">
+          <span>—YZ—</span>
+          <span>Forward Test vs S6 Baseline Tracker</span>
+          <span style="font-size:0.65rem;color:var(--text-muted);font-weight:400;margin-left:auto">Cập nhật realtime từ /trades/stats</span>
+        </div>
+        <div class="comparison-grid">
+          <div class="comp-item">
+            <div class="comp-label">Win Rate</div>
+            <div class="comp-row">
+              <span class="comp-fwd" id="comp-wr-fwd">—</span>
+              <span class="comp-vs">vs</span>
+              <span class="comp-base">77.8%</span>
+            </div>
+            <span class="comp-delta delta-neutral" id="comp-wr-delta">— pp</span>
+          </div>
+          <div class="comp-item">
+            <div class="comp-label">Profit Factor</div>
+            <div class="comp-row">
+              <span class="comp-fwd" id="comp-pf-fwd">—</span>
+              <span class="comp-vs">vs</span>
+              <span class="comp-base">15.20</span>
+            </div>
+            <span class="comp-delta delta-neutral" id="comp-pf-delta">— —"</span>
+          </div>
+          <div class="comp-item">
+            <div class="comp-label">Max Drawdown</div>
+            <div class="comp-row">
+              <span class="comp-fwd" id="comp-dd-fwd">—</span>
+              <span class="comp-vs">vs</span>
+              <span class="comp-base">1.23%</span>
+            </div>
+            <span class="comp-delta delta-neutral" id="comp-dd-delta">— —"</span>
+          </div>
+          <div class="comp-item">
+            <div class="comp-label">Avg Win / Avg Loss</div>
+            <div class="comp-row">
+              <span class="comp-fwd" id="comp-wl-fwd">—</span>
+              <span class="comp-vs">vs</span>
+              <span class="comp-base">—</span>
+            </div>
+            <span class="comp-delta delta-neutral" id="comp-wl-delta">— —"</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- —"?—"? Verification Panel —"?—"? -->
+<div class="section" id="verification-panel">
+  <div class="section-title">—Y>—️ Bảng Xác Minh S—' Li≥u (Verification Panel)</div>
+  <div style="background: rgba(13, 20, 33, 0.6); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 12px;">
+      <div style="background: rgba(8, 12, 20, 0.4); border: 1px solid var(--border); border-radius: 6px; padding: 12px; text-align: center;">
+        <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Tổng Trades (/trades/stats)</div>
+        <div id="verify-stats-trades" style="font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 1.1rem; color: var(--text);">—</div>
+      </div>
+      <div style="background: rgba(8, 12, 20, 0.4); border: 1px solid var(--border); border-radius: 6px; padding: 12px; text-align: center;">
+        <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Tổng Signals (/api/signals)</div>
+        <div id="verify-signals-total" style="font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 1.1rem; color: var(--text);">—</div>
+      </div>
+      <div style="background: rgba(8, 12, 20, 0.4); border: 1px solid var(--border); border-radius: 6px; padding: 12px; text-align: center;">
+        <div style="font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Trạng Thái Nhất Quán</div>
+        <div id="verify-status-badge" style="font-weight: 700; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 2px;">—</div>
+      </div>
+    </div>
+    <div style="font-size: 0.72rem; color: var(--text-muted); text-align: right;" id="verify-last-sync">
+      Đang kiểm tra...
+    </div>
+  </div>
+</div>
+
+<!-- —"?—"? Config Panel —"?—"? -->
+<div class="section">
+  <div class="section-title">⚡T️ Cấu Hình Hi≥n Tại</div>
+  <div class="config-grid">
+    <div class="config-item">
+      <div class="config-key">Forward DB Path</div>
+      <div class="config-val">nerves/workers/trading/forward_trades.db</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Initial Capital</div>
+      <div class="config-val">$10,000.00 USDT</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Position Size</div>
+      <div class="config-val">$100 / signal</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Symbols</div>
+      <div class="config-val">BTCUSDT · ETHUSDT · SOLUSDT</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Signal ID Namespace</div>
+      <div class="config-val">≥ 1,000,000 (FORWARD)</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Mode Field</div>
+      <div class="config-val">"mode": "FORWARD"</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Branch</div>
+      <div class="config-val">forward-test-crypto-integration</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Indicators Active</div>
+      <div class="config-val">G-A007, MIS-V3, SuperTrend</div>
+    </div>
+    <div class="config-item">
+      <div class="config-key">Pine Lib Version</div>
+      <div class="config-val">VBS_Webhook_Lib v4 (+mode)</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<div class="footer">
+  Angati Forward Test Dashboard · v7.1 · Branch: forward-test-crypto-integration ·
+  <span id="footer-time"></span>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal">
+  <div class="modal-content modal-content-wide">
+    <div class="modal-header">
+      <h2>⚡T️ Signal Sync Settings & Live Preview</h2>
+      <span class="close-btn" onclick="closeSettingsModal()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <div class="modal-grid">
+        <!-- Left Column: Settings Form -->
+        <div>
+          <form id="settingsForm">
+            <div class="form-group">
+              <label for="syncSymbols">Allowed Symbols (comma-separated)</label>
+              <input type="text" id="syncSymbols" placeholder="e.g., BTCUSDT, ETHUSDT">
+            </div>
+            <div class="form-group">
+              <label for="syncSources">Allowed Sources (comma-separated)</label>
+              <input type="text" id="syncSources" placeholder="e.g., indicator, webhook">
+            </div>
+            <div class="form-group" style="flex-direction: row; gap: 10px;">
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+                <label for="syncStartId">Start ID</label>
+                <input type="number" id="syncStartId" placeholder="1000000" oninput="debouncedReloadSignals()">
+              </div>
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+                <label for="syncEndId">End ID</label>
+                <input type="number" id="syncEndId" placeholder="2000000" oninput="debouncedReloadSignals()">
+              </div>
+            </div>
+            <div class="form-group form-group-checkbox">
+              <input type="checkbox" id="syncEnabled">
+              <label for="syncEnabled" style="cursor: pointer; text-transform: none; font-size: 0.8rem; color: var(--text);">Enable Auto-Sync (Live Replication)</label>
+            </div>
+            <div class="form-group" style="margin-top: 10px;">
+              <label for="positionSizingMode">Position Sizing Mode</label>
+              <select id="positionSizingMode" onchange="updateSizingValueLabel()" style="width: 100%; background: rgba(8, 12, 20, 0.5); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.82rem; outline: none;">
+                <option value="fixed">Fixed Amount (USDT)</option>
+                <option value="dynamic">Dynamic Risk (% of Capital)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-top: 10px;">
+              <label id="positionSizingValueLabel" for="positionSizingValue">Amount (USDT)</label>
+              <input type="number" id="positionSizingValue" step="any" placeholder="100.0">
+            </div>
+            <div class="form-actions" style="margin-top: 24px;">
+              <button type="button" class="btn-secondary" onclick="syncNow()">Sync All Now</button>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn-secondary" onclick="closeSettingsModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Save Settings</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Right Column: Interactive Signals Preview -->
+        <div class="modal-divider">
+          <div class="signal-preview-section">
+            <div class="signal-preview-header">
+              <span class="signal-preview-title">Production Signals (trades.db) <span style="font-size: 0.65rem; text-transform: none; font-weight: normal; color: var(--text-muted); margin-left: 6px;">(Synced real signals have vbs_queue_id. Local mock signals have vbs_queue_id IS NULL)</span></span>
+              <div style="display: flex; gap: 6px;">
+                <button type="button" class="btn-secondary" id="setRangeBtn" onclick="setRangeFromSelection()" style="padding: 6px 12px; font-size: 0.75rem; display: flex; align-items: center; gap: 4px;" disabled>
+                  <span>📊—</span> Set Range
+                </button>
+                <button type="button" class="btn-secondary" id="reloadSignalsBtn" onclick="loadProductionSignals()" style="padding: 6px 12px; font-size: 0.75rem; display: flex; align-items: center; gap: 4px;">
+                  <span>📈</span> Reload
+                </button>
+                <button type="button" class="btn-primary" id="syncSelectedBtn" onclick="syncSelectedSignals()" style="padding: 6px 12px; font-size: 0.75rem; display: flex; align-items: center; gap: 4px;" disabled>
+                  <span>⚡—</span> Sync Selected (<span id="selectedCount">0</span>)
+                </button>
+              </div>
+            </div>
+            
+            <div style="margin-bottom: 12px;">
+              <input type="text" id="signalFilterInput" oninput="filterPreviewTable()" placeholder="Search signals by ID, Symbol, Action, State..." style="width: 100%; padding: 8px 12px; background: rgba(8, 12, 20, 0.5); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.8rem; outline: none;">
+            </div>
+
+            <div class="signal-table-wrap" style="max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 30px; text-align: center; padding: 6px;">
+                      <input type="checkbox" id="selectAllSignals" onchange="toggleSelectAllSignals(this)">
+                    </th>
+                    <th>ID</th>
+                    <th>Symbol</th>
+                    <th>Action</th>
+                    <th>Price</th>
+                    <th>State</th>
+                    <th>Time</th>
+                  </tr>
+                </thead>
+                <tbody id="signalPreviewTbody">
+                  <tr><td colspan="7" style="text-align:center;color:#64748b;padding:20px">No production signals loaded</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// —"?—"? Config —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+// API = "" means same-origin (served by FastAPI at localhost:5000/forward-test)
+// No CORS issues, no cross-origin fetch — all calls are relative.
+const API = "";  // Same-origin: served by FastAPI, no absolute URL needed
+const POLL_MS = 15000;
+let fwdCache = [], liveCache = [], currentMode = "both";
+
+// —"?—"? S6 Baseline Constants (from eWE/reports VBS 627-signal backtest) —"?—"?—"?—"?—"?—"?—"?—"?—"?
+const S6_BASELINE = {
+  win_rate: 77.8,
+  profit_factor: 15.20,
+  max_drawdown_pct: 1.23,
+  total_pnl: 2159.18,
+  trades: 315
+};
+
+// —"?—"? Chart.js defaults —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+Chart.defaults.color = "#64748b";
+Chart.defaults.borderColor = "#1e2d42";
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+Chart.defaults.font.size = 11;
+
+// —"?—"? Charts —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+const equityChart = new Chart(
+  document.getElementById("equityChart").getContext("2d"), {
+  type: "line",
+  data: {
+    labels: [],
+    datasets: [
+      {
+        label: "All Trades",
+        data: [],
+        borderColor: "rgba(148, 163, 184, 0.25)",
+        backgroundColor: "rgba(148, 163, 184, 0.03)",
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: true,
+        tension: 0.4
+      },
+      {
+        label: "Filtered Trades",
+        data: [],
+        borderColor: "#22d3ee",
+        backgroundColor: "rgba(34, 211, 238, 0.05)",
+        borderWidth: 3,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.4
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { display: false },
+      y: {
+        grid: { color: "rgba(255,255,255,0.04)" },
+        ticks: {
+          color: "#64748b",
+          callback: v => `$${Number(v).toFixed(0)}`
+        }
+      }
+    }
+  }
+});
+
+const symbolChart = new Chart(
+  document.getElementById("symbolChart").getContext("2d"), {
+  type: "doughnut",
+  data: { labels: ["BTC", "ETH", "SOL"],
+    datasets: [{ data: [0,0,0],
+      backgroundColor: ["rgba(251,191,36,0.8)","rgba(56,189,248,0.8)","rgba(167,139,250,0.8)"],
+      borderColor: "#0d1421", borderWidth: 3 }] },
+  options: { responsive: true,
+    plugins: { legend: { position: "bottom", labels: { padding: 10, color: "#94a3b8" } } } }
+});
+
+const outcomeChart = new Chart(
+  document.getElementById("outcomeChart").getContext("2d"), {
+  type: "bar",
+  data: { labels: ["PENDING", "PASSED", "REJECTED", "DONE"],
+    datasets: [{ data: [0,0,0,0],
+      backgroundColor: ["rgba(251,191,36,0.7)","rgba(16,217,138,0.7)","rgba(244,63,94,0.7)","rgba(56,189,248,0.7)"],
+      borderRadius: 4 }] },
+  options: { responsive: true, plugins: { legend: { display: false } },
+    scales: { x: { ticks: { color:"#64748b", font:{size:9} }, grid:{display:false} },
+      y: { ticks:{color:"#64748b"}, grid:{color:"rgba(255,255,255,0.04)"} } } }
+});
+
+const monthlyPnlChart = new Chart(
+  document.getElementById("monthlyPnlChart").getContext("2d"), {
+  type: "bar",
+  data: { labels: [], datasets: [{ label: "P&L (USDT)", data: [], backgroundColor: [] }] },
+  options: { responsive: true, plugins: { legend: { display: false } },
+    scales: { x: { ticks: { color:"#64748b" }, grid:{display:false} },
+      y: { ticks:{color:"#64748b"}, grid:{color:"rgba(255,255,255,0.04)"} } } }
+});
+
+const rollingWinRateChart = new Chart(
+  document.getElementById("rollingWinRateChart").getContext("2d"), {
+  type: "line",
+  data: { labels: [], datasets: [{ label: "Win Rate (%)", data: [], borderColor: "#a78bfa", backgroundColor: "rgba(167,139,250,0.05)", borderWidth: 1.5, pointRadius: 2, fill: true, tension: 0.4 }] },
+  options: { responsive: true, plugins: { legend: { display: false } },
+    scales: { x: { display: false },
+      y: { min: 0, max: 100, ticks:{color:"#64748b", callback: v => `${v}%`}, grid:{color:"rgba(255,255,255,0.04)"} } } }
+});
+
+const symbolPnlChart = new Chart(
+  document.getElementById("symbolPnlChart").getContext("2d"), {
+  type: "bar",
+  data: { labels: [], datasets: [{ label: "P&L (USDT)", data: [], backgroundColor: [] }] },
+  options: { responsive: true, plugins: { legend: { display: false } },
+    scales: { x: { ticks: { color:"#64748b" }, grid:{display:false} },
+      y: { ticks:{color:"#64748b"}, grid:{color:"rgba(255,255,255,0.04)"} } } }
+});
+
+// —"?—"? Helpers —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+const $ = id => document.getElementById(id);
+const set = (id, v) => { const e=$(id); if(e) e.textContent=v; };
+const setClass = (id, v, cls) => { const e=$(id); if(e){e.textContent=v; e.className=`kpi-value ${cls||""}`;}  };
+const fmtP = v => v != null ? parseFloat(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) : "—";
+
+function stateColor(s) {
+  const m = { COMPLETED:"status-done", REJECTED:"status-failed",
+    FAILED:"status-failed", PENDING:"status-pending",
+    ANALYZING:"status-pending", MACRO_PASSED:"status-pending" };
+  return m[s] || "status-pending";
+}
+
+// —"?—"? Fetch —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+async function get(path, timeoutMs = 5000) {
+  try {
+    const r = await fetch(API + path, { 
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(timeoutMs) 
+    });
+    return r.ok ? r.json() : null;
+  } catch(e) { return null; }
+}
+
+// —"?—"? Tab —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+function setTab(mode) {
+  currentMode = mode;
+  document.querySelectorAll(".tab-btn").forEach(b => b.className="tab-btn");
+  const map = {both:"active-both", forward:"active-forward", live:"active-live"};
+  const el = $("tab-"+mode) || (typeof event !== 'undefined' && event && event.target ? event.target.closest(".tab-btn") : null);
+  if(el) el.classList.add(map[mode]);
+
+  const fwdPanel = document.getElementById("forwardPanelCard") || document.querySelector(".forward-panel");
+  const livePanel = document.getElementById("livePanelCard") || document.querySelector(".live-panel");
+  const chartPanel = document.getElementById("signalChartPanel") || document.querySelector(".chart-panel");
+  
+  if (fwdPanel && livePanel && chartPanel) {
+    if (mode === "both") {
+      fwdPanel.style.display = "block";
+      livePanel.style.display = "block";
+      chartPanel.style.display = "none";
+    } else if (mode === "forward") {
+      fwdPanel.style.display = "block";
+      livePanel.style.display = "none";
+      chartPanel.style.display = "block";
+    } else if (mode === "live") {
+      fwdPanel.style.display = "none";
+      livePanel.style.display = "block";
+      chartPanel.style.display = "block";
+    }
+    
+    // Refresh markers on chart if active tab switched and chart is visible
+    if (mode !== "both" && typeof currentChartSymbol !== 'undefined' && currentChartSymbol) {
+      addForwardSignalMarkers(currentChartSymbol);
+    } else {
+      updateChartPanelVisibility(false);
+    }
+    // Update performance charts instantly for the selected mode
+    if (mode === "live") {
+      updateCharts(liveCache);
+    } else {
+      updateCharts(fwdCache);
+    }
+    updateEquityChart();
+  }
+}
+
+// —"?—"? Render signals table —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+function renderRows(signals, tbodyId) {
+  const tb = $(tbodyId);
+  if (!tb) return;
+
+  const filterVal = (tbodyId === 'fwd-tbody') ? currentSignalStatusFilter : currentLiveStatusFilter;
+  let filtered = signals || [];
+  if (signals && signals.length && filterVal && filterVal !== 'ALL') {
+    filtered = signals.filter(s => {
+      const st = (s.state || '').toUpperCase();
+      if (filterVal === 'COMPLETED') return st === 'COMPLETED';
+      if (filterVal === 'REJECTED') return ['REJECTED', 'FAILED'].includes(st);
+      if (filterVal === 'PENDING') return ['PENDING', 'ANALYZING', 'MACRO_PASSED', 'INGESTED'].includes(st);
+      return st === filterVal;
+    });
+  }
+
+  // Sort by ID globally (ascending/descending)
+  const sorted = [...filtered].sort((a, b) => {
+    if (idSortDirection === 'asc') return a.id - b.id;
+    return b.id - a.id;
+  });
+
+  // Update dynamic info note below the table
+  const noteEl = (tbodyId === 'fwd-tbody') ? document.getElementById("fwd-table-note") : document.getElementById("live-table-note");
+  if (noteEl) {
+    const stats = (tbodyId === 'fwd-tbody') ? fwdGlobalStats : liveGlobalStats;
+    const count = sorted.length;
+    
+    // Min and max ID of displayed signals (first 50)
+    const displayedSignals = sorted.slice(0, signalLimit);
+    const displayedIds = displayedSignals.map(s => s.id);
+    const minId = displayedIds.length ? Math.min(...displayedIds) : null;
+    const maxId = displayedIds.length ? Math.max(...displayedIds) : null;
+    
+    if (tbodyId === 'fwd-tbody') {
+      window.fwdDisplayedMinId = minId;
+      window.fwdDisplayedMaxId = maxId;
+    } else {
+      window.liveDisplayedMinId = minId;
+      window.liveDisplayedMaxId = maxId;
+    }
+
+    // Calculate sum of P&L for these displayed signals using cached trades
+    let displayedPnl = 0.0;
+    const tradesArray = (tbodyId === 'fwd-tbody') ? window.allFwdTradesGlobal : window.allLiveTradesGlobal;
+    if (tradesArray && displayedIds.length > 0) {
+      const displayedIdSet = new Set(displayedIds);
+      tradesArray.forEach(t => {
+        if (displayedIdSet.has(t.signal_id)) {
+          displayedPnl += parseFloat(t.pnl) || 0.0;
+        }
+      });
+    }
+
+    let noteText = "";
+    if (count > 0 && minId !== null && maxId !== null) {
+      const pnlSign = displayedPnl >= 0 ? "+" : "";
+      const pnlClass = displayedPnl > 0 ? "pos" : (displayedPnl < 0 ? "neg" : "neu");
+      const displayedRangeStr = `nhóm ID ${minId.toLocaleString()} ~ ${maxId.toLocaleString()}`;
+      
+      noteText = `Hiển thị <strong>${displayedSignals.length}</strong> tín hiệu gần nhất (${displayedRangeStr}, bộ lọc: <strong>${filterVal}</strong>). `;
+      noteText += `Nhóm này đóng góp <strong class="${pnlClass}">${pnlSign}${displayedPnl.toFixed(2)} USDT</strong> vào kết quả chung. `;
+    } else {
+      noteText = `Hiển thị <strong>0</strong> tín hiệu (bộ lọc: <strong>${filterVal}</strong>). `;
+    }
+
+    if (stats && stats.total_trades > 0) {
+      const globalPnlSign = stats.total_pnl >= 0 ? "+" : "";
+      const globalPnlClass = stats.total_pnl > 0 ? "pos" : (stats.total_pnl < 0 ? "neg" : "neu");
+      noteText += `Tổng P&L toàn bộ <strong>${stats.total_trades}</strong> giao dịch: <strong class="${globalPnlClass}">${globalPnlSign}${stats.total_pnl.toFixed(2)} USDT</strong>.`;
+    }
+    
+    noteEl.innerHTML = noteText;
+  }
+
+  if (!signals || !signals.length) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px">Chưa có tín hiệu...</td></tr>`;
+    return;
+  }
+
+  if (!sorted.length) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px">Không có tín hiệu khớp bộ lọc...</td></tr>`;
+    return;
+  }
+
+  tb.innerHTML = sorted.slice(0, signalLimit).map(s => {
+    const buy = (s.action||"buy").toLowerCase()==="buy";
+    const st = (s.state||"PENDING").toUpperCase();
+    const ts = (s.created_at||"").substring(11,16)+" UTC";
+    const id = Number(s.id).toLocaleString();
+    const clickAttr = `onclick="onSignalRowClick(this, ${JSON.stringify(s).replace(/"/g, '&quot;')})"`;
+    return `<tr ${clickAttr} data-signal-id="${s.id}">
+      <td class="id-tag">${id}</td>
+      <td class="sym">${s.symbol||"?"}</td>
+      <td class="${buy?"buy-tag":"sell-tag"}">${(s.action||"?").toUpperCase()}</td>
+      <td>${fmtP(s.price)}</td>
+      <td><span class="status-badge ${stateColor(st)}">${st}</span></td>
+      <td>${ts}</td>
+    </tr>`;
+  }).join("");
+}
+
+// —"?—"? Update Equity Chart from Real Data —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+async function updateEquityChart() {
+  const mode = (currentMode === 'live') ? 'LIVE' : 'FORWARD';
+  const symbolFilter = (mode === 'LIVE') ? currentLiveSymbol : currentSignalSymbol;
+  
+  let equityData = (mode === 'LIVE') ? window.equityDataLive : window.equityDataFwd;
+  
+  if (!equityData) {
+    let eqUrl = `/trades/equity?mode=${mode}`;
+    if (symbolFilter !== "ALL") eqUrl += `&symbol=${symbolFilter}`;
+    equityData = await get(eqUrl);
+    if (equityData && equityData.trades) {
+      if (mode === 'LIVE') {
+        window.equityDataLive = equityData;
+        window.allLiveTradesGlobal = equityData.trades;
+      } else {
+        window.equityDataFwd = equityData;
+        window.allFwdTradesGlobal = equityData.trades;
+      }
+    }
+  }
+
+  let labels = ["Start"];
+  let valsAll = [10000];
+  let valsFiltered = [null];
+  
+  const minId = (mode === 'LIVE') ? window.liveDisplayedMinId : window.fwdDisplayedMinId;
+  const maxId = (mode === 'LIVE') ? window.liveDisplayedMaxId : window.fwdDisplayedMaxId;
+  
+  if (equityData && equityData.cumulative_pnl && equityData.cumulative_pnl.length > 0) {
+    equityData.cumulative_pnl.forEach((pnl, i) => {
+      const trade = equityData.trades[i];
+      const ts = equityData.labels[i] ? equityData.labels[i].substring(11, 16) : (i + 1);
+      labels.push(ts);
+      
+      const currentEquity = 10000 + pnl;
+      valsAll.push(currentEquity);
+      
+      if (trade && minId !== null && maxId !== null && trade.signal_id >= minId && trade.signal_id <= maxId) {
+        valsFiltered.push(currentEquity);
+        // Connect start of segment to previous point to avoid gap
+        if (i > 0 && valsFiltered[i] === null) {
+          valsFiltered[i] = valsAll[i];
+        }
+      } else {
+        valsFiltered.push(null);
+      }
+    });
+    
+    // Connect start if the first trade matched
+    if (equityData.trades[0] && minId !== null && maxId !== null &&
+        equityData.trades[0].signal_id >= minId && equityData.trades[0].signal_id <= maxId) {
+      valsFiltered[0] = 10000;
+    }
+  } else {
+    labels.push("Now");
+    valsAll.push(10000);
+    valsFiltered.push(null);
+  }
+  
+  equityChart.data.labels = labels;
+  equityChart.data.datasets[0].data = valsAll;
+  equityChart.data.datasets[1].data = valsFiltered;
+  
+  equityChart.data.datasets[0].label = `All ${mode} Trades`;
+  equityChart.data.datasets[1].label = `Visible ${mode} Trades`;
+  
+  equityChart.update("none");
+}
+
+// —"?—"? Update charts from signals —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+function updateCharts(signals) {
+  if (!signals || !signals.length) return;
+
+  // Symbol chart
+  const syms = {BTCUSDT:0, ETHUSDT:0, SOLUSDT:0};
+  signals.forEach(s => { if(s.symbol in syms) syms[s.symbol]++; });
+  symbolChart.data.datasets[0].data = Object.values(syms);
+  symbolChart.update("none");
+
+  // Outcome chart
+  const sts = {PENDING:0, MACRO_PASSED:0, REJECTED:0, COMPLETED:0};
+  signals.forEach(s => {
+    const k = (s.state||"").toUpperCase();
+    if (k==="PENDING"||k==="ANALYZING") sts.PENDING++;
+    else if (k==="MACRO_PASSED") sts.MACRO_PASSED++;
+    else if (k==="REJECTED"||k==="FAILED") sts.REJECTED++;
+    else if (k==="COMPLETED") sts.COMPLETED++;
+  });
+  outcomeChart.data.datasets[0].data = [sts.PENDING, sts.MACRO_PASSED, sts.REJECTED, sts.COMPLETED];
+  outcomeChart.update("none");
+}
+
+// —"?—"? Main Refresh —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+async function refresh() {
+  set("lastUpdated", "Đang cập nhật...");
+  // Show the actual serving URL (same-origin when API="")
+  set("apiUrlDisplay", (API || window.location.host) + "/forward-test");
+
+  // Fetch equity curve data first to cache all trades for renderRows
+  let fwdEqUrl = "/trades/equity?mode=FORWARD";
+  if (currentSignalSymbol !== "ALL") fwdEqUrl += `&symbol=${currentSignalSymbol}`;
+  const fwdEqData = await get(fwdEqUrl);
+  if (fwdEqData && fwdEqData.trades) {
+    window.allFwdTradesGlobal = fwdEqData.trades;
+    window.equityDataFwd = fwdEqData;
+  }
+
+  let liveEqUrl = "/trades/equity?mode=LIVE";
+  if (currentLiveSymbol !== "ALL") liveEqUrl += `&symbol=${currentLiveSymbol}`;
+  const liveEqData = await get(liveEqUrl);
+  if (liveEqData && liveEqData.trades) {
+    window.allLiveTradesGlobal = liveEqData.trades;
+    window.equityDataLive = liveEqData;
+  }
+
+
+  // —"?—"? Health check —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+  const health = await get("/tv_health_check");
+  if (health) {
+    set("conn-status", `v${health.version} — OK`);
+    set("conn-version", `TradingView Webhook v${health.version}`);
+    const strip = $("connection-strip");
+    if (strip) { strip.style.background="rgba(16,217,138,0.06)"; strip.style.borderColor="rgba(16,217,138,0.3)"; }
+  } else {
+    set("conn-status", "Offline — Kiểm tra server");
+    const strip = $("connection-strip");
+    if (strip) { strip.style.background="rgba(244,63,94,0.06)"; strip.style.borderColor="rgba(244,63,94,0.3)"; }
+  }
+
+  // —"?—"? Forward signals (mode=FORWARD) —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+  // 1. Fetch overall FORWARD signals for KPIs & Charts
+  let overallFwdUrl = "/api/signals?mode=FORWARD&limit=1000";
+  if (currentSignalSymbol !== "ALL") overallFwdUrl += `&symbol=${currentSignalSymbol}`;
+  const overallFwdData = await get(overallFwdUrl);
+  
+  let total = 0, pending = 0, rejected = 0, maxId = 0;
+  if (overallFwdData && overallFwdData.signals) {
+    const overallSignals = overallFwdData.signals.filter(s => s.id >= 1000000);
+    total = overallFwdData.total || overallSignals.length;
+    pending = overallSignals.filter(s => ["PENDING","ANALYZING","MACRO_PASSED","INGESTED"].includes((s.state||"").toUpperCase())).length;
+    rejected = overallSignals.filter(s => ["REJECTED","FAILED"].includes((s.state||"").toUpperCase())).length;
+    maxId = Math.max(...overallSignals.map(s=>s.id||0));
+  }
+
+  // 2. Fetch filtered FORWARD signals for Table
+  let fwdUrl = "/api/signals?mode=FORWARD&limit=" + signalLimit;
+  if (currentSignalSymbol !== "ALL") fwdUrl += `&symbol=${currentSignalSymbol}`;
+  if (currentSignalStatusFilter && currentSignalStatusFilter !== 'ALL') {
+    let stateParam = currentSignalStatusFilter;
+    if (currentSignalStatusFilter === 'REJECTED') stateParam = 'REJECTED,FAILED';
+    if (currentSignalStatusFilter === 'PENDING') stateParam = 'PENDING,ANALYZING,MACRO_PASSED,INGESTED';
+    fwdUrl += `&state=${stateParam}`;
+  }
+  const fwdData = await get(fwdUrl);
+  if (fwdData && fwdData.signals) {
+    fwdCache = fwdData.signals.filter(s => s.id >= 1000000);
+    setClass("fwd-total", total, "neu");
+    
+    // Fetch real stats for Forward Mode
+    let fwdStatsUrl = "/trades/stats?mode=FORWARD";
+    if (currentSignalSymbol !== "ALL") fwdStatsUrl += `&symbol=${currentSignalSymbol}`;
+    const fwdStats = await get(fwdStatsUrl);
+    fwdGlobalStats = fwdStats;
+    if (fwdStats && fwdStats.total_trades > 0) {
+      setClass("fwd-wr", `${fwdStats.win_rate}%`, "pos");
+      const pnlSign = fwdStats.total_pnl >= 0 ? "+" : "";
+      const pnlVal = `${pnlSign}${fwdStats.total_pnl.toFixed(2)} USDT`;
+      const pnlClass = fwdStats.total_pnl > 0 ? "pos" : (fwdStats.total_pnl < 0 ? "neg" : "neu");
+      setClass("fwd-pnl", pnlVal, pnlClass);
+      setClass("fwd-pf", fwdStats.profit_factor.toFixed(2), "neu");
+
+      // —"?—"? Forward Finance KPIs —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+      // Trades (W/L)
+      const wCount = fwdStats.winning_trades || 0;
+      const lCount = fwdStats.losing_trades || 0;
+      setClass("fwd-trades-wl", `${fwdStats.total_trades}`, "neu");
+      set("fwd-trades-sub", `${wCount}W / ${lCount}L`);
+
+      // Expectancy = total_pnl / total_trades
+      const expect = (fwdStats.total_pnl / fwdStats.total_trades);
+      const expectSign = expect >= 0 ? "+" : "";
+      const expectClass = expect > 0 ? "pos" : (expect < 0 ? "neg" : "neu");
+      setClass("fwd-expect", `${expectSign}${expect.toFixed(2)}`, expectClass);
+
+      // Max Drawdown
+      const ddDisplay = fwdStats.max_drawdown != null ? fwdStats.max_drawdown.toFixed(2) : "—";
+      setClass("fwd-dd", `${ddDisplay} USDT`, fwdStats.max_drawdown < 0 ? "neg" : "neu");
+
+      // Best Trade
+      const bestSign = (fwdStats.best_trade || 0) >= 0 ? "+" : "";
+      setClass("fwd-best", `${bestSign}${(fwdStats.best_trade || 0).toFixed(2)}`, "pos");
+
+      // Worst Trade
+      setClass("fwd-worst", `${(fwdStats.worst_trade || 0).toFixed(2)}`, "neg");
+
+      // Avg Win / Avg Loss ratio
+      const avgW = fwdStats.avg_win || 0;
+      const avgL = Math.abs(fwdStats.avg_loss || 0);
+      const wlRatio = avgL > 0 ? (avgW / avgL).toFixed(2) : (avgW > 0 ? "—" : "—");
+      setClass("fwd-avgwl", wlRatio, parseFloat(wlRatio) >= 1.5 ? "pos" : (parseFloat(wlRatio) >= 1.0 ? "neu" : "neg"));
+
+      // Extended mini-KPIs: Max Drawdown + Avg W/L
+      const ddEl = $("fwd-mini-dd");
+      if (ddEl) { ddEl.textContent = ddDisplay; ddEl.className = `mini-kpi-val ${fwdStats.max_drawdown < 0 ? 'neg' : 'neu'}`; }
+      const wlEl = $("fwd-mini-wl");
+      if (wlEl) { wlEl.textContent = wlRatio; wlEl.className = `mini-kpi-val ${parseFloat(wlRatio) >= 1.5 ? 'pos' : (parseFloat(wlRatio) >= 1.0 ? 'neu' : 'neg')}`; }
+
+      // Update Forward vs Backtest Tracker deltas
+      updateBacktestTracker(fwdStats);
+    } else {
+      setClass("fwd-wr", "—", "neu");
+      setClass("fwd-pnl", "0.00 USDT", "neu");
+      setClass("fwd-pf", "—", "neu");
+      setClass("fwd-trades-wl", "0", "neu");
+      set("fwd-trades-sub", "No FILLED trades");
+      setClass("fwd-expect", "—", "neu");
+      setClass("fwd-dd", "—", "neu");
+      setClass("fwd-best", "—", "neu");
+      setClass("fwd-worst", "—", "neu");
+      setClass("fwd-avgwl", "—", "neu");
+      set("fwd-mini-dd", "—");
+      set("fwd-mini-wl", "—");
+      resetBacktestTracker();
+    }
+
+    set("fwd-mini-total", total);
+    set("fwd-mini-wr", `${pending} pending`);
+    set("fwd-mini-pnl", `${rejected} rejected`);
+    set("count-forward", total);
+    if (maxId >= 1000000) set("next-fwd-id", Number(maxId+1).toLocaleString());
+
+    renderRows(fwdCache, "fwd-tbody");
+  } else {
+    set("fwd-total", "—");
+    renderRows([], "fwd-tbody");
+  }
+
+  // —"?—"? Live Trading signals (mode=LIVE) — still fetch for header KPIs —"?—"?—"?—"?—"?—"?—"?—"?
+  // 1. Fetch overall LIVE signals for KPIs & Charts
+  let overallLiveUrl = "/api/signals?mode=LIVE&limit=1000";
+  if (currentLiveSymbol !== "ALL") overallLiveUrl += `&symbol=${currentLiveSymbol}`;
+  const overallLiveData = await get(overallLiveUrl);
+  
+  let ltotal = 0, lpending = 0, lrejected = 0;
+  if (overallLiveData && overallLiveData.signals) {
+    ltotal = overallLiveData.total || overallLiveData.signals.length;
+    lpending = overallLiveData.signals.filter(s => ["PENDING","ANALYZING","MACRO_PASSED","INGESTED"].includes((s.state||"").toUpperCase())).length;
+    lrejected = overallLiveData.signals.filter(s => ["REJECTED","FAILED"].includes((s.state||"").toUpperCase())).length;
+  }
+
+  // 2. Fetch filtered LIVE signals for Table
+  let liveUrl = "/api/signals?mode=LIVE&limit=" + signalLimit;
+  if (currentLiveSymbol !== "ALL") liveUrl += `&symbol=${currentLiveSymbol}`;
+  if (currentLiveStatusFilter && currentLiveStatusFilter !== 'ALL') {
+    let stateParam = currentLiveStatusFilter;
+    if (currentLiveStatusFilter === 'REJECTED') stateParam = 'REJECTED,FAILED';
+    if (currentLiveStatusFilter === 'PENDING') stateParam = 'PENDING,ANALYZING,MACRO_PASSED,INGESTED';
+    liveUrl += `&state=${stateParam}`;
+  }
+  const allData = await get(liveUrl);
+  if (allData && allData.signals) {
+    liveCache = allData.signals;
+
+    set("live-total", ltotal || "—");
+    set("live-mini-total", ltotal);
+    set("live-mini-wr", `${lpending} pending`);
+    set("live-mini-pnl", `${lrejected} rejected`);
+
+    // Fetch real stats for Live Mode
+    let liveStatsUrl = "/trades/stats?mode=LIVE";
+    if (currentLiveSymbol !== "ALL") liveStatsUrl += `&symbol=${currentLiveSymbol}`;
+    const liveStats = await get(liveStatsUrl);
+    liveGlobalStats = liveStats;
+    if (liveStats && liveStats.total_trades > 0) {
+      setClass("live-wr", `${liveStats.win_rate}%`, "pos");
+      const pnlSign = liveStats.total_pnl >= 0 ? "+" : "";
+      const pnlVal = `${pnlSign}${liveStats.total_pnl.toFixed(2)} USDT`;
+      const pnlClass = liveStats.total_pnl > 0 ? "pos" : (liveStats.total_pnl < 0 ? "neg" : "neu");
+      setClass("live-pnl", pnlVal, pnlClass);
+
+      const ddDisplay = liveStats.max_drawdown != null ? liveStats.max_drawdown.toFixed(2) : "—";
+      const avgW = liveStats.avg_win || 0;
+      const avgL = Math.abs(liveStats.avg_loss || 0);
+      const wlRatio = avgL > 0 ? (avgW / avgL).toFixed(2) : (avgW > 0 ? "∞" : "—");
+
+      const ddEl = $("live-mini-dd");
+      if (ddEl) { ddEl.textContent = ddDisplay; ddEl.className = `mini-kpi-val ${liveStats.max_drawdown < 0 ? 'neg' : 'neu'}`; }
+      const wlEl = $("live-mini-wl");
+      if (wlEl) { wlEl.textContent = wlRatio; wlEl.className = `mini-kpi-val ${parseFloat(wlRatio) >= 1.5 ? 'pos' : (parseFloat(wlRatio) >= 1.0 ? 'neu' : 'neg')}`; }
+    } else {
+      setClass("live-wr", "—", "neu");
+      setClass("live-pnl", "0.00 USDT", "neu");
+      set("live-mini-dd", "—");
+      set("live-mini-wl", "—");
+    }
+
+    set("count-live", ltotal || "—");
+    renderRows(liveCache, "live-tbody");
+  } else {
+    set("live-total", "—");
+    renderRows([], "live-tbody");
+  }
+
+  // —"?—"? Counts —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+  set("count-both", (ltotal + total) || "—");
+
+  // Update active mode performance charts and equity curves
+  if (currentMode === 'live') {
+    updateCharts(overallLiveData?.signals || []);
+  } else {
+    updateCharts(overallFwdData?.signals || []);
+  }
+  
+  // Sync the chart markers to match the newly loaded table signals
+  if (signalChart && currentChartSymbol && currentChartSymbol !== 'ALL') {
+    addForwardSignalMarkers(currentChartSymbol);
+  }
+  await updateEquityChart();
+
+  // Load the new advanced financial reports
+  await loadAdvancedFinancialReports();
+
+  // Run verification cross check
+  await runVerificationCrossCheck();
+
+  const now = new Date().toLocaleTimeString("vi-VN");
+  set("lastUpdated", `Cập nhật: ${now}`);
+  set("footer-time", new Date().toISOString().substring(0,16).replace("T"," ")+" UTC");
+}
+
+async function runVerificationCrossCheck() {
+  try {
+    const stats = await get("/trades/stats?mode=FORWARD");
+    const signals = await get("/api/signals?mode=FORWARD");
+
+    if (!stats || !signals) {
+      document.getElementById("verify-last-sync").textContent = "L▼i kết nối API xác minh";
+      return;
+    }
+
+    const statsTrades = stats.total_trades || 0;
+    const signalsTotal = signals.total || 0;
+
+    document.getElementById("verify-stats-trades").textContent = statsTrades;
+    document.getElementById("verify-signals-total").textContent = signalsTotal;
+
+    const tradesRes = await get("/trades?mode=FORWARD&limit=200");
+    let calculatedPnl = 0.0;
+    if (tradesRes && tradesRes.trades) {
+      calculatedPnl = tradesRes.trades.reduce((sum, t) => sum + (parseFloat(t.pnl) || 0.0), 0.0);
+    }
+    const statsPnl = stats.total_pnl || 0.0;
+    const isConsistent = Math.abs(calculatedPnl - statsPnl) < 0.05;
+
+    const badge = document.getElementById("verify-status-badge");
+    if (isConsistent) {
+      badge.textContent = "—o. Consistent";
+      badge.style.background = "rgba(16, 217, 138, 0.15)";
+      badge.style.color = "var(--green)";
+    } else {
+      badge.textContent = "⚡—️ Mismatch";
+      badge.style.background = "rgba(244, 63, 94, 0.15)";
+      badge.style.color = "var(--red)";
+    }
+
+    const timeStr = new Date().toLocaleTimeString("vi-VN");
+    document.getElementById("verify-last-sync").textContent = `Sync cu—'i: ${timeStr} | P&L kh—>p: ${isConsistent ? 'Đ⚡NG' : 'SAI'} (C.P&L: ${calculatedPnl.toFixed(2)} vs S.P&L: ${statsPnl.toFixed(2)})`;
+  } catch (err) {
+    console.error("Error in runVerificationCrossCheck:", err);
+    document.getElementById("verify-last-sync").textContent = "L▼i trong quá trình xác minh";
+  }
+}
+
+async function loadAdvancedFinancialReports() {
+  try {
+    const data = await get("/trades?mode=FORWARD&limit=200");
+    if (!data || !data.trades) return;
+    
+    const trades = [...data.trades].reverse();
+    
+    const monthlyData = {};
+    const symbolData = {};
+    const rollingWinRate = [];
+    const windowSize = 20;
+    const rollingLabels = [];
+    
+    trades.forEach((t, index) => {
+      const pnl = parseFloat(t.pnl) || 0.0;
+      const commission = parseFloat(t.commission) || 0.0;
+      const netPnl = pnl - commission;
+      const symbol = t.symbol || "UNKNOWN";
+      
+      const dateStr = t.created_at || "";
+      const month = dateStr.substring(0, 7) || "Unknown";
+      
+      monthlyData[month] = (monthlyData[month] || 0) + netPnl;
+      symbolData[symbol] = (symbolData[symbol] || 0) + netPnl;
+      
+      const slice = trades.slice(Math.max(0, index - windowSize + 1), index + 1);
+      const wins = slice.filter(x => (parseFloat(x.pnl) || 0.0) > 0).length;
+      const wr = slice.length > 0 ? (wins / slice.length) * 100 : 0;
+      rollingWinRate.push(wr);
+      rollingLabels.push(index + 1);
+    });
+    
+    const sortedMonths = Object.keys(monthlyData).sort();
+    const monthlyPnlVals = sortedMonths.map(m => monthlyData[m]);
+    const monthlyBgColors = monthlyPnlVals.map(val => val >= 0 ? "rgba(16, 217, 138, 0.7)" : "rgba(244, 63, 94, 0.7)");
+    
+    if (window.monthlyPnlChart) {
+      monthlyPnlChart.data.labels = sortedMonths;
+      monthlyPnlChart.data.datasets[0].data = monthlyPnlVals;
+      monthlyPnlChart.data.datasets[0].backgroundColor = monthlyBgColors;
+      monthlyPnlChart.update("none");
+    }
+    
+    const monthlyTable = document.getElementById("monthlyPnlTableContainer");
+    if (monthlyTable) {
+      let html = `<table><thead><tr><th>Tháng</th><th>P&L (USDT)</th></tr></thead><tbody>`;
+      if (sortedMonths.length === 0) {
+        html += `<tr><td colspan="2" style="text-align:center;color:#64748b">No data</td></tr>`;
+      } else {
+        sortedMonths.forEach((m, idx) => {
+          const val = monthlyPnlVals[idx];
+          html += `<tr><td>${m}</td><td class="${val >= 0 ? 'pos' : 'neg'}">${val >= 0 ? '+' : ''}${val.toFixed(2)}</td></tr>`;
+        });
+      }
+      html += `</tbody></table>`;
+      monthlyTable.innerHTML = html;
+    }
+    
+    if (window.rollingWinRateChart) {
+      rollingWinRateChart.data.labels = rollingLabels;
+      rollingWinRateChart.data.datasets[0].data = rollingWinRate;
+      rollingWinRateChart.update("none");
+    }
+    
+    const sortedSymbols = Object.keys(symbolData).sort();
+    const symbolPnlVals = sortedSymbols.map(s => symbolData[s]);
+    const symbolBgColors = symbolPnlVals.map(val => val >= 0 ? "rgba(16, 217, 138, 0.7)" : "rgba(244, 63, 94, 0.7)");
+    
+    if (window.symbolPnlChart) {
+      symbolPnlChart.data.labels = sortedSymbols;
+      symbolPnlChart.data.datasets[0].data = symbolPnlVals;
+      symbolPnlChart.data.datasets[0].backgroundColor = symbolBgColors;
+      symbolPnlChart.update("none");
+    }
+    
+    const symbolTable = document.getElementById("symbolPnlTableContainer");
+    if (symbolTable) {
+      let html = `<table><thead><tr><th>Symbol</th><th>P&L (USDT)</th></tr></thead><tbody>`;
+      if (sortedSymbols.length === 0) {
+        html += `<tr><td colspan="2" style="text-align:center;color:#64748b">No data</td></tr>`;
+      } else {
+        sortedSymbols.forEach((s, idx) => {
+          const val = symbolPnlVals[idx];
+          html += `<tr><td class="sym">${s}</td><td class="${val >= 0 ? 'pos' : 'neg'}">${val >= 0 ? '+' : ''}${val.toFixed(2)}</td></tr>`;
+        });
+      }
+      html += `</tbody></table>`;
+      symbolTable.innerHTML = html;
+    }
+    
+  } catch (err) {
+    console.error("Error loading advanced reports:", err);
+  }
+}
+
+// —"?—"? Settings Modal & Sync —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+function openSettingsModal() {
+  const modal = document.getElementById('settingsModal');
+  if (modal) {
+    modal.style.display = 'block';
+    loadSettings();
+    loadProductionSignals(); // Auto-load signals
+  }
+}
+
+function closeSettingsModal() {
+  const modal = document.getElementById('settingsModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+function updateSizingValueLabel() {
+  const mode = document.getElementById("positionSizingMode").value;
+  const label = document.getElementById("positionSizingValueLabel");
+  if (label) {
+    if (mode === "dynamic") {
+      label.textContent = "Risk (% of Capital)";
+      document.getElementById("positionSizingValue").placeholder = "2.0";
+    } else {
+      label.textContent = "Amount (USDT)";
+      document.getElementById("positionSizingValue").placeholder = "100.0";
+    }
+  }
+}
+
+async function loadSettings() {
+  try {
+    const res = await get('/api/forward/sync-settings');
+    let s = {};
+    if (res && res.success && res.settings) {
+      s = res.settings;
+    } else {
+      const local = localStorage.getItem('sync_settings');
+      if (local) s = JSON.parse(local);
+    }
+    
+    document.getElementById('syncSymbols').value = s.symbols || '';
+    document.getElementById('syncSources').value = s.sources || '';
+    document.getElementById('syncStartId').value = s.start_id || '';
+    document.getElementById('syncEndId').value = s.end_id || '';
+    document.getElementById('syncEnabled').checked = !!s.sync_enabled;
+    document.getElementById('positionSizingMode').value = s.position_sizing_mode || 'fixed';
+    document.getElementById('positionSizingValue').value = s.position_sizing_value !== undefined ? s.position_sizing_value : 100.0;
+    updateSizingValueLabel();
+  } catch (err) {
+    console.error('Failed to load settings', err);
+  }
+}
+
+async function saveSettings(e) {
+  if (e) e.preventDefault();
+  const settings = {
+    symbols: document.getElementById('syncSymbols').value.trim(),
+    sources: document.getElementById('syncSources').value.trim(),
+    start_id: document.getElementById('syncStartId').value ? parseInt(document.getElementById('syncStartId').value) : null,
+    end_id: document.getElementById('syncEndId').value ? parseInt(document.getElementById('syncEndId').value) : null,
+    sync_enabled: document.getElementById('syncEnabled').checked,
+    position_sizing_mode: document.getElementById('positionSizingMode').value,
+    position_sizing_value: parseFloat(document.getElementById('positionSizingValue').value) || 100.0
+  };
+
+  localStorage.setItem('sync_settings', JSON.stringify(settings));
+
+  try {
+    const res = await fetch(API + '/api/forward/sync-settings', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(settings)
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert('Settings saved successfully!');
+      closeSettingsModal();
+    } else {
+      alert('Failed to save settings to backend: ' + (data.error || 'Unknown error'));
+    }
+  } catch (err) {
+    alert('Error saving settings to backend: ' + err.message);
+  }
+}
+
+async function syncNow() {
+  const btn = event.target;
+  const originalText = btn.textContent;
+  btn.textContent = 'Syncing...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(API + '/api/forward/sync-now', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert(`Sync completed! Synced ${data.synced_count} new signals.`);
+      refresh();
+      closeSettingsModal();
+    } else {
+      alert('Sync failed: ' + (data.error || 'Unknown error'));
+    }
+  } catch (err) {
+    alert('Error during manual sync: ' + err.message);
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
+
+// —"?—"? Production Signals Preview & Sync —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+let productionSignals = [];
+let selectedSignalIds = new Set();
+let lastCheckedCheckbox = null;
+let _reloadDebounceTimer = null;
+
+// Debounced reload: wait 600ms after user stops typing before reloading
+function debouncedReloadSignals() {
+  if (_reloadDebounceTimer) clearTimeout(_reloadDebounceTimer);
+  _reloadDebounceTimer = setTimeout(() => {
+    loadProductionSignals();
+  }, 600);
+}
+
+async function loadProductionSignals() {
+  const tbody = document.getElementById('signalPreviewTbody');
+  const reloadBtn = document.getElementById('reloadSignalsBtn');
+  if (reloadBtn) {
+    reloadBtn.disabled = true;
+  }
+  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:20px">📈 Loading signals...</td></tr>`;
+  
+  try {
+    const startIdEl = document.getElementById('syncStartId');
+    const endIdEl = document.getElementById('syncEndId');
+    const symbolEl = document.getElementById('syncSymbols');
+    const sourceEl = document.getElementById('syncSources');
+    
+    const startId = startIdEl ? startIdEl.value.trim() : '';
+    const endId = endIdEl ? endIdEl.value.trim() : '';
+    const symbol = symbolEl ? symbolEl.value.trim() : '';
+    const source = sourceEl ? sourceEl.value.trim() : '';
+    
+    let queryParams = [];
+    if (symbol) queryParams.push(`symbol=${encodeURIComponent(symbol)}`);
+    if (source) queryParams.push(`source=${encodeURIComponent(source)}`);
+    // Default floor: only show signals with ID ≥ 1,000,000 (Forward namespace)
+    // unless user explicitly sets a different start_id
+    queryParams.push(`start_id=${startId || '1000000'}`);
+    if (endId) queryParams.push(`end_id=${endId}`);
+    
+    queryParams.push(`limit=1000`);
+    
+    const queryString = '?' + queryParams.join('&');
+    // Use longer timeout (15s) for production signals — can be a large DB scan
+    const res = await get('/api/forward/production-signals' + queryString, 15000);
+    if (res && res.success && res.signals) {
+      productionSignals = res.signals;
+    } else if (Array.isArray(res)) {
+      productionSignals = res;
+    } else {
+      productionSignals = [];
+    }
+    
+    selectedSignalIds.clear();
+    updateSelectedCount();
+    const selectAllCheckbox = document.getElementById('selectAllSignals');
+    if (selectAllCheckbox) selectAllCheckbox.checked = false;
+    lastCheckedCheckbox = null;
+    
+    renderPreviewTable(productionSignals);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--red);padding:20px">⚡—️ Failed to load signals: ${err.message}</td></tr>`;
+  } finally {
+    if (reloadBtn) {
+      reloadBtn.disabled = false;
+    }
+  }
+}
+
+function renderPreviewTable(signals) {
+  const tbody = document.getElementById('signalPreviewTbody');
+  if (!tbody) return;
+  
+  if (!signals || !signals.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#64748b;padding:20px">No production signals found</td></tr>`;
+    return;
+  }
+  
+  tbody.innerHTML = signals.map((s, index) => {
+    const isChecked = selectedSignalIds.has(s.id);
+    const buy = (s.action||"buy").toLowerCase()==="buy";
+    const st = (s.state||"PENDING").toUpperCase();
+    const ts = s.created_at ? s.created_at.substring(11, 16) + " UTC" : "—";
+    const id = s.id;
+    
+    return `<tr data-index="${index}" data-id="${id}">
+      <td style="text-align: center; padding: 6px;">
+        <input type="checkbox" class="signal-checkbox" data-id="${id}" ${isChecked ? 'checked' : ''} onclick="handleCheckboxClick(event)">
+      </td>
+      <td class="id-tag">${id}</td>
+      <td class="sym">${s.symbol||"?"}</td>
+      <td class="${buy?"buy-tag":"sell-tag"}">${(s.action||"?").toUpperCase()}</td>
+      <td>${fmtP(s.price)}</td>
+      <td><span class="status-badge ${stateColor(st)}">${st}</span></td>
+      <td>${ts}</td>
+    </tr>`;
+  }).join("");
+}
+
+function handleCheckboxClick(event) {
+  const checkbox = event.target;
+  if (!checkbox.classList.contains('signal-checkbox')) return;
+  
+  const id = parseInt(checkbox.dataset.id);
+  const isChecked = checkbox.checked;
+  
+  if (isChecked) {
+    selectedSignalIds.add(id);
+  } else {
+    selectedSignalIds.delete(id);
+  }
+  
+  // Shift-click selection range computation
+  if (event.shiftKey && lastCheckedCheckbox && lastCheckedCheckbox !== checkbox) {
+    const checkboxes = Array.from(document.querySelectorAll('.signal-checkbox'));
+    const startIdx = checkboxes.indexOf(lastCheckedCheckbox);
+    const endIdx = checkboxes.indexOf(checkbox);
+    
+    if (startIdx !== -1 && endIdx !== -1) {
+      const min = Math.min(startIdx, endIdx);
+      const max = Math.max(startIdx, endIdx);
+      
+      for (let i = min; i <= max; i++) {
+        const cb = checkboxes[i];
+        const cbId = parseInt(cb.dataset.id);
+        cb.checked = isChecked;
+        if (isChecked) {
+          selectedSignalIds.add(cbId);
+        } else {
+          selectedSignalIds.delete(cbId);
+        }
+      }
+    }
+  }
+  
+  lastCheckedCheckbox = checkbox;
+  updateSelectedCount();
+  updateSelectAllCheckboxState();
+}
+
+function toggleSelectAllSignals(headerCheckbox) {
+  const isChecked = headerCheckbox.checked;
+  const visibleCheckboxes = document.querySelectorAll('.signal-checkbox');
+  
+  visibleCheckboxes.forEach(cb => {
+    cb.checked = isChecked;
+    const id = parseInt(cb.dataset.id);
+    if (isChecked) {
+      selectedSignalIds.add(id);
+    } else {
+      selectedSignalIds.delete(id);
+    }
+  });
+  
+  updateSelectedCount();
+}
+
+function updateSelectAllCheckboxState() {
+  const headerCheckbox = document.getElementById('selectAllSignals');
+  if (!headerCheckbox) return;
+  
+  const visibleCheckboxes = Array.from(document.querySelectorAll('.signal-checkbox'));
+  if (visibleCheckboxes.length === 0) {
+    headerCheckbox.checked = false;
+    return;
+  }
+  
+  const allChecked = visibleCheckboxes.every(cb => cb.checked);
+  headerCheckbox.checked = allChecked;
+}
+
+function updateSelectedCount() {
+  const count = selectedSignalIds.size;
+  const countSpan = document.getElementById('selectedCount');
+  if (countSpan) countSpan.textContent = count;
+  
+  const syncBtn = document.getElementById('syncSelectedBtn');
+  if (syncBtn) syncBtn.disabled = count === 0;
+  
+  const rangeBtn = document.getElementById('setRangeBtn');
+  if (rangeBtn) rangeBtn.disabled = count === 0;
+}
+
+function filterPreviewTable() {
+  const filterVal = document.getElementById('signalFilterInput').value.toLowerCase().trim();
+  const rows = document.querySelectorAll('#signalPreviewTbody tr');
+  
+  if (rows.length === 1 && (rows[0].innerText.includes("No production signals") || rows[0].innerText.includes("Loading signals"))) {
+    return;
+  }
+  
+  rows.forEach(row => {
+    const idCell = row.cells[1]?.textContent.toLowerCase() || '';
+    const symCell = row.cells[2]?.textContent.toLowerCase() || '';
+    const actionCell = row.cells[3]?.textContent.toLowerCase() || '';
+    const stateCell = row.cells[5]?.textContent.toLowerCase() || '';
+    
+    if (idCell.includes(filterVal) || symCell.includes(filterVal) || actionCell.includes(filterVal) || stateCell.includes(filterVal)) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+  
+  updateSelectAllCheckboxState();
+}
+
+function setRangeFromSelection() {
+  if (selectedSignalIds.size === 0) return;
+  const ids = Array.from(selectedSignalIds);
+  const minId = Math.min(...ids);
+  const maxId = Math.max(...ids);
+  
+  const startInput = document.getElementById('syncStartId');
+  const endInput = document.getElementById('syncEndId');
+  
+  if (startInput) startInput.value = minId;
+  if (endInput) endInput.value = maxId;
+}
+
+async function syncSelectedSignals() {
+  const btn = document.getElementById('syncSelectedBtn');
+  if (!btn || selectedSignalIds.size === 0) return;
+  
+  const ids = Array.from(selectedSignalIds);
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '<span>⚡—</span> Syncing...';
+  btn.disabled = true;
+  
+  try {
+    const res = await fetch(API + '/api/forward/sync-now', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ ids: ids })
+    });
+    
+    const data = await res.json();
+    if (data.success) {
+      alert(`Successfully synced ${data.synced_count || ids.length} signals!`);
+      loadProductionSignals();
+      if (typeof refresh === 'function') refresh();
+    } else {
+      alert('Sync failed: ' + (data.error || 'Unknown error'));
+    }
+  } catch (err) {
+    alert('Error during manual sync: ' + err.message);
+  } finally {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }
+}
+
+// Attach event listeners
+window.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('settingsForm');
+  if (form) form.addEventListener('submit', saveSettings);
+  
+  window.addEventListener('click', (event) => {
+    const modal = document.getElementById('settingsModal');
+    if (event.target === modal) {
+      closeSettingsModal();
+    }
+  });
+});
+
+// —"?—"? Backtest Section Toggle —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+function toggleBacktest() {
+  const body = $("backtestBody");
+  const chevron = $("backtestChevron");
+  if (!body) return;
+  const isOpen = body.classList.toggle("open");
+  if (chevron) chevron.classList.toggle("open", isOpen);
+}
+
+// —"?—"? Forward vs Backtest Tracker Update —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+function updateBacktestTracker(stats) {
+  // Win Rate
+  const wrFwd = stats.win_rate;
+  const wrDelta = (wrFwd - S6_BASELINE.win_rate).toFixed(1);
+  const wrEl = $("comp-wr-fwd");
+  if (wrEl) { wrEl.textContent = `${wrFwd}%`; wrEl.className = `comp-fwd ${wrFwd >= S6_BASELINE.win_rate ? 'pos' : 'neg'}`; }
+  const wrDeltaEl = $("comp-wr-delta");
+  if (wrDeltaEl) {
+    const sign = parseFloat(wrDelta) >= 0 ? "+" : "";
+    wrDeltaEl.textContent = `${sign}${wrDelta} pp`;
+    wrDeltaEl.className = `comp-delta ${parseFloat(wrDelta) >= 0 ? 'delta-up' : 'delta-down'}`;
+  }
+
+  // Profit Factor
+  const pfFwd = stats.profit_factor;
+  const pfDelta = (pfFwd - S6_BASELINE.profit_factor).toFixed(2);
+  const pfEl = $("comp-pf-fwd");
+  if (pfEl) { pfEl.textContent = pfFwd.toFixed(2); pfEl.className = `comp-fwd ${pfFwd >= S6_BASELINE.profit_factor ? 'pos' : 'neg'}`; }
+  const pfDeltaEl = $("comp-pf-delta");
+  if (pfDeltaEl) {
+    const sign = parseFloat(pfDelta) >= 0 ? "+" : "";
+    pfDeltaEl.textContent = `${sign}${pfDelta}`;
+    pfDeltaEl.className = `comp-delta ${parseFloat(pfDelta) >= 0 ? 'delta-up' : 'delta-down'}`;
+  }
+
+  // Max Drawdown (lower is better, so invert the delta logic)
+  const ddFwd = stats.max_drawdown != null ? Math.abs(stats.max_drawdown) : 0;
+  const ddEl = $("comp-dd-fwd");
+  if (ddEl) { ddEl.textContent = `${ddFwd.toFixed(2)}`; ddEl.className = `comp-fwd ${ddFwd <= S6_BASELINE.max_drawdown_pct ? 'pos' : 'neg'}`; }
+  const ddDeltaEl = $("comp-dd-delta");
+  if (ddDeltaEl) {
+    const ddDiff = (ddFwd - S6_BASELINE.max_drawdown_pct).toFixed(2);
+    const sign = parseFloat(ddDiff) >= 0 ? "+" : "";
+    ddDeltaEl.textContent = `${sign}${ddDiff}%`;
+    // For drawdown, lower is better ≥' negative delta is green
+    ddDeltaEl.className = `comp-delta ${parseFloat(ddDiff) <= 0 ? 'delta-up' : 'delta-down'}`;
+  }
+
+  // Avg Win / Avg Loss Ratio
+  const avgW = stats.avg_win || 0;
+  const avgL = Math.abs(stats.avg_loss || 0);
+  const wlRatio = avgL > 0 ? (avgW / avgL) : (avgW > 0 ? 99.0 : 0);
+  const wlEl = $("comp-wl-fwd");
+  if (wlEl) { wlEl.textContent = wlRatio > 50 ? "—" : wlRatio.toFixed(2); wlEl.className = `comp-fwd ${wlRatio >= 1.5 ? 'pos' : (wlRatio >= 1.0 ? 'neu' : 'neg')}`; }
+  const wlDeltaEl = $("comp-wl-delta");
+  if (wlDeltaEl) {
+    wlDeltaEl.textContent = wlRatio >= 1.5 ? "▼— Strong" : (wlRatio >= 1.0 ? "— Neutral" : "▼— Weak");
+    wlDeltaEl.className = `comp-delta ${wlRatio >= 1.5 ? 'delta-up' : (wlRatio >= 1.0 ? 'delta-neutral' : 'delta-down')}`;
+  }
+}
+
+function resetBacktestTracker() {
+  ["comp-wr-fwd", "comp-pf-fwd", "comp-dd-fwd", "comp-wl-fwd"].forEach(id => {
+    const el = $(id);
+    if (el) { el.textContent = "—"; el.className = "comp-fwd"; }
+  });
+  ["comp-wr-delta", "comp-pf-delta", "comp-dd-delta", "comp-wl-delta"].forEach(id => {
+    const el = $(id);
+    if (el) { el.textContent = "— —"; el.className = "comp-delta delta-neutral"; }
+  });
+}
+
+// —"?—"? Signal Entry Chart (LightweightCharts v5.2) —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+let signalChart = null;
+let signalCandleSeries = null;
+let signalVolumeSeries = null;
+let signalMarkersApi = null;
+let currentChartSymbol = 'BTCUSDT';
+let currentSignalSymbol = 'ALL';
+let currentLiveSymbol = 'ALL';
+let currentChartStatusFilter = 'ALL';
+let currentSignalStatusFilter = 'ALL';
+let currentLiveStatusFilter = 'ALL';
+let idSortDirection = 'desc'; // 'desc' or 'asc'
+let activeSignalRow = null;
+let chartSignalMarkers = [];
+let fwdGlobalStats = null;
+let liveGlobalStats = null;
+let signalLimit = 200;
+
+function toggleIdSort() {
+  idSortDirection = (idSortDirection === 'desc') ? 'asc' : 'desc';
+  
+  // Update sorting indicators (arrows) in headers
+  const indicators = document.querySelectorAll('.id-sort-indicator');
+  indicators.forEach(el => {
+    el.textContent = (idSortDirection === 'desc') ? '▼' : '▲';
+  });
+  
+  // Re-render table rows
+  renderRows(fwdCache, "fwd-tbody");
+  renderRows(liveCache, "live-tbody");
+}
+
+function getStatusGroupWeight(state) {
+  const st = (state || '').toUpperCase();
+  if (['PENDING', 'ANALYZING', 'MACRO_PASSED', 'INGESTED'].includes(st)) return 1;
+  if (st === 'COMPLETED') return 2;
+  if (['REJECTED', 'FAILED'].includes(st)) return 3;
+  return 4;
+}
+
+function checkHasMatchingSignals() {
+  const cache = (currentMode === "live") ? liveCache : fwdCache;
+  if (!cache || !cache.length) return false;
+  const filtered = cache.filter(s => (s.symbol || '').toUpperCase() === currentChartSymbol.toUpperCase());
+  if (!filtered.length) return false;
+  
+  const filter = currentChartStatusFilter.toUpperCase();
+  if (filter === 'ALL') return true;
+  
+  return filtered.some(s => {
+    const st = (s.state || '').toUpperCase();
+    if (filter === 'COMPLETED') return st === 'COMPLETED';
+    if (filter === 'REJECTED') return ['REJECTED', 'FAILED'].includes(st);
+    if (filter === 'PENDING') return ['PENDING', 'ANALYZING', 'MACRO_PASSED', 'INGESTED'].includes(st);
+    return st === filter;
+  });
+}
+
+function updateChartPanelVisibility(hasMatchingSignals) {
+  const chartPanel = document.getElementById("signalChartPanel");
+  const dualPanel = document.querySelector(".dual-panel");
+  const fwdPanel = document.getElementById("forwardPanelCard");
+  const livePanel = document.getElementById("livePanelCard");
+  
+  if (currentMode === "both") {
+    if (fwdPanel) fwdPanel.style.display = "block";
+    if (livePanel) livePanel.style.display = "block";
+    if (chartPanel) chartPanel.style.display = "none";
+    if (dualPanel) dualPanel.style.gridTemplateColumns = "1fr 1fr";
+    return;
+  }
+  
+  // Always display the chart panel and dual layout when not in "both" mode
+  if (chartPanel) chartPanel.style.display = "block";
+  if (dualPanel) dualPanel.style.gridTemplateColumns = "1fr 1fr";
+  
+  if (currentMode === "forward") {
+    if (fwdPanel) fwdPanel.style.display = "block";
+    if (livePanel) livePanel.style.display = "none";
+  } else if (currentMode === "live") {
+    if (fwdPanel) fwdPanel.style.display = "none";
+    if (livePanel) livePanel.style.display = "block";
+  }
+  
+  // Resize chart to adapt to container width changes
+  if (signalChart && chartPanel && chartPanel.clientWidth > 0) {
+    const cc = document.getElementById('signalChartContainer');
+    if (cc) signalChart.resize(cc.clientWidth, 340);
+  }
+}
+
+function initSignalChart() {
+  const cc = document.getElementById('signalChartContainer');
+  if (!cc || signalChart) return;
+  signalChart = LightweightCharts.createChart(cc, {
+    layout: { background: { type: 'solid', color: '#131722' }, textColor: '#d1d4dc', fontSize: 11 },
+    grid: { vertLines: { color: '#1e2d42', style: 1 }, horzLines: { color: '#1e2d42', style: 1 } },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.1, bottom: 0.25 } },
+    timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false },
+  });
+  signalCandleSeries = signalChart.addSeries(LightweightCharts.CandlestickSeries, {
+    upColor: '#26a69a', downColor: '#ef5350', borderVisible: false,
+    wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+  });
+  signalVolumeSeries = signalChart.addSeries(LightweightCharts.HistogramSeries, {
+    color: '#26a69a', priceFormat: { type: 'volume' },
+    priceScaleId: '', scaleMargins: { top: 0.8, bottom: 0 },
+  });
+  window.addEventListener('resize', () => {
+    if (signalChart && cc.clientWidth > 0) signalChart.resize(cc.clientWidth, 340);
+  });
+  // Load default chart
+  loadSignalChart('BTCUSDT');
+}
+
+async function loadSignalChart(symbol) {
+  if (!signalChart) return;
+  currentChartSymbol = symbol;
+  try {
+    const res = await get(`/api/klines?symbol=${symbol}&interval=1h&limit=300`, 15000);
+    if (res && res.success && res.candles && res.candles.length > 0) {
+      signalCandleSeries.setData(res.candles);
+      signalVolumeSeries.setData(res.candles.map(c => ({
+        time: c.time, value: c.volume,
+        color: c.close >= c.open ? 'rgba(38,166,154,0.25)' : 'rgba(239,83,80,0.25)'
+      })));
+      signalChart.timeScale().fitContent();
+      addForwardSignalMarkers(symbol);
+    }
+  } catch (e) {
+    console.warn('Chart load failed:', e);
+  }
+}
+
+function addForwardSignalMarkers(symbol) {
+  const cache = (currentMode === "live") ? liveCache : fwdCache;
+  if (!cache || !cache.length) {
+    if (signalMarkersApi) {
+      signalMarkersApi.setMarkers([]);
+    }
+    const countEl = document.getElementById('chartSignalCount');
+    if (countEl) countEl.textContent = `0 ${symbol} signals on chart`;
+    return;
+  }
+  const filtered = cache.filter(s => (s.symbol || '').toUpperCase() === symbol.toUpperCase());
+
+  // Do NOT filter signal markers on the chart by status (always show all signals of the symbol)
+  let finalFiltered = filtered;
+
+  // Group signals by candle hour (3600s) and action (BUY/SELL) to prevent clustering (dính chùm)
+  const groups = {};
+  finalFiltered.forEach(s => {
+    if (!s.created_at) return;
+    const ts = new Date(s.created_at.replace(' ', 'T') + 'Z').getTime() / 1000;
+    if (isNaN(ts)) return;
+    const candleTs = Math.floor(ts / 3600) * 3600; // round to nearest 1h candle
+    const action = (s.action || 'buy').toLowerCase();
+    const key = `${candleTs}_${action}`;
+    if (!groups[key]) {
+      groups[key] = {
+        time: candleTs,
+        action: action,
+        ids: [],
+        states: []
+      };
+    }
+    groups[key].ids.push(s.id);
+    groups[key].states.push((s.state || '').toUpperCase());
+  });
+
+  chartSignalMarkers = Object.values(groups).map(g => {
+    const isBuy = g.action === 'buy';
+    
+    // Check if any signal in this hour group matches the chart status filter
+    const filter = currentChartStatusFilter.toUpperCase();
+    let isMatching = false;
+    if (filter === 'ALL') {
+      isMatching = true;
+    } else {
+      isMatching = g.states.some(st => {
+        if (filter === 'COMPLETED') return st === 'COMPLETED';
+        if (filter === 'REJECTED') return ['REJECTED', 'FAILED'].includes(st);
+        if (filter === 'PENDING') return ['PENDING', 'ANALYZING', 'MACRO_PASSED', 'INGESTED'].includes(st);
+        return st === filter;
+      });
+    }
+
+    let label = '';
+    if (isMatching) {
+      const sortedIds = g.ids.sort((a, b) => a - b);
+      if (sortedIds.length <= 2) {
+        label = sortedIds.map(id => `#${id}`).join(', ');
+      } else {
+        label = `#${sortedIds[0]}, #${sortedIds[1]} +${sortedIds.length - 2}`;
+      }
+    }
+
+    let color = '';
+    if (isMatching) {
+      color = isBuy ? '#26a69a' : '#ef5350';
+    } else {
+      // Fade color out if not matching the selected status filter
+      color = isBuy ? 'rgba(38, 166, 154, 0.12)' : 'rgba(239, 83, 80, 0.12)';
+    }
+
+    if (isMatching) {
+      return {
+        time: g.time,
+        position: isBuy ? 'belowBar' : 'aboveBar',
+        color: color,
+        shape: isBuy ? 'arrowUp' : 'arrowDown',
+        text: label,
+        size: 1
+      };
+    } else {
+      return {
+        time: g.time,
+        position: isBuy ? 'belowBar' : 'aboveBar',
+        color: color,
+        shape: 'circle',
+        text: '',
+        size: 0.25
+      };
+    }
+  }).sort((a, b) => a.time - b.time);
+
+  if (chartSignalMarkers.length > 0) {
+    if (!signalMarkersApi) {
+      signalMarkersApi = LightweightCharts.createSeriesMarkers(signalCandleSeries, chartSignalMarkers);
+    } else {
+      signalMarkersApi.setMarkers(chartSignalMarkers);
+    }
+  } else {
+    if (signalMarkersApi) {
+      signalMarkersApi.setMarkers([]);
+    }
+  }
+  const countEl = document.getElementById('chartSignalCount');
+  if (countEl) {
+    const filter = currentChartStatusFilter.toUpperCase();
+    const matchingCount = finalFiltered.filter(s => {
+      const st = (s.state || '').toUpperCase();
+      if (filter === 'ALL') return true;
+      if (filter === 'COMPLETED') return st === 'COMPLETED';
+      if (filter === 'REJECTED') return ['REJECTED', 'FAILED'].includes(st);
+      if (filter === 'PENDING') return ['PENDING', 'ANALYZING', 'MACRO_PASSED', 'INGESTED'].includes(st);
+      return st === filter;
+    }).length;
+    countEl.innerHTML = `Hiển thị <strong>${finalFiltered.length}</strong> tín hiệu ${symbol} trên chart (<strong>${matchingCount}</strong> khớp bộ lọc: <strong>${filter}</strong>)`;
+  }
+
+  // Check if any matching signals are present on chart and update chart container visibility
+  const hasMatching = checkHasMatchingSignals();
+  updateChartPanelVisibility(hasMatching);
+}
+
+function switchChartSymbol(symbol) {
+  currentChartSymbol = symbol;
+  const container = document.getElementById('signalSymbolTabs');
+  if (container) {
+    container.querySelectorAll('.chart-sym-btn').forEach(b => b.classList.remove('active'));
+    const btnText = symbol === 'ALL' ? 'ALL' : symbol.replace('USDT', '');
+    const btn = [...container.querySelectorAll('.chart-sym-btn')].find(b => b.textContent.trim() === btnText);
+    if (btn) btn.classList.add('active');
+  }
+  if (signalMarkersApi) {
+    try {
+      signalMarkersApi.setMarkers([]);
+    } catch(e) { console.warn(e); }
+  }
+  signalMarkersApi = null;
+  loadSignalChart(symbol);
+}
+
+function switchSignalSymbolFilter(symbol) {
+  currentSignalSymbol = symbol;
+  const container = document.getElementById('signalSymbolTabs');
+  if (container) {
+    container.querySelectorAll('.chart-sym-btn').forEach(b => b.classList.remove('active'));
+    const btnText = symbol === 'ALL' ? 'ALL' : symbol.replace('USDT', '');
+    const btn = [...container.querySelectorAll('.chart-sym-btn')].find(b => b.textContent.trim() === btnText);
+    if (btn) btn.classList.add('active');
+  }
+  
+  if (symbol !== 'ALL') {
+    switchChartSymbol(symbol);
+  }
+  
+  refresh();
+}
+
+function switchChartStatusFilter(status) {
+  currentChartStatusFilter = status;
+  const container = document.getElementById('chartStatusTabs');
+  if (container) {
+    container.querySelectorAll('.chart-sym-btn').forEach(b => b.classList.remove('active'));
+    const btn = [...container.querySelectorAll('.chart-sym-btn')].find(b => b.textContent.trim() === status);
+    if (btn) btn.classList.add('active');
+  }
+  
+  // Synchronize dropdown selects in table headers
+  const fwdSelect = document.getElementById('fwdStatusFilter');
+  if (fwdSelect) fwdSelect.value = status;
+  const liveSelect = document.getElementById('liveStatusFilter');
+  if (liveSelect) liveSelect.value = status;
+
+  currentSignalStatusFilter = status;
+  currentLiveStatusFilter = status;
+
+  renderRows(fwdCache, "fwd-tbody");
+  renderRows(liveCache, "live-tbody");
+
+  // Keep all markers on the chart (do not filter them by status)
+  addForwardSignalMarkers(currentChartSymbol);
+}
+
+function switchSignalStatusFilter(status) {
+  currentSignalStatusFilter = status;
+  // Sync chart tab highlight
+  const chartTabs = document.getElementById('chartStatusTabs');
+  if (chartTabs) {
+    chartTabs.querySelectorAll('.chart-sym-btn').forEach(b => b.classList.remove('active'));
+    const btn = [...chartTabs.querySelectorAll('.chart-sym-btn')].find(b => b.textContent.trim() === status);
+    if (btn) btn.classList.add('active');
+  }
+  // Sync liveStatusFilter select dropdown
+  const liveSelect = document.getElementById('liveStatusFilter');
+  if (liveSelect) liveSelect.value = status;
+  currentLiveStatusFilter = status;
+
+  currentChartStatusFilter = status;
+
+  renderRows(fwdCache, "fwd-tbody");
+  renderRows(liveCache, "live-tbody");
+  addForwardSignalMarkers(currentChartSymbol);
+}
+
+function switchLiveStatusFilter(status) {
+  currentLiveStatusFilter = status;
+  // Sync chart tab highlight
+  const chartTabs = document.getElementById('chartStatusTabs');
+  if (chartTabs) {
+    chartTabs.querySelectorAll('.chart-sym-btn').forEach(b => b.classList.remove('active'));
+    const btn = [...chartTabs.querySelectorAll('.chart-sym-btn')].find(b => b.textContent.trim() === status);
+    if (btn) btn.classList.add('active');
+  }
+  // Sync fwdStatusFilter select dropdown
+  const fwdSelect = document.getElementById('fwdStatusFilter');
+  if (fwdSelect) fwdSelect.value = status;
+  currentSignalStatusFilter = status;
+
+  currentChartStatusFilter = status;
+
+  renderRows(fwdCache, "fwd-tbody");
+  renderRows(liveCache, "live-tbody");
+  addForwardSignalMarkers(currentChartSymbol);
+}
+
+function switchSignalLimit(limit) {
+  signalLimit = parseInt(limit) || 200;
+  
+  // Sync the two dropdown selects in Forward and Live panels
+  const fwdSelect = document.getElementById('fwdLimitSelect');
+  if (fwdSelect) fwdSelect.value = limit;
+  const liveSelect = document.getElementById('liveLimitSelect');
+  if (liveSelect) liveSelect.value = limit;
+  
+  // Reload the cache by calling refresh()
+  refresh();
+}
+
+function onSignalRowClick(rowEl, signal) {
+  // Highlight active row
+  if (activeSignalRow) activeSignalRow.classList.remove('active-signal');
+  rowEl.classList.add('active-signal');
+  activeSignalRow = rowEl;
+
+  // Update chart info overlay
+  const infoPanel = document.getElementById('chartSignalInfo');
+  const isBuy = (signal.action || '').toLowerCase() === 'buy';
+  document.getElementById('chartSigId').textContent = `#${Number(signal.id).toLocaleString()}`;
+  const actionEl = document.getElementById('chartSigAction');
+  actionEl.textContent = (signal.action || '?').toUpperCase();
+  actionEl.className = isBuy ? 'sig-action-buy' : 'sig-action-sell';
+  document.getElementById('chartSigPrice').textContent = fmtP(signal.price);
+  infoPanel.style.display = 'flex';
+  infoPanel.style.gap = '6px';
+  infoPanel.style.alignItems = 'center';
+
+  // Switch chart to signal's symbol if different
+  const sym = (signal.symbol || 'BTCUSDT').toUpperCase();
+  if (sym !== currentChartSymbol) {
+    switchChartSymbol(sym);
+  }
+
+  // Scroll chart to signal's time
+  if (signal.created_at) {
+    const ts = new Date(signal.created_at.replace(' ', 'T') + 'Z').getTime() / 1000;
+    const hoursBefore = 24 * 3600; // 24 hours before
+    const hoursAfter = 12 * 3600;  // 12 hours after
+    signalChart.timeScale().setVisibleRange({
+      from: ts - hoursBefore,
+      to: ts + hoursAfter,
+    });
+
+    // Add entry price line
+    try {
+      if (window._entryPriceLine) {
+        signalCandleSeries.removePriceLine(window._entryPriceLine);
+      }
+      window._entryPriceLine = signalCandleSeries.createPriceLine({
+        price: signal.price,
+        color: isBuy ? '#26a69a' : '#ef5350',
+        lineWidth: 2,
+        lineStyle: LightweightCharts.LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: isBuy ? 'BUY ENTRY' : 'SELL ENTRY',
+      });
+    } catch (e) { console.warn('Price line error:', e); }
+  }
+}
+
+// —"?—"? Server Stats Badge —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+async function loadServerStats() {
+  const res = await get('/api/forward/server-stats');
+  if (res && res.success) {
+    const totalEl = document.getElementById('serverTotalSignals');
+    const syncedEl = document.getElementById('serverForwardSynced');
+    if (totalEl) totalEl.textContent = res.production_total.toLocaleString();
+    if (syncedEl) syncedEl.textContent = res.forward_total.toLocaleString();
+  }
+}
+
+// —"?—"? Boot —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+set("footer-time", new Date().toISOString().substring(0,16).replace("T"," ")+" UTC");
+initSignalChart();
+setTab('both');
+refresh();
+loadServerStats();
+setInterval(refresh, POLL_MS);
+setInterval(loadServerStats, 60000); // Update stats every 60s
+</script>
+</body>
+</html>
