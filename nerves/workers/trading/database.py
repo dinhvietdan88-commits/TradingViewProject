@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS trades (
     commission     REAL,
     error_message  TEXT,
     pnl            REAL,
+    exit_price     REAL,
     combined_score TEXT
 );
 
@@ -248,6 +249,7 @@ async def init_db():
                 "ALTER TABLE trades ADD COLUMN combined_score TEXT",
                 "ALTER TABLE trades ADD COLUMN exchange TEXT DEFAULT 'binance'",
                 "ALTER TABLE trades ADD COLUMN vbs_queue_id INTEGER",
+                "ALTER TABLE trades ADD COLUMN exit_price REAL",
             ]:
                 try:
                     await db.execute(col_def)
@@ -526,31 +528,37 @@ def cleanup_expired_auth_codes() -> int:
         conn.close()
 
 
-async def get_setting(key: str, default: str | None = None) -> str | None:
+async def get_setting(
+    key: str, default: str | None = None, db_path: str | None = None
+) -> str | None:
     """Get a setting value asynchronously."""
+    if db_path is None:
+        db_path = config.DB_PATH
     try:
-        async with aiosqlite.connect(config.DB_PATH) as db:
+        async with aiosqlite.connect(db_path) as db:
             async with db.execute(
                 "SELECT value FROM settings WHERE key = ?", (key,)
             ) as cursor:
                 row = await cursor.fetchone()
                 return row[0] if row else default
     except Exception as e:
-        log.warning(f"Failed to get setting {key}: {e}")
+        log.warning(f"Failed to get setting {key} from {db_path}: {e}")
         return default
 
 
-async def set_setting(key: str, value: str) -> None:
+async def set_setting(key: str, value: str, db_path: str | None = None) -> None:
     """Set a setting value asynchronously."""
+    if db_path is None:
+        db_path = config.DB_PATH
     try:
-        async with aiosqlite.connect(config.DB_PATH) as db:
+        async with aiosqlite.connect(db_path) as db:
             await db.execute(
                 "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
                 (key, value),
             )
             await db.commit()
     except Exception as e:
-        log.warning(f"Failed to set setting {key} to {value}: {e}")
+        log.warning(f"Failed to set setting {key} to {value} in {db_path}: {e}")
 
 
 async def get_rolling_drawdown(limit: int = 20, mode: str | None = None) -> float:

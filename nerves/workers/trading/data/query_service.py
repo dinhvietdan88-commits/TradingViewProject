@@ -388,7 +388,8 @@ async def get_equity_curve(
     async with aiosqlite.connect(db_path) as db:
         db.row_factory = aiosqlite.Row
 
-        sql_query = f"""SELECT t.created_at, t.pnl, t.symbol, t.side, t.signal_id
+        sql_query = f"""SELECT t.created_at, t.pnl, t.symbol, t.side, t.signal_id,
+                               t.executed_price, t.stop_loss_price, t.take_profit_price, t.exit_price, t.executed_qty
                 FROM trades t {join_clause} {where}
                 ORDER BY t.created_at ASC"""  # noqa: S608
         rows = await db.execute_fetchall(sql_query, params)
@@ -408,6 +409,32 @@ async def get_equity_curve(
             labels.append(r[0])  # created_at
             cumulative_pnl.append(round(running, 2))
             drawdown_pct.append(dd_pct)
+
+            entry = r[5] or 0.0
+            exit_p = r[8] or 0.0
+            side = (r[3] or "buy").upper()
+            pnl_val = r[1] or 0.0
+            qty = r[9] or 0.0
+
+            pnl_pct = 0.0
+            if entry > 0.0:
+                if qty > 0.0:
+                    pnl_pct = pnl_val / (entry * qty)
+                else:
+                    if side in ["BUY", "LONG"]:
+                        pnl_pct = (exit_p - entry) / entry
+                    else:
+                        pnl_pct = (entry - exit_p) / entry
+
+            outcome = "TIMEOUT"
+            if exit_p > 0.0:
+                tp = r[7] or 0.0
+                sl = r[6] or 0.0
+                if tp > 0.0 and abs(exit_p - tp) / tp < 0.01:
+                    outcome = "TAKE_PROFIT"
+                elif sl > 0.0 and abs(exit_p - sl) / sl < 0.01:
+                    outcome = "STOP_LOSS"
+
             trades_detail.append(
                 {
                     "date": r[0],
@@ -417,6 +444,12 @@ async def get_equity_curve(
                     "cumulative": round(running, 2),
                     "drawdown_pct": dd_pct,
                     "signal_id": r[4],
+                    "entry": entry,
+                    "sl": r[6],
+                    "tp": r[7],
+                    "close_price": exit_p,
+                    "pnl_pct": pnl_pct,
+                    "outcome": outcome,
                 }
             )
 

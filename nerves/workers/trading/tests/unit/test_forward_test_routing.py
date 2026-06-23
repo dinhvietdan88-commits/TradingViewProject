@@ -186,8 +186,8 @@ async def test_ohlcv_and_indicators_route_to_live_db():
         exchange="binance",
     )
 
-    # Verify indicator signal in live DB
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    # Verify indicator signal in forward DB
+    async with aiosqlite.connect(config.FORWARD_DB_PATH) as db:
         async with db.execute(
             "SELECT signal_id, indicator_name, signal_type FROM indicator_signals WHERE id = ?",
             (ind_sig_id,),
@@ -198,8 +198,8 @@ async def test_ohlcv_and_indicators_route_to_live_db():
             assert row[1] == "RSI"
             assert row[2] == "BUY"
 
-    # Verify indicator signal NOT in forward DB
-    async with aiosqlite.connect(config.FORWARD_DB_PATH) as db:
+    # Verify indicator signal NOT in live DB
+    async with aiosqlite.connect(config.DB_PATH) as db:
         async with db.execute(
             "SELECT id FROM indicator_signals WHERE id = ?", (ind_sig_id,)
         ) as cur:

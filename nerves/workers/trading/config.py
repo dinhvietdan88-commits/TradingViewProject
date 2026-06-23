@@ -74,6 +74,7 @@ if ENVIRONMENT == "production" and not BINANCE_DRY_RUN:
 
 # Risk Management (Minervini SEPA rules)
 RISK_PER_TRADE = float(os.getenv("RISK_PER_TRADE", "0.02"))  # 2% per trade
+FEE_RATE = float(os.getenv("FEE_RATE", "0.0006"))
 STOP_LOSS_PCT = float(os.getenv("STOP_LOSS_PCT", "0.08"))  # 8% SL
 TAKE_PROFIT_PCT = float(os.getenv("TAKE_PROFIT_PCT", "0.20"))  # 20% TP → R:R ≥ 2.5
 MAX_QUOTE_QTY = float(os.getenv("MAX_QUOTE_QTY", "1000"))  # Max trade size limit

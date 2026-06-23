@@ -9,6 +9,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import aiosqlite
 
+import os
+
+os.environ["BYPASS_EXCHANGE_FEATURES"] = "false"
+
 import config
 import database
 from capture_client import PythonCaptureClient

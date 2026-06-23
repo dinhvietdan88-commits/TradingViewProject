@@ -56,3 +56,14 @@ repos:
             \.claude/.*|
             compliance/.*
           )$
+
+  # ── JavaScript: syntax verification on staged files ────────────────
+  - repo: local
+    hooks:
+      - id: js-syntax-check
+        name: "🔍 JavaScript Syntax Check"
+        entry: node -c
+        language: system
+        files: \.js$
+        pass_filenames: true
+

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Position Sizing Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#0d1117;color:#e6edf3;padding:28px}
+h1{font-size:1.6rem;font-weight:700;text-align:center;margin-bottom:6px;
+    background:linear-gradient(135deg,#f0c040,#3fb950);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sub{text-align:center;color:#8b949e;font-size:.82rem;margin-bottom:26px}
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
+.kpi{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:14px;text-align:center}
+.kpi .lbl{font-size:.65rem;color:#8b949e;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+.kpi .val{font-size:1.15rem;font-weight:700}
+.green{color:#3fb950}.red{color:#f85149}.blue{color:#58a6ff}.yellow{color:#e3b341}.purple{color:#bc8cff}
+.panel{background:#161b22;border:1px solid #30363d;border-radius:14px;padding:20px;margin-bottom:20px}
+.ptitle{font-size:.75rem;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{text-align:left;color:#8b949e;font-weight:500;padding:8px 12px;border-bottom:1px solid #21262d}
+td{padding:7px 12px;border-bottom:1px solid #1a1f27}
+td:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
+.rec{background:linear-gradient(135deg,rgba(63,185,80,.12),rgba(240,192,64,.08));
+      border:1px solid #3fb95044;border-radius:12px;padding:20px;margin-bottom:20px}
+.rec h3{color:#3fb950;font-size:.82rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.rec-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.rec-card{background:#0d1117;border-radius:8px;padding:12px;text-align:center}
+.rc-lbl{font-size:.65rem;color:#8b949e;margin-bottom:4px}
+.rc-val{font-size:.95rem;font-weight:600;color:#3fb950}
+.warn{background:rgba(227,179,65,.1);border:1px solid rgba(227,179,65,.3);
+       border-radius:8px;padding:12px;font-size:.8rem;color:#e3b341;margin-top:16px}
+</style>
+</head>
+<body>
+<h1>Position Sizing Calculator</h1>
+<p class="sub">SuperTrend v1.2 | BTCUSDT 5m | WF Config: P=7 M=3.5 SL=1.5x RRR=3.0 | BTC @ $74,130</p>
+
+<div class="kpi-grid">
+  <div class="kpi"><div class="lbl">Trades</div><div class="val blue">51</div></div>
+  <div class="kpi"><div class="lbl">Win Rate</div><div class="val yellow">29.4%</div></div>
+  <div class="kpi"><div class="lbl">Avg R:R</div><div class="val green">3.00</div></div>
+  <div class="kpi"><div class="lbl">Full Kelly</div><div class="val purple">5.9%</div></div>
+  <div class="kpi"><div class="lbl">Half Kelly</div><div class="val green">2.9%</div></div>
+</div>
+
+<div class="rec">
+  <h3>Recommended: Half-Kelly capped at 2% per trade</h3>
+  <div class="rec-grid">
+    <div class="rec-card">
+      <div class="rc-lbl">Account $1,000</div>
+      <div class="rc-val">0.13940 BTC</div>
+      <div class="rc-lbl" style="margin-top:4px">$20 risk | $10,334 notional</div>
+    </div>
+    <div class="rec-card">
+      <div class="rc-lbl">Account $5,000</div>
+      <div class="rc-val">0.69700 BTC</div>
+      <div class="rc-lbl" style="margin-top:4px">$100 risk | $51,669 notional</div>
+    </div>
+    <div class="rec-card">
+      <div class="rc-lbl">Account $10,000</div>
+      <div class="rc-val">1.39400 BTC</div>
+      <div class="rc-lbl" style="margin-top:4px">$200 risk | $103,338 notional</div>
+    </div>
+  </div>
+  <div class="warn">⚠️ These sizes are for BTCUSDT perpetual futures. Spot traders: divide notional by leverage (1x). Always verify SL is set before entry. Max 12 consecutive losses recorded — ensure drawdown tolerance.</div>
+</div>
+
+<div class="panel">
+  <div class="ptitle">Position Size by Method & Account Size (in BTC)</div>
+  <table>
+    <tr><th>Method</th><th>Risk %</th><th>$1,000</th><th>$5,000</th><th>$10,000</th><th>$50,000</th></tr>
+    <tr style=""><td>Fixed 1% (safe)</td><td>1.0%</td><td>0.0697 BTC</td><td>0.3485 BTC</td><td>0.6970 BTC</td><td>3.4850 BTC</td></tr>
+<tr style=""><td>Fixed 2% (standard)</td><td>2.0%</td><td>0.1394 BTC</td><td>0.6970 BTC</td><td>1.3940 BTC</td><td>6.9700 BTC</td></tr>
+<tr style=""><td>Fixed 3% (aggressive)</td><td>3.0%</td><td>0.2091 BTC</td><td>1.0455 BTC</td><td>2.0910 BTC</td><td>10.4550 BTC</td></tr>
+<tr style="background:#1b3b26;"><td>Half-Kelly (2.9%)</td><td>2.9%</td><td>0.2050 BTC</td><td>1.0250 BTC</td><td>2.0500 BTC</td><td>10.2500 BTC</td></tr>
+<tr style=""><td>Full Kelly (5.9%)</td><td>5.9%</td><td>0.4100 BTC</td><td>2.0500 BTC</td><td>4.1000 BTC</td><td>20.5000 BTC</td></tr>
+
+  </table>
+</div>
+
+<div class="panel">
+  <div class="ptitle">Formula Reference</div>
+  <table>
+    <tr><th>Parameter</th><th>Value</th><th>Notes</th></tr>
+    <tr><td>BTC Price</td><td>$74,130.16</td><td>Current close</td></tr>
+    <tr><td>Avg SL Distance</td><td>$143.47 (0.194%)</td><td>1.5x ATR avg</td></tr>
+    <tr><td>Win Rate</td><td>29.4%</td><td>30d backtest</td></tr>
+    <tr><td>Avg Win/Loss R</td><td>3.00R</td><td>RRR=3.0 realized</td></tr>
+    <tr><td>Full Kelly</td><td>5.88%</td><td>W - (1-W)/R</td></tr>
+    <tr><td>Half Kelly</td><td>2.94%</td><td>Recommended baseline</td></tr>
+    <tr><td>Position Size</td><td colspan="2">= (Account × Risk%) / SL_USD</td></tr>
+  </table>
+</div>
+</body>
+</html>

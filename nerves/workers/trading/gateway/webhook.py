@@ -96,6 +96,9 @@ async def webhook(request: Request):
     symbol = tv_alert.symbol or ""
     if ":" in symbol:
         symbol = symbol.split(":")[-1]
+    from security.sanitizers import sanitize_symbol
+
+    symbol = sanitize_symbol(symbol)
     price = tv_alert.price
     ts = tv_alert.time or ""
     quote_qty = tv_alert.quoteQty
@@ -180,6 +183,23 @@ async def webhook(request: Request):
     log.info(
         f"ALERT #{signal_id}  action={action}  symbol={symbol}  price={price}  qty={quote_qty_val}  time={ts}"
     )
+
+    # Auto-Replication Hook (only run if not already a FORWARD signal and FORWARD_TEST_ENABLED is False)
+    if mode != "FORWARD" and not getattr(config, "FORWARD_TEST_ENABLED", False):
+        try:
+            await check_and_replicate_signal(
+                signal_id=signal_id,
+                symbol=symbol,
+                action=action,
+                price=price_float,
+                quote_qty=quote_qty_val,
+                source_ip=source_ip,
+                payload=payload,
+                exchange=exchange,
+                interval=interval,
+            )
+        except Exception as sync_err:
+            log.warning(f"Failed to auto-replicate signal #{signal_id}: {sync_err}")
 
     # ── Angati Event-Driven Semantic Ingestion ────────────────────────────────
     try:
@@ -276,3 +296,120 @@ async def webhook(request: Request):
         )
 
     return {"received": True, "signal_id": signal_id, "status": "dispatched"}
+
+
+def _matches_id_range(settings: dict, signal_id: int) -> bool:
+    start_id = settings.get("start_id")
+    end_id = settings.get("end_id")
+    if start_id is not None and str(start_id).strip() != "":
+        if signal_id < int(start_id):
+            return False
+    if end_id is not None and str(end_id).strip() != "":
+        if signal_id > int(end_id):
+            return False
+    return True
+
+
+def _matches_symbol_filter(settings: dict, symbol: str) -> bool:
+    symbols = [
+        s.strip().upper() for s in settings.get("symbols", "").split(",") if s.strip()
+    ]
+    if symbols and symbol.upper() not in symbols:
+        return False
+    return True
+
+
+def _matches_source_filter(settings: dict, payload: dict | None) -> bool:
+    sources = [
+        s.strip().lower() for s in settings.get("sources", "").split(",") if s.strip()
+    ]
+    sig_source = (payload or {}).get("source", "").strip().lower()
+    if sources and sig_source not in sources:
+        return False
+    return True
+
+
+def _matches_sync_filters(
+    settings: dict, signal_id: int, symbol: str, payload: dict | None
+) -> bool:
+    if not _matches_id_range(settings, signal_id):
+        return False
+    if not _matches_symbol_filter(settings, symbol):
+        return False
+    if not _matches_source_filter(settings, payload):
+        return False
+    return True
+
+
+async def check_and_replicate_signal(
+    signal_id: int,
+    symbol: str,
+    action: str,
+    price: float | None,
+    quote_qty: float | None,
+    source_ip: str | None,
+    payload: dict | None,
+    exchange: str,
+    interval: str,
+):
+    import json
+    import aiosqlite
+    from core.event_bus import bus as _event_bus
+    from core.events import SignalReceived
+
+    # 1. Check if sync is enabled
+    settings_str = await database.get_setting("sync_settings", "{}")
+    settings = json.loads(settings_str)
+
+    if not settings.get("sync_enabled"):
+        return
+
+    # 2. Match filters
+    if not _matches_sync_filters(settings, signal_id, symbol, payload):
+        return
+
+    # 3. Write into forward database
+    log.info(f"Auto-replicating webhook signal #{signal_id} to forward_trades.db")
+    async with aiosqlite.connect(config.FORWARD_DB_PATH) as f_db:
+        # Prevent insertion if already replicated
+        async with f_db.execute(
+            "SELECT 1 FROM signals WHERE id = ?", (signal_id,)
+        ) as cur:
+            if await cur.fetchone():
+                return
+
+        await f_db.execute(
+            """INSERT INTO signals
+            (id, symbol, action, price, quote_qty, source_ip, payload, mode, state)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                signal_id,
+                symbol,
+                action,
+                price,
+                quote_qty,
+                source_ip,
+                json.dumps(payload) if payload else None,
+                "FORWARD",
+                "INGESTED",
+            ),
+        )
+        await f_db.commit()
+
+    # 4. Trigger EventBus so that the forward trading pipeline processes the replicated signal
+    await _event_bus.emit_background(
+        SignalReceived(
+            signal_id=signal_id,
+            symbol=symbol,
+            action=action,
+            price=price,
+            quote_qty=quote_qty,
+            interval=interval,
+            mode="FORWARD",
+            sl=(payload or {}).get("sl", ""),
+            tp=(payload or {}).get("tp", ""),
+            source_ip=source_ip,
+            payload=payload,
+            exchange=exchange,
+        )
+    )

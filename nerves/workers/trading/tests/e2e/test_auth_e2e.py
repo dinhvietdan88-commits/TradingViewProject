@@ -16,12 +16,28 @@ Flow under test:
 """
 
 import os
-import pathlib
-import sys
-import time
 
-import pytest
-import pytest_asyncio
+# Save original environment variables before mutating to prevent test pollution
+_keys_to_mutate = [
+    "WEBHOOK_SECRET",
+    "TELEGRAM_BOT_ENABLED",
+    "BRIEF_ENABLED",
+    "RAG_ENABLED",
+    "MCP_ENABLED",
+    "DASHBOARD_TOKEN",
+    "AUTH_SECRET_KEY",
+    "TELEGRAM_ALLOWED_USERS",
+    "SESSION_EXPIRY_HOURS",
+    "DASHBOARD_URL",
+]
+_orig_env = {k: os.environ.get(k) for k in _keys_to_mutate}
+
+import pathlib  # noqa: E402
+import sys  # noqa: E402
+import time  # noqa: E402
+
+import pytest  # noqa: E402
+import pytest_asyncio  # noqa: E402
 
 # ── Environment setup BEFORE any app imports ─────────────────────────────────
 os.environ["WEBHOOK_SECRET"] = "test-secret"  # noqa: S105
@@ -37,8 +53,20 @@ os.environ["DASHBOARD_URL"] = "http://test"
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent.parent))
 
-from httpx import ASGITransport, AsyncClient
-from datetime import UTC
+from httpx import ASGITransport, AsyncClient  # noqa: E402
+from datetime import UTC  # noqa: E402
+
+
+@pytest.fixture(scope="module", autouse=True)
+def cleanup_e2e_env():
+    yield
+    # Restore original environment variables
+    for k, v in _orig_env.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 

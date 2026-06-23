@@ -144,7 +144,8 @@ async def calculate_crystallized_features(symbol: str) -> dict[str, Any]:
     Calculate SMA(50), SMA(150), SMA(200), RSI(14), and ATR(14) for both timeframes.
     Return a nested dict of features.
     """
-    client = get_capture_client()
+    import os
+
     features = {
         "5m": {
             "sma50": None,
@@ -161,6 +162,11 @@ async def calculate_crystallized_features(symbol: str) -> dict[str, Any]:
             "atr14": None,
         },
     }
+
+    if os.getenv("BYPASS_EXCHANGE_FEATURES", "true").lower() == "true":
+        return features
+
+    client = get_capture_client()
 
     # 5m timeframe
     try:

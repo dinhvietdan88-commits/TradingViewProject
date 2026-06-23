@@ -131,7 +131,10 @@ async def insert_indicator_signal(
     exchange: str = "binance",
 ) -> int:
     """Luu tin hieu indicator vao bang indicator_signals (REQ 7.1 — full schema)."""
-    async with aiosqlite.connect(config.DB_PATH, timeout=config.DB_TIMEOUT) as db:
+    from data.routing import get_db_path_by_signal_id
+
+    db_path = await get_db_path_by_signal_id(signal_id)
+    async with aiosqlite.connect(db_path, timeout=config.DB_TIMEOUT) as db:
         cursor = await db.execute(
             """INSERT INTO indicator_signals
                (signal_id, symbol, indicator_name, signal_type, interval, price,

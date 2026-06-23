@@ -183,6 +183,11 @@ async def _render_chart_for_event(event: AnalysisComplete) -> str | None:
     Returns the file path to the generated PNG, or None on failure.
     Non-blocking: chart failure does NOT block trade flow.
     """
+    import config
+
+    if getattr(config, "FORWARD_TEST_ENABLED", False):
+        return None
+
     try:
         from capture_client import get_capture_client
 
@@ -273,6 +278,11 @@ async def _render_chart_for_indicator(event: IndicatorSignalReceived) -> str | N
     Returns the file path to the generated PNG, or None on failure.
     Non-blocking: chart failure does NOT block notification flow.
     """
+    import config
+
+    if getattr(config, "FORWARD_TEST_ENABLED", False):
+        return None
+
     try:
         from capture_client import get_capture_client
 

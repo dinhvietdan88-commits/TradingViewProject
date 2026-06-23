@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>3-Month Walk-Forward | SuperTrend v1.2</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#0d1117;color:#e6edf3;padding:28px}
+h1{font-size:1.65rem;font-weight:700;text-align:center;margin-bottom:6px;
+    background:linear-gradient(135deg,#bc8cff,#f85149,#58a6ff,#3fb950);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sub{text-align:center;color:#8b949e;font-size:.82rem;margin-bottom:26px}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.kpi{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:14px;text-align:center}
+.kpi .lbl{font-size:.65rem;color:#8b949e;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+.kpi .val{font-size:1.2rem;font-weight:700}
+.green{color:#3fb950}.red{color:#f85149}.blue{color:#58a6ff}.purple{color:#bc8cff}.yellow{color:#e3b341}
+.month-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}
+.mc{background:#161b22;border-radius:12px;padding:14px;text-align:center}
+.mc-title{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.mc-stat{display:flex;justify-content:space-between;font-size:.8rem;padding:3px 0}
+.mc-stat .k{color:#8b949e}.mc-stat .v{font-weight:600}
+.chart-wrap{background:#161b22;border:1px solid #30363d;border-radius:14px;padding:20px;margin-bottom:20px}
+.ctitle{font-size:.75rem;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.rec{background:linear-gradient(135deg,rgba(63,185,80,.1),rgba(88,166,255,.08));
+      border:1px solid #3fb95044;border-radius:12px;padding:16px;margin-bottom:20px;text-align:center}
+.rec h3{color:#3fb950;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.rec-val{font-size:1.05rem;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+th{text-align:left;color:#8b949e;font-weight:500;padding:7px 10px;border-bottom:1px solid #21262d}
+td{padding:6px 10px;border-bottom:1px solid #1a1f27}
+</style>
+</head>
+<body>
+<h1>3-Month Walk-Forward Validation</h1>
+<p class="sub">SuperTrend v1.2 | BTCUSDT 5m | March + April + May 2026 | 14d IS / 7d OOS | Regime: EMA200+ADX</p>
+
+<div class="kpi-grid">
+  <div class="kpi"><div class="lbl">Total Windows</div><div class="val blue">11</div></div>
+  <div class="kpi"><div class="lbl">Avg OOS PF</div><div class="val green">1.31</div></div>
+  <div class="kpi"><div class="lbl">Avg OOS WR</div><div class="val yellow">31.6%</div></div>
+  <div class="kpi"><div class="lbl">Total OOS PnL</div><div class="val green">$+3,428</div></div>
+  <div class="kpi"><div class="lbl">Profitable</div><div class="val purple">8/11</div></div>
+  <div class="kpi"><div class="lbl">Dataset</div><div class="val blue">~26,500 bars</div></div>
+  <div class="kpi"><div class="lbl">Grid/Window</div><div class="val blue">54 combos</div></div>
+  <div class="kpi"><div class="lbl">Regime Filter</div><div class="val green">ON ✓</div></div>
+</div>
+
+<div class="month-grid">  <div class="mc" style="border:1px solid #bc8cff33">
+    <div class="mc-title" style="color:#bc8cff">March 2026</div>
+    <div class="mc-stat"><span class="k">Windows</span><span class="v">3</span></div>
+    <div class="mc-stat"><span class="k">Avg PF</span><span class="v" style="color:#3fb950">1.42</span></div>
+    <div class="mc-stat"><span class="k">Avg WR</span><span class="v">29.4%</span></div>
+    <div class="mc-stat"><span class="k">Total PnL</span><span class="v" style="color:#3fb950">$+730</span></div>
+    <div class="mc-stat"><span class="k">Profitable</span><span class="v">2/3</span></div>
+  </div>
+  <div class="mc" style="border:1px solid #f8514933">
+    <div class="mc-title" style="color:#f85149">April 2026</div>
+    <div class="mc-stat"><span class="k">Windows</span><span class="v">4</span></div>
+    <div class="mc-stat"><span class="k">Avg PF</span><span class="v" style="color:#3fb950">1.16</span></div>
+    <div class="mc-stat"><span class="k">Avg WR</span><span class="v">30.7%</span></div>
+    <div class="mc-stat"><span class="k">Total PnL</span><span class="v" style="color:#3fb950">$+962</span></div>
+    <div class="mc-stat"><span class="k">Profitable</span><span class="v">2/4</span></div>
+  </div>
+  <div class="mc" style="border:1px solid #58a6ff33">
+    <div class="mc-title" style="color:#58a6ff">May 2026</div>
+    <div class="mc-stat"><span class="k">Windows</span><span class="v">4</span></div>
+    <div class="mc-stat"><span class="k">Avg PF</span><span class="v" style="color:#3fb950">1.38</span></div>
+    <div class="mc-stat"><span class="k">Avg WR</span><span class="v">34.1%</span></div>
+    <div class="mc-stat"><span class="k">Total PnL</span><span class="v" style="color:#3fb950">$+1,737</span></div>
+    <div class="mc-stat"><span class="k">Profitable</span><span class="v">4/4</span></div>
+  </div>
+</div>
+
+<div class="rec"><h3>Current Recommended Config (last 14 days)</h3><div class="rec-val">Period=7 · Mult=3.5 · SL=1.5x ATR · RRR=2.0 · Regime Filter ON</div></div>
+
+<div class="chart-wrap">
+  <div class="ctitle">Cumulative OOS PnL (3 months)</div>
+  <canvas id="cum" height="70"></canvas>
+</div>
+<div class="chart-wrap">
+  <div class="ctitle">IS vs OOS Profit Factor per window</div>
+  <canvas id="pf" height="55"></canvas>
+</div>
+<div class="chart-wrap">
+  <div class="ctitle">OOS PnL per window</div>
+  <canvas id="pnlbar" height="50"></canvas>
+</div>
+<div class="chart-wrap">
+  <div class="ctitle">Window Results</div>
+  <table>
+    <tr><th>#</th><th>In-Sample</th><th>Out-of-Sample</th><th>Month</th><th>Params</th><th>IS PF</th><th>OOS PF</th><th>OOS PnL</th><th>OOS WR</th></tr>
+    <tr><td><span style="color:#bc8cff">●</span> 1</td><td>03/01->03/15</td><td>03/15->03/22</td><td style="color:#bc8cff">March</td><td>P=7 M=3.5 SL=1.0 R=2.0</td><td>1.71</td><td style="color:#3fb950">2.43</td><td style="color:#3fb950">$+1,175</td><td>36.4%</td></tr>
+<tr><td><span style="color:#bc8cff">●</span> 2</td><td>03/08->03/22</td><td>03/22->03/29</td><td style="color:#bc8cff">March</td><td>P=7 M=3.0 SL=1.5 R=2.5</td><td>3.83</td><td style="color:#f85149">0.73</td><td style="color:#f85149">$-550</td><td>26.7%</td></tr>
+<tr><td><span style="color:#bc8cff">●</span> 3</td><td>03/15->03/29</td><td>03/29->04/05</td><td style="color:#bc8cff">March</td><td>P=7 M=3.5 SL=1.5 R=2.5</td><td>2.72</td><td style="color:#3fb950">1.09</td><td style="color:#3fb950">$+104</td><td>25.0%</td></tr>
+<tr><td><span style="color:#f85149">●</span> 4</td><td>03/22->04/05</td><td>04/05->04/12</td><td style="color:#f85149">April</td><td>P=14 M=3.5 SL=1.5 R=3.0</td><td>1.49</td><td style="color:#3fb950">2.08</td><td style="color:#3fb950">$+1,534</td><td>37.5%</td></tr>
+<tr><td><span style="color:#f85149">●</span> 5</td><td>03/29->04/12</td><td>04/12->04/19</td><td style="color:#f85149">April</td><td>P=10 M=3.5 SL=1.0 R=3.0</td><td>2.17</td><td style="color:#f85149">0.32</td><td style="color:#f85149">$-912</td><td>10.0%</td></tr>
+<tr><td><span style="color:#f85149">●</span> 6</td><td>04/05->04/19</td><td>04/19->04/26</td><td style="color:#f85149">April</td><td>P=10 M=3.5 SL=1.5 R=2.5</td><td>2.11</td><td style="color:#f85149">0.78</td><td style="color:#f85149">$-273</td><td>33.3%</td></tr>
+<tr><td><span style="color:#f85149">●</span> 7</td><td>04/12->04/26</td><td>04/26->05/02</td><td style="color:#f85149">April</td><td>P=14 M=2.5 SL=1.0 R=2.0</td><td>1.58</td><td style="color:#3fb950">1.47</td><td style="color:#3fb950">$+614</td><td>42.1%</td></tr>
+<tr><td><span style="color:#58a6ff">●</span> 8</td><td>04/19->05/02</td><td>05/02->05/09</td><td style="color:#58a6ff">May</td><td>P=7 M=3.5 SL=1.5 R=2.0</td><td>6.13</td><td style="color:#3fb950">1.12</td><td style="color:#3fb950">$+124</td><td>40.0%</td></tr>
+<tr><td><span style="color:#58a6ff">●</span> 9</td><td>04/26->05/09</td><td>05/09->05/16</td><td style="color:#58a6ff">May</td><td>P=7 M=3.5 SL=1.5 R=2.0</td><td>3.12</td><td style="color:#3fb950">1.05</td><td style="color:#3fb950">$+63</td><td>23.1%</td></tr>
+<tr><td><span style="color:#58a6ff">●</span> 10</td><td>05/02->05/16</td><td>05/16->05/23</td><td style="color:#58a6ff">May</td><td>P=7 M=3.5 SL=1.0 R=2.0</td><td>1.49</td><td style="color:#3fb950">1.09</td><td style="color:#3fb950">$+85</td><td>37.5%</td></tr>
+<tr><td><span style="color:#58a6ff">●</span> 11</td><td>05/09->05/23</td><td>05/23->05/30</td><td style="color:#58a6ff">May</td><td>P=7 M=3.5 SL=1.5 R=2.0</td><td>1.29</td><td style="color:#3fb950">2.25</td><td style="color:#3fb950">$+1,465</td><td>35.7%</td></tr>
+
+  </table>
+</div>
+
+<script>
+const lbl=["03/15->03/22", "03/22->03/29", "03/29->04/05", "04/05->04/12", "04/12->04/19", "04/19->04/26", "04/26->05/02", "05/02->05/09", "05/09->05/16", "05/16->05/23", "05/23->05/30"],cum=[1175.35, 625.46, 729.51, 2263.17, 1350.87, 1077.74, 1691.56, 1815.61, 1878.94, 1963.72, 3428.47],isPF=[1.71, 3.83, 2.72, 1.49, 2.17, 2.11, 1.58, 6.13, 3.12, 1.49, 1.29],oosPF=[2.43, 0.73, 1.09, 2.08, 0.32, 0.78, 1.47, 1.12, 1.05, 1.09, 2.25],pnlD=[1175.35, -549.89, 104.05, 1533.66, -912.3, -273.13, 613.82, 124.05, 63.33, 84.78, 1464.75],clr=["#bc8cff", "#bc8cff", "#bc8cff", "#f85149", "#f85149", "#f85149", "#f85149", "#58a6ff", "#58a6ff", "#58a6ff", "#58a6ff"];
+const o=(yf)=>({responsive:true,interaction:{mode:'index',intersect:false},
+  plugins:{legend:{labels:{color:'#8b949e',font:{size:10}}},
+    tooltip:{backgroundColor:'#1c2128',borderColor:'#30363d',borderWidth:1,titleColor:'#8b949e',bodyColor:'#e6edf3'}},
+  scales:{x:{ticks:{color:'#8b949e',font:{size:9},maxRotation:40},grid:{color:'#21262d'}},
+           y:{ticks:{color:'#8b949e',callback:yf},grid:{color:'#21262d'}}}});
+const c1=document.getElementById('cum').getContext('2d');
+const g1=c1.createLinearGradient(0,0,0,300);
+g1.addColorStop(0,'rgba(63,185,80,.4)');g1.addColorStop(1,'rgba(63,185,80,.02)');
+new Chart(c1,{type:'line',data:{labels:lbl,datasets:[{data:cum,borderColor:'#3fb950',
+  backgroundColor:g1,borderWidth:2.5,pointRadius:4,pointBackgroundColor:clr,fill:true,tension:0.3}]},
+  options:o(v=>'$'+v.toFixed(0))});
+new Chart(document.getElementById('pf'),{type:'bar',data:{labels:lbl,datasets:[
+  {label:'IS PF',data:isPF,backgroundColor:'rgba(88,166,255,.4)',borderColor:'#58a6ff',borderWidth:1},
+  {label:'OOS PF',data:oosPF,backgroundColor:oosPF.map(v=>v>=1?'rgba(63,185,80,.6)':'rgba(248,81,73,.6)'),
+    borderColor:oosPF.map(v=>v>=1?'#3fb950':'#f85149'),borderWidth:1}]},options:o(v=>v.toFixed(2))});
+new Chart(document.getElementById('pnlbar'),{type:'bar',data:{labels:lbl,datasets:[
+  {label:'OOS PnL $',data:pnlD,backgroundColor:pnlD.map(v=>v>=0?'rgba(63,185,80,.6)':'rgba(248,81,73,.6)'),
+    borderColor:pnlD.map(v=>v>=0?'#3fb950':'#f85149'),borderWidth:1}]},options:o(v=>'$'+v.toFixed(0))});
+</script>
+</body>
+</html>

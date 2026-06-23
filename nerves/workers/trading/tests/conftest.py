@@ -78,6 +78,7 @@ os.environ["MTA_ENABLED"] = "false"
 os.environ["ATR_SL_MULTIPLIER"] = "2.0"
 os.environ["ATR_TP_MULTIPLIER"] = "8.0"
 os.environ["CHANDELIER_TRAILING_MULTIPLIER"] = "3.0"
+os.environ["FORWARD_TEST_ENABLED"] = "false"
 
 
 @pytest.fixture(autouse=True)
@@ -98,6 +99,7 @@ async def init_test_db(tmp_path):
 
     config.DB_PATH = str(tmp_path / "test_auto.db")
     config.FORWARD_DB_PATH = str(tmp_path / "test_forward_auto.db")
+    config.FORWARD_TEST_ENABLED = False
     os.environ["DB_PATH"] = config.DB_PATH
     os.environ["FORWARD_DB_PATH"] = config.FORWARD_DB_PATH
     await database.init_db()
@@ -129,6 +131,7 @@ async def client(tmp_path):
     config.MCP_ENABLED = False
     config.RAG_ENABLED = False
     config.DASHBOARD_TOKEN = ""
+    config.FORWARD_TEST_ENABLED = False
     os.environ["DB_PATH"] = config.DB_PATH
     os.environ["FORWARD_DB_PATH"] = config.FORWARD_DB_PATH
 

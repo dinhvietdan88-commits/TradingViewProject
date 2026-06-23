@@ -154,9 +154,49 @@ except Exception as e:
 async def serve():
     config.load()
     server.lifespan = config.lifespan_class(config)
-    await server.startup(sockets=[sock])
-    await server.main_loop()
-    await server.shutdown()
+
+    # Spawn live dashboard proxy on port 8080 in background
+    proxy_proc = None
+    try:
+        proxy_script = Path(__file__).resolve().parent / "live_dashboard_server.py"
+        print(
+            f"[Sovereign Launcher] Starting live dashboard proxy from {proxy_script}...",
+            flush=True,
+        )
+        _kill_port(8080)
+        proxy_proc = subprocess.Popen(
+            [sys.executable, str(proxy_script)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        print(
+            f"[Sovereign Launcher] Proxy server started with PID {proxy_proc.pid} on port 8080",
+            flush=True,
+        )
+    except Exception as proxy_err:
+        print(
+            f"[Sovereign Launcher] Failed to start proxy server: {proxy_err}",
+            flush=True,
+        )
+
+    try:
+        await server.startup(sockets=[sock])
+        await server.main_loop()
+        await server.shutdown()
+    finally:
+        if proxy_proc:
+            try:
+                proxy_proc.terminate()
+                proxy_proc.wait(timeout=3)
+                print(
+                    "[Sovereign Launcher] Proxy server stopped gracefully.", flush=True
+                )
+            except Exception:
+                try:
+                    proxy_proc.kill()
+                    print("[Sovereign Launcher] Proxy server killed.", flush=True)
+                except Exception:  # noqa: S110
+                    pass
 
 
 try:

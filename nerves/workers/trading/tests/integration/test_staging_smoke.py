@@ -87,15 +87,51 @@ pytestmark = pytest.mark.staging
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 
+def _get_fallback_token() -> str:
+    """Helper to parse .env file for DASHBOARD_TOKEN when environment variable is unset."""
+    _cur_dir = os.path.dirname(os.path.abspath(__file__))
+    _root_dir = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(_cur_dir))))
+    )
+    _env_path = os.path.join(_root_dir, ".env")
+    if not os.path.exists(_env_path):
+        return ""
+    try:
+        with open(_env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    if k.strip() == "DASHBOARD_TOKEN":
+                        v = v.strip()
+                        if (v.startswith('"') and v.endswith('"')) or (
+                            v.startswith("'") and v.endswith("'")
+                        ):
+                            return v[1:-1]
+                        return v
+    except Exception:  # noqa: S110
+        pass
+    return ""
+
+
 @pytest_asyncio.fixture
 async def staging_client():
     """Yield an httpx.AsyncClient pointed at the staging server.
 
     Tự động skip toàn bộ test nếu server không phản hồi /health.
     """
+    token = os.getenv("DASHBOARD_TOKEN")
+    if not token or token == "":
+        token = _get_fallback_token()
+
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
     async with httpx.AsyncClient(
         base_url=SMOKE_BASE_URL,
         timeout=httpx.Timeout(10.0),
+        headers=headers,
     ) as client:
         try:
             resp = await client.get("/health")
@@ -156,6 +192,7 @@ async def test_webhook_valid_alert(staging_client: httpx.AsyncClient):
 @pytest.mark.asyncio
 async def test_webhook_unauthorized(staging_client: httpx.AsyncClient):
     """SMOKE-AUTH: POST /webhook không có secret → 401 Unauthorized."""
+    staging_client.headers.pop("Authorization", None)
     payload = {
         "symbol": "BTCUSDT",
         "action": "buy",

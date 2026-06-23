@@ -2980,7 +2980,7 @@ class DataQueryFacade:
 
                 if has_exchange_col:
                     query = """
-                        SELECT id, symbol, side, entry_price, exit_price, pnl,
+                        SELECT id, symbol, side, executed_price AS entry_price, exit_price, pnl,
                                status, exchange, created_at
                         FROM trades
                         ORDER BY created_at DESC
@@ -2988,7 +2988,7 @@ class DataQueryFacade:
                     """
                 else:
                     query = """
-                        SELECT id, symbol, side, entry_price, exit_price, pnl,
+                        SELECT id, symbol, side, executed_price AS entry_price, exit_price, pnl,
                                status, created_at
                         FROM trades
                         ORDER BY created_at DESC

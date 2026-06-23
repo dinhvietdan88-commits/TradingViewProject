@@ -91,10 +91,34 @@ async def execute_trade(event: TradeApproved) -> None:
     5. On failure: persist failed trade to DB, emit TradeFailed.
     6. v6.0: Notifications are handled by NotificationHub via events.
     """
+    import config
+
     action = event.action.lower()
     if action not in ("buy", "sell"):
         log.info(
             f"TradeEngine: Skipping non-trade action '{action}' for #{event.signal_id}"
+        )
+        return
+
+    # Skip FORWARD mode signals to avoid executing them in live/dry-run adapters
+    event_mode = getattr(event, "mode", "") or ""
+    if event_mode == "FORWARD":
+        try:
+            from exchanges.router import get_router
+
+            router = get_router()
+            adapter = router.resolve_exchange(
+                getattr(event, "exchange", config.DEFAULT_EXCHANGE)
+            )
+            adapter.dry_run = True
+            if hasattr(adapter, "_client") and adapter._client is not None:
+                adapter._client.dry_run = True
+        except Exception as e:
+            log.warning(
+                f"TradeEngine: Failed to resolve adapter for dry_run override: {e}"
+            )
+        log.info(
+            f"TradeEngine: Skipping live order execution for FORWARD signal #{event.signal_id}"
         )
         return
 
