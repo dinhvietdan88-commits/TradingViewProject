@@ -223,6 +223,12 @@ CREATE INDEX IF NOT EXISTS idx_ohlcv_5m_timestamp ON ohlcv_5m(timestamp);
 CREATE INDEX IF NOT EXISTS idx_ohlcv_5m_sym_time_desc ON ohlcv_5m(symbol, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_ohlcv_1d_timestamp ON ohlcv_1d(timestamp);
 CREATE INDEX IF NOT EXISTS idx_ohlcv_1d_sym_time_desc ON ohlcv_1d(symbol, timestamp DESC);
+
+CREATE TABLE IF NOT EXISTS signals_scenarios_cache (
+    signal_id      INTEGER PRIMARY KEY REFERENCES signals(id),
+    updated_at     TEXT NOT NULL DEFAULT (datetime('now')),
+    result_json    TEXT NOT NULL
+);
 """
 
 
