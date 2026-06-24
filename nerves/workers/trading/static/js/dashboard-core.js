@@ -289,7 +289,6 @@ async function loadTrades(page = 1) {
         </div>
       `;
     }
-    }
 
     return `<tr>
       <td>${offset + i + 1}</td>

@@ -279,6 +279,462 @@
   #fwd-tbody tr, #live-tbody tr { cursor: pointer; transition: background 0.15s; }
   #fwd-tbody tr:hover, #live-tbody tr:hover { background: rgba(34,211,238,0.06) !important; }
   #fwd-tbody tr.active-signal, #live-tbody tr.active-signal { background: rgba(34,211,238,0.12) !important; border-left: 3px solid var(--cyan); }
+
+  /* Expand detail row styles */
+  .expand-detail-row {
+    background: rgba(13, 20, 33, 0.45) !important;
+  }
+  .expand-detail-row td {
+    padding: 12px 16px !important;
+    border-bottom: 1px solid var(--border) !important;
+  }
+  .expand-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    color: var(--text);
+  }
+  .expand-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+  }
+  .expand-card {
+    background: rgba(17, 24, 39, 0.5);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .expand-card-title {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+    font-weight: 700;
+  }
+  .expand-card-value {
+    font-size: 0.76rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+  }
+  .expand-payload-box {
+    background: rgba(8, 12, 20, 0.85);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    max-height: 150px;
+    overflow-y: auto;
+    color: var(--cyan);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .expand-reason-box {
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.74rem;
+    margin-top: 2px;
+  }
+  .expand-reason-box.rejected {
+    background: rgba(244, 63, 94, 0.08);
+    border: 1px solid rgba(244, 63, 94, 0.25);
+    color: #fda4af;
+  }
+  .expand-reason-box.failed {
+    background: rgba(244, 63, 94, 0.12);
+    border: 1px solid rgba(244, 63, 94, 0.3);
+    color: #fda4af;
+  }
+
+  /* Backtest-style row expansion */
+  .mini-expand-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(20, 26, 38, 0.35);
+    border-radius: 10px;
+    border: 1px dashed rgba(42, 58, 89, 0.4);
+  }
+  .mini-pill {
+    background: rgba(20, 26, 38, 0.8);
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .mini-pill strong {
+    color: #ffffff;
+  }
+  .mini-pill strong.v-green {
+    color: var(--green);
+  }
+  .mini-pill strong.v-red {
+    color: var(--red);
+  }
+  .mini-sc-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    display: inline-block;
+  }
+  .mini-sc-badge.exec {
+    background: rgba(16, 217, 138, 0.12);
+    color: var(--green);
+    border: 1px solid rgba(16, 217, 138, 0.3);
+  }
+  .mini-sc-badge.filt {
+    background: rgba(244, 63, 94, 0.12);
+    color: var(--red);
+    border: 1px solid rgba(244, 63, 94, 0.3);
+    opacity: 0.7;
+  }
+  
+  .expand-arrow-divider-1star {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-top: 1px solid rgba(42, 58, 89, 0.15);
+    padding-top: 8px;
+    margin-top: 12px;
+  }
+  .arrow-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 20px;
+    transition: color 0.2s;
+    outline: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .arrow-btn:hover {
+    color: var(--cyan);
+  }
+  .arrow-icon {
+    display: inline-block;
+    font-size: 12px;
+    transition: transform 0.2s ease;
+  }
+  
+  .stage-1-details-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 12px;
+    border-top: 1px dashed rgba(42, 58, 89, 0.2);
+    padding-top: 16px;
+  }
+  
+  .stage-1-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+  
+  .gates-column {
+    flex: 1.2;
+    min-width: 320px;
+  }
+  .context-column {
+    flex: 1;
+    min-width: 280px;
+  }
+  
+  .expand-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #ffffff;
+    margin-bottom: 12px;
+    padding-left: 6px;
+    letter-spacing: 0.5px;
+  }
+  .expand-section-title.gates {
+    border-left: 2px solid var(--blue);
+  }
+  .expand-section-title.context {
+    border-left: 2px solid var(--purple);
+  }
+  
+  .scenario-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+  }
+  .context-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+    gap: 8px;
+  }
+  
+  .context-item {
+    background: #141a26;
+    border: 1px solid var(--border);
+    padding: 6px;
+    border-radius: 6px;
+    text-align: center;
+  }
+  .context-label {
+    font-size: 8px;
+    line-height: 1.2;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .context-value {
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    color: #ffffff;
+  }
+  .context-value.v-green {
+    color: var(--green);
+  }
+  .context-value.v-red {
+    color: var(--red);
+  }
+  
+  .gate-card {
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .gate-card.executed {
+    background: rgba(16, 217, 138, 0.03);
+    border: 1px solid rgba(16, 217, 138, 0.25);
+  }
+  .gate-card.filtered {
+    background: rgba(244, 63, 94, 0.02);
+    border: 1px solid rgba(244, 63, 94, 0.25);
+  }
+  .gate-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    padding-bottom: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .gate-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: #ffffff;
+  }
+  .gate-desc {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .gate-metrics {
+    margin-top: 4px;
+  }
+  .gate-metric-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+  }
+  .gate-metric-label {
+    color: var(--text-muted);
+  }
+  .gate-metric-value {
+    color: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .gate-filter-reason {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    line-height: 1.3;
+    font-style: italic;
+  }
+
+  /* Stage 2 Analysis Panel & Helper Mappings */
+  :root {
+    --panel-border: var(--border);
+    --primary-color: var(--blue);
+    --cyan-color: var(--cyan);
+    --purple-color: var(--purple);
+    --success-color: var(--green);
+    --success-bg: rgba(16, 217, 138, 0.08);
+    --danger-color: var(--red);
+    --danger-bg: rgba(244, 63, 94, 0.08);
+    --text-dim: var(--text-muted);
+  }
+
+  .stage-2-container {
+    margin-top: 12px;
+  }
+  .stage2-split {
+    display: flex; gap: 16px; width: 100%;
+  }
+  @media (max-width: 1100px) {
+    .stage2-split { flex-direction: column; }
+  }
+  .stage2-chart-side {
+    flex: 1.2; min-width: 0;
+  }
+  .stage2-analysis-side {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .analysis-card {
+    background: rgba(20, 26, 38, 0.5);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 12px;
+    flex: 1;
+  }
+  .analysis-card-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 8px;
+    border-left: 2px solid var(--purple-color); padding-left: 6px;
+  }
+  .analysis-chart-box {
+    height: 130px; position: relative;
+  }
+  .analysis-chart-box canvas {
+    width: 100% !important; height: 100% !important;
+  }
+  .nav-link-btn {
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    color: var(--blue);
+    cursor: pointer;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .nav-link-btn:hover {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: var(--blue);
+  }
+  
+  /* ─── MODAL POPUP (V2.3) ─── */
+  .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(8, 10, 16, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 99999;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .modal-overlay.active {
+      opacity: 1; pointer-events: auto;
+  }
+  .modal-container {
+      width: 90%; max-width: 1400px; height: 85%;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.7);
+      display: flex; flex-direction: column; overflow: hidden;
+      transform: scale(0.96);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .modal-overlay.active .modal-container {
+      transform: scale(1);
+  }
+  .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 24px; background: #161b22;
+      border-bottom: 1px solid var(--border);
+  }
+  .modal-header h3 {
+      font-size: 14px; font-weight: 700; color: #ffffff;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(90deg, var(--cyan), var(--purple));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .modal-close {
+      background: none; border: none; color: var(--text-muted);
+      font-size: 24px; cursor: pointer; transition: color 0.2s;
+  }
+  .modal-close:hover { color: var(--red); }
+  .modal-body { flex: 1; position: relative; background: #0d1117; }
+
+  .modal-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 24px; background: #161b22;
+      border-top: 1px solid var(--border);
+  }
+  .modal-nav-btn {
+      background: rgba(42, 58, 89, 0.3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 18px; border-radius: 6px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s;
+      outline: none;
+      display: flex; align-items: center; gap: 8px;
+  }
+  .modal-nav-btn:hover:not(:disabled) {
+      background: rgba(41, 98, 255, 0.25);
+      border-color: var(--blue);
+      color: #ffffff;
+  }
+  .modal-nav-btn:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+  }
+  .modal-counter {
+      font-size: 13px; font-weight: 500; color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+  }
+
+  .tt-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .tt-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: rgba(20, 26, 38, 0.3);
+    border: 1px solid var(--panel-border);
+  }
+  .tt-item.pass {
+    border-color: rgba(16, 217, 138, 0.25);
+    background: rgba(16, 217, 138, 0.02);
+  }
+  .tt-item.fail {
+    border-color: rgba(244, 63, 94, 0.15);
+    background: rgba(244, 63, 94, 0.01);
+  }
+  .tt-icon.pass { color: var(--green); }
+  .tt-icon.fail { color: var(--red); }
+  .tt-text {
+    font-size: 10px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .server-stats-badge {
     display: flex; align-items: center; gap: 6px;
     padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600;
@@ -324,7 +780,8 @@
   .mini-kpi-val { font-size: 1.1rem; font-weight: 700; margin-top: 3px; }
 
   /* —"?—"? Signal Table —"?—"? */
-  .signal-table-wrap { overflow-x: auto; max-height: 520px; overflow-y: auto; }
+  .signal-table-wrap.collapsed-view { max-height: 520px; overflow-y: auto; }
+  .signal-table-wrap { overflow-x: auto; overflow-y: hidden; transition: max-height 0.2s ease; position: relative; }
   table { width: 100%; border-collapse: collapse; }
   .table-header-select {
     background: transparent;
@@ -872,6 +1329,88 @@
   </div>
 </div>
 
+<!-- ─── Interactive Scenario Simulator Sandbox Panel ─── -->
+<div class="section sandbox-section" style="background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 12px;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="font-size: 1.2rem;">⚡</span>
+      <h3 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: #ffffff; letter-spacing: 0.5px;">ANGATI SIMULATOR SANDBOX (FORWARD TEST OUTCOMES)</h3>
+    </div>
+    <div id="sandbox-loader-status" style="font-size: 0.72rem; color: var(--text-muted); font-style: italic;">
+      Đang tải dữ liệu mô phỏng...
+    </div>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-start; justify-content: space-between;">
+    <!-- Active Scenarios Checkboxes -->
+    <div style="flex: 1; min-width: 320px;">
+      <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px;">Chọn các Kịch bản kích hoạt:</div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px;">
+        <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
+          <input type="checkbox" id="chk-s1" checked onchange="onSandboxFilterChange()" style="accent-color: var(--primary-color);">
+          <span class="scenario-badge s1" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S1</span>
+          <span>Bypass</span>
+        </label>
+        <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
+          <input type="checkbox" id="chk-s2" checked onchange="onSandboxFilterChange()" style="accent-color: var(--primary-color);">
+          <span class="scenario-badge s2" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S2</span>
+          <span>Minervini</span>
+        </label>
+        <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
+          <input type="checkbox" id="chk-s3" checked onchange="onSandboxFilterChange()" style="accent-color: var(--primary-color);">
+          <span class="scenario-badge s3" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S3</span>
+          <span>EMA stack</span>
+        </label>
+        <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
+          <input type="checkbox" id="chk-s4" checked onchange="onSandboxFilterChange()" style="accent-color: var(--primary-color);">
+          <span class="scenario-badge s4" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S4</span>
+          <span>Trailing ATR</span>
+        </label>
+        <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
+          <input type="checkbox" id="chk-s5" checked onchange="onSandboxFilterChange()" style="accent-color: var(--primary-color);">
+          <span class="scenario-badge s5" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S5</span>
+          <span>MTF EMA</span>
+        </label>
+        <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
+          <input type="checkbox" id="chk-s6" checked onchange="onSandboxFilterChange()" style="accent-color: var(--primary-color);">
+          <span class="scenario-badge s6" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S6</span>
+          <span>Hybrid Opt</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Presets & Logical Logic Controls -->
+    <div style="display: flex; flex-wrap: wrap; gap: 15px; min-width: 320px; align-items: center;">
+      <!-- Logical Combination -->
+      <div>
+        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px;">Phép kết hợp bộ lọc:</div>
+        <div style="display: flex; gap: 6px;">
+          <label style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #ffffff; background: var(--surface3); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer;">
+            <input type="radio" name="sandbox-logic" value="AND" checked onchange="onSandboxFilterChange()">
+            <span>AND (Phù hợp lọc giảm rủi ro)</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #ffffff; background: var(--surface3); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer;">
+            <input type="radio" name="sandbox-logic" value="OR" onchange="onSandboxFilterChange()">
+            <span>OR (Bất kỳ kịch bản nào khớp)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Presets Buttons -->
+      <div>
+        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px;">Nhóm / Preset:</div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button class="settings-btn" onclick="applySandboxPreset('conservative')" style="padding: 5px 8px; font-size: 0.72rem;">Conservative (S2,S3,S5)</button>
+          <button class="settings-btn" onclick="applySandboxPreset('aggressive')" style="padding: 5px 8px; font-size: 0.72rem;">Aggressive (S1,S4,S6)</button>
+          <button class="settings-btn" onclick="applySandboxPreset('trend')" style="padding: 5px 8px; font-size: 0.72rem;">Trend Template (S2,S3)</button>
+          <button class="settings-btn" onclick="applySandboxPreset('all')" style="padding: 5px 8px; font-size: 0.72rem;">Tất cả</button>
+          <button class="settings-btn" onclick="applySandboxPreset('reset')" style="padding: 5px 8px; font-size: 0.72rem; background: var(--surface4);">Bypass Chỉ S1</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ─── Overview KPIs ─── -->
 <div class="section">
   <div class="section-title">📊 Tổng Quan — Forward Test Finance Report</div>
@@ -1022,7 +1561,7 @@
           <div class="mini-kpi-val neu" id="fwd-mini-wl">—</div>
         </div>
       </div>
-      <div class="signal-table-wrap">
+      <div class="signal-table-wrap collapsed-view">
         <table id="fwd-table">
           <thead>
             <tr>
@@ -1037,6 +1576,8 @@
                 </select>
               </th>
               <th>Time</th>
+              <th style="color:var(--text-muted);">Context</th>
+              <th style="color:var(--text-muted);">Sim P&L</th>
             </tr>
           </thead>
           <tbody id="fwd-tbody">
@@ -1097,7 +1638,7 @@
           <div class="mini-kpi-val neu" id="live-mini-wl">—</div>
         </div>
       </div>
-      <div class="signal-table-wrap">
+      <div class="signal-table-wrap collapsed-view">
         <table id="live-table">
           <thead>
             <tr>
@@ -1516,6 +2057,17 @@ const API = "";  // Same-origin: served by FastAPI, no absolute URL needed
 const POLL_MS = 15000;
 let fwdCache = [], liveCache = [], currentMode = "both";
 
+// Stage 2 Replay & Analysis caches
+const TRADE_SIM_CACHE = {};
+let MINI_CHARTS = {};
+let MINI_CANDLE_SERIES = {};
+let SELECTED_TRADE_SCENARIO = {};
+let SELECTED_SCENARIO = 'S4';
+const STAGE1_OPEN = {};
+let modalTradeList = [];
+let modalCurrentIndex = -1;
+const STAGE2_OPEN = {};
+
 // —"?—"? S6 Baseline Constants (from eWE/reports VBS 627-signal backtest) —"?—"?—"?—"?—"?—"?—"?—"?—"?
 const S6_BASELINE = {
   win_rate: 77.8,
@@ -1694,6 +2246,1534 @@ function setTab(mode) {
 }
 
 // —"?—"? Render signals table —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
+function toggleSignalValidationDetails(event, signalId) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const container = document.getElementById(`stage_1_details_${signalId}`);
+  const arrow = document.getElementById(`arrow_icon_1star_${signalId}`);
+  if (!container || !arrow) return;
+  
+  const isVisible = container.style.display !== 'none';
+  if (isVisible) {
+    container.style.display = 'none';
+    arrow.style.transform = 'rotate(0deg)';
+    arrow.textContent = '▼';
+    STAGE1_OPEN[signalId] = false;
+  } else {
+    container.style.display = 'flex';
+    arrow.style.transform = 'rotate(180deg)';
+    arrow.textContent = '▲';
+    STAGE1_OPEN[signalId] = true;
+  }
+}
+
+// Helpers for date/time formatting in UTC (to align with database timestamps)
+const formatUtcTime = (ts) => {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const da = String(d.getUTCDate()).padStart(2, '0');
+    const hr = String(d.getUTCHours()).padStart(2, '0');
+    const mi = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${mo}-${da} ${hr}:${mi}`;
+};
+
+const formatUtcDateShort = (ts) => {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const da = String(d.getUTCDate()).padStart(2, '0');
+    return `${mo}-${da}`;
+};
+
+const formatUtcDate = (ts) => {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const yr = d.getUTCFullYear();
+    const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const da = String(d.getUTCDate()).padStart(2, '0');
+    return `${yr}-${mo}-${da}`;
+};
+
+// Custom Chart.js plugin to draw vertical Entry and Exit lines with labels
+const entryExitLinesPlugin = {
+    id: 'entry_exit_lines',
+    afterDraw: (chart, args, options) => {
+        if (!options || !options.enabled) return;
+        const entryIdx = options.entryIdx;
+        const exitIdx = options.exitIdx;
+        const entryTime = options.entryTime;
+        const exitTime = options.exitTime;
+        
+        const ctx2d = chart.ctx;
+        const meta = chart.getDatasetMeta(0);
+        if (!meta || !meta.data || meta.data.length === 0) return;
+        
+        const yTop = chart.chartArea.top;
+        const yBottom = chart.chartArea.bottom;
+        
+        ctx2d.save();
+        
+        // Draw Entry Line
+        if (entryIdx !== undefined && entryIdx !== null && entryIdx >= 0 && entryIdx < meta.data.length) {
+            const el = meta.data[entryIdx];
+            if (el) {
+                const x = el.x;
+                ctx2d.beginPath();
+                ctx2d.moveTo(x, yTop);
+                ctx2d.lineTo(x, yBottom);
+                ctx2d.strokeStyle = 'rgba(38, 166, 154, 0.7)'; // success teal
+                ctx2d.lineWidth = 1.5;
+                ctx2d.setLineDash([4, 3]);
+                ctx2d.stroke();
+                
+                ctx2d.fillStyle = 'rgba(38, 166, 154, 0.95)';
+                ctx2d.font = '8px JetBrains Mono, monospace';
+                ctx2d.textAlign = 'left';
+                ctx2d.fillText(`Entry: ${entryTime || ''}`, x + 4, yTop + 10);
+            }
+        }
+        
+        // Draw Exit Line
+        if (exitIdx !== undefined && exitIdx !== null && exitIdx >= 0 && exitIdx < meta.data.length) {
+            const el = meta.data[exitIdx];
+            if (el) {
+                const x = el.x;
+                ctx2d.beginPath();
+                ctx2d.moveTo(x, yTop);
+                ctx2d.lineTo(x, yBottom);
+                ctx2d.strokeStyle = 'rgba(239, 83, 80, 0.7)'; // danger red
+                ctx2d.lineWidth = 1.5;
+                ctx2d.setLineDash([4, 3]);
+                ctx2d.stroke();
+                
+                ctx2d.fillStyle = 'rgba(239, 83, 80, 0.95)';
+                ctx2d.font = '8px JetBrains Mono, monospace';
+                
+                if (x > chart.width - 80) {
+                    ctx2d.textAlign = 'right';
+                    ctx2d.fillText(`Exit: ${exitTime || ''}`, x - 4, yTop + 22);
+                } else {
+                    ctx2d.textAlign = 'left';
+                    ctx2d.fillText(`Exit: ${exitTime || ''}`, x + 4, yTop + 22);
+                }
+            }
+        }
+        
+        ctx2d.restore();
+    }
+};
+
+async function loadTradeDetailRow(signalId) {
+  const loading = document.getElementById(`expand_sim_loading_${signalId}`);
+  const content = document.getElementById(`expand_sim_content_${signalId}`);
+  if (!loading || !content) return;
+  
+  const restoreStates = () => {
+    if (STAGE1_OPEN[signalId]) {
+      const s1Container = document.getElementById(`stage_1_details_${signalId}`);
+      const s1Arrow = document.getElementById(`arrow_icon_1star_${signalId}`);
+      if (s1Container && s1Arrow) {
+        s1Container.style.display = 'flex';
+        s1Arrow.style.transform = 'rotate(180deg)';
+        s1Arrow.textContent = '▲';
+      }
+    }
+    if (STAGE2_OPEN[signalId]) {
+      const s2Container = document.getElementById(`stage_2_${signalId}`);
+      const s2Arrow = document.getElementById(`arrow_icon_${signalId}`);
+      if (s2Container && s2Arrow) {
+        s2Container.style.display = 'flex';
+        s2Arrow.style.transform = 'rotate(180deg)';
+        if (MINI_CHARTS[signalId]) {
+          try { MINI_CHARTS[signalId].remove(); } catch(e){}
+          MINI_CHARTS[signalId] = null;
+        }
+        initMiniChart(signalId);
+        renderAnalysisCharts(signalId);
+      }
+    }
+  };
+
+  if (TRADE_SIM_CACHE[signalId]) {
+    loading.style.display = 'none';
+    content.style.display = 'block';
+    renderStage1Data(signalId, TRADE_SIM_CACHE[signalId]);
+    restoreStates();
+    return;
+  }
+  
+  loading.style.display = 'flex';
+  content.style.display = 'none';
+  
+  const payload = {
+    base_sl_pct: 8.0,
+    base_tp_pct: 20.0,
+    s4_sl_atr_mult: 1.5,
+    s4_tp_atr_mult: 3.0,
+    s4_trail_atr_mult: 2.5,
+    slippage_pct: 0.05,
+    s2_min_tt_score: 5,
+    s5_min_tt_score: 5,
+    s6_min_tt_score: 5,
+    s6_min_rsi: 50.0,
+    mta_mltf_weight_1h: 0.15,
+    regime_volatility_window: 50,
+    hil_min_threshold: 50.0,
+    hil_max_threshold: 79.0,
+    atr_sl_multiplier: 1.5,
+    atr_tp_multiplier: 3.0,
+    chandelier_trailing_multiplier: 2.5
+  };
+  
+  try {
+    const res = await fetch(`/api/simulate/${signalId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error("Simulation fetch failed.");
+    const data = await res.json();
+    TRADE_SIM_CACHE[signalId] = data;
+    
+    loading.style.display = 'none';
+    content.style.display = 'block';
+    renderStage1Data(signalId, data);
+    restoreStates();
+  } catch (e) {
+    loading.innerHTML = `<span style="color:var(--danger-color); font-size:11px; font-weight:600;">Error: ${e.message}</span>`;
+  }
+}
+
+function renderStage1Data(signalId, data) {
+    const miniExpand = document.getElementById(`mini_expand_${signalId}`);
+    if (miniExpand) {
+        const ctx = data.market_context;
+        const macdBullish = (ctx.daily_macd - ctx.daily_macd_sig) > 0;
+        
+        let scPills = '';
+        for (const [code, sc] of Object.entries(data.scenarios)) {
+            const status = sc.executed ? 'exec' : 'filt';
+            const statusLabel = sc.executed ? 'EXEC' : 'FILT';
+            scPills += `<span class="mini-sc-badge ${status}">${code}: ${statusLabel}</span>`;
+        }
+        
+        const vcpClass = ctx.vcp_met ? 'v-green' : '';
+        const macdClass = macdBullish ? 'v-green' : 'v-red';
+        
+        miniExpand.innerHTML = `
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                <span style="font-weight: 700; font-size: 9px; color: var(--text-muted); text-transform: uppercase; margin-right: 4px; letter-spacing: 0.5px;">Context</span>
+                <span class="mini-pill">Trend: <strong>${ctx.tt_score}/8</strong></span>
+                <span class="mini-pill">VCP: <strong class="${vcpClass}">${ctx.vcp_met ? 'YES' : 'NO'}</strong></span>
+                <span class="mini-pill">RSI: <strong>${ctx.daily_rsi.toFixed(1)}</strong></span>
+                <span class="mini-pill">MACD: <strong class="${macdClass}">${macdBullish ? 'BULL' : 'BEAR'}</strong></span>
+                <span class="mini-pill">ATR: <strong>$${Math.round(ctx.daily_atr).toLocaleString()}</strong></span>
+                <span class="mini-pill">Vol Ratio: <strong>${ctx.volume_ratio.toFixed(1)}x</strong></span>
+                <span class="mini-pill">Range Ratio: <strong>${ctx.range_ratio.toFixed(1)}x</strong></span>
+                <span class="mini-pill">Close: <strong>$${Math.round(ctx.daily_close).toLocaleString()}</strong></span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 6px; margin-top: 2px;">
+                <span style="font-weight: 700; font-size: 9px; color: var(--text-muted); text-transform: uppercase; margin-right: 4px; letter-spacing: 0.5px;">Scenarios</span>
+                ${scPills}
+            </div>
+        `;
+    }
+
+    const scenariosGrid = document.getElementById(`mini_scenarios_${signalId}`);
+    if (!scenariosGrid) return;
+    let scHtml = '';
+    
+    const scNames = {
+        S1: 'Baseline Bypass', S2: 'Minervini Filter', S3: 'EMA Filter',
+        S4: 'Tight SL / Trailing', S5: 'Multi-Timeframe', S6: 'Optimized Hybrid'
+    };
+    
+    for (const [code, sc] of Object.entries(data.scenarios)) {
+        let cardBg = 'rgba(255, 255, 255, 0.02)';
+        let borderStyle = '1px solid rgba(42, 58, 89, 0.3)';
+        let statusBadge = '';
+        let metricsHtml = '';
+        
+        if (sc.executed) {
+            statusBadge = `<span style="font-size: 8px; font-weight: 700; color: var(--success-color); background: var(--success-bg); padding: 1px 6px; border-radius: 4px;">EXECUTED</span>`;
+            const pnl = sc.pnl_pct * 100;
+            const pnlClass = pnl >= 0 ? 'v-green' : 'v-red';
+            const pnlStr = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
+            metricsHtml = `
+                <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 4px;">
+                    <span style="color: var(--text-dim);">P&L:</span>
+                    <span class="${pnlClass}" style="font-weight: 600;">${pnlStr}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 10px;">
+                    <span style="color: var(--text-dim);">Exit:</span>
+                    <span style="color: #ffffff; font-family: monospace;">$${Math.round(sc.close_price).toLocaleString()}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 10px;">
+                    <span style="color: var(--text-dim);">Bars:</span>
+                    <span style="color: #ffffff;">${sc.bars}</span>
+                </div>`;
+            cardBg = 'rgba(38, 166, 154, 0.03)';
+            borderStyle = '1px solid rgba(38, 166, 154, 0.25)';
+        } else {
+            statusBadge = `<span style="font-size: 8px; font-weight: 700; color: var(--danger-color); background: var(--danger-bg); padding: 1px 6px; border-radius: 4px;">FILTERED</span>`;
+            metricsHtml = `
+                <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px; line-height: 1.3; font-style: italic;">
+                    ${sc.reason || 'Filtered by strategy rule'}
+                </div>`;
+            cardBg = 'rgba(239, 83, 80, 0.02)';
+            borderStyle = '1px solid rgba(239, 83, 80, 0.25)';
+        }
+        
+        scHtml += `
+            <div style="background: ${cardBg}; border: ${borderStyle}; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 4px;">
+                    <span style="font-size: 11px; font-weight: 700; color: #ffffff;">${code}</span>
+                    ${statusBadge}
+                </div>
+                <div style="font-size: 10px; font-weight: 500; color: var(--text-muted); margin-top: 4px;">${scNames[code]}</div>
+                ${metricsHtml}
+            </div>`;
+    }
+    scenariosGrid.innerHTML = scHtml;
+    
+    const ctx = data.market_context;
+    const contextGrid = document.getElementById(`mini_context_${signalId}`);
+    if (!contextGrid) return;
+    
+    const macdBullish = (ctx.daily_macd - ctx.daily_macd_sig) > 0;
+    const vcpClass = ctx.vcp_met ? 'v-green' : '';
+    const macdClass = macdBullish ? 'v-green' : 'v-red';
+    
+    contextGrid.innerHTML = `
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">Trend Score</div><div class="context-value" style="font-size:12px;">${ctx.tt_score}/8</div></div>
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">VCP Met</div><div class="context-value ${vcpClass}" style="font-size:12px;">${ctx.vcp_met ? 'YES' : 'NO'}</div></div>
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">Daily RSI</div><div class="context-value" style="font-size:12px;">${ctx.daily_rsi.toFixed(1)}</div></div>
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">MACD State</div><div class="context-value ${macdClass}" style="font-size:12px;">${macdBullish ? 'BULL' : 'BEAR'}</div></div>
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">Daily ATR</div><div class="context-value" style="font-size:12px;">$${Math.round(ctx.daily_atr).toLocaleString()}</div></div>
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">Vol Ratio</div><div class="context-value" style="font-size:12px;">${ctx.volume_ratio.toFixed(1)}x</div></div>
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">Range Ratio</div><div class="context-value" style="font-size:12px;">${ctx.range_ratio.toFixed(1)}x</div></div>
+        <div class="context-item" style="background:#141a26; border: 1px solid var(--panel-border); padding: 6px; border-radius: 6px;"><div class="context-label" style="font-size:8px; line-height: 1.2;">Daily Close</div><div class="context-value" style="font-size:12px;">$${Math.round(ctx.daily_close).toLocaleString()}</div></div>
+    `;
+}
+
+function toggleStage2(event, signalId) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    const container = document.getElementById(`stage_2_${signalId}`);
+    const arrow = document.getElementById(`arrow_icon_${signalId}`);
+    if (!container || !arrow) return;
+    
+    const isVisible = container.style.display !== 'none';
+    if (isVisible) {
+        container.style.display = 'none';
+        arrow.style.transform = 'rotate(0deg)';
+        STAGE2_OPEN[signalId] = false;
+    } else {
+        container.style.display = 'flex';
+        arrow.style.transform = 'rotate(180deg)';
+        STAGE2_OPEN[signalId] = true;
+        initMiniChart(signalId);
+        renderAnalysisCharts(signalId);
+    }
+}
+
+function initMiniChart(signalId, forceScenario) {
+    const containerId = `mini_chart_container_${signalId}`;
+    const chartDiv = document.getElementById(containerId);
+    if (!chartDiv) return;
+    
+    if (MINI_CHARTS[signalId]) {
+        MINI_CHARTS[signalId].remove();
+        MINI_CHARTS[signalId] = null;
+        MINI_CANDLE_SERIES[signalId] = null;
+        chartDiv.innerHTML = '';
+    } else if (chartDiv.children.length > 0) {
+        return; 
+    }
+    
+    const data = TRADE_SIM_CACHE[signalId];
+    if (!data) return;
+    
+    const scCode = forceScenario || SELECTED_TRADE_SCENARIO[signalId] || SELECTED_SCENARIO || 'S4';
+    SELECTED_TRADE_SCENARIO[signalId] = scCode;
+    
+    const miniChart = LightweightCharts.createChart(chartDiv, {
+        layout: { backgroundColor: '#131722', background: { type: 'solid', color: '#131722' }, textColor: '#d1d4dc', fontSize: 10 },
+        grid: { vertLines: { color: '#2a2e39', style: 1 }, horzLines: { color: '#2a2e39', style: 1 } },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+        rightPriceScale: { borderColor: '#2a2e39', scaleMargins: { top: 0.1, bottom: 0.2 } },
+        timeScale: { borderColor: '#2a2e39', timeVisible: true, secondsVisible: false },
+    });
+    
+    const miniCandlestickSeries = miniChart.addSeries(LightweightCharts.CandlestickSeries, {
+        upColor: '#26a69a', downColor: '#ef5350', borderVisible: false,
+        wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+    });
+    
+    const raw = data.candles;
+    miniCandlestickSeries.setData(raw.map(c => ({
+        time: c.timestamp / 1000,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close
+    })));
+    
+    miniChart.timeScale().fitContent();
+    
+    const sc = data.scenarios[scCode] || data.scenarios['S1'];
+    const info = data.signal_info;
+    
+    const isLong = info.action === 'BUY' || info.action === 'LONG';
+    const entryTime = raw[info.relative_entry_idx].timestamp / 1000;
+    
+    const markers = [];
+    markers.push({
+        time: entryTime,
+        position: isLong ? 'belowBar' : 'aboveBar',
+        color: isLong ? '#26a69a' : '#ef5350',
+        shape: isLong ? 'arrowUp' : 'arrowDown',
+        text: `ENTRY (${scCode})`
+    });
+    
+    miniCandlestickSeries.createPriceLine({
+        price: info.price,
+        color: '#26a69a',
+        lineWidth: 1.5,
+        lineStyle: LightweightCharts.LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: `ENTRY ${scCode}`
+    });
+    
+    if (sc && sc.executed) {
+        miniCandlestickSeries.createPriceLine({
+            price: sc.sl,
+            color: '#ef5350',
+            lineWidth: 1.2,
+            lineStyle: LightweightCharts.LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: `SL (${scCode})`
+        });
+        miniCandlestickSeries.createPriceLine({
+            price: sc.tp,
+            color: '#2962ff',
+            lineWidth: 1.2,
+            lineStyle: LightweightCharts.LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: `TP (${scCode})`
+        });
+        
+        const exitIdx = info.relative_entry_idx + sc.bars;
+        if (exitIdx < raw.length) {
+            const exitTime = raw[exitIdx].timestamp / 1000;
+            const isProfit = sc.pnl_pct > 0;
+            markers.push({
+                time: exitTime,
+                position: isLong ? 'aboveBar' : 'belowBar',
+                color: isProfit ? '#26a69a' : '#ef5350',
+                shape: isLong ? 'arrowDown' : 'arrowUp',
+                text: `${sc.outcome} (${scCode})`
+            });
+            
+            if (Math.abs(sc.close_price - sc.sl) > 0.01 && Math.abs(sc.close_price - sc.tp) > 0.01) {
+                miniCandlestickSeries.createPriceLine({
+                    price: sc.close_price,
+                    color: '#ff9800',
+                    lineWidth: 1.2,
+                    lineStyle: LightweightCharts.LineStyle.Dotted,
+                    axisLabelVisible: true,
+                    title: `EXIT (${scCode})`
+                });
+            }
+        }
+    } else {
+        markers.push({
+            time: entryTime,
+            position: isLong ? 'aboveBar' : 'belowBar',
+            color: '#64748B',
+            shape: 'circle',
+            text: `${scCode}: FILTERED`
+        });
+    }
+    
+    LightweightCharts.createSeriesMarkers(miniCandlestickSeries, markers);
+    
+    const entryIdx = info.relative_entry_idx;
+    const exitIdx = sc && sc.executed ? entryIdx + sc.bars : Math.min(entryIdx + 20, raw.length - 1);
+    const svIdx = Math.max(0, entryIdx - 8);
+    const evIdx = Math.min(raw.length - 1, exitIdx + 12);
+    
+    requestAnimationFrame(() => {
+        try {
+            miniChart.timeScale().setVisibleRange({
+                from: raw[svIdx].timestamp / 1000,
+                to: raw[evIdx].timestamp / 1000
+            });
+        } catch (err) {}
+    });
+    
+    MINI_CHARTS[signalId] = miniChart;
+    MINI_CANDLE_SERIES[signalId] = miniCandlestickSeries;
+    
+    updateScenarioIndicator(signalId, scCode, sc);
+}
+
+function updateScenarioIndicator(signalId, scCode, sc) {
+    const indicator = document.getElementById(`scenario_indicator_${signalId}`);
+    if (!indicator) return;
+    
+    const scNames = {
+        S1: 'Baseline Bypass', S2: 'Minervini Filter', S3: 'EMA Filter',
+        S4: 'Tight SL / Trailing', S5: 'Multi-Timeframe', S6: 'Optimized Hybrid'
+    };
+    
+    if (sc && sc.executed) {
+        const pnl = (sc.pnl_pct * 100);
+        const pnlStr = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
+        const pnlColor = pnl >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
+        indicator.innerHTML = `Viewing: <strong>${scCode}</strong> ${scNames[scCode] || ''} — <span style="color:${pnlColor};font-weight:700;">${pnlStr} (${sc.outcome})</span>`;
+        indicator.style.display = 'inline-block';
+        indicator.style.borderColor = pnl >= 0 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)';
+        indicator.style.background = pnl >= 0 ? 'rgba(38, 166, 154, 0.08)' : 'rgba(239, 83, 80, 0.08)';
+    } else {
+        indicator.innerHTML = `Viewing: <strong>${scCode}</strong> ${scNames[scCode] || ''} — <span style="color:var(--text-dim);">FILTERED</span>`;
+        indicator.style.display = 'inline-block';
+        indicator.style.borderColor = 'rgba(100, 116, 139, 0.4)';
+        indicator.style.background = 'rgba(100, 116, 139, 0.08)';
+    }
+}
+
+function switchTradeScenario(signalId, scenarioCode) {
+    SELECTED_TRADE_SCENARIO[signalId] = scenarioCode;
+    initMiniChart(signalId, scenarioCode);
+    renderAnalysisCharts(signalId);
+}
+
+let ANALYSIS_CHARTS = {};
+
+function renderAnalysisCharts(signalId) {
+    const data = TRADE_SIM_CACHE[signalId];
+    if (!data) return;
+    
+    if (ANALYSIS_CHARTS[signalId]) {
+        ANALYSIS_CHARTS[signalId].forEach(c => {
+            try { c.destroy(); } catch (e) {}
+        });
+    }
+    ANALYSIS_CHARTS[signalId] = [];
+    
+    const raw = data.candles;
+    const dailyRaw = data.daily_candles || [];
+    const scenarios = data.scenarios;
+    const info = data.signal_info;
+    const ctx_data = data.market_context;
+    
+    const selectedSc = SELECTED_TRADE_SCENARIO[signalId] || SELECTED_SCENARIO || 'S4';
+    const scData = scenarios[selectedSc];
+
+    const c2Title = document.getElementById(`card2_title_${signalId}`);
+    const c2ChartBox = document.getElementById(`card2_chart_box_${signalId}`);
+    const c2CustomBox = document.getElementById(`card2_custom_box_${signalId}`);
+    
+    const c3Title = document.getElementById(`card3_title_${signalId}`);
+    const c3ChartBox = document.getElementById(`card3_chart_box_${signalId}`);
+    const c3CustomBox = document.getElementById(`card3_custom_box_${signalId}`);
+
+    if (c2ChartBox) c2ChartBox.style.display = 'block';
+    if (c2CustomBox) c2CustomBox.style.display = 'none';
+    if (c3ChartBox) c3ChartBox.style.display = 'block';
+    if (c3CustomBox) c3CustomBox.style.display = 'none';
+
+    // ─── 1. SCENARIO P&L COMPARISON BAR CHART ───
+    const pnlCanvas = document.getElementById(`analysis_pnl_${signalId}`);
+    if (pnlCanvas) {
+        const pnlCtx = pnlCanvas.getContext('2d');
+        const labels = [];
+        const pnlValues = [];
+        const bgColors = [];
+        const borderColors = [];
+        
+        for (const [code, sc] of Object.entries(scenarios)) {
+            labels.push(code);
+            if (sc.executed) {
+                const pnl = sc.pnl_pct * 100;
+                pnlValues.push(pnl);
+                bgColors.push(pnl >= 0 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)');
+                borderColors.push(pnl >= 0 ? '#26a69a' : '#ef5350');
+            } else {
+                pnlValues.push(0);
+                bgColors.push('rgba(100, 116, 139, 0.15)');
+                borderColors.push('rgba(100, 116, 139, 0.3)');
+            }
+        }
+        
+        const selectedIdx = labels.indexOf(selectedSc);
+        const highlightBorderWidths = labels.map((_, i) => i === selectedIdx ? 3 : 1.5);
+        const highlightBorderColors = borderColors.map((c, i) => {
+            if (i === selectedIdx) return '#FBBF24'; // gold highlight
+            return c;
+        });
+        
+        const pnlChart = new Chart(pnlCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'P&L %',
+                    data: pnlValues,
+                    backgroundColor: bgColors,
+                    borderColor: highlightBorderColors,
+                    borderWidth: highlightBorderWidths,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const idx = elements[0].index;
+                        const clickedCode = labels[idx];
+                        switchTradeScenario(signalId, clickedCode);
+                    }
+                },
+                onHover: (event, elements) => {
+                    event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(13,18,31,0.95)',
+                        borderColor: 'rgba(255,255,255,0.08)',
+                        borderWidth: 1,
+                        titleColor: '#F8FAFC', bodyColor: '#94A3B8',
+                        callbacks: {
+                            title: (items) => {
+                                const code = items[0]?.label;
+                                const isActive = code === selectedSc;
+                                return `${code} ${isActive ? '(ACTIVE)' : '— Click to switch'}`;
+                            },
+                            label: (ctx) => {
+                                const sc = scenarios[ctx.label];
+                                if (!sc || !sc.executed) return 'FILTERED — scenario not triggered';
+                                return `${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}% (${sc.outcome})`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { ticks: { color: '#64748B', font: { size: 9, family: 'JetBrains Mono' } }, grid: { display: false } },
+                    y: {
+                        ticks: { color: '#64748B', font: { size: 8 }, callback: v => `${v.toFixed(1)}%` },
+                        grid: { color: 'rgba(255,255,255,0.03)' }
+                    }
+                }
+            }
+        });
+        ANALYSIS_CHARTS[signalId].push(pnlChart);
+    }
+
+    const isLong = info.action === 'BUY' || info.action === 'LONG';
+    const emaCanvas = document.getElementById(`analysis_ema_${signalId}`);
+    const volCanvas = document.getElementById(`analysis_vol_${signalId}`);
+
+    if (selectedSc === 'S1') {
+        if (c2Title) c2Title.innerHTML = '📈 EMA Overlay (20 / 50 / 200)';
+        if (c3Title) c3Title.innerHTML = '📉 Hourly Volume Profile';
+        drawEmaOverlayChart(signalId, emaCanvas, raw, info, selectedSc, scData);
+        drawVolumeProfileChart(signalId, volCanvas, raw, true, info, scData);
+    } 
+    else if (selectedSc === 'S2') {
+        if (c2Title) c2Title.innerHTML = '📋 Trend Template Checklist';
+        if (c3Title) c3Title.innerHTML = '📊 VCP Contraction Ratios';
+
+        if (c2ChartBox) c2ChartBox.style.display = 'none';
+        if (c2CustomBox) {
+            c2CustomBox.style.display = 'block';
+            const tt = ctx_data.tt_details || {};
+            const keys = isLong ? 
+                ['Price > SMA150 & SMA200', 'SMA150 > SMA200', 'SMA200 Slope Up', 'SMA50 > SMA150 & SMA200', 'Price > SMA50', 'Price >= Low52w + 30%', 'Price >= High52w - 25%', 'RS Ratio vs BTC > 1'] :
+                ['Price < SMA150 & SMA200', 'SMA150 < SMA200', 'SMA200 Slope Down', 'SMA50 < SMA150 & SMA200', 'Price < SMA50', 'Price <= High52w - 30%', 'Price <= Low52w + 25%', 'RS Ratio vs BTC < 1'];
+            
+            let ttHtml = '<div class="tt-list">';
+            for (let i = 1; i <= 8; i++) {
+                const passed = tt[`c${i}`];
+                const cls = passed ? 'pass' : 'fail';
+                const icon = passed ? '✓' : '✗';
+                ttHtml += `
+                    <div class="tt-item ${cls}">
+                        <span class="tt-icon ${cls}">${icon}</span>
+                        <span class="tt-text" title="${keys[i-1]}">${keys[i-1]}</span>
+                    </div>`;
+            }
+            ttHtml += '</div>';
+            c2CustomBox.innerHTML = ttHtml;
+        }
+
+        drawVcpContractionChart(signalId, volCanvas, ctx_data);
+    } 
+    else if (selectedSc === 'S3') {
+        if (c2Title) c2Title.innerHTML = '📈 Daily EMA Stack (20 / 50 / 100)';
+        if (c3Title) c3Title.innerHTML = '📉 Daily Volume Profile';
+        drawDailyEmaStackChart(signalId, emaCanvas, dailyRaw, info, scData);
+        drawVolumeProfileChart(signalId, volCanvas, dailyRaw, false, info, scData);
+    } 
+    else if (selectedSc === 'S4') {
+        if (c2Title) c2Title.innerHTML = '📏 ATR Channels & Trailing Stop';
+        if (c3Title) c3Title.innerHTML = '📉 Hourly Volume Profile';
+        drawAtrTrailingChart(signalId, emaCanvas, raw, info, scData);
+        drawVolumeProfileChart(signalId, volCanvas, raw, true, info, scData);
+    } 
+    else if (selectedSc === 'S5') {
+        if (c2Title) c2Title.innerHTML = '📋 Dual Trend Alignment Checklist';
+        if (c3Title) c3Title.innerHTML = '📈 Hourly EMA Stack (20 / 50 / 200)';
+        
+        if (c2ChartBox) c2ChartBox.style.display = 'none';
+        if (c2CustomBox) {
+            c2CustomBox.style.display = 'block';
+            const startHour = raw[info.relative_entry_idx] || {};
+            const h_ema20 = startHour.ema20 || 0;
+            const h_ema50 = startHour.ema50 || 0;
+            const h_ema200 = startHour.ema200 || 0;
+            const h_aligned = isLong ? (h_ema20 > h_ema50 && h_ema50 > h_ema200) : (h_ema20 < h_ema50 && h_ema50 < h_ema200);
+
+            const tt_score_ok = ctx_data.tt_score >= 5;
+
+            let h_desc = isLong ? `EMA20 ($${Math.round(h_ema20)}) > EMA50 ($${Math.round(h_ema50)}) > EMA200 ($${Math.round(h_ema200)})` :
+                                 `EMA20 ($${Math.round(h_ema20)}) < EMA50 ($${Math.round(h_ema50)}) < EMA200 ($${Math.round(h_ema200)})`;
+
+            c2CustomBox.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 10px; height: 100%; justify-content: center; padding: 4px 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: ${tt_score_ok ? 'rgba(38,166,154,0.04)' : 'rgba(239,83,80,0.02)'}; border: 1px solid ${tt_score_ok ? 'rgba(38,166,154,0.2)' : 'rgba(239,83,80,0.12)'}; border-radius: 8px;">
+                        <span class="tt-icon ${tt_score_ok ? 'pass' : 'fail'}" style="font-size:16px;">${tt_score_ok ? '✓' : '✗'}</span>
+                        <div>
+                            <div style="font-weight:700; font-size:11px; color:#ffffff;">1. Daily Trend Template Score</div>
+                            <div style="font-size:10px; color:var(--text-muted);">Score is ${ctx_data.tt_score}/8 (requires >= 5)</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: ${h_aligned ? 'rgba(38,166,154,0.04)' : 'rgba(239,83,80,0.02)'}; border: 1px solid ${h_aligned ? 'rgba(38,166,154,0.2)' : 'rgba(239,83,80,0.12)'}; border-radius: 8px;">
+                        <span class="tt-icon ${h_aligned ? 'pass' : 'fail'}" style="font-size:16px;">${h_aligned ? '✓' : '✗'}</span>
+                        <div>
+                            <div style="font-weight:700; font-size:11px; color:#ffffff;">2. Hourly EMA Alignment</div>
+                            <div style="font-size:9px; color:var(--text-muted); line-height: 1.2;">${h_desc}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        drawEmaOverlayChart(signalId, volCanvas, raw, info, selectedSc, scData);
+    } 
+    else if (selectedSc === 'S6') {
+        if (c2Title) c2Title.innerHTML = '👁️ Daily RSI14 Chart';
+        if (c3Title) c3Title.innerHTML = '📊 Daily MACD Histogram';
+        drawDailyRsiChart(signalId, emaCanvas, dailyRaw, ctx_data, info, scData);
+        drawDailyMacdChart(signalId, volCanvas, dailyRaw, info, scData);
+    }
+}
+
+function drawEmaOverlayChart(signalId, canvas, raw, info, selectedSc, sc) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const step = 1;
+    const labels = [];
+    const closeData = [];
+    const ema20Data = [];
+    const ema50Data = [];
+    const ema200Data = [];
+    
+    for (let i = 0; i < raw.length; i += step) {
+        const c = raw[i];
+        const dt = new Date(c.timestamp);
+        labels.push(`${dt.getMonth()+1}/${dt.getDate()} ${dt.getHours()}h`);
+        closeData.push(c.close);
+        ema20Data.push(c.ema20 || null);
+        ema50Data.push(c.ema50 || null);
+        ema200Data.push(c.ema200 || null);
+    }
+    
+    const datasets = [
+        { label: 'Close', data: closeData, borderColor: '#d1d4dc', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+    ];
+    if (ema20Data.some(v => v !== null)) datasets.push({ label: 'EMA20', data: ema20Data, borderColor: '#FBBF24', borderWidth: 1.2, pointRadius: 0, tension: 0.2, borderDash: [3, 2] });
+    if (ema50Data.some(v => v !== null)) datasets.push({ label: 'EMA50', data: ema50Data, borderColor: '#38BDF8', borderWidth: 1.2, pointRadius: 0, tension: 0.2, borderDash: [3, 2] });
+    if (ema200Data.some(v => v !== null)) datasets.push({ label: 'EMA200', data: ema200Data, borderColor: '#C084FC', borderWidth: 1.2, pointRadius: 0, tension: 0.2, borderDash: [5, 3] });
+    
+    datasets.push({
+        label: 'Entry',
+        data: Array(labels.length).fill(info.price),
+        borderColor: '#26a69a',
+        borderWidth: 1,
+        pointRadius: 0,
+        borderDash: [6, 4],
+    });
+    
+    if (sc && sc.executed) {
+        datasets.push({
+            label: `SL`,
+            data: Array(labels.length).fill(sc.sl),
+            borderColor: '#ef5350',
+            borderWidth: 1,
+            pointRadius: 0,
+            borderDash: [4, 3],
+        });
+        datasets.push({
+            label: `TP`,
+            data: Array(labels.length).fill(sc.tp),
+            borderColor: '#2962ff',
+            borderWidth: 1,
+            pointRadius: 0,
+            borderDash: [4, 3],
+        });
+    }
+    
+    const entryIdx = info.relative_entry_idx;
+    const exitIdx = sc && sc.executed ? entryIdx + sc.bars : null;
+    const entryTime = formatUtcTime(raw[entryIdx]?.timestamp);
+    const exitTime = sc && sc.executed ? formatUtcTime(raw[exitIdx]?.timestamp || sc.close_time_ms) : '';
+    
+    const chartInst = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        plugins: [entryExitLinesPlugin],
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, labels: { color: '#94A3B8', font: { size: 8, family: 'Inter' }, boxWidth: 10 } },
+                tooltip: {
+                    backgroundColor: 'rgba(13,18,31,0.95)',
+                    callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString(undefined, {maximumFractionDigits: 0})}` }
+                },
+                entry_exit_lines: {
+                    enabled: true,
+                    entryIdx: entryIdx,
+                    exitIdx: exitIdx,
+                    entryTime: entryTime,
+                    exitTime: exitTime
+                }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    ticks: { color: '#64748B', font: { size: 8 }, callback: v => `$${(v/1000).toFixed(1)}k` },
+                    grid: { color: 'rgba(255,255,255,0.03)' }
+                }
+            }
+        }
+    });
+    ANALYSIS_CHARTS[signalId].push(chartInst);
+}
+
+function drawVolumeProfileChart(signalId, canvas, raw, isHourly, info, sc) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const step = 1;
+    const labels = [];
+    const volData = [];
+    const volColors = [];
+    
+    for (let i = 0; i < raw.length; i += step) {
+        const c = raw[i];
+        const dt = new Date(c.timestamp);
+        labels.push(isHourly ? `${dt.getHours()}h` : `${dt.getMonth()+1}/${dt.getDate()}`);
+        volData.push(c.volume);
+        volColors.push(c.close >= c.open ? 'rgba(38, 166, 154, 0.35)' : 'rgba(239, 83, 80, 0.35)');
+    }
+    
+    let entryIdx = null;
+    let exitIdx = null;
+    let entryTime = '';
+    let exitTime = '';
+    
+    if (isHourly) {
+        if (info) {
+            entryIdx = info.relative_entry_idx;
+            entryTime = formatUtcTime(raw[entryIdx]?.timestamp);
+        }
+        if (sc && sc.executed && info) {
+            exitIdx = info.relative_entry_idx + sc.bars;
+            exitTime = formatUtcTime(raw[exitIdx]?.timestamp || sc.close_time_ms);
+        }
+    } else {
+        if (info) {
+            const entryHourTs = TRADE_SIM_CACHE[signalId]?.candles[info.relative_entry_idx]?.timestamp;
+            if (entryHourTs) {
+                const entryDateStr = formatUtcDate(entryHourTs);
+                entryIdx = raw.findIndex(c => formatUtcDate(c.timestamp) === entryDateStr);
+                entryTime = formatUtcDateShort(entryHourTs);
+            }
+        }
+        if (sc && sc.executed && sc.close_time_ms) {
+            const exitDateStr = formatUtcDate(sc.close_time_ms);
+            exitIdx = raw.findIndex(c => formatUtcDate(c.timestamp) === exitDateStr);
+            exitTime = formatUtcDateShort(sc.close_time_ms);
+        }
+    }
+    
+    const chartInst = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Volume',
+                data: volData,
+                backgroundColor: volColors,
+                borderWidth: 0,
+                borderRadius: 2,
+            }]
+        },
+        plugins: [entryExitLinesPlugin],
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(13,18,31,0.95)',
+                    callbacks: { label: (ctx) => `Vol: ${ctx.parsed.y?.toLocaleString()}` }
+                },
+                entry_exit_lines: {
+                    enabled: true,
+                    entryIdx: entryIdx,
+                    exitIdx: exitIdx,
+                    entryTime: entryTime,
+                    exitTime: exitTime
+                }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    ticks: { color: '#64748B', font: { size: 8 }, callback: v => `${(v/1e6).toFixed(1)}M` },
+                    grid: { color: 'rgba(255,255,255,0.03)' }
+                }
+            }
+        }
+    });
+    ANALYSIS_CHARTS[signalId].push(chartInst);
+}
+
+function drawVcpContractionChart(signalId, canvas, ctx_data) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    const vol_ratio = ctx_data.volume_ratio;
+    const range_ratio = ctx_data.range_ratio;
+    
+    const chartInst = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Volume Ratio', 'Range Ratio'],
+            datasets: [{
+                data: [vol_ratio, range_ratio],
+                backgroundColor: [
+                    vol_ratio < 0.5 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)',
+                    range_ratio < 0.5 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
+                ],
+                borderColor: [
+                    vol_ratio < 0.5 ? '#26a69a' : '#ef5350',
+                    range_ratio < 0.5 ? '#26a69a' : '#ef5350'
+                ],
+                borderWidth: 1.5,
+                borderRadius: 6,
+                barPercentage: 0.5
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(13,18,31,0.95)',
+                    callbacks: {
+                        label: (c) => `${c.label}: ${c.parsed.y.toFixed(2)}x ${c.parsed.y < 0.5 ? '(CONTRACTED ✓)' : '(EXPANDED ✗)'}`
+                    }
+                }
+            },
+            scales: {
+                x: { ticks: { color: '#64748B', font: { size: 9, family: 'Inter' } }, grid: { display: false } },
+                y: {
+                    ticks: { color: '#64748B', font: { size: 8 } },
+                    grid: { color: 'rgba(255,255,255,0.03)' },
+                    suggestedMax: 1.0
+                }
+            }
+        },
+        plugins: [{
+            id: 'vcp_threshold_line',
+            afterDraw: (chart) => {
+                const yScale = chart.scales.y;
+                const yPos = yScale.getPixelForValue(0.5);
+                const ctx2d = chart.ctx;
+                ctx2d.save();
+                ctx2d.beginPath();
+                ctx2d.moveTo(chart.scales.x.left, yPos);
+                ctx2d.lineTo(chart.scales.x.right, yPos);
+                ctx2d.strokeStyle = 'rgba(255, 152, 0, 0.4)';
+                ctx2d.lineWidth = 1;
+                ctx2d.setLineDash([4, 4]);
+                ctx2d.stroke();
+                ctx2d.fillStyle = 'rgba(255, 152, 0, 0.7)';
+                ctx2d.font = '8px JetBrains Mono';
+                ctx2d.fillText('0.5 Limit', chart.scales.x.left + 5, yPos - 3);
+                ctx2d.restore();
+            }
+        }]
+    });
+    ANALYSIS_CHARTS[signalId].push(chartInst);
+}
+
+function drawDailyEmaStackChart(signalId, canvas, dailyRaw, info, sc) {
+    if (!canvas || dailyRaw.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    
+    const labels = [];
+    const closeData = [];
+    const ema20Data = [];
+    const ema50Data = [];
+    const ema100Data = [];
+    
+    dailyRaw.forEach(c => {
+        const dt = new Date(c.timestamp);
+        labels.push(`${dt.getMonth()+1}/${dt.getDate()}`);
+        closeData.push(c.close);
+        ema20Data.push(c.ema20 || null);
+        ema50Data.push(c.ema50 || null);
+        ema100Data.push(c.ema100 || null);
+    });
+    
+    let entryIdx = null;
+    let exitIdx = null;
+    let entryTime = '';
+    let exitTime = '';
+    
+    const data = TRADE_SIM_CACHE[signalId];
+    if (data && info) {
+        const entryHourTs = data.candles[info.relative_entry_idx]?.timestamp;
+        if (entryHourTs) {
+            const entryDateStr = formatUtcDate(entryHourTs);
+            entryIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === entryDateStr);
+            entryTime = formatUtcDateShort(entryHourTs);
+        }
+    }
+    if (sc && sc.executed && sc.close_time_ms) {
+        const exitDateStr = formatUtcDate(sc.close_time_ms);
+        exitIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === exitDateStr);
+        exitTime = formatUtcDateShort(sc.close_time_ms);
+    }
+    
+    const chartInst = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Daily Close', data: closeData, borderColor: '#d1d4dc', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+                { label: 'Daily EMA20', data: ema20Data, borderColor: '#FBBF24', borderWidth: 1.2, pointRadius: 0, tension: 0.2 },
+                { label: 'Daily EMA50', data: ema50Data, borderColor: '#38BDF8', borderWidth: 1.2, pointRadius: 0, tension: 0.2 },
+                { label: 'Daily EMA100', data: ema100Data, borderColor: '#C084FC', borderWidth: 1.2, pointRadius: 0, tension: 0.2, borderDash: [3, 2] }
+            ]
+        },
+        plugins: [entryExitLinesPlugin],
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, labels: { color: '#94A3B8', font: { size: 8 }, boxWidth: 10 } },
+                tooltip: {
+                    backgroundColor: 'rgba(13,18,31,0.95)',
+                    callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString(undefined, {maximumFractionDigits: 0})}` }
+                },
+                entry_exit_lines: {
+                    enabled: true,
+                    entryIdx: entryIdx,
+                    exitIdx: exitIdx,
+                    entryTime: entryTime,
+                    exitTime: exitTime
+                }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    ticks: { color: '#64748B', font: { size: 8 }, callback: v => `$${(v/1000).toFixed(1)}k` },
+                    grid: { color: 'rgba(255,255,255,0.03)' }
+                }
+            }
+        }
+    });
+    ANALYSIS_CHARTS[signalId].push(chartInst);
+}
+
+function drawAtrTrailingChart(signalId, canvas, raw, info, sc) {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    const step = 1;
+    const labels = [];
+    const closeData = [];
+    const trailData = [];
+    
+    const entry_idx = info.relative_entry_idx;
+    const trailHistory = sc ? sc.trailing_sl_history || [] : [];
+    
+    for (let i = 0; i < raw.length; i += step) {
+        const c = raw[i];
+        const dt = new Date(c.timestamp);
+        labels.push(`${dt.getMonth()+1}/${dt.getDate()} ${dt.getHours()}h`);
+        closeData.push(c.close);
+        
+        let trailVal = null;
+        if (i >= entry_idx) {
+            const hist_idx = i - entry_idx;
+            if (hist_idx < trailHistory.length) {
+                trailVal = trailHistory[hist_idx];
+            }
+        }
+        trailData.push(trailVal);
+    }
+    
+    const datasets = [
+        { label: 'Close', data: closeData, borderColor: '#d1d4dc', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
+        { label: 'Entry Price', data: Array(labels.length).fill(info.price), borderColor: '#26a69a', borderWidth: 1, pointRadius: 0, borderDash: [6, 4] }
+    ];
+    
+    if (trailHistory.length > 0) {
+        datasets.push({
+            label: 'Trailing Stop',
+            data: trailData,
+            borderColor: '#ff9800',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            tension: 0.05,
+            borderDash: [2, 2]
+        });
+    } else if (sc && sc.sl) {
+        datasets.push({
+            label: 'Static SL',
+            data: Array(labels.length).fill(sc.sl),
+            borderColor: '#ef5350',
+            borderWidth: 1.2,
+            pointRadius: 0,
+            borderDash: [4, 3]
+        });
+    }
+    
+    if (sc && sc.tp) {
+        datasets.push({
+            label: 'TP',
+            data: Array(labels.length).fill(sc.tp),
+            borderColor: '#2962ff',
+            borderWidth: 1.2,
+            pointRadius: 0,
+            borderDash: [4, 3]
+        });
+    }
+    
+    const entryIdx = info.relative_entry_idx;
+    const exitIdx = sc && sc.executed ? entryIdx + sc.bars : null;
+    const entryTime = formatUtcTime(raw[entryIdx]?.timestamp);
+    const exitTime = sc && sc.executed ? formatUtcTime(raw[exitIdx]?.timestamp || sc.close_time_ms) : '';
+    
+    const chartInst = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        plugins: [entryExitLinesPlugin],
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, labels: { color: '#94A3B8', font: { size: 8 }, boxWidth: 10 } },
+                tooltip: {
+                    backgroundColor: 'rgba(13,18,31,0.95)',
+                    callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString(undefined, {maximumFractionDigits: 0})}` }
+                },
+                entry_exit_lines: {
+                    enabled: true,
+                    entryIdx: entryIdx,
+                    exitIdx: exitIdx,
+                    entryTime: entryTime,
+                    exitTime: exitTime
+                }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    ticks: { color: '#64748B', font: { size: 8 }, callback: v => `$${(v/1000).toFixed(1)}k` },
+                    grid: { color: 'rgba(255,255,255,0.03)' }
+                }
+            }
+        }
+    });
+    ANALYSIS_CHARTS[signalId].push(chartInst);
+}
+
+function drawDailyRsiChart(signalId, canvas, dailyRaw, ctx_data, info, sc) {
+    if (!canvas || dailyRaw.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    
+    const labels = [];
+    const rsiData = [];
+    
+    dailyRaw.forEach(c => {
+        const dt = new Date(c.timestamp);
+        labels.push(`${dt.getMonth()+1}/${dt.getDate()}`);
+        rsiData.push(c.rsi14 || null);
+    });
+    
+    let entryIdx = null;
+    let exitIdx = null;
+    let entryTime = '';
+    let exitTime = '';
+    
+    const data = TRADE_SIM_CACHE[signalId];
+    if (data && info) {
+        const entryHourTs = data.candles[info.relative_entry_idx]?.timestamp;
+        if (entryHourTs) {
+            const entryDateStr = formatUtcDate(entryHourTs);
+            entryIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === entryDateStr);
+            entryTime = formatUtcDateShort(entryHourTs);
+        }
+    }
+    if (sc && sc.executed && sc.close_time_ms) {
+        const exitDateStr = formatUtcDate(sc.close_time_ms);
+        exitIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === exitDateStr);
+        exitTime = formatUtcDateShort(sc.close_time_ms);
+    }
+    
+    const chartInst = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Daily RSI14',
+                data: rsiData,
+                borderColor: '#c084fc',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                tension: 0.1,
+                fill: false
+            }]
+        },
+        plugins: [entryExitLinesPlugin, {
+            id: 'rsi_threshold_line',
+            afterDraw: (chart) => {
+                const yScale = chart.scales.y;
+                const yPosThreshold = yScale.getPixelForValue(50.0);
+                const ctx2d = chart.ctx;
+                
+                ctx2d.save();
+                ctx2d.beginPath();
+                ctx2d.moveTo(chart.scales.x.left, yPosThreshold);
+                ctx2d.lineTo(chart.scales.x.right, yPosThreshold);
+                ctx2d.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx2d.lineWidth = 1;
+                ctx2d.stroke();
+                
+                ctx2d.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx2d.font = '8px JetBrains Mono';
+                ctx2d.fillText('50 Line', chart.scales.x.left + 5, yPosThreshold - 3);
+                ctx2d.restore();
+            }
+        }],
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(13,18,31,0.95)',
+                    callbacks: { label: (c) => `RSI: ${c.parsed.y.toFixed(2)}` }
+                },
+                entry_exit_lines: {
+                    enabled: true,
+                    entryIdx: entryIdx,
+                    exitIdx: exitIdx,
+                    entryTime: entryTime,
+                    exitTime: exitTime
+                }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    ticks: { color: '#64748B', font: { size: 8 } },
+                    grid: { color: 'rgba(255,255,255,0.03)' },
+                    min: 0, max: 100
+                }
+            }
+        }
+    });
+    ANALYSIS_CHARTS[signalId].push(chartInst);
+}
+
+function drawDailyMacdChart(signalId, canvas, dailyRaw, info, sc) {
+    if (!canvas || dailyRaw.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    
+    const labels = [];
+    const macdLine = [];
+    const macdSig = [];
+    const macdHist = [];
+    const histColors = [];
+    
+    dailyRaw.forEach(c => {
+        const dt = new Date(c.timestamp);
+        labels.push(`${dt.getMonth()+1}/${dt.getDate()}`);
+        macdLine.push(c.macd_line || null);
+        macdSig.push(c.macd_signal || null);
+        
+        const hist = (c.macd_line || 0) - (c.macd_signal || 0);
+        macdHist.push(hist);
+        histColors.push(hist >= 0 ? 'rgba(38, 166, 154, 0.4)' : 'rgba(239, 83, 80, 0.4)');
+    });
+    
+    let entryIdx = null;
+    let exitIdx = null;
+    let entryTime = '';
+    let exitTime = '';
+    
+    const data = TRADE_SIM_CACHE[signalId];
+    if (data && info) {
+        const entryHourTs = data.candles[info.relative_entry_idx]?.timestamp;
+        if (entryHourTs) {
+            const entryDateStr = formatUtcDate(entryHourTs);
+            entryIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === entryDateStr);
+            entryTime = formatUtcDateShort(entryHourTs);
+        }
+    }
+    if (sc && sc.executed && sc.close_time_ms) {
+        const exitDateStr = formatUtcDate(sc.close_time_ms);
+        exitIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === exitDateStr);
+        exitTime = formatUtcDateShort(sc.close_time_ms);
+    }
+    
+    const chartInst = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Histogram',
+                    type: 'bar',
+                    data: macdHist,
+                    backgroundColor: histColors,
+                    borderWidth: 0,
+                    borderRadius: 2,
+                    order: 2
+                },
+                {
+                    label: 'MACD',
+                    type: 'line',
+                    data: macdLine,
+                    borderColor: '#38BDF8',
+                    borderWidth: 1.2,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    fill: false,
+                    order: 1
+                },
+                {
+                    label: 'Signal',
+                    type: 'line',
+                    data: macdSig,
+                    borderColor: '#ff9800',
+                    borderWidth: 1.2,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    fill: false,
+                    order: 1
+                }
+            ]
+        },
+        plugins: [entryExitLinesPlugin],
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: true, labels: { color: '#94A3B8', font: { size: 8 }, boxWidth: 10 } },
+                tooltip: {
+                    backgroundColor: 'rgba(13,18,31,0.95)',
+                    callbacks: {
+                        label: (c) => `${c.dataset.label}: ${c.parsed.y?.toFixed(1)}`
+                    }
+                },
+                entry_exit_lines: {
+                    enabled: true,
+                    entryIdx: entryIdx,
+                    exitIdx: exitIdx,
+                    entryTime: entryTime,
+                    exitTime: exitTime
+                }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    ticks: { color: '#64748B', font: { size: 8 } },
+                    grid: { color: 'rgba(255,255,255,0.03)' }
+                }
+            }
+        }
+    });
+    ANALYSIS_CHARTS[signalId].push(chartInst);
+}
+
+function generateSignalDetailHtml(s) {
+  // Find associated trade
+  const isLive = s.mode && s.mode.toUpperCase() === 'LIVE';
+  const tradeList = isLive ? (window.allLiveTradesGlobal || []) : (window.allFwdTradesGlobal || []);
+  const trade = tradeList.find(t => t.signal_id === s.id);
+  
+  // Webhook payload
+  const payloadStr = s.payload ? JSON.stringify(s.payload, null, 2) : '{}';
+
+  // Associated trade html
+  let tradeHtml = '';
+  if (trade) {
+    const pnlSign = trade.pnl >= 0 ? "+" : "";
+    const pnlClass = trade.pnl > 0 ? "pos" : (trade.pnl < 0 ? "neg" : "neu");
+    const pnlVal = trade.pnl !== null ? `${pnlSign}${trade.pnl.toFixed(2)} USDT` : '0.00 USDT';
+    tradeHtml = `
+      <div class="expand-card" style="margin-top: 12px; border-color: rgba(16, 217, 138, 0.35);">
+        <div class="expand-card-title" style="color: var(--green); font-size: 0.72rem; margin-bottom: 8px;">Giao Dịch Thực Tế Liên Quan (ID: ${trade.id})</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; font-size: 0.74rem; font-family: 'Inter', sans-serif;">
+          <div>Trạng Thái: <span style="font-weight:700; color:var(--cyan);">${(trade.status || 'UNKNOWN').toUpperCase()}</span></div>
+          <div>Kết Quả P&L: <strong class="${pnlClass}">${pnlVal}</strong></div>
+          <div>Giá Khớp: <strong>${fmtP(trade.executed_price)}</strong></div>
+          <div>Khối Lượng: <strong>${trade.executed_qty || '0'} / ${trade.requested_qty || '0'}</strong></div>
+          <div>Commission: <strong>${trade.commission ? trade.commission.toFixed(4) + ' USDT' : '0.00'}</strong></div>
+          <div>Order ID: <strong style="font-family: 'JetBrains Mono', monospace; color:var(--text-muted);">${trade.order_id || 'N/A'}</strong></div>
+        </div>
+        ${trade.error_message ? `<div class="expand-reason-box failed" style="margin-top: 8px;"><strong>Lỗi Giao Dịch:</strong> ${trade.error_message}</div>` : ''}
+      </div>
+    `;
+  }
+
+  // AI Reasoning
+  let reasoningHtml = '';
+  if (s.raw_analysis_text) {
+    reasoningHtml = `
+      <div style="margin-top: 12px;">
+        <div class="expand-card-title">Phân tích từ AI (Reasoning)</div>
+        <div style="background: rgba(17, 24, 39, 0.4); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-family: 'Inter', sans-serif; font-size: 0.78rem; line-height: 1.5; color: var(--text); max-height: 120px; overflow-y: auto; white-space: pre-wrap;">${s.raw_analysis_text}</div>
+      </div>
+    `;
+  }
+
+  const st = (s.state || "PENDING").toUpperCase();
+  let rejectHtml = '';
+  if (['REJECTED', 'FAILED'].includes(st) && s.rejection_reason) {
+    rejectHtml = `
+      <div class="expand-reason-box rejected" style="margin-top: 12px;">
+        <strong>Lý do từ chối:</strong> ${s.rejection_reason}
+      </div>
+    `;
+  }
+
+  return `
+    <!-- Loading State -->
+    <div id="expand_sim_loading_${s.id}" style="display: flex; justify-content: center; align-items: center; padding: 20px;">
+        <div class="spinner" style="width: 24px; height: 24px; border: 3px solid rgba(56, 189, 248, 0.1); border-top: 3px solid var(--blue); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <span style="margin-left: 12px; font-size: 12px; color: var(--text-muted);">Simulating and fetching metrics...</span>
+    </div>
+    <style>
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+
+    <!-- Expanded Content -->
+    <div id="expand_sim_content_${s.id}" style="display: none;">
+      <!-- Mini-Expand Container -->
+      <div class="mini-expand-container" id="mini_expand_${s.id}">
+        <!-- Dynamic content injected by renderStage1Data -->
+      </div>
+
+      <!-- Toggle Details Button -->
+      <div class="expand-arrow-divider-1star">
+        <button class="arrow-btn" onclick="toggleSignalValidationDetails(event, ${s.id})">
+          <span>Show Validation Details</span>
+          <span class="arrow-icon" id="arrow_icon_1star_${s.id}">▼</span>
+        </button>
+      </div>
+
+      <!-- Collapsible Validation & Context Details -->
+      <div class="stage-1-details-container" id="stage_1_details_${s.id}" style="display: none;">
+        <div class="stage-1-grid">
+          <!-- Left: Scenario Gates -->
+          <div class="gates-column">
+            <div class="expand-section-title gates">Scenario Validation Gates (S1 ~ S6)</div>
+            <div class="scenario-mini-grid" id="mini_scenarios_${s.id}">
+              <!-- Dynamic scenario cards -->
+            </div>
+          </div>
+          
+          <!-- Right: Daily Context Indicators -->
+          <div class="context-column">
+            <div class="expand-section-title context">Daily Market Context at Entry</div>
+            <div class="context-mini-grid" id="mini_context_${s.id}">
+              <!-- Dynamic context cards -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Divider with dynamic down arrow for Stage 2 -->
+        <div class="expand-arrow-divider" style="display: flex; justify-content: center; align-items: center; border-top: 1px solid rgba(42, 58, 89, 0.2); padding-top: 10px; margin-top: 16px;">
+          <button class="arrow-btn" onclick="toggleStage2(event, ${s.id})">
+            <span>Show Hourly Candlestick Replay</span>
+            <span class="arrow-icon" id="arrow_icon_${s.id}">▼</span>
+          </button>
+        </div>
+        
+        <!-- Stage 2: Interactive mini chart + Analysis side-by-side -->
+        <div class="stage-2-container" id="stage_2_${s.id}" style="display: none; flex-direction: column; gap: 12px; margin-top: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div class="expand-section-title" style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #ffffff; border-left: 2px solid var(--cyan); padding-left: 6px; letter-spacing: 0.5px; margin-bottom: 0;">Hourly Candlestick Replay & Scenario Analysis</div>
+              <span class="scenario-indicator" id="scenario_indicator_${s.id}" style="display:none; font-size: 10px; font-weight: 700; padding: 2px 10px; border-radius: 6px; background: rgba(41, 98, 255, 0.15); border: 1px solid rgba(41, 98, 255, 0.4); color: var(--blue); letter-spacing: 0.5px; transition: all 0.2s ease;"></span>
+            </div>
+            <button class="nav-link-btn" onclick="openReplayModal(${s.id})" style="padding: 4px 12px; font-size: 11px;">
+              <span>🎬 Expand Full Replay</span>
+            </button>
+          </div>
+          <div class="stage2-split">
+            <!-- LEFT: Candlestick Chart -->
+            <div class="stage2-chart-side">
+              <div id="mini_chart_container_${s.id}" style="width: 100%; height: 300px; border-radius: 8px; overflow: hidden; background: #131722; border: 1px solid var(--panel-border);"></div>
+            </div>
+            <!-- RIGHT: Scenario Analysis Charts -->
+            <div class="stage2-analysis-side" id="analysis_panel_${s.id}">
+              <div class="analysis-card" style="cursor: pointer;">
+                <div class="analysis-card-title">📊 Scenario P&L Comparison <span style="font-size:8px; font-weight:400; color:var(--text-dim);">(click bar to switch)</span></div>
+                <div class="analysis-chart-box"><canvas id="analysis_pnl_${s.id}"></canvas></div>
+              </div>
+              <div class="analysis-card" id="card2_wrapper_${s.id}">
+                <div class="analysis-card-title" id="card2_title_${s.id}">📈 EMA Overlay (20 / 50 / 200)</div>
+                <div class="analysis-chart-box" id="card2_chart_box_${s.id}">
+                  <canvas id="analysis_ema_${s.id}"></canvas>
+                </div>
+                <div id="card2_custom_box_${s.id}" style="display: none; padding: 4px; font-size: 11px; overflow-y: auto; height: 130px;"></div>
+              </div>
+              <div class="analysis-card" id="card3_wrapper_${s.id}">
+                <div class="analysis-card-title" id="card3_title_${s.id}">📉 Volume Profile</div>
+                <div class="analysis-chart-box" id="card3_chart_box_${s.id}">
+                  <canvas id="analysis_vol_${s.id}"></canvas>
+                </div>
+                <div id="card3_custom_box_${s.id}" style="display: none; padding: 4px; font-size: 11px; overflow-y: auto; height: 130px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      ${tradeHtml}
+      ${rejectHtml}
+      ${reasoningHtml}
+      
+      <div style="margin-top: 12px;">
+        <div class="expand-card-title">Webhook Payload</div>
+        <pre class="expand-payload-box">${payloadStr}</pre>
+      </div>
+    </div>
+  `;
+}
+
 function renderRows(signals, tbodyId) {
   const tb = $(tbodyId);
   if (!tb) return;
@@ -1785,13 +3865,84 @@ function renderRows(signals, tbodyId) {
     const ts = (s.created_at||"").substring(11,16)+" UTC";
     const id = Number(s.id).toLocaleString();
     const clickAttr = `onclick="onSignalRowClick(this, ${JSON.stringify(s).replace(/"/g, '&quot;')})"`;
-    return `<tr ${clickAttr} data-signal-id="${s.id}">
+    const isExpanded = (activeSignalId === s.id);
+    const expandStyle = isExpanded ? 'display: table-row;' : 'display: none;';
+    const detailHtml = isExpanded ? generateSignalDetailHtml(s) : '';
+    
+    let extraTdHtml = '';
+    if (tbodyId === 'fwd-tbody') {
+      const sim = window.SANDBOX_SIMULATIONS_CACHE ? window.SANDBOX_SIMULATIONS_CACHE[s.id] : null;
+      if (sim && sim.market_context) {
+        const ctx = sim.market_context;
+        const vcpBadge = ctx.vcp_met ? '<span class="mini-pill v-green" style="font-size: 8px; padding: 1px 4px; font-weight:700; border: 1px solid rgba(38,166,154,0.3);">VCP</span>' : '';
+        const trendBadge = `<span class="mini-pill" style="font-size: 9px; padding: 2px 5px;">TT: ${ctx.tt_score}/8</span>`;
+        extraTdHtml = `
+          <td style="font-size: 0.75rem; text-align: left; padding: 6px 12px; vertical-align: middle;">${trendBadge} ${vcpBadge}</td>
+        `;
+
+        const chk1 = document.getElementById("chk-s1")?.checked;
+        const chk2 = document.getElementById("chk-s2")?.checked;
+        const chk3 = document.getElementById("chk-s3")?.checked;
+        const chk4 = document.getElementById("chk-s4")?.checked;
+        const chk5 = document.getElementById("chk-s5")?.checked;
+        const chk6 = document.getElementById("chk-s6")?.checked;
+
+        const activeScenarios = [];
+        if (chk1) activeScenarios.push("S1");
+        if (chk2) activeScenarios.push("S2");
+        if (chk3) activeScenarios.push("S3");
+        if (chk4) activeScenarios.push("S4");
+        if (chk5) activeScenarios.push("S5");
+        if (chk6) activeScenarios.push("S6");
+
+        const logic = document.querySelector('input[name="sandbox-logic"]:checked')?.value || "AND";
+
+        let isExecuted = false;
+        if (activeScenarios.length > 0) {
+          if (logic === "AND") {
+            isExecuted = activeScenarios.every(sc => sim.scenarios[sc] && sim.scenarios[sc].executed);
+          } else {
+            isExecuted = activeScenarios.some(sc => sim.scenarios[sc] && sim.scenarios[sc].executed);
+          }
+        }
+
+        if (isExecuted) {
+          let sumPnl = 0;
+          let count = 0;
+          activeScenarios.forEach(sc => {
+            if (sim.scenarios[sc] && sim.scenarios[sc].executed) {
+              sumPnl += sim.scenarios[sc].pnl_pct || 0;
+              count++;
+            }
+          });
+          const avgPnl = count > 0 ? (sumPnl / count) : 0;
+          const pnlPct = avgPnl * 100;
+          const pnlClass = pnlPct >= 0 ? 'v-green' : 'v-red';
+          const pnlStr = `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%`;
+          extraTdHtml += `<td style="vertical-align: middle;"><span class="status-badge ${pnlClass}" style="font-weight:700;">${pnlStr}</span></td>`;
+        } else {
+          extraTdHtml += `<td style="vertical-align: middle;"><span class="status-badge" style="color:var(--text-muted); background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); text-transform:none;">Filtered</span></td>`;
+        }
+      } else {
+        extraTdHtml = `<td style="color:var(--text-muted); vertical-align: middle;">—</td><td style="color:var(--text-muted); vertical-align: middle;">—</td>`;
+      }
+    }
+    
+    return `<tr id="signal_row_${s.id}" ${clickAttr} data-signal-id="${s.id}">
       <td class="id-tag">${id}</td>
       <td class="sym">${s.symbol||"?"}</td>
       <td class="${buy?"buy-tag":"sell-tag"}">${(s.action||"?").toUpperCase()}</td>
       <td>${fmtP(s.price)}</td>
       <td><span class="status-badge ${stateColor(st)}">${st}</span></td>
       <td>${ts}</td>
+      ${extraTdHtml}
+    </tr>
+    <tr id="expand_row_${s.id}" class="expand-detail-row" style="${expandStyle}">
+      <td colspan="${tbodyId === 'fwd-tbody' ? 8 : 6}">
+        <div class="expand-container" id="expand_content_${s.id}">
+          ${detailHtml}
+        </div>
+      </td>
     </tr>`;
   }).join("");
 
@@ -1800,6 +3951,9 @@ function renderRows(signals, tbodyId) {
     if (row) {
       row.classList.add('active-signal');
       activeSignalRow = row;
+      loadTradeDetailRow(activeSignalId);
+      const tableWrap = row.closest('.signal-table-wrap');
+      if (tableWrap) tableWrap.classList.remove('collapsed-view');
     } else {
       activeSignalRow = null;
     }
@@ -2041,6 +4195,9 @@ async function refresh() {
     if (maxId >= 1000000) set("next-fwd-id", Number(maxId+1).toLocaleString());
 
     renderRows(fwdCache, "fwd-tbody");
+    if (window.SANDBOX_ACTIVE) {
+      recalculateSandboxMetrics();
+    }
   } else {
     set("fwd-total", "—");
     renderRows([], "fwd-tbody");
@@ -3266,6 +5423,17 @@ function onSignalRowClick(rowEl, signal) {
     activeSignalRow = null;
     activeSignalId = null;
 
+    // Collapse detail row
+    const expandRow = document.getElementById(`expand_row_${signalId}`);
+    if (expandRow) {
+      expandRow.style.display = 'none';
+      const content = document.getElementById(`expand_content_${signalId}`);
+      if (content) content.innerHTML = '';
+      
+      const tableWrap = expandRow.closest('.signal-table-wrap');
+      if (tableWrap) tableWrap.classList.add('collapsed-view');
+    }
+
     // Hide chart overlay info
     const infoPanel = document.getElementById('chartSignalInfo');
     if (infoPanel) infoPanel.style.display = 'none';
@@ -3278,11 +5446,35 @@ function onSignalRowClick(rowEl, signal) {
       }
     } catch (e) { console.warn('Remove price line error:', e); }
   } else {
+    // Collapse all other detail rows first
+    document.querySelectorAll('.expand-detail-row').forEach(r => {
+      r.style.display = 'none';
+      const content = r.querySelector('.expand-container');
+      if (content) content.innerHTML = '';
+      
+      const tableWrap = r.closest('.signal-table-wrap');
+      if (tableWrap) tableWrap.classList.add('collapsed-view');
+    });
+
     // Highlight active row
     if (activeSignalRow) activeSignalRow.classList.remove('active-signal');
     rowEl.classList.add('active-signal');
     activeSignalRow = rowEl;
     activeSignalId = signalId;
+
+    // Expand detail row and populate dynamic content
+    const expandRow = document.getElementById(`expand_row_${signalId}`);
+    if (expandRow) {
+      expandRow.style.display = 'table-row';
+      const content = document.getElementById(`expand_content_${signalId}`);
+      if (content) {
+        content.innerHTML = generateSignalDetailHtml(signal);
+        loadTradeDetailRow(signalId);
+      }
+      
+      const tableWrap = expandRow.closest('.signal-table-wrap');
+      if (tableWrap) tableWrap.classList.remove('collapsed-view');
+    }
 
     // Update chart info overlay
     const infoPanel = document.getElementById('chartSignalInfo');
@@ -3344,6 +5536,238 @@ function onSignalRowClick(rowEl, signal) {
   addForwardSignalMarkers(currentChartSymbol);
 }
 
+// —─── Interactive Simulator Sandbox Logic ───
+window.SANDBOX_ACTIVE = true;
+window.SANDBOX_SIMULATIONS_CACHE = {};
+
+async function loadSandboxSimulations() {
+  const statusEl = document.getElementById("sandbox-loader-status");
+  try {
+    const res = await get('/api/forward/signals-simulations', 30000);
+    if (res && res.success && res.simulations) {
+      window.SANDBOX_SIMULATIONS_CACHE = res.simulations;
+      const count = Object.keys(res.simulations).length;
+      if (statusEl) statusEl.innerHTML = `Đã tải <strong style="color:var(--green)">${count}</strong> kịch bản mô phỏng từ cache.`;
+      
+      // Save in TRADE_SIM_CACHE to speed up row expands
+      for (const [id, data] of Object.entries(res.simulations)) {
+        TRADE_SIM_CACHE[id] = data;
+      }
+      recalculateSandboxMetrics();
+      
+      if (fwdCache && fwdCache.length > 0) {
+        renderRows(fwdCache, 'fwd-tbody');
+      }
+    } else {
+      if (statusEl) statusEl.innerHTML = `<span style="color:var(--warning)">Không có cache mô phỏng.</span>`;
+    }
+  } catch (err) {
+    console.error("Failed to load sandbox simulations:", err);
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--danger)">Lỗi tải mô phỏng: ${err.message}</span>`;
+  }
+}
+
+function applySandboxPreset(preset) {
+  const s1 = document.getElementById("chk-s1");
+  const s2 = document.getElementById("chk-s2");
+  const s3 = document.getElementById("chk-s3");
+  const s4 = document.getElementById("chk-s4");
+  const s5 = document.getElementById("chk-s5");
+  const s6 = document.getElementById("chk-s6");
+  const andLogic = document.querySelector('input[name="sandbox-logic"][value="AND"]');
+  const orLogic = document.querySelector('input[name="sandbox-logic"][value="OR"]');
+
+  if (preset === 'conservative') {
+    if (s1) s1.checked = false; if (s2) s2.checked = true; if (s3) s3.checked = true; if (s4) s4.checked = false; if (s5) s5.checked = true; if (s6) s6.checked = false;
+    if (andLogic) andLogic.checked = true;
+  } else if (preset === 'aggressive') {
+    if (s1) s1.checked = true; if (s2) s2.checked = false; if (s3) s3.checked = false; if (s4) s4.checked = true; if (s5) s5.checked = false; if (s6) s6.checked = true;
+    if (orLogic) orLogic.checked = true;
+  } else if (preset === 'trend') {
+    if (s1) s1.checked = false; if (s2) s2.checked = true; if (s3) s3.checked = true; if (s4) s4.checked = false; if (s5) s5.checked = false; if (s6) s6.checked = false;
+    if (andLogic) andLogic.checked = true;
+  } else if (preset === 'all') {
+    if (s1) s1.checked = true; if (s2) s2.checked = true; if (s3) s3.checked = true; if (s4) s4.checked = true; if (s5) s5.checked = true; if (s6) s6.checked = true;
+    if (orLogic) orLogic.checked = true;
+  } else if (preset === 'reset') {
+    if (s1) s1.checked = true; if (s2) s2.checked = false; if (s3) s3.checked = false; if (s4) s4.checked = false; if (s5) s5.checked = false; if (s6) s6.checked = false;
+    if (andLogic) andLogic.checked = true;
+  }
+
+  onSandboxFilterChange();
+}
+
+function onSandboxFilterChange() {
+  recalculateSandboxMetrics();
+  if (fwdCache && fwdCache.length > 0) {
+    renderRows(fwdCache, 'fwd-tbody');
+  }
+}
+
+function recalculateSandboxMetrics() {
+  const chk1 = document.getElementById("chk-s1")?.checked;
+  const chk2 = document.getElementById("chk-s2")?.checked;
+  const chk3 = document.getElementById("chk-s3")?.checked;
+  const chk4 = document.getElementById("chk-s4")?.checked;
+  const chk5 = document.getElementById("chk-s5")?.checked;
+  const chk6 = document.getElementById("chk-s6")?.checked;
+
+  const activeScenarios = [];
+  if (chk1) activeScenarios.push("S1");
+  if (chk2) activeScenarios.push("S2");
+  if (chk3) activeScenarios.push("S3");
+  if (chk4) activeScenarios.push("S4");
+  if (chk5) activeScenarios.push("S5");
+  if (chk6) activeScenarios.push("S6");
+
+  const logic = document.querySelector('input[name="sandbox-logic"]:checked')?.value || "AND";
+
+  const signals = fwdCache || [];
+  const simulatedTrades = [];
+
+  signals.forEach(s => {
+    const sim = window.SANDBOX_SIMULATIONS_CACHE[s.id];
+    if (!sim || !sim.scenarios) return;
+
+    let isExecuted = false;
+    if (activeScenarios.length > 0) {
+      if (logic === "AND") {
+        isExecuted = activeScenarios.every(sc => sim.scenarios[sc] && sim.scenarios[sc].executed);
+      } else {
+        isExecuted = activeScenarios.some(sc => sim.scenarios[sc] && sim.scenarios[sc].executed);
+      }
+    }
+
+    if (isExecuted) {
+      let sumPnl = 0;
+      let count = 0;
+      activeScenarios.forEach(sc => {
+        if (sim.scenarios[sc] && sim.scenarios[sc].executed) {
+          sumPnl += sim.scenarios[sc].pnl_pct || 0;
+          count++;
+        }
+      });
+      const avgPnlPct = count > 0 ? (sumPnl / count) : 0;
+      const pnlUsdt = avgPnlPct * 100.0;
+
+      simulatedTrades.push({
+        signal_id: s.id,
+        created_at: s.created_at,
+        symbol: s.symbol,
+        action: s.action,
+        pnl: pnlUsdt,
+        pnl_pct: avgPnlPct,
+        is_win: pnlUsdt > 0
+      });
+    }
+  });
+
+  const totalTrades = simulatedTrades.length;
+  const wins = simulatedTrades.filter(t => t.is_win);
+  const losses = simulatedTrades.filter(t => !t.is_win);
+  const winRate = totalTrades > 0 ? ((wins.length / totalTrades) * 100).toFixed(1) : "0.0";
+
+  let totalPnl = 0;
+  let grossProfit = 0;
+  let grossLoss = 0;
+  let bestTrade = 0;
+  let worstTrade = 0;
+
+  simulatedTrades.forEach(t => {
+    totalPnl += t.pnl;
+    if (t.pnl > 0) {
+      grossProfit += t.pnl;
+    } else {
+      grossLoss += Math.abs(t.pnl);
+    }
+    if (t.pnl > bestTrade) bestTrade = t.pnl;
+    if (t.pnl < worstTrade) worstTrade = t.pnl;
+  });
+
+  const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss) : (grossProfit > 0 ? 99.0 : 0.0);
+  const expectancy = totalTrades > 0 ? (totalPnl / totalTrades) : 0;
+
+  let cumulative = 0;
+  let peak = 0;
+  let maxDd = 0;
+  const sortedTrades = [...simulatedTrades].sort((a,b) => a.signal_id - b.signal_id);
+  
+  sortedTrades.forEach(t => {
+    cumulative += t.pnl;
+    if (cumulative > peak) peak = cumulative;
+    const dd = peak - cumulative;
+    if (dd > maxDd) maxDd = dd;
+  });
+
+  const avgWin = wins.length > 0 ? (grossProfit / wins.length) : 0;
+  const avgLoss = losses.length > 0 ? (-grossLoss / losses.length) : 0;
+  const wlRatio = Math.abs(avgLoss) > 0 ? (avgWin / Math.abs(avgLoss)).toFixed(2) : "—";
+
+  setClass("fwd-trades-wl", `${totalTrades}`, "neu");
+  set("fwd-trades-sub", `${wins.length}W / ${losses.length}L`);
+  setClass("fwd-wr", `${winRate}%`, parseFloat(winRate) >= 50.0 ? "pos" : "neg");
+  
+  const pnlSign = totalPnl >= 0 ? "+" : "";
+  const pnlClass = totalPnl > 0 ? "pos" : (totalPnl < 0 ? "neg" : "neu");
+  setClass("fwd-pnl", `${pnlSign}${totalPnl.toFixed(2)} USDT`, pnlClass);
+  setClass("fwd-pf", profitFactor.toFixed(2), parseFloat(profitFactor) >= 1.5 ? "pos" : "neu");
+  
+  const expectSign = expectancy >= 0 ? "+" : "";
+  const expectClass = expectancy > 0 ? "pos" : (expectancy < 0 ? "neg" : "neu");
+  setClass("fwd-expect", `${expectSign}${expectancy.toFixed(2)}`, expectClass);
+  setClass("fwd-dd", `-${maxDd.toFixed(2)} USDT`, maxDd > 0 ? "neg" : "neu");
+  
+  const bestSign = bestTrade >= 0 ? "+" : "";
+  setClass("fwd-best", `${bestSign}${bestTrade.toFixed(2)}`, "pos");
+  setClass("fwd-worst", `${worstTrade.toFixed(2)}`, "neg");
+  setClass("fwd-avgwl", wlRatio, parseFloat(wlRatio) >= 1.5 ? "pos" : "neu");
+
+  let labels = ["Start"];
+  let valsAll = [10000];
+  let currentEquity = 10000;
+  
+  sortedTrades.forEach(t => {
+    currentEquity += t.pnl;
+    labels.push(t.created_at ? t.created_at.substring(11, 16) : "");
+    valsAll.push(currentEquity);
+  });
+
+  equityChart.data.labels = labels;
+  equityChart.data.datasets[0].data = valsAll;
+  
+  const minId = window.fwdDisplayedMinId;
+  const maxId = window.fwdDisplayedMaxId;
+  let valsFiltered = [null];
+  
+  sortedTrades.forEach((t, i) => {
+    if (minId !== null && maxId !== null && t.signal_id >= minId && t.signal_id <= maxId) {
+      valsFiltered.push(valsAll[i + 1]);
+      if (i > 0 && valsFiltered[i] === null) {
+        valsFiltered[i] = valsAll[i];
+      }
+    } else {
+      valsFiltered.push(null);
+    }
+  });
+  if (sortedTrades[0] && minId !== null && maxId !== null && sortedTrades[0].signal_id >= minId && sortedTrades[0].signal_id <= maxId) {
+    valsFiltered[0] = 10000;
+  }
+  
+  if (equityChart.data.datasets[1]) {
+    equityChart.data.datasets[1].data = valsFiltered;
+  }
+  equityChart.update("none");
+
+  const statsMock = {
+    win_rate: parseFloat(winRate),
+    profit_factor: profitFactor,
+    max_drawdown: -maxDd,
+    avg_win: avgWin,
+    avg_loss: avgLoss
+  };
+  updateBacktestTracker(statsMock);
+}
+
 // —"?—"? Server Stats Badge —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
 async function loadServerStats() {
   const res = await get('/api/forward/server-stats');
@@ -3360,6 +5784,7 @@ set("footer-time", new Date().toISOString().substring(0,16).replace("T"," ")+" U
 initSignalChart();
 setTab('both');
 refresh();
+loadSandboxSimulations();
 loadServerStats();
 setInterval(refresh, POLL_MS);
 setInterval(loadServerStats, 60000); // Update stats every 60s

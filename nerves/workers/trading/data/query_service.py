@@ -660,7 +660,7 @@ async def get_signals(
 
         # Lay danh sach record theo trang
         fetch_sql = f"""
-            SELECT id, created_at, symbol, action, price, quote_qty, source_ip, payload, mode, processed, vbs_queue_id, state, rejection_reason
+            SELECT id, created_at, symbol, action, price, quote_qty, source_ip, payload, mode, processed, vbs_queue_id, state, rejection_reason, analysis_features, raw_analysis_text
             FROM signals
             {where_clause}
             ORDER BY created_at DESC, id DESC
@@ -674,6 +674,11 @@ async def get_signals(
             if d.get("payload"):
                 try:
                     d["payload"] = json.loads(d["payload"])
+                except Exception:  # noqa: S110
+                    pass
+            if d.get("analysis_features"):
+                try:
+                    d["analysis_features"] = json.loads(d["analysis_features"])
                 except Exception:  # noqa: S110
                     pass
             signals.append(d)

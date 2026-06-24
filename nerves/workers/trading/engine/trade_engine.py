@@ -580,8 +580,6 @@ async def execute_trade(event: TradeApproved) -> None:
 
     # ── Test signal dynamic dry_run override ────────────────
     is_test_signal = False
-    if getattr(config, "FORWARD_TEST_ENABLED", False):
-        is_test_signal = True
 
     if original_payload:
         if (
@@ -591,21 +589,17 @@ async def execute_trade(event: TradeApproved) -> None:
             is_test_signal = True
         payload_mode = original_payload.get("mode", "")
         if isinstance(payload_mode, str) and (
-            payload_mode.startswith("TEST")
-            or payload_mode.startswith("DEMO")
-            or "FORWARD" in payload_mode.upper()
+            payload_mode.startswith("TEST") or payload_mode.startswith("DEMO")
         ):
             is_test_signal = True
     if isinstance(event_mode, str) and (
-        event_mode.startswith("TEST")
-        or event_mode.startswith("DEMO")
-        or "FORWARD" in event_mode.upper()
+        event_mode.startswith("TEST") or event_mode.startswith("DEMO")
     ):
         is_test_signal = True
 
-    if is_test_signal or config.FORWARD_TEST_ENABLED:
+    if is_test_signal:
         log.info(
-            "TradeEngine: Forward test or test signal detected. Forcing dry_run=True on adapter."
+            "TradeEngine: Explicit test signal detected. Forcing dry_run=True on adapter."
         )
         adapter.dry_run = True
         if hasattr(adapter, "_client") and adapter._client is not None:
