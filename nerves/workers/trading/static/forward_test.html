@@ -1023,6 +1023,83 @@
   .benchmark-highlight { background: rgba(251,146,60,0.04) !important; }
   .benchmark-crown { font-size: 0.75rem; margin-left: 4px; }
 
+  /* Scenario 6 color bars column visualizer styles */
+  .scenario-bar-container {
+    display: inline-flex;
+    gap: 3px;
+    align-items: center;
+    vertical-align: middle;
+    padding: 3px 5px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+  }
+  .scenario-bar {
+    width: 4px;
+    height: 12px;
+    border-radius: 1px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .scenario-bar:hover {
+    transform: scaleY(1.25) scaleX(1.25);
+    cursor: help;
+  }
+  .scenario-bar.inactive {
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .scenario-bar.s1.active { background: #94a3b8; box-shadow: 0 0 5px rgba(148, 163, 184, 0.8); }
+  .scenario-bar.s2.active { background: var(--green); box-shadow: 0 0 5px rgba(16, 217, 138, 0.8); }
+  .scenario-bar.s3.active { background: var(--blue); box-shadow: 0 0 5px rgba(56, 189, 248, 0.8); }
+  .scenario-bar.s4.active { background: var(--yellow); box-shadow: 0 0 5px rgba(251, 191, 36, 0.8); }
+  .scenario-bar.s5.active { background: var(--purple); box-shadow: 0 0 5px rgba(167, 139, 250, 0.8); }
+  .scenario-bar.s6.active { background: var(--orange); box-shadow: 0 0 5px rgba(251, 146, 60, 0.8); }
+
+  /* Active Preset highlight styling */
+  .settings-btn.active {
+    background: rgba(56, 189, 248, 0.25) !important;
+    border-color: var(--blue) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+  }
+
+  /* Table highlights for chart synchronization */
+  #fwd-tbody tr.chart-visible-signal {
+    background: rgba(56, 189, 248, 0.04) !important;
+  }
+  #fwd-tbody tr.chart-visible-signal td.id-tag {
+    color: var(--blue) !important;
+    font-weight: 700;
+  }
+  #fwd-tbody tr.crosshair-highlight, #live-tbody tr.crosshair-highlight {
+    background: rgba(34, 211, 238, 0.08) !important;
+    border-left: 3px dashed var(--cyan) !important;
+  }
+
+  /* Sticky sidebar right column for desktop */
+  @media (min-width: 1025px) {
+    .right-sticky-col {
+      position: sticky;
+      top: 86px;
+      align-self: start;
+      max-height: calc(100vh - 102px);
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .right-sticky-col::-webkit-scrollbar {
+      width: 4px;
+    }
+    .right-sticky-col::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .right-sticky-col::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 2px;
+    }
+    .right-sticky-col::-webkit-scrollbar-thumb:hover {
+      background: rgba(56, 189, 248, 0.35);
+    }
+  }
+
   /* —"?—"? Forward vs Backtest Tracker —"?—"? */
   .comparison-card {
     background: var(--surface2);
@@ -1280,6 +1357,14 @@
     cursor: not-allowed;
     box-shadow: none;
   }
+  .sandbox-label {
+    transition: all 0.2s ease;
+  }
+  .sandbox-label:hover {
+    border-color: rgba(56, 189, 248, 0.35) !important;
+    background: rgba(56, 189, 248, 0.08) !important;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.1);
+  }
 </style>
 </head>
 <body>
@@ -1329,87 +1414,7 @@
   </div>
 </div>
 
-<!-- ─── Interactive Scenario Simulator Sandbox Panel ─── -->
-<div class="section sandbox-section" style="background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
-  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 12px;">
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <span style="font-size: 1.2rem;">⚡</span>
-      <h3 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: #ffffff; letter-spacing: 0.5px;">ANGATI SIMULATOR SANDBOX (FORWARD TEST OUTCOMES)</h3>
-    </div>
-    <div id="sandbox-loader-status" style="font-size: 0.72rem; color: var(--text-muted); font-style: italic;">
-      Đang tải dữ liệu mô phỏng...
-    </div>
-  </div>
-
-  <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-start; justify-content: space-between;">
-    <!-- Active Scenarios Checkboxes -->
-    <div style="flex: 1; min-width: 320px;">
-      <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px;">Chọn các Kịch bản kích hoạt:</div>
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px;">
-        <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
-          <input type="checkbox" id="chk-s1" checked onchange="onSandboxFilterChange()" style="accent-color: var(--primary-color);">
-          <span class="scenario-badge s1" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S1</span>
-          <span>Bypass</span>
-        </label>
-        <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
-          <input type="checkbox" id="chk-s2" checked onchange="onSandboxFilterChange()" style="accent-color: var(--primary-color);">
-          <span class="scenario-badge s2" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S2</span>
-          <span>Minervini</span>
-        </label>
-        <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
-          <input type="checkbox" id="chk-s3" checked onchange="onSandboxFilterChange()" style="accent-color: var(--primary-color);">
-          <span class="scenario-badge s3" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S3</span>
-          <span>EMA stack</span>
-        </label>
-        <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
-          <input type="checkbox" id="chk-s4" checked onchange="onSandboxFilterChange()" style="accent-color: var(--primary-color);">
-          <span class="scenario-badge s4" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S4</span>
-          <span>Trailing ATR</span>
-        </label>
-        <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
-          <input type="checkbox" id="chk-s5" checked onchange="onSandboxFilterChange()" style="accent-color: var(--primary-color);">
-          <span class="scenario-badge s5" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S5</span>
-          <span>MTF EMA</span>
-        </label>
-        <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
-          <input type="checkbox" id="chk-s6" checked onchange="onSandboxFilterChange()" style="accent-color: var(--primary-color);">
-          <span class="scenario-badge s6" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S6</span>
-          <span>Hybrid Opt</span>
-        </label>
-      </div>
-    </div>
-
-    <!-- Presets & Logical Logic Controls -->
-    <div style="display: flex; flex-wrap: wrap; gap: 15px; min-width: 320px; align-items: center;">
-      <!-- Logical Combination -->
-      <div>
-        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px;">Phép kết hợp bộ lọc:</div>
-        <div style="display: flex; gap: 6px;">
-          <label style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #ffffff; background: var(--surface3); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer;">
-            <input type="radio" name="sandbox-logic" value="AND" checked onchange="onSandboxFilterChange()">
-            <span>AND (Phù hợp lọc giảm rủi ro)</span>
-          </label>
-          <label style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #ffffff; background: var(--surface3); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer;">
-            <input type="radio" name="sandbox-logic" value="OR" onchange="onSandboxFilterChange()">
-            <span>OR (Bất kỳ kịch bản nào khớp)</span>
-          </label>
-        </div>
-      </div>
-
-      <!-- Presets Buttons -->
-      <div>
-        <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px;">Nhóm / Preset:</div>
-        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-          <button class="settings-btn" onclick="applySandboxPreset('conservative')" style="padding: 5px 8px; font-size: 0.72rem;">Conservative (S2,S3,S5)</button>
-          <button class="settings-btn" onclick="applySandboxPreset('aggressive')" style="padding: 5px 8px; font-size: 0.72rem;">Aggressive (S1,S4,S6)</button>
-          <button class="settings-btn" onclick="applySandboxPreset('trend')" style="padding: 5px 8px; font-size: 0.72rem;">Trend Template (S2,S3)</button>
-          <button class="settings-btn" onclick="applySandboxPreset('all')" style="padding: 5px 8px; font-size: 0.72rem;">Tất cả</button>
-          <button class="settings-btn" onclick="applySandboxPreset('reset')" style="padding: 5px 8px; font-size: 0.72rem; background: var(--surface4);">Bypass Chỉ S1</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- Interactive Scenario Simulator Sandbox Panel moved below the chart -->
 
 <!-- ─── Overview KPIs ─── -->
 <div class="section">
@@ -1576,12 +1581,13 @@
                 </select>
               </th>
               <th>Time</th>
+              <th style="color:var(--text-muted);">S1-S6</th>
               <th style="color:var(--text-muted);">Context</th>
               <th style="color:var(--text-muted);">Sim P&L</th>
             </tr>
           </thead>
           <tbody id="fwd-tbody">
-            <tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px">Chưa có tín hiện...</td></tr>
+            <tr><td colspan="9" style="text-align:center;color:#64748b;padding:20px">Chưa có tín hiệu...</td></tr>
           </tbody>
         </table>
       </div>
@@ -1663,34 +1669,119 @@
       <div id="live-table-note" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 8px; font-style: italic; border-top: 1px solid var(--border); padding-top: 8px;"></div>
     </div>
 
-    <!-- Signal Entry Chart Panel -->
-    <div class="panel-card chart-panel" id="signalChartPanel">
-      <div class="chart-panel-header">
-        <div class="chart-panel-title">📊 Signal Entry Chart</div>
-        <div class="chart-symbol-tabs" id="chartStatusTabs">
-          <button class="chart-sym-btn active" onclick="switchChartStatusFilter('ALL')">ALL</button>
-          <button class="chart-sym-btn" onclick="switchChartStatusFilter('COMPLETED')">COMPLETED</button>
-          <button class="chart-sym-btn" onclick="switchChartStatusFilter('REJECTED')">REJECTED</button>
-          <button class="chart-sym-btn" onclick="switchChartStatusFilter('PENDING')">PENDING</button>
+    <!-- Right Column Wrapper: Chart + Sandbox -->
+    <div class="right-sticky-col" style="display: flex; flex-direction: column; gap: 16px;">
+      <!-- Signal Entry Chart Panel -->
+      <div class="panel-card chart-panel" id="signalChartPanel" style="margin-bottom: 0;">
+        <div class="chart-panel-header">
+          <div class="chart-panel-title">📊 Signal Entry Chart</div>
+          <div class="chart-symbol-tabs" id="chartStatusTabs">
+            <button class="chart-sym-btn active" onclick="switchChartStatusFilter('ALL')">ALL</button>
+            <button class="chart-sym-btn" onclick="switchChartStatusFilter('COMPLETED')">COMPLETED</button>
+            <button class="chart-sym-btn" onclick="switchChartStatusFilter('REJECTED')">REJECTED</button>
+            <button class="chart-sym-btn" onclick="switchChartStatusFilter('PENDING')">PENDING</button>
+          </div>
+        </div>
+        <div class="chart-container-wrap">
+          <div class="chart-signal-info" id="chartSignalInfo">
+            <span class="sig-id" id="chartSigId"></span>
+            <span class="sig-action-buy" id="chartSigAction"></span>
+            <span>@</span>
+            <span class="sig-price" id="chartSigPrice"></span>
+          </div>
+          <div id="signalChartContainer" style="width: 100%; height: 340px;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding: 0 4px;">
+          <div style="font-size: 0.68rem; color: var(--text-muted);" id="chartSignalCount">Click a signal row to view entry point</div>
+          <div class="server-stats-badge" id="serverStatsBadge">
+            📊 Server: <span class="stat-num" id="serverTotalSignals">—</span> signals
+            · <span class="stat-num" id="serverForwardSynced">—</span> synced
+          </div>
+        </div>
+      </div> <!-- end of chart panel -->
+
+      <!-- Interactive Scenario Simulator Sandbox Panel (Glassmorphic Redesign) -->
+      <div class="section sandbox-section" style="background: rgba(13, 20, 33, 0.45); backdrop-filter: blur(12px); border: 1px solid rgba(56, 189, 248, 0.15); border-radius: 12px; padding: 15px; margin-bottom: 0; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1rem;">⚡</span>
+            <h3 style="margin: 0; font-size: 0.85rem; font-weight: 700; color: #c084fc; letter-spacing: 0.5px;">ANGATI SIMULATOR SANDBOX (FORWARD TEST OUTCOMES)</h3>
+          </div>
+          <div id="sandbox-loader-status" style="font-size: 0.72rem; color: var(--text-muted); font-style: italic;">
+            Đang tải dữ liệu mô phỏng...
+          </div>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-start; justify-content: space-between;">
+          <!-- Active Scenarios Checkboxes -->
+          <div style="flex: 1; min-width: 320px;">
+            <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px;">Chọn các Kịch bản kích hoạt:</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px;">
+              <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
+                <input type="checkbox" id="chk-s1" checked onchange="onSandboxFilterChange(true)" style="accent-color: var(--primary-color);">
+                <span class="scenario-badge s1" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S1</span>
+                <span>Bypass</span>
+              </label>
+              <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
+                <input type="checkbox" id="chk-s2" checked onchange="onSandboxFilterChange(true)" style="accent-color: var(--primary-color);">
+                <span class="scenario-badge s2" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S2</span>
+                <span>Minervini</span>
+              </label>
+              <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
+                <input type="checkbox" id="chk-s3" checked onchange="onSandboxFilterChange(true)" style="accent-color: var(--primary-color);">
+                <span class="scenario-badge s3" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S3</span>
+                <span>EMA stack</span>
+              </label>
+              <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
+                <input type="checkbox" id="chk-s4" checked onchange="onSandboxFilterChange(true)" style="accent-color: var(--primary-color);">
+                <span class="scenario-badge s4" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S4</span>
+                <span>Trailing ATR</span>
+              </label>
+              <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
+                <input type="checkbox" id="chk-s5" checked onchange="onSandboxFilterChange(true)" style="accent-color: var(--primary-color);">
+                <span class="scenario-badge s5" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S5</span>
+                <span>MTF EMA</span>
+              </label>
+              <label class="sandbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #ffffff; cursor: pointer; background: rgba(255,255,255,0.02); padding: 5px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); transition: border 0.2s;">
+                <input type="checkbox" id="chk-s6" checked onchange="onSandboxFilterChange(true)" style="accent-color: var(--primary-color);">
+                <span class="scenario-badge s6" style="font-size: 8px; padding: 2px 4px; display: inline-block;">S6</span>
+                <span>Hybrid Opt</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Presets & Logical Logic Controls -->
+          <div style="display: flex; flex-wrap: wrap; gap: 15px; min-width: 320px; align-items: center;">
+            <!-- Logical Combination -->
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px;">Phép kết hợp bộ lọc:</div>
+              <div style="display: flex; gap: 6px;">
+                <label style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #ffffff; background: var(--surface3); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer;">
+                  <input type="radio" name="sandbox-logic" value="AND" checked onchange="onSandboxFilterChange(true)">
+                  <span>AND</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 4px; font-size: 0.72rem; color: #ffffff; background: var(--surface3); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer;">
+                  <input type="radio" name="sandbox-logic" value="OR" onchange="onSandboxFilterChange(true)">
+                  <span>OR</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Presets Buttons -->
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px;">Nhóm / Preset:</div>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button class="settings-btn" id="preset-btn-conservative" onclick="applySandboxPreset('conservative')" style="padding: 5px 8px; font-size: 0.72rem;">Conservative (S2,S3,S5)</button>
+                <button class="settings-btn" id="preset-btn-aggressive" onclick="applySandboxPreset('aggressive')" style="padding: 5px 8px; font-size: 0.72rem;">Aggressive (S1,S4,S6)</button>
+                <button class="settings-btn" id="preset-btn-trend" onclick="applySandboxPreset('trend')" style="padding: 5px 8px; font-size: 0.72rem;">Trend Template (S2,S3)</button>
+                <button class="settings-btn" id="preset-btn-all" onclick="applySandboxPreset('all')" style="padding: 5px 8px; font-size: 0.72rem;">Tất cả</button>
+                <button class="settings-btn" id="preset-btn-reset" onclick="applySandboxPreset('reset')" style="padding: 5px 8px; font-size: 0.72rem; background: var(--surface4);">Bypass Chỉ S1</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="chart-container-wrap">
-        <div class="chart-signal-info" id="chartSignalInfo">
-          <span class="sig-id" id="chartSigId"></span>
-          <span class="sig-action-buy" id="chartSigAction"></span>
-          <span>@</span>
-          <span class="sig-price" id="chartSigPrice"></span>
-        </div>
-        <div id="signalChartContainer" style="width: 100%; height: 340px;"></div>
-      </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding: 0 4px;">
-        <div style="font-size: 0.68rem; color: var(--text-muted);" id="chartSignalCount">Click a signal row to view entry point</div>
-        <div class="server-stats-badge" id="serverStatsBadge">
-          📊 Server: <span class="stat-num" id="serverTotalSignals">—</span> signals
-          · <span class="stat-num" id="serverForwardSynced">—</span> synced
-        </div>
-      </div>
-    </div>
+    </div> <!-- end of right column wrapper -->
 
   </div>
 </div>
@@ -2397,7 +2488,7 @@ async function loadTradeDetailRow(signalId) {
     }
   };
 
-  if (TRADE_SIM_CACHE[signalId]) {
+  if (TRADE_SIM_CACHE[signalId] && TRADE_SIM_CACHE[signalId].candles) {
     loading.style.display = 'none';
     content.style.display = 'block';
     renderStage1Data(signalId, TRADE_SIM_CACHE[signalId]);
@@ -3849,13 +3940,15 @@ function renderRows(signals, tbodyId) {
     noteEl.innerHTML = noteText;
   }
 
+  const totalCols = (tbodyId === 'fwd-tbody') ? 9 : 6;
+
   if (!signals || !signals.length) {
-    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px">Chưa có tín hiệu...</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="${totalCols}" style="text-align:center;color:#64748b;padding:20px">Chưa có tín hiệu...</td></tr>`;
     return;
   }
 
   if (!sorted.length) {
-    tb.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#64748b;padding:20px">Không có tín hiệu khớp bộ lọc...</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="${totalCols}" style="text-align:center;color:#64748b;padding:20px">Không có tín hiệu khớp bộ lọc...</td></tr>`;
     return;
   }
 
@@ -3872,13 +3965,36 @@ function renderRows(signals, tbodyId) {
     let extraTdHtml = '';
     if (tbodyId === 'fwd-tbody') {
       const sim = window.SANDBOX_SIMULATIONS_CACHE ? window.SANDBOX_SIMULATIONS_CACHE[s.id] : null;
+      
+      // Generate S1-S6 visualizer columns
+      let scBarsHtml = '';
+      const scKeys = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'];
+      const scNames = {
+        S1: 'Baseline Bypass', S2: 'Minervini Filter', S3: 'EMA Filter',
+        S4: 'Tight SL / Trailing', S5: 'Multi-Timeframe', S6: 'Optimized Hybrid'
+      };
+
+      scBarsHtml += '<div class="scenario-bar-container">';
+      scKeys.forEach((key, index) => {
+        const sc = sim && sim.scenarios ? sim.scenarios[key] : null;
+        const isExecuted = sc && sc.executed;
+        let titleText = '';
+        if (sc) {
+          titleText = isExecuted 
+            ? `${key} (${scNames[key]}): EXECUTED (${(sc.pnl_pct * 100) >= 0 ? '+' : ''}${(sc.pnl_pct * 100).toFixed(1)}%)`
+            : `${key} (${scNames[key]}): FILTERED`;
+        } else {
+          titleText = `${key} (${scNames[key]}): No data`;
+        }
+        scBarsHtml += `<div class="scenario-bar s${index+1} ${isExecuted ? 'active' : 'inactive'}" title="${titleText}"></div>`;
+      });
+      scBarsHtml += '</div>';
+
       if (sim && sim.market_context) {
         const ctx = sim.market_context;
         const vcpBadge = ctx.vcp_met ? '<span class="mini-pill v-green" style="font-size: 8px; padding: 1px 4px; font-weight:700; border: 1px solid rgba(38,166,154,0.3);">VCP</span>' : '';
         const trendBadge = `<span class="mini-pill" style="font-size: 9px; padding: 2px 5px;">TT: ${ctx.tt_score}/8</span>`;
-        extraTdHtml = `
-          <td style="font-size: 0.75rem; text-align: left; padding: 6px 12px; vertical-align: middle;">${trendBadge} ${vcpBadge}</td>
-        `;
+        const contextTd = `<td style="font-size: 0.75rem; text-align: left; padding: 6px 12px; vertical-align: middle;">${trendBadge} ${vcpBadge}</td>`;
 
         const chk1 = document.getElementById("chk-s1")?.checked;
         const chk2 = document.getElementById("chk-s2")?.checked;
@@ -3906,6 +4022,7 @@ function renderRows(signals, tbodyId) {
           }
         }
 
+        let pnlTd = '';
         if (isExecuted) {
           let sumPnl = 0;
           let count = 0;
@@ -3919,12 +4036,22 @@ function renderRows(signals, tbodyId) {
           const pnlPct = avgPnl * 100;
           const pnlClass = pnlPct >= 0 ? 'v-green' : 'v-red';
           const pnlStr = `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%`;
-          extraTdHtml += `<td style="vertical-align: middle;"><span class="status-badge ${pnlClass}" style="font-weight:700;">${pnlStr}</span></td>`;
+          pnlTd = `<td style="vertical-align: middle;"><span class="status-badge ${pnlClass}" style="font-weight:700;">${pnlStr}</span></td>`;
         } else {
-          extraTdHtml += `<td style="vertical-align: middle;"><span class="status-badge" style="color:var(--text-muted); background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); text-transform:none;">Filtered</span></td>`;
+          pnlTd = `<td style="vertical-align: middle;"><span class="status-badge" style="color:var(--text-muted); background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); text-transform:none;">Filtered</span></td>`;
         }
+
+        extraTdHtml = `
+          <td style="vertical-align: middle; text-align: center;">${scBarsHtml}</td>
+          ${contextTd}
+          ${pnlTd}
+        `;
       } else {
-        extraTdHtml = `<td style="color:var(--text-muted); vertical-align: middle;">—</td><td style="color:var(--text-muted); vertical-align: middle;">—</td>`;
+        extraTdHtml = `
+          <td style="vertical-align: middle; text-align: center;">${scBarsHtml}</td>
+          <td style="color:var(--text-muted); vertical-align: middle;">—</td>
+          <td style="color:var(--text-muted); vertical-align: middle;">—</td>
+        `;
       }
     }
     
@@ -3938,7 +4065,7 @@ function renderRows(signals, tbodyId) {
       ${extraTdHtml}
     </tr>
     <tr id="expand_row_${s.id}" class="expand-detail-row" style="${expandStyle}">
-      <td colspan="${tbodyId === 'fwd-tbody' ? 8 : 6}">
+      <td colspan="${tbodyId === 'fwd-tbody' ? 9 : 6}">
         <div class="expand-container" id="expand_content_${s.id}">
           ${detailHtml}
         </div>
@@ -5066,6 +5193,69 @@ function initSignalChart() {
     color: '#26a69a', priceFormat: { type: 'volume' },
     priceScaleId: '', scaleMargins: { top: 0.8, bottom: 0 },
   });
+
+  // Crosshair move subscription (hover scroll-follow)
+  signalChart.subscribeCrosshairMove(param => {
+    if (!param || !param.time) return;
+    const timeSec = param.time;
+    const cache = (currentMode === "live") ? liveCache : fwdCache;
+    if (!cache || !cache.length) return;
+    
+    const matchedSignal = cache.find(s => {
+      if ((s.symbol || '').toUpperCase() !== currentChartSymbol.toUpperCase()) return false;
+      if (!s.created_at) return false;
+      const ts = new Date(s.created_at.replace(' ', 'T') + 'Z').getTime() / 1000;
+      return Math.floor(ts / 3600) === Math.floor(timeSec / 3600);
+    });
+    
+    if (matchedSignal) {
+      highlightRowInTable(matchedSignal.id);
+    }
+  });
+
+  // Click subscription (click signal point to open detail panel)
+  signalChart.subscribeClick(param => {
+    if (!param || !param.time) return;
+    const timeSec = param.time;
+    const cache = (currentMode === "live") ? liveCache : fwdCache;
+    if (!cache || !cache.length) return;
+    
+    const matchedSignal = cache.find(s => {
+      if ((s.symbol || '').toUpperCase() !== currentChartSymbol.toUpperCase()) return false;
+      if (!s.created_at) return false;
+      const ts = new Date(s.created_at.replace(' ', 'T') + 'Z').getTime() / 1000;
+      return Math.floor(ts / 3600) === Math.floor(timeSec / 3600);
+    });
+    
+    if (matchedSignal) {
+      const row = document.getElementById(`signal_row_${matchedSignal.id}`);
+      if (row) row.click();
+    }
+  });
+
+  // Debounced follow-focus on visible time range change (replay and scroll scroll-follow)
+  let rangeTimeout = null;
+  signalChart.timeScale().subscribeVisibleTimeRangeChange(range => {
+    if (!range) return;
+    if (rangeTimeout) clearTimeout(rangeTimeout);
+    rangeTimeout = setTimeout(() => {
+      const cache = (currentMode === "live") ? liveCache : fwdCache;
+      if (!cache || !cache.length) return;
+      
+      const visibleSignals = cache.filter(s => {
+        if ((s.symbol || '').toUpperCase() !== currentChartSymbol.toUpperCase()) return false;
+        if (!s.created_at) return false;
+        const ts = new Date(s.created_at.replace(' ', 'T') + 'Z').getTime() / 1000;
+        return ts >= range.from && ts <= range.to;
+      });
+      
+      if (visibleSignals.length > 0) {
+        visibleSignals.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        highlightRowInTable(visibleSignals[0].id);
+      }
+    }, 200);
+  });
+
   window.addEventListener('resize', () => {
     if (signalChart && cc.clientWidth > 0) signalChart.resize(cc.clientWidth, 340);
   });
@@ -5157,6 +5347,73 @@ async function loadSignalChart(symbol, signalTimestampMs) {
   }
 }
 
+let lastAutoscrolledId = null;
+
+function highlightAndScrollToChartSignals(visibleIds) {
+  const tbody = document.getElementById("fwd-tbody");
+  if (!tbody) return;
+  
+  tbody.querySelectorAll("tr").forEach(tr => {
+    tr.classList.remove("chart-visible-signal");
+  });
+  
+  if (!visibleIds || visibleIds.length === 0) return;
+  const idSet = new Set(visibleIds);
+  let firstMatchingRow = null;
+  
+  tbody.querySelectorAll("tr[data-signal-id]").forEach(tr => {
+    const sigId = parseInt(tr.getAttribute("data-signal-id"));
+    if (idSet.has(sigId)) {
+      tr.classList.add("chart-visible-signal");
+      if (!firstMatchingRow) {
+        firstMatchingRow = tr;
+      }
+    }
+  });
+  
+  if (firstMatchingRow) {
+    const tableWrap = tbody.closest(".signal-table-wrap");
+    if (tableWrap) {
+      const containerTop = tableWrap.getBoundingClientRect().top;
+      const rowTop = firstMatchingRow.getBoundingClientRect().top;
+      const scrollOffset = rowTop - containerTop + tableWrap.scrollTop - 40;
+      tableWrap.scrollTo({
+        top: Math.max(0, scrollOffset),
+        behavior: 'smooth'
+      });
+    }
+  }
+}
+
+function highlightRowInTable(signalId) {
+  const tbodyId = (currentMode === "live") ? "live-tbody" : "fwd-tbody";
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  
+  tbody.querySelectorAll("tr").forEach(tr => {
+    tr.classList.remove("crosshair-highlight");
+  });
+  
+  const row = document.getElementById(`signal_row_${signalId}`);
+  if (row) {
+    row.classList.add("crosshair-highlight");
+    
+    if (lastAutoscrolledId !== signalId) {
+      lastAutoscrolledId = signalId;
+      const tableWrap = tbody.closest(".signal-table-wrap");
+      if (tableWrap) {
+        const containerTop = tableWrap.getBoundingClientRect().top;
+        const rowTop = row.getBoundingClientRect().top;
+        const scrollOffset = rowTop - containerTop + tableWrap.scrollTop - 60;
+        tableWrap.scrollTo({
+          top: Math.max(0, scrollOffset),
+          behavior: 'smooth'
+        });
+      }
+    }
+  }
+}
+
 function addForwardSignalMarkers(symbol) {
   const cache = (currentMode === "live") ? liveCache : fwdCache;
   if (!cache || !cache.length) {
@@ -5183,6 +5440,41 @@ function addForwardSignalMarkers(symbol) {
 
   // Do NOT filter signal markers on the chart by status (always show all signals of the symbol)
   let finalFiltered = filtered;
+
+  // Apply simulator sandbox filters if forward cache is active
+  if (cache === fwdCache) {
+    const chk1 = document.getElementById("chk-s1")?.checked;
+    const chk2 = document.getElementById("chk-s2")?.checked;
+    const chk3 = document.getElementById("chk-s3")?.checked;
+    const chk4 = document.getElementById("chk-s4")?.checked;
+    const chk5 = document.getElementById("chk-s5")?.checked;
+    const chk6 = document.getElementById("chk-s6")?.checked;
+
+    const activeScenarios = [];
+    if (chk1) activeScenarios.push("S1");
+    if (chk2) activeScenarios.push("S2");
+    if (chk3) activeScenarios.push("S3");
+    if (chk4) activeScenarios.push("S4");
+    if (chk5) activeScenarios.push("S5");
+    if (chk6) activeScenarios.push("S6");
+
+    const logic = document.querySelector('input[name="sandbox-logic"]:checked')?.value || "AND";
+
+    finalFiltered = filtered.filter(s => {
+      const sim = window.SANDBOX_SIMULATIONS_CACHE ? window.SANDBOX_SIMULATIONS_CACHE[s.id] : null;
+      if (!sim || !sim.scenarios) return false;
+
+      let isExecuted = false;
+      if (activeScenarios.length > 0) {
+        if (logic === "AND") {
+          isExecuted = activeScenarios.every(sc => sim.scenarios[sc] && sim.scenarios[sc].executed);
+        } else {
+          isExecuted = activeScenarios.some(sc => sim.scenarios[sc] && sim.scenarios[sc].executed);
+        }
+      }
+      return isExecuted;
+    });
+  }
 
   // Group signals by candle hour (3600s) and action (BUY/SELL) to prevent clustering (dính chùm)
   const groups = {};
@@ -5238,11 +5530,15 @@ function addForwardSignalMarkers(symbol) {
 
     let label = '';
     if (isMatching) {
-      const sortedIds = g.ids.sort((a, b) => a - b);
-      if (sortedIds.length <= 2) {
-        label = sortedIds.map(id => `#${id}`).join(', ');
+      if (isSelectedSignalGroup) {
+        const sortedIds = g.ids.sort((a, b) => a - b);
+        if (sortedIds.length <= 2) {
+          label = sortedIds.map(id => `#${id}`).join(', ');
+        } else {
+          label = `#${sortedIds[0]} +${sortedIds.length - 1}`;
+        }
       } else {
-        label = `#${sortedIds[0]}, #${sortedIds[1]} +${sortedIds.length - 2}`;
+        label = g.ids.length > 1 ? `${g.ids.length}x` : '';
       }
     }
 
@@ -5274,6 +5570,42 @@ function addForwardSignalMarkers(symbol) {
       };
     }
   }).sort((a, b) => a.time - b.time);
+
+  // Sync visible chart markers with table rows highlight and auto-scroll
+  const visibleIds = [];
+  Object.values(groups).forEach(g => {
+    const filter = currentChartStatusFilter.toUpperCase();
+    let isStatusMatching = false;
+    if (filter === 'ALL') {
+      isStatusMatching = true;
+    } else {
+      isStatusMatching = g.states.some(st => {
+        if (filter === 'COMPLETED') return st === 'COMPLETED';
+        if (filter === 'REJECTED') return ['REJECTED', 'FAILED'].includes(st);
+        if (filter === 'PENDING') return ['PENDING', 'ANALYZING', 'MACRO_PASSED', 'INGESTED'].includes(st);
+        return st === filter;
+      });
+    }
+
+    let isSelectedSignalGroup = false;
+    if (activeSignalId !== null) {
+      isSelectedSignalGroup = g.ids.includes(activeSignalId);
+    }
+
+    let isMatching = false;
+    if (activeSignalId !== null) {
+      isMatching = isSelectedSignalGroup;
+    } else {
+      isMatching = isStatusMatching;
+    }
+
+    if (isMatching) {
+      g.ids.forEach(id => visibleIds.push(id));
+    }
+  });
+  if (cache === fwdCache) {
+    highlightAndScrollToChartSignals(visibleIds);
+  }
 
   if (chartSignalMarkers.length > 0) {
     if (!signalMarkersApi) {
@@ -5594,13 +5926,37 @@ function applySandboxPreset(preset) {
     if (andLogic) andLogic.checked = true;
   }
 
-  onSandboxFilterChange();
+  // Highlight active preset button
+  const presetIds = ['conservative', 'aggressive', 'trend', 'all', 'reset'];
+  presetIds.forEach(p => {
+    const btn = document.getElementById(`preset-btn-${p}`);
+    if (btn) {
+      if (p === preset) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+  });
+
+  onSandboxFilterChange(false);
 }
 
-function onSandboxFilterChange() {
+function onSandboxFilterChange(isManualClick) {
+  if (isManualClick) {
+    const presetIds = ['conservative', 'aggressive', 'trend', 'all', 'reset'];
+    presetIds.forEach(p => {
+      const btn = document.getElementById(`preset-btn-${p}`);
+      if (btn) btn.classList.remove('active');
+    });
+  }
+
   recalculateSandboxMetrics();
   if (fwdCache && fwdCache.length > 0) {
     renderRows(fwdCache, 'fwd-tbody');
+  }
+  if (typeof addForwardSignalMarkers === 'function') {
+    addForwardSignalMarkers(currentChartSymbol);
   }
 }
 

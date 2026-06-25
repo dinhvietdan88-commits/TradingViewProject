@@ -78,6 +78,7 @@ os.environ["MTA_ENABLED"] = "false"
 os.environ["ATR_SL_MULTIPLIER"] = "2.0"
 os.environ["ATR_TP_MULTIPLIER"] = "8.0"
 os.environ["CHANDELIER_TRAILING_MULTIPLIER"] = "3.0"
+os.environ["FORWARD_TEST_ENABLED"] = "false"
 
 
 @pytest.fixture(autouse=True)
