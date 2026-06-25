@@ -210,11 +210,14 @@ class VpsSignalConsumer:
         action = signal["action"]
         payload = signal["payload"]
 
-        # Enforce mode=FORWARD routing if forward testing is globally enabled
         mode = (
             payload.get("mode", "").strip().upper() if isinstance(payload, dict) else ""
         )
-        if getattr(config, "FORWARD_TEST_ENABLED", False):
+        mode_upper = mode.upper() if mode else ""
+        if getattr(config, "FORWARD_TEST_ENABLED", False) and mode_upper not in (
+            "LIVE",
+            "BACKTEST",
+        ):
             mode = "FORWARD"
             if isinstance(payload, dict):
                 payload["mode"] = "FORWARD"
@@ -245,9 +248,16 @@ class VpsSignalConsumer:
         # 2. Idempotency Check (Duplicate check)
         import aiosqlite
 
+        mode_upper = mode.upper() if mode else ""
         db_path = (
             config.FORWARD_DB_PATH
-            if (mode == "FORWARD" or getattr(config, "FORWARD_TEST_ENABLED", False))
+            if (
+                mode_upper == "FORWARD"
+                or (
+                    mode_upper not in ("LIVE", "BACKTEST")
+                    and getattr(config, "FORWARD_TEST_ENABLED", False)
+                )
+            )
             else config.DB_PATH
         )
         async with aiosqlite.connect(db_path) as db:

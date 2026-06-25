@@ -689,6 +689,18 @@ async def forward_test_dashboard():
     return FileResponse(str(STATIC_DIR / "forward_test.html"))
 
 
+@app.get("/backtest")
+async def backtest():
+    """Serve Backtest Performance Dashboard UI."""
+    return FileResponse(str(STATIC_DIR / "backtest_dashboard.html"))
+
+
+@app.get("/metadata-visualizer")
+async def metadata_visualizer():
+    """Serve Metadata Visualizer UI."""
+    return FileResponse(str(STATIC_DIR / "metadata_visualizer.html"))
+
+
 @app.get("/")
 async def root():
     """Redirect to dashboard."""
@@ -1505,12 +1517,9 @@ async def _klines_from_sqlite(
     table_map = {"1d": "ohlcv_1d", "1h": "ohlcv_1h", "5m": "ohlcv_5m"}
     table = table_map.get(interval)
 
-    # For 1h interval, also try ohlcv_1d as fallback (daily candles give context)
     tables_to_try = []
     if table:
         tables_to_try.append(table)
-    if interval in ("1h", "4h") and "ohlcv_1d" not in tables_to_try:
-        tables_to_try.append("ohlcv_1d")
 
     if not tables_to_try:
         return None
@@ -3228,9 +3237,13 @@ async def get_trade_analysis_endpoint(
 
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
+    mode_upper = mode.upper() if mode else ""
     db_path = (
         config.FORWARD_DB_PATH
-        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        if (
+            mode_upper == "FORWARD"
+            or (mode_upper not in ("LIVE", "BACKTEST") and config.FORWARD_TEST_ENABLED)
+        )
         else config.DB_PATH
     )
     async with aiosqlite.connect(db_path) as db:
