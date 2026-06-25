@@ -423,6 +423,7 @@ app.add_middleware(SlowAPIMiddleware)
 
 # ── CORS Middleware — allows dashboard_live.html (file:// origin) ────────────
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -574,6 +575,24 @@ async def daemon_dashboard():
 async def studio():
     """Serve Custom Trading View Studio & Telegram Template Editor."""
     return FileResponse(str(STATIC_DIR / "studio.html"))
+
+
+@app.get("/forward-test")
+async def forward_test():
+    """Serve Forward Test Performance Dashboard UI."""
+    return FileResponse(str(STATIC_DIR / "forward_test.html"))
+
+
+@app.get("/backtest")
+async def backtest():
+    """Serve Backtest Performance Dashboard UI."""
+    return FileResponse(str(STATIC_DIR / "backtest_dashboard.html"))
+
+
+@app.get("/metadata-visualizer")
+async def metadata_visualizer():
+    """Serve Metadata Visualizer UI."""
+    return FileResponse(str(STATIC_DIR / "metadata_visualizer.html"))
 
 
 @app.get("/")
@@ -1141,7 +1160,7 @@ async def get_signals_endpoint(
         None,
         description="Filter by state: INGESTED|MACRO_PASSED|STRATEGY_PASSED|COMPLETED|REJECTED",
     ),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     mode: str | None = Query(None, description="Filter by mode, e.g. FORWARD|MTT|MIS"),
 ):
@@ -1670,9 +1689,13 @@ async def get_trade_analysis_endpoint(
 
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
+    mode_upper = mode.upper() if mode else ""
     db_path = (
         config.FORWARD_DB_PATH
-        if (mode == "FORWARD" or config.FORWARD_TEST_ENABLED)
+        if (
+            mode_upper == "FORWARD"
+            or (mode_upper not in ("LIVE", "BACKTEST") and config.FORWARD_TEST_ENABLED)
+        )
         else config.DB_PATH
     )
     async with aiosqlite.connect(db_path) as db:
