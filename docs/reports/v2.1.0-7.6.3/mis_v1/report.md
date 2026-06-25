@@ -3,8 +3,8 @@
 ## 1. Description
 Execute trades using the entry, SL, and TP prices directly from the signal records (8% SL / 20% TP fallback). Representing the baseline breakout execution from MIS v1.
 
-- **Total Signals Scanned**: 1015
-- **Executed Trades**: 1008
+- **Total Signals Scanned**: 1296
+- **Executed Trades**: 1289
 - **Filtered Signals (Skipped)**: 7
 
 ---
@@ -13,8 +13,8 @@ Execute trades using the entry, SL, and TP prices directly from the signal recor
 
 | Sizing Mode | Executed Trades | Final Equity (USDT) | Net Profit (USDT) | Win Rate (%) | Profit Factor | Max Drawdown (%) | Expectancy |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Fixed Sizing ($100)** | 1008 | 9815.10 | -184.90 | 47.5% | 0.94 | 6.43% | -0.1834 |
-| **Dynamic Sizing (2% Risk)** | 1008 | 5387.85 | -4612.15 | 47.5% | 0.96 | 82.84% | -4.5755 |
+| **Fixed Sizing ($100)** | 1289 | 10148.90 | +148.90 | 50.8% | 1.05 | 7.05% | 0.1155 |
+| **Dynamic Sizing (2% Risk)** | 1289 | 12082.51 | +2082.51 | 50.8% | 1.01 | 85.82% | 1.6156 |
 
 ---
 
@@ -26,6 +26,6 @@ The chart below illustrates the cumulative equity curve performance for both Fix
 ---
 
 ## 4. Scenario Breakdown Analysis
-- **Filter Restrictiveness**: This scenario filtered out 7 signals out of 1015 (Skip Rate: 0.7%).
-- **Compounding Sizing Effect**: Dynamic compounding sizing led to an equity of **$5387.85** compared to **$9815.10** in Fixed Sizing.
-- **Profitability Verdict**: UNPROFITABLE with a Profit Factor of **0.96** and expectancy **-4.5755** under Dynamic Sizing.
+- **Filter Restrictiveness**: This scenario filtered out 7 signals out of 1296 (Skip Rate: 0.5%).
+- **Compounding Sizing Effect**: Dynamic compounding sizing led to an equity of **$12082.51** compared to **$10148.90** in Fixed Sizing.
+- **Profitability Verdict**: PROFITABLE with a Profit Factor of **1.01** and expectancy **1.6156** under Dynamic Sizing.

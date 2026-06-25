@@ -9,12 +9,12 @@ Starting portfolio size: 10,000 USDT. Fixed position size: 100 USDT.
 
 | Scenario | Strategy Description | Executed Trades | Win Rate (%) | Cumulative P&L (USDT) | Profit Factor | Max Drawdown (%) | Report Link |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **S1** | Scenario 1: Baseline Bypass AI (MIS v1) | 1008 | 47.5% | -184.90 USDT | 0.94 | 6.43% | [View Report](mis_v1/report.md) |
-| **S2** | Scenario 2: Standard Minervini Filter (MIS v12b) | 150 | 0.0% | -618.92 USDT | 0.00 | 6.19% | [View Report](mis_v12b/report.md) |
-| **S3** | Scenario 3: Short-term EMA Filter (Strategy MTT) | 441 | 26.5% | -1140.40 USDT | 0.28 | 15.11% | [View Report](strategy_mtt/report.md) |
-| **S4** | Scenario 4: Tight SL / Trailing Stop (MIS v10/v11a) | 1008 | 46.8% | +423.14 USDT | 1.19 | 3.13% | [View Report](mis_v10/report.md) |
-| **S5** | Scenario 5: Multi-Timeframe Validation (MIS v13c) | 289 | 51.2% | +342.06 USDT | 1.40 | 7.55% | [View Report](mis_v13c/report.md) |
-| **S6** | Scenario 6: Optimized Hybrid Mode (MIS v15/v16/v2) | 370 | 28.1% | -520.75 USDT | 0.62 | 12.55% | [View Report](mis_v15_v16_v2/report.md) |
+| **S1** | Scenario 1: Baseline Bypass AI (MIS v1) | 1289 | 50.8% | +148.90 USDT | 1.05 | 7.05% | [View Report](mis_v1/report.md) |
+| **S2** | Scenario 2: Standard Minervini Filter (MIS v12b) | 277 | 93.5% | +376.63 USDT | 4.31 | 1.13% | [View Report](mis_v12b/report.md) |
+| **S3** | Scenario 3: Short-term EMA Filter (Strategy MTT) | 590 | 81.4% | +1008.07 USDT | 2.18 | 7.30% | [View Report](strategy_mtt/report.md) |
+| **S4** | Scenario 4: Tight SL / Trailing Stop (MIS v10/v11a) | 1289 | 44.8% | -352.20 USDT | 0.87 | 10.54% | [View Report](mis_v10/report.md) |
+| **S5** | Scenario 5: Multi-Timeframe Validation (MIS v13c) | 347 | 61.4% | +460.75 USDT | 1.56 | 7.16% | [View Report](mis_v13c/report.md) |
+| **S6** | Scenario 6: Optimized Hybrid Mode (MIS v15/v16/v2) | 370 | 49.5% | -85.40 USDT | 0.92 | 9.68% | [View Report](mis_v15_v16_v2/report.md) |
 
 
 ---
@@ -24,12 +24,12 @@ Starting portfolio size: 10,000 USDT. Starting Equity: 10,000 USDT. Risk 2% port
 
 | Scenario | Strategy Description | Executed Trades | Win Rate (%) | Cumulative P&L (USDT) | Profit Factor | Max Drawdown (%) | Report Link |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **S1** | Scenario 1: Baseline Bypass AI (MIS v1) | 1008 | 47.5% | -4612.15 USDT | 0.96 | 82.84% | [View Report](mis_v1/report.md) |
-| **S2** | Scenario 2: Standard Minervini Filter (MIS v12b) | 150 | 0.0% | -7891.26 USDT | 0.00 | 78.91% | [View Report](mis_v12b/report.md) |
-| **S3** | Scenario 3: Short-term EMA Filter (Strategy MTT) | 441 | 26.5% | -9444.96 USDT | 0.66 | 98.11% | [View Report](strategy_mtt/report.md) |
-| **S4** | Scenario 4: Tight SL / Trailing Stop (MIS v10/v11a) | 1008 | 46.8% | +92410.17 USDT | 1.08 | 70.69% | [View Report](mis_v10/report.md) |
-| **S5** | Scenario 5: Multi-Timeframe Validation (MIS v13c) | 289 | 51.2% | +184850.11 USDT | 1.06 | 93.73% | [View Report](mis_v13c/report.md) |
-| **S6** | Scenario 6: Optimized Hybrid Mode (MIS v15/v16/v2) | 370 | 28.1% | -3607.52 USDT | 0.99 | 98.70% | [View Report](mis_v15_v16_v2/report.md) |
+| **S1** | Scenario 1: Baseline Bypass AI (MIS v1) | 1289 | 50.8% | +2082.51 USDT | 1.01 | 85.82% | [View Report](mis_v1/report.md) |
+| **S2** | Scenario 2: Standard Minervini Filter (MIS v12b) | 277 | 93.5% | +15474.88 USDT | 6.49 | 24.93% | [View Report](mis_v12b/report.md) |
+| **S3** | Scenario 3: Short-term EMA Filter (Strategy MTT) | 590 | 81.4% | +106863.28 USDT | 2.00 | 86.86% | [View Report](strategy_mtt/report.md) |
+| **S4** | Scenario 4: Tight SL / Trailing Stop (MIS v10/v11a) | 1289 | 44.8% | -1171.88 USDT | 1.00 | 97.63% | [View Report](mis_v10/report.md) |
+| **S5** | Scenario 5: Multi-Timeframe Validation (MIS v13c) | 347 | 61.4% | +297107.88 USDT | 1.09 | 92.63% | [View Report](mis_v13c/report.md) |
+| **S6** | Scenario 6: Optimized Hybrid Mode (MIS v15/v16/v2) | 370 | 49.5% | +14934.27 USDT | 1.03 | 96.56% | [View Report](mis_v15_v16_v2/report.md) |
 
 
 ---

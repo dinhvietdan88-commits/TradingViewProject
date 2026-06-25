@@ -3,9 +3,9 @@
 ## 1. Description
 Hourly / daily short-term trend stack validation: Daily price > EMA20 > EMA50 > EMA100 (long) or Price < EMA20 < EMA50 < EMA100 (short). Representing the short-term EMA trend stack from MTT v1.005-b.
 
-- **Total Signals Scanned**: 1015
-- **Executed Trades**: 441
-- **Filtered Signals (Skipped)**: 574
+- **Total Signals Scanned**: 1296
+- **Executed Trades**: 590
+- **Filtered Signals (Skipped)**: 706
 
 ---
 
@@ -13,8 +13,8 @@ Hourly / daily short-term trend stack validation: Daily price > EMA20 > EMA50 > 
 
 | Sizing Mode | Executed Trades | Final Equity (USDT) | Net Profit (USDT) | Win Rate (%) | Profit Factor | Max Drawdown (%) | Expectancy |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Fixed Sizing ($100)** | 441 | 8859.60 | -1140.40 | 26.5% | 0.28 | 15.11% | -2.5859 |
-| **Dynamic Sizing (2% Risk)** | 441 | 555.04 | -9444.96 | 26.5% | 0.66 | 98.11% | -21.4171 |
+| **Fixed Sizing ($100)** | 590 | 11008.07 | +1008.07 | 81.4% | 2.18 | 7.30% | 1.7086 |
+| **Dynamic Sizing (2% Risk)** | 590 | 116863.28 | +106863.28 | 81.4% | 2.00 | 86.86% | 181.1242 |
 
 ---
 
@@ -26,6 +26,6 @@ The chart below illustrates the cumulative equity curve performance for both Fix
 ---
 
 ## 4. Scenario Breakdown Analysis
-- **Filter Restrictiveness**: This scenario filtered out 574 signals out of 1015 (Skip Rate: 56.6%).
-- **Compounding Sizing Effect**: Dynamic compounding sizing led to an equity of **$555.04** compared to **$8859.60** in Fixed Sizing.
-- **Profitability Verdict**: UNPROFITABLE with a Profit Factor of **0.66** and expectancy **-21.4171** under Dynamic Sizing.
+- **Filter Restrictiveness**: This scenario filtered out 706 signals out of 1296 (Skip Rate: 54.5%).
+- **Compounding Sizing Effect**: Dynamic compounding sizing led to an equity of **$116863.28** compared to **$11008.07** in Fixed Sizing.
+- **Profitability Verdict**: PROFITABLE with a Profit Factor of **2.00** and expectancy **181.1242** under Dynamic Sizing.

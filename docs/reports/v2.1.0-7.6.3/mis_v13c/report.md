@@ -3,9 +3,9 @@
 ## 1. Description
 Multi-timeframe validation: Daily Trend Template score >= 5, AND hourly execution trend aligned (hourly EMA20 > EMA50 > EMA200 for long, opposite for short). Representing the MTF daily trend template check from MIS v13c.
 
-- **Total Signals Scanned**: 1015
-- **Executed Trades**: 289
-- **Filtered Signals (Skipped)**: 726
+- **Total Signals Scanned**: 1296
+- **Executed Trades**: 347
+- **Filtered Signals (Skipped)**: 949
 
 ---
 
@@ -13,8 +13,8 @@ Multi-timeframe validation: Daily Trend Template score >= 5, AND hourly executio
 
 | Sizing Mode | Executed Trades | Final Equity (USDT) | Net Profit (USDT) | Win Rate (%) | Profit Factor | Max Drawdown (%) | Expectancy |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Fixed Sizing ($100)** | 289 | 10342.06 | +342.06 | 51.2% | 1.40 | 7.55% | 1.1836 |
-| **Dynamic Sizing (2% Risk)** | 289 | 194850.11 | +184850.11 | 51.2% | 1.06 | 93.73% | 639.6198 |
+| **Fixed Sizing ($100)** | 347 | 10460.75 | +460.75 | 61.4% | 1.56 | 7.16% | 1.3278 |
+| **Dynamic Sizing (2% Risk)** | 347 | 307107.88 | +297107.88 | 61.4% | 1.09 | 92.63% | 856.2187 |
 
 ---
 
@@ -26,6 +26,6 @@ The chart below illustrates the cumulative equity curve performance for both Fix
 ---
 
 ## 4. Scenario Breakdown Analysis
-- **Filter Restrictiveness**: This scenario filtered out 726 signals out of 1015 (Skip Rate: 71.5%).
-- **Compounding Sizing Effect**: Dynamic compounding sizing led to an equity of **$194850.11** compared to **$10342.06** in Fixed Sizing.
-- **Profitability Verdict**: PROFITABLE with a Profit Factor of **1.06** and expectancy **639.6198** under Dynamic Sizing.
+- **Filter Restrictiveness**: This scenario filtered out 949 signals out of 1296 (Skip Rate: 73.2%).
+- **Compounding Sizing Effect**: Dynamic compounding sizing led to an equity of **$307107.88** compared to **$10460.75** in Fixed Sizing.
+- **Profitability Verdict**: PROFITABLE with a Profit Factor of **1.09** and expectancy **856.2187** under Dynamic Sizing.
