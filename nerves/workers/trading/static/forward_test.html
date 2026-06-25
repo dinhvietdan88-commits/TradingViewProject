@@ -1083,6 +1083,55 @@
   #fwd-tbody tr.row-expanded, #live-tbody tr.row-expanded {
     background: rgba(41, 98, 255, 0.09) !important;
   }
+
+  /* Floating Chart Tooltip */
+  .floating-chart-tooltip {
+    position: absolute;
+    display: none;
+    padding: 10px 14px;
+    box-sizing: border-box;
+    font-size: 11px;
+    text-align: left;
+    z-index: 1000;
+    pointer-events: none;
+    background: rgba(13, 20, 33, 0.95);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    color: #e2e8f0;
+    font-family: 'Inter', system-ui, sans-serif;
+    min-width: 180px;
+    backdrop-filter: blur(8px);
+  }
+  .tooltip-title {
+    font-weight: bold;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 4px;
+    color: #38bdf8;
+    display: flex;
+    justify-content: space-between;
+  }
+  .tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    margin: 4px 0;
+    gap: 8px;
+  }
+  .tooltip-row span.label {
+    color: #64748b;
+  }
+  .tooltip-row span.value {
+    font-weight: 600;
+    font-family: monospace;
+  }
+  .tooltip-status-badge {
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
 </style>
 </head>
 <body>
@@ -3358,6 +3407,103 @@ function initSignalChart() {
   });
   // Load default chart
   loadSignalChart('BTCUSDT');
+
+  // Create and append hover tooltip element
+  const wrap = cc.parentElement;
+  let tooltip = document.getElementById('chartSignalTooltip');
+  if (!tooltip && wrap) {
+    tooltip = document.createElement('div');
+    tooltip.id = 'chartSignalTooltip';
+    tooltip.className = 'floating-chart-tooltip';
+    wrap.appendChild(tooltip);
+  }
+
+  signalChart.subscribeCrosshairMove(param => {
+    if (!tooltip) return;
+
+    if (!param.time || param.point.x < 0 || param.point.y < 0) {
+      tooltip.style.display = 'none';
+      return;
+    }
+
+    const cache = (currentMode === "live") ? liveCache : fwdCache;
+    if (!cache || !cache.length) {
+      tooltip.style.display = 'none';
+      return;
+    }
+
+    const hoveredTime = typeof param.time === 'number' ? param.time : (param.time.timestamp || 0);
+    if (!hoveredTime) {
+      tooltip.style.display = 'none';
+      return;
+    }
+
+    const matchingSignals = cache.filter(s => {
+      if ((s.symbol || '').toUpperCase() !== currentChartSymbol.toUpperCase()) return false;
+      if (!s.created_at) return false;
+      const ts = new Date(s.created_at.replace(' ', 'T') + 'Z').getTime() / 1000;
+      if (isNaN(ts)) return false;
+      const candleTs = Math.floor(ts / 3600) * 3600; // round to nearest 1h candle
+      return candleTs === hoveredTime;
+    });
+
+    if (matchingSignals.length > 0) {
+      let html = `<div class="tooltip-title">Tín hiệu (${matchingSignals.length})</div>`;
+      matchingSignals.forEach(s => {
+        const isBuy = (s.action || '').toLowerCase() === 'buy';
+        const sideColor = isBuy ? 'var(--green)' : 'var(--red)';
+        const st = (s.state || 'PENDING').toUpperCase();
+        
+        let stateBadgeColor = '#64748b';
+        if (st === 'COMPLETED') stateBadgeColor = 'var(--green)';
+        else if (['REJECTED', 'FAILED'].includes(st)) stateBadgeColor = 'var(--red)';
+        else if (['PENDING', 'ANALYZING', 'MACRO_PASSED', 'INGESTED'].includes(st)) stateBadgeColor = 'var(--yellow)';
+        
+        html += `
+          <div style="margin-bottom: 8px; border-bottom: 1px dashed rgba(255,255,255,0.05); padding-bottom: 6px;">
+            <div class="tooltip-row">
+              <span class="label">ID / Side</span>
+              <span class="value" style="color: ${sideColor}">#${s.id} ${s.action.toUpperCase()}</span>
+            </div>
+            <div class="tooltip-row">
+              <span class="label">Price</span>
+              <span class="value">$${s.price.toLocaleString()}</span>
+            </div>
+            <div class="tooltip-row">
+              <span class="label">Time</span>
+              <span class="value">${s.created_at.substring(11, 16)} UTC</span>
+            </div>
+            <div class="tooltip-row">
+              <span class="label">Trạng thái</span>
+              <span class="tooltip-status-badge" style="background: ${stateBadgeColor}22; color: ${stateBadgeColor}; border: 1px solid ${stateBadgeColor}44">${st}</span>
+            </div>
+          </div>
+        `;
+      });
+
+      tooltip.innerHTML = html;
+      tooltip.style.display = 'block';
+
+      const tooltipWidth = 200;
+      const tooltipHeight = tooltip.clientHeight || 150;
+      
+      let left = param.point.x + 15;
+      if (left + tooltipWidth > cc.clientWidth) {
+        left = param.point.x - tooltipWidth - 15;
+      }
+      
+      let top = param.point.y + 15;
+      if (top + tooltipHeight > cc.clientHeight) {
+        top = cc.clientHeight - tooltipHeight - 15;
+      }
+      if (top < 10) top = 10;
+
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+    } else {
+      tooltip.style.display = 'none';
+    }
+  });
 }
 
 async function loadSignalChart(symbol, signalTimestampMs) {
