@@ -2007,13 +2007,13 @@
               <span class="signal-preview-title">Production Signals (trades.db) <span style="font-size: 0.65rem; text-transform: none; font-weight: normal; color: var(--text-muted); margin-left: 6px;">(Synced real signals have vbs_queue_id. Local mock signals have vbs_queue_id IS NULL)</span></span>
               <div style="display: flex; gap: 6px;">
                 <button type="button" class="btn-secondary" id="setRangeBtn" onclick="setRangeFromSelection()" style="padding: 6px 12px; font-size: 0.75rem; display: flex; align-items: center; gap: 4px;" disabled>
-                  <span>📊—</span> Set Range
+                  <span>📊</span> Set Range
                 </button>
                 <button type="button" class="btn-secondary" id="reloadSignalsBtn" onclick="loadProductionSignals()" style="padding: 6px 12px; font-size: 0.75rem; display: flex; align-items: center; gap: 4px;">
                   <span>📈</span> Reload
                 </button>
                 <button type="button" class="btn-primary" id="syncSelectedBtn" onclick="syncSelectedSignals()" style="padding: 6px 12px; font-size: 0.75rem; display: flex; align-items: center; gap: 4px;" disabled>
-                  <span>⚡—</span> Sync Selected (<span id="selectedCount">0</span>)
+                  <span>⚡</span> Sync Selected (<span id="selectedCount">0</span>)
                 </button>
               </div>
             </div>
@@ -2417,15 +2417,15 @@ async function loadTradeDetailRow(signalId) {
     slippage_pct: 0.05,
     s2_min_tt_score: 5,
     s5_min_tt_score: 5,
-    s6_min_tt_score: 5,
-    s6_min_rsi: 50.0,
+    s6_min_tt_score: 6,
+    s6_min_rsi: 42.0,
     mta_mltf_weight_1h: 0.15,
     regime_volatility_window: 50,
     hil_min_threshold: 50.0,
     hil_max_threshold: 79.0,
-    atr_sl_multiplier: 1.5,
-    atr_tp_multiplier: 3.0,
-    chandelier_trailing_multiplier: 2.5
+    atr_sl_multiplier: 2.5,
+    atr_tp_multiplier: 2.0,
+    chandelier_trailing_multiplier: 3.5
   };
   
   try {
@@ -4302,7 +4302,7 @@ async function runVerificationCrossCheck() {
     const signals = await get("/api/signals?mode=FORWARD");
 
     if (!stats || !signals) {
-      document.getElementById("verify-last-sync").textContent = "L▼i kết nối API xác minh";
+      document.getElementById("verify-last-sync").textContent = "Lỗi kết nối API xác minh";
       return;
     }
 
@@ -4322,20 +4322,20 @@ async function runVerificationCrossCheck() {
 
     const badge = document.getElementById("verify-status-badge");
     if (isConsistent) {
-      badge.textContent = "—o. Consistent";
+      badge.textContent = "🟢 Consistent";
       badge.style.background = "rgba(16, 217, 138, 0.15)";
       badge.style.color = "var(--green)";
     } else {
-      badge.textContent = "⚡—️ Mismatch";
+      badge.textContent = "❌ Mismatch";
       badge.style.background = "rgba(244, 63, 94, 0.15)";
       badge.style.color = "var(--red)";
     }
 
     const timeStr = new Date().toLocaleTimeString("vi-VN");
-    document.getElementById("verify-last-sync").textContent = `Sync cu—'i: ${timeStr} | P&L kh—>p: ${isConsistent ? 'Đ⚡NG' : 'SAI'} (C.P&L: ${calculatedPnl.toFixed(2)} vs S.P&L: ${statsPnl.toFixed(2)})`;
+    document.getElementById("verify-last-sync").textContent = `Sync cuối: ${timeStr} | P&L khớp: ${isConsistent ? 'ĐÚNG' : 'SAI'} (C.P&L: ${calculatedPnl.toFixed(2)} vs S.P&L: ${statsPnl.toFixed(2)})`;
   } catch (err) {
     console.error("Error in runVerificationCrossCheck:", err);
-    document.getElementById("verify-last-sync").textContent = "L▼i trong quá trình xác minh";
+    document.getElementById("verify-last-sync").textContent = "Lỗi trong quá trình xác minh";
   }
 }
 
@@ -4615,7 +4615,7 @@ async function loadProductionSignals() {
     
     renderPreviewTable(productionSignals);
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--red);padding:20px">⚡—️ Failed to load signals: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--red);padding:20px">❌ Failed to load signals: ${err.message}</td></tr>`;
   } finally {
     if (reloadBtn) {
       reloadBtn.disabled = false;
@@ -4780,7 +4780,7 @@ async function syncSelectedSignals() {
   
   const ids = Array.from(selectedSignalIds);
   const originalText = btn.innerHTML;
-  btn.innerHTML = '<span>⚡—</span> Syncing...';
+  btn.innerHTML = '<span>⚡</span> Syncing...';
   btn.disabled = true;
   
   try {
@@ -5622,7 +5622,18 @@ function recalculateSandboxMetrics() {
 
   const logic = document.querySelector('input[name="sandbox-logic"]:checked')?.value || "AND";
 
-  const signals = fwdCache || [];
+  let signals = [];
+  if (window.SANDBOX_SIMULATIONS_CACHE && Object.keys(window.SANDBOX_SIMULATIONS_CACHE).length > 0) {
+    signals = Object.values(window.SANDBOX_SIMULATIONS_CACHE).map(sim => ({
+      id: sim.signal_info.vbs_id,
+      created_at: sim.signal_info.received_at,
+      symbol: sim.signal_info.symbol,
+      action: sim.signal_info.action
+    }));
+  } else {
+    signals = fwdCache || [];
+  }
+
   const simulatedTrades = [];
 
   signals.forEach(s => {

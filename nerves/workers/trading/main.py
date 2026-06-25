@@ -1789,16 +1789,16 @@ class BacktestParams(BaseModel):
     s4_trail_atr_mult: float = 2.5
     s2_min_tt_score: int = 5
     s5_min_tt_score: int = 5
-    s6_min_tt_score: int = 5
-    s6_min_rsi: float = 50.0
+    s6_min_tt_score: int = 6
+    s6_min_rsi: float = 42.0
     slippage_pct: float = 0.05
     mta_mltf_weight_1h: float = 0.15
     regime_volatility_window: int = 50
     hil_min_threshold: float = 50.0
     hil_max_threshold: float = 79.0
-    atr_sl_multiplier: float = 1.5
-    atr_tp_multiplier: float = 3.0
-    chandelier_trailing_multiplier: float = 2.5
+    atr_sl_multiplier: float = 2.5
+    atr_tp_multiplier: float = 2.0
+    chandelier_trailing_multiplier: float = 3.5
 
 
 @app.post("/api/simulate/{signal_id}")
@@ -2498,7 +2498,7 @@ async def simulate_signal(signal_id: int, params: BacktestParams):
             "daily_rsi": float(daily_rsi) if daily_rsi else 50.0,
             "daily_macd": float(daily_macd) if daily_macd else 0.0,
             "daily_macd_sig": float(daily_macd_sig) if daily_macd_sig else 0.0,
-            "tt_score": int(tt_score) if tt_score else 6,
+            "tt_score": int(tt_score) if tt_score is not None else 6,
             "vcp_met": bool(vcp_met),
             "volume_ratio": float(volume_ratio),
             "range_ratio": float(range_ratio),

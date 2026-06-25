@@ -239,6 +239,16 @@ CREATE TABLE IF NOT EXISTS signals_scenarios_cache (
 
 async def init_db():
     """Tao bang khi khoi dong server cho ca trades.db va forward_trades.db."""
+
+    def log_sqlite_error(e: sqlite3.OperationalError):
+        import logging
+
+        msg = str(e).lower()
+        if "duplicate column name" in msg or "already exists" in msg:
+            logging.getLogger(__name__).info("Ignored: %s", e)
+        else:
+            logging.getLogger(__name__).warning("Ignored: %s", e)
+
     for db_path in [config.DB_PATH, config.FORWARD_DB_PATH]:
         async with aiosqlite.connect(db_path, timeout=config.DB_TIMEOUT) as db:
             await db.execute("PRAGMA journal_mode=WAL")
@@ -259,11 +269,7 @@ async def init_db():
                     await db.execute(col_def)
                     await db.commit()
                 except sqlite3.OperationalError as e:
-                    import logging
-
-                    logging.getLogger(__name__).warning(
-                        "Ignored: %s", e
-                    )  # Column already exists
+                    log_sqlite_error(e)
 
             # v6.1: Extend indicator_signals table (backward-compatible, REQ 7.1)
             for col_def in [
@@ -276,31 +282,21 @@ async def init_db():
                     await db.execute(col_def)
                     await db.commit()
                 except sqlite3.OperationalError as e:
-                    import logging
-
-                    logging.getLogger(__name__).warning(
-                        "Ignored: %s", e
-                    )  # Column already exists
+                    log_sqlite_error(e)
 
             # v7.0: Add mode column to signals (backward-compatible — Phase 2 MTT/MIS tracking)
             try:
                 await db.execute("ALTER TABLE signals ADD COLUMN mode TEXT")
                 await db.commit()
             except sqlite3.OperationalError as e:
-                import logging
-
-                logging.getLogger(__name__).warning(
-                    "Ignored: %s", e
-                )  # Column already exists
+                log_sqlite_error(e)
 
             # VPS Buffer: Add vbs_queue_id column to signals
             try:
                 await db.execute("ALTER TABLE signals ADD COLUMN vbs_queue_id INTEGER")
                 await db.commit()
             except sqlite3.OperationalError as e:
-                import logging
-
-                logging.getLogger(__name__).warning("Ignored: %s", e)
+                log_sqlite_error(e)
 
             try:
                 await db.execute(
@@ -308,9 +304,7 @@ async def init_db():
                 )
                 await db.commit()
             except sqlite3.OperationalError as e:
-                import logging
-
-                logging.getLogger(__name__).warning("Ignored: %s", e)
+                log_sqlite_error(e)
 
             # Unified State Ledger: Add state column to signals
             try:
@@ -319,18 +313,14 @@ async def init_db():
                 )
                 await db.commit()
             except sqlite3.OperationalError as e:
-                import logging
-
-                logging.getLogger(__name__).warning("Ignored: %s", e)
+                log_sqlite_error(e)
 
             # Unified State Ledger: Add rejection_reason column to signals
             try:
                 await db.execute("ALTER TABLE signals ADD COLUMN rejection_reason TEXT")
                 await db.commit()
             except sqlite3.OperationalError as e:
-                import logging
-
-                logging.getLogger(__name__).warning("Ignored: %s", e)
+                log_sqlite_error(e)
 
             # Dynamic ALTER TABLE for analysis_features column on signals table
             try:
@@ -339,9 +329,7 @@ async def init_db():
                 )
                 await db.commit()
             except sqlite3.OperationalError as e:
-                import logging
-
-                logging.getLogger(__name__).warning("Ignored: %s", e)
+                log_sqlite_error(e)
 
             # Dynamic ALTER TABLE for raw_analysis_text column on signals table
             try:
@@ -350,9 +338,7 @@ async def init_db():
                 )
                 await db.commit()
             except sqlite3.OperationalError as e:
-                import logging
-
-                logging.getLogger(__name__).warning("Ignored: %s", e)
+                log_sqlite_error(e)
 
             if db_path == config.FORWARD_DB_PATH:
                 try:
