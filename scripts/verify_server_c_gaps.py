@@ -79,6 +79,8 @@ def start_daemon(workspace_root):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         creationflags=creationflags,
     )
 
