@@ -200,6 +200,21 @@ Xem tại: [`docs/reports/v2.1.0-7.6.3/`](reports/v2.1.0-7.6.3/)
 
 ---
 
+## 📂 Nhật Ký Lỗi & Thay Đổi Theo Nhánh (Branch Issue Logs)
+
+Thư mục `docs/branches/` chứa nhật ký lỗi đã sửa và tiến trình tính năng cho từng nhánh phát triển:
+
+* 📡 [Forward Test & Live Validation](branches/dev-infra-forward-test-live-validation.md) - Kiểm thử dashboard và checkbox filters.
+* 🔑 [Telegram Dashboard Auth](branches/dev-ai-easy-access-dashboard.md) - Tính năng quick login qua Telegram `/login` bot command.
+* 🤖 [AI Core & Security Gates](branches/dev-ai-server-c-ai-core.md) - Mini-MDASH hook trong Go daemon và sửa assertion lỗi test vision.
+* 📐 [FX Tactix Pine Generator](branches/dev-infra-fx-tactix.md) - Bộ sinh mã Pine Script v5 bằng AI.
+* 📈 [Indicator Filters V1.006](branches/dev-infra-v1.006-filters.md) - Bộ lọc Slope, Volume, ATR-trail cho tín hiệu TradingView.
+* ⏱️ [Regime Detection V1.007](branches/dev-infra-v1.007-regime.md) - Nhận diện xu hướng ADX/Bollinger Bands và chiến thuật kết hợp.
+
+---
+
+
+
 ## 🧪 Test Coverage
 
 | Loại Test | Số Lượng | Kết Quả |
