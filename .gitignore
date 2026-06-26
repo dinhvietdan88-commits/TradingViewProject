@@ -99,3 +99,6 @@ nerves/workers/trading/test_trades.log
 *.log.*
 proposal.json
 angati.exe
+
+# FX Tactix generated Pine scripts (user reviews before committing)
+pine/v2/generated/

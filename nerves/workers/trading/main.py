@@ -131,6 +131,9 @@ from core.event_bus import bus as _event_bus  # noqa: E402
 # ── Phase 5: WebhookGateway (Component 8/8) ──────────────────────────────────
 from gateway.webhook import router as _webhook_router  # noqa: E402
 
+# ── FX Tactix subsystem (no-code Pine generator) ─────────────────────────────
+from fx_tactix import router as _fx_tactix_router  # noqa: E402
+
 _claude_service: ClaudeService | None = None
 
 
@@ -537,6 +540,9 @@ app.add_middleware(
 
 # ── WebhookGateway router (Component 8/8) ────────────────────────────────────
 app.include_router(_webhook_router)
+
+# ── FX Tactix subsystem (no-code Pine generator) ─────────────────────────────
+app.include_router(_fx_tactix_router)
 
 # ── P10: Auth router ─────────────────────────────────────────────────────────
 app.include_router(_auth_router)
