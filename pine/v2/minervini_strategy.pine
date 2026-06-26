@@ -61,14 +61,23 @@ grp_risk = "Risk Management Settings"
 profile  = input.string("Futures", "MTT Profile Sizing", options=["Spot","Margin","Futures"], group=grp_risk,
      tooltip="Spot (10%), Margin (20%), Futures (10%)")
 risk_pct      = input.float(1.0,  "Risk per trade (% equity - MIS)", minval=0.1, maxval=5.0, step=0.1, group=grp_risk)
-atr_sl_mul    = input.float(1.5,  "ATR Stop Loss Multiplier",    step=0.1, group=grp_risk)
-atr_tp_mul    = input.float(3.0,  "ATR Take Profit Multiplier",  step=0.5, group=grp_risk, tooltip="Chỉ áp dụng trong MIS mode.")
+atr_sl_mul    = input.float(2.0,  "ATR Stop Loss Multiplier",    step=0.1, group=grp_risk)
+atr_tp_mul    = input.float(8.0,  "ATR Take Profit Multiplier",  step=0.5, group=grp_risk, tooltip="Chỉ áp dụng trong MIS mode.")
 hard_sl_pct   = input.float(8.0,  "Hard Stop-Loss Cap (%)",      minval=2.0, maxval=20.0, step=0.5, group=grp_risk)
 max_pos_pct   = input.float(95.0, "Max position notional (% equity)", minval=10.0, maxval=100.0, step=5.0, group=grp_risk)
 use_atr_trail = input.bool(true,  "ATR trailing stop (Chandelier)", group=grp_risk)
 trail_atr_mul = input.float(2.5,  "Trail ATR Multiplier",        step=0.5, group=grp_risk)
 use_ma_trail  = input.bool(false, "Exit on close < SMA50",       group=grp_risk)
 cooldown_bars = input.int(3,      "Cooldown bars after exit (MIS)", minval=0, maxval=50, group=grp_risk)
+
+// MTT Advanced Inputs (from A007/B007)
+grp_mtt_f     = "MTT Advanced Filters & Exits"
+use_mtt_adx   = input.bool(true,  "MTT: Use ADX regime filter", group=grp_mtt_f)
+adx_th_mtt    = input.float(20.0, "MTT: ADX threshold", minval=10.0, maxval=50.0, group=grp_mtt_f)
+use_mtt_bb_sq = input.bool(true,  "MTT: Block on BB squeeze", group=grp_mtt_f)
+bb_sq_th_mtt  = input.float(5.0,  "MTT: BB width % squeeze threshold", group=grp_mtt_f)
+use_mtt_time  = input.bool(true,  "MTT: Use time-based stop", group=grp_mtt_f)
+max_hold_mtt  = input.int(20,     "MTT: Max bars to hold without profit", minval=5, group=grp_mtt_f)
 
 grp_webhook = "Webhook Settings"
 webhook_secret = input.string("change_me_in_dotenv", title="Webhook Secret", group=grp_webhook)
@@ -135,6 +144,18 @@ bench = request.security(benchmark_ticker, timeframe.period, close, ignore_inval
 stk_perf  = (close - close[125]) / close[125]
 bench_perf = (bench - bench[125]) / bench[125]
 
+// ADX and Bollinger Bands calculations for MTT mode
+[_, _, adx_val] = ta.dmi(14, 14)
+daily_adx = request.security(syminfo.tickerid, "D", adx_val[1], barmerge.gaps_off, barmerge.lookahead_off)
+
+bb_basis = ta.sma(close, 20)
+bb_dev = 2.0 * ta.stdev(close, 20)
+bb_w_pct_val = 100 * bb_dev / bb_basis
+daily_bb_w_pct = request.security(syminfo.tickerid, "D", bb_w_pct_val[1], barmerge.gaps_off, barmerge.lookahead_off)
+
+adx_mtt = is_mtt ? daily_adx : adx_val
+bb_w_pct_mtt = is_mtt ? daily_bb_w_pct : bb_w_pct_val
+
 // ================================================================================================= //
 // STRATEGY LOGIC
 // ================================================================================================= //
@@ -144,7 +165,11 @@ var int last_exit_bar = na
 
 // ─── A. DAILY TREND FOLLOWER (MTT MODE) ─────────────────────────────────────────────────────────
 bull = mf > mm and mm > ms
-bull_start = (strat_mode == "Daily Trend Follower (MTT v1.005-b)") and bull and not bull[1]
+mtt_adx_ok = not use_mtt_adx or adx_mtt >= adx_th_mtt
+mtt_bb_ok  = not use_mtt_bb_sq or bb_w_pct_mtt >= bb_sq_th_mtt
+mtt_entry_ok = bull and mtt_adx_ok and mtt_bb_ok
+
+bull_start = (strat_mode == "Daily Trend Follower (MTT v1.005-b)") and mtt_entry_ok and not mtt_entry_ok[1]
 bull_end   = (strat_mode == "Daily Trend Follower (MTT v1.005-b)") and not bull and bull[1]
 
 // Tín hiệu Breakout Long từ Short kết thúc
@@ -158,6 +183,29 @@ margin_pct  = 20.0
 futures_pct = 10.0
 qty_pct = profile == "Spot" ? spot_pct : (profile == "Margin" ? margin_pct : futures_pct)
 qty_mtt = (strategy.equity * qty_pct / 100.0) / close
+
+// Tracking variables for MTT exits
+var float mtt_trail = na
+var int mtt_entry_bar = na
+var float mtt_entry_price = na
+
+mtt_in_pos = (strat_mode == "Daily Trend Follower (MTT v1.005-b)") and (strategy.position_size > 0)
+
+if mtt_in_pos
+    new_trail = close - trail_atr_mul * atr
+    mtt_trail := na(mtt_trail) ? new_trail : math.max(mtt_trail, new_trail)
+else
+    mtt_trail := na
+    mtt_entry_bar := na
+    mtt_entry_price := na
+
+if (strat_mode == "Daily Trend Follower (MTT v1.005-b)") and bull_start
+    mtt_entry_bar := bar_index
+    mtt_entry_price := close
+
+mtt_bars_held = mtt_in_pos and not na(mtt_entry_bar) ? (bar_index - mtt_entry_bar) : 0
+mtt_trail_hit = use_atr_trail and mtt_in_pos and not na(mtt_trail) and low <= mtt_trail
+mtt_time_stop = use_mtt_time and mtt_in_pos and mtt_bars_held >= max_hold_mtt and close <= mtt_entry_price
 
 // ─── B. 1H SEPA / MOMENTUM (MIS MODE) ──────────────────────────────────────────────────────────
 // Trend Template Gate (8 Criteria)
@@ -228,9 +276,12 @@ if (strat_mode == "1H SEPA / Momentum (MIS v1.6)") and long_entry_mis
     alert(alert_msg, alert.freq_once_per_bar_close)
 
 // ─── Exit Executes ───
-if (strat_mode == "Daily Trend Follower (MTT v1.005-b)") and bull_end
-    strategy.close("MTT Long", comment="Bull End")
-    alert_msg_sell = '{"secret": "' + webhook_secret + '", "action": "sell", "symbol": "' + syminfo.ticker + '", "price": ' + str.tostring(close) + ', "interval": "' + timeframe.period + '", "mode": "MTT"}'
+mtt_exit_trigger = bull_end or mtt_trail_hit or mtt_time_stop
+
+if (strat_mode == "Daily Trend Follower (MTT v1.005-b)") and mtt_exit_trigger and strategy.position_size > 0
+    string exit_reason = bull_end ? "Bull End" : (mtt_trail_hit ? "ATR Trail" : "Time Stop")
+    strategy.close("MTT Long", comment=exit_reason)
+    alert_msg_sell = '{"secret": "' + webhook_secret + '", "action": "sell", "symbol": "' + syminfo.ticker + '", "price": ' + str.tostring(close) + ', "interval": "' + timeframe.period + '", "mode": "MTT", "reason": "' + exit_reason + '"}'
     alert(alert_msg_sell, alert.freq_once_per_bar_close)
 
 if (strat_mode == "1H SEPA / Momentum (MIS v1.6)") and strategy.position_size > 0
@@ -272,7 +323,7 @@ plot((strat_mode == "1H SEPA / Momentum (MIS v1.6)" and vcp_recent_active) ? piv
 plotshape(bull_start, title="MTT Long Start", style=shape.triangleup, location=location.belowbar, color=color.new(color.green,0),  size=size.small, text="MTT LONG")
 plotshape(bull_end,   title="MTT Long End",   style=shape.xcross,     location=location.abovebar, color=color.new(color.red,30), size=size.small)
 
-plotshape((strat_mode == "1H SEPA / Momentum (MIS v1.6)" and long_entry_mis),  title="MIS Long Entry",  shape.labelup,   location=location.belowbar, color=color.new(color.green, 0), size=size.normal, text="BUY", textcolor=color.white)
+plotshape((strat_mode == "1H SEPA / Momentum (MIS v1.6)" and long_entry_mis),  title="MIS Long Entry",  style=shape.labelup,   location=location.belowbar, color=color.new(color.green, 0), size=size.normal, text="BUY", textcolor=color.white)
 plotshape(breakout_long, title="Breakout Long (BO)", style=shape.diamond, location=location.belowbar, color=color.new(color.aqua,0), size=size.small, text="BO")
 
 // Cảnh báo Breakout
@@ -298,6 +349,10 @@ if show_table and barstate.islast
         table.cell(statusTable, 1, 3, bull ? "ACTIVE" : "OFF", bgcolor=bull ? color.new(color.green, 70) : color.new(color.gray, 70))
         table.cell(statusTable, 0, 4, "4. Bear Stack (Short)")
         table.cell(statusTable, 1, 4, bear ? "ACTIVE" : "OFF", bgcolor=bear ? color.new(color.red, 70) : color.new(color.gray, 70))
+        table.cell(statusTable, 0, 5, "5. ADX >= 20")
+        table.cell(statusTable, 1, 5, adx_mtt >= adx_th_mtt ? "ĐẠT" : "CHƯA", bgcolor=bg_ok(adx_mtt >= adx_th_mtt))
+        table.cell(statusTable, 0, 6, "6. BB width >= 5%")
+        table.cell(statusTable, 1, 6, bb_w_pct_mtt >= bb_sq_th_mtt ? "ĐẠT" : "CHƯA", bgcolor=bg_ok(bb_w_pct_mtt >= bb_sq_th_mtt))
     else
         table.cell(statusTable, 0, 0, "Tiêu chuẩn Trend Template (MIS)", bgcolor=color.new(color.gray, 30), text_color=color.white)
         table.cell(statusTable, 1, 0, "Trạng thái", bgcolor=color.new(color.gray, 30), text_color=color.white)
