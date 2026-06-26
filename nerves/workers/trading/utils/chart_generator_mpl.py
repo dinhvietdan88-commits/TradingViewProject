@@ -434,10 +434,12 @@ def generate_chart_mpl(
     if not save_path:
         # Default save path from config
         import config
+        from security.sanitizers import sanitize_symbol
 
+        clean_symbol = sanitize_symbol(symbol) or "UNKNOWN"
         screenshots_dir = Path(config.SCREENSHOTS_DIR)
         screenshots_dir.mkdir(parents=True, exist_ok=True)
-        save_path = screenshots_dir / f"chart_{symbol}_{timeframe}.png"
+        save_path = screenshots_dir / f"chart_{clean_symbol}_{timeframe}.png"
     else:
         save_path = Path(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)

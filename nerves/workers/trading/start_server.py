@@ -164,7 +164,7 @@ async def serve():
             flush=True,
         )
         _kill_port(8080)
-        proxy_proc = subprocess.Popen(
+        proxy_proc = subprocess.Popen(  # nosec
             [sys.executable, str(proxy_script)],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,

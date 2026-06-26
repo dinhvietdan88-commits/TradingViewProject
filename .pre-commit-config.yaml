@@ -66,4 +66,3 @@ repos:
         language: system
         files: \.js$
         pass_filenames: true
-
