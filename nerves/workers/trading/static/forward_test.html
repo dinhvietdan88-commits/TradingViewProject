@@ -1382,6 +1382,7 @@
     border-color: rgba(56, 189, 248, 0.35) !important;
     background: rgba(56, 189, 248, 0.08) !important;
     box-shadow: 0 0 10px rgba(56, 189, 248, 0.1);
+  }
 
 
 
@@ -1675,7 +1676,78 @@
     font-size: 9px;
     font-weight: bold;
     text-transform: uppercase;
+  }
 
+  /* Custom Header Checkbox Dropdown styling */
+  .header-checkbox-dropdown {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+    user-select: none;
+    vertical-align: middle;
+  }
+  .header-checkbox-dropdown .dropdown-trigger {
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.65rem;
+    font-weight: bold;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color 0.2s, background-color 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .header-checkbox-dropdown:hover .dropdown-trigger,
+  .header-checkbox-dropdown.active .dropdown-trigger {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  .header-checkbox-dropdown .dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: #1e222d;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    min-width: 140px;
+    z-index: 1000;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.5);
+  }
+  .header-checkbox-dropdown.align-right .dropdown-menu {
+    left: auto;
+    right: 0;
+  }
+  .header-checkbox-dropdown.active .dropdown-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .header-checkbox-dropdown .dropdown-menu label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.72rem;
+    color: var(--text-light);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: background 0.15s;
+    text-transform: uppercase;
+    font-weight: normal;
+    letter-spacing: 0.03em;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .header-checkbox-dropdown .dropdown-menu label:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+  }
+  .header-checkbox-dropdown .dropdown-menu input[type="checkbox"] {
+    accent-color: var(--cyan);
+    cursor: pointer;
+    margin: 0;
   }
 </style>
 </head>
@@ -1890,19 +1962,29 @@
               <th>TP</th>
               <th>Exit</th>
               <th>PnL %</th>
-              <th style="padding: 0;">
-                <select id="fwdStatusFilter" class="table-header-select" onchange="switchSignalStatusFilter(this.value)">
-                  <option value="ALL">Outcome ▼</option>
-                  <option value="COMPLETED">COMPLETED</option>
-                  <option value="REJECTED">REJECTED</option>
-                  <option value="PENDING">PENDING</option>
-                </select>
+              <th style="padding: 0; vertical-align: middle;">
+                <div class="header-checkbox-dropdown" id="fwdStatusDropdown">
+                  <span class="dropdown-trigger">Status ▼</span>
+                  <div class="dropdown-menu">
+                    <label><input type="checkbox" value="COMPLETED" checked onchange="onStatusCheckboxChange('fwd', this)"> COMPLETED</label>
+                    <label><input type="checkbox" value="REJECTED" checked onchange="onStatusCheckboxChange('fwd', this)"> REJECTED</label>
+                    <label><input type="checkbox" value="PENDING" checked onchange="onStatusCheckboxChange('fwd', this)"> PENDING</label>
+                  </div>
+                </div>
               </th>
               <th>Bars</th>
               <th>Time</th>
               <th style="color:var(--text-muted);">S1-S6</th>
               <th style="color:var(--text-muted);">Context</th>
-              <th style="color:var(--text-muted);">Sim P&L</th>
+              <th style="padding: 0; vertical-align: middle;">
+                <div class="header-checkbox-dropdown align-right" id="fwdSimDropdown">
+                  <span class="dropdown-trigger" style="color:var(--text-muted);">Sim P&L ▼</span>
+                  <div class="dropdown-menu">
+                    <label><input type="checkbox" value="Executed" checked onchange="onSimCheckboxChange()"> Executed</label>
+                    <label><input type="checkbox" value="Filtered" checked onchange="onSimCheckboxChange()"> Filtered</label>
+                  </div>
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody id="fwd-tbody">
@@ -1975,13 +2057,15 @@
               <th>TP</th>
               <th>Exit</th>
               <th>PnL %</th>
-              <th style="padding: 0;">
-                <select id="liveStatusFilter" class="table-header-select" onchange="switchLiveStatusFilter(this.value)">
-                  <option value="ALL">Outcome ▼</option>
-                  <option value="COMPLETED">COMPLETED</option>
-                  <option value="REJECTED">REJECTED</option>
-                  <option value="PENDING">PENDING</option>
-                </select>
+              <th style="padding: 0; vertical-align: middle;">
+                <div class="header-checkbox-dropdown" id="liveStatusDropdown">
+                  <span class="dropdown-trigger">Status ▼</span>
+                  <div class="dropdown-menu">
+                    <label><input type="checkbox" value="COMPLETED" checked onchange="onStatusCheckboxChange('live', this)"> COMPLETED</label>
+                    <label><input type="checkbox" value="REJECTED" checked onchange="onStatusCheckboxChange('live', this)"> REJECTED</label>
+                    <label><input type="checkbox" value="PENDING" checked onchange="onStatusCheckboxChange('live', this)"> PENDING</label>
+                  </div>
+                </div>
               </th>
               <th>Bars</th>
               <th>Time</th>
@@ -3177,8 +3261,6 @@ function switchTradeScenario(signalId, scenarioCode) {
     renderAnalysisCharts(signalId);
 }
 
-let ANALYSIS_CHARTS = {};
-
 function renderAnalysisCharts(signalId) {
     const data = TRADE_SIM_CACHE[signalId];
     if (!data) return;
@@ -4202,15 +4284,57 @@ function renderRows(signals, tbodyId) {
   const tb = $(tbodyId);
   if (!tb) return;
 
-  const filterVal = (tbodyId === 'fwd-tbody') ? currentSignalStatusFilter : currentLiveStatusFilter;
+  const filterVals = (tbodyId === 'fwd-tbody') ? currentSignalStatusFilters : currentLiveStatusFilters;
+  const filterVal = filterVals.join(',');
   let filtered = signals || [];
-  if (signals && signals.length && filterVal && filterVal !== 'ALL') {
+  if (signals && signals.length && filterVals) {
     filtered = signals.filter(s => {
       const st = (s.state || '').toUpperCase();
-      if (filterVal === 'COMPLETED') return st === 'COMPLETED';
-      if (filterVal === 'REJECTED') return ['REJECTED', 'FAILED'].includes(st);
-      if (filterVal === 'PENDING') return ['PENDING', 'ANALYZING', 'MACRO_PASSED', 'INGESTED'].includes(st);
-      return st === filterVal;
+      let matches = false;
+      if (filterVals.includes('COMPLETED') && st === 'COMPLETED') matches = true;
+      if (filterVals.includes('REJECTED') && ['REJECTED', 'FAILED'].includes(st)) matches = true;
+      if (filterVals.includes('PENDING') && ['PENDING', 'ANALYZING', 'MACRO_PASSED', 'INGESTED'].includes(st)) matches = true;
+      return matches;
+    });
+  }
+
+  if (tbodyId === 'fwd-tbody' && filtered.length > 0) {
+    const simFilters = currentSimPnlFilters;
+    const chk1 = document.getElementById("chk-s1")?.checked;
+    const chk2 = document.getElementById("chk-s2")?.checked;
+    const chk3 = document.getElementById("chk-s3")?.checked;
+    const chk4 = document.getElementById("chk-s4")?.checked;
+    const chk5 = document.getElementById("chk-s5")?.checked;
+    const chk6 = document.getElementById("chk-s6")?.checked;
+
+    const activeScenarios = [];
+    if (chk1) activeScenarios.push("S1");
+    if (chk2) activeScenarios.push("S2");
+    if (chk3) activeScenarios.push("S3");
+    if (chk4) activeScenarios.push("S4");
+    if (chk5) activeScenarios.push("S5");
+    if (chk6) activeScenarios.push("S6");
+
+    const logic = document.querySelector('input[name="sandbox-logic"]:checked')?.value || "AND";
+
+    filtered = filtered.filter(s => {
+      const sim = window.SANDBOX_SIMULATIONS_CACHE ? window.SANDBOX_SIMULATIONS_CACHE[s.id] : null;
+      if (sim && sim.market_context) {
+        let isExecuted = false;
+        if (activeScenarios.length > 0) {
+          if (logic === "AND") {
+            isExecuted = activeScenarios.every(sc => sim.scenarios[sc] && sim.scenarios[sc].executed);
+          } else {
+            isExecuted = activeScenarios.some(sc => sim.scenarios[sc] && sim.scenarios[sc].executed);
+          }
+        }
+        if (isExecuted) {
+          return simFilters.includes('Executed');
+        } else {
+          return simFilters.includes('Filtered');
+        }
+      }
+      return simFilters.includes('Filtered');
     });
   }
 
@@ -4581,10 +4705,8 @@ async function refresh() {
   // 2. Fetch filtered FORWARD signals for Table
   let fwdUrl = "/api/signals?mode=FORWARD&limit=" + signalLimit;
   if (currentSignalSymbol !== "ALL") fwdUrl += `&symbol=${currentSignalSymbol}`;
-  if (currentSignalStatusFilter && currentSignalStatusFilter !== 'ALL') {
-    let stateParam = currentSignalStatusFilter;
-    if (currentSignalStatusFilter === 'REJECTED') stateParam = 'REJECTED,FAILED';
-    if (currentSignalStatusFilter === 'PENDING') stateParam = 'PENDING,ANALYZING,MACRO_PASSED,INGESTED';
+  const stateParam = getStatusFilterStateParam(currentSignalStatusFilters);
+  if (stateParam) {
     fwdUrl += `&state=${stateParam}`;
   }
   const fwdData = await get(fwdUrl);
@@ -4690,11 +4812,9 @@ async function refresh() {
   // 2. Fetch filtered LIVE signals for Table
   let liveUrl = "/api/signals?mode=LIVE&limit=" + signalLimit;
   if (currentLiveSymbol !== "ALL") liveUrl += `&symbol=${currentLiveSymbol}`;
-  if (currentLiveStatusFilter && currentLiveStatusFilter !== 'ALL') {
-    let stateParam = currentLiveStatusFilter;
-    if (currentLiveStatusFilter === 'REJECTED') stateParam = 'REJECTED,FAILED';
-    if (currentLiveStatusFilter === 'PENDING') stateParam = 'PENDING,ANALYZING,MACRO_PASSED,INGESTED';
-    liveUrl += `&state=${stateParam}`;
+  const liveStateParam = getStatusFilterStateParam(currentLiveStatusFilters);
+  if (liveStateParam) {
+    liveUrl += `&state=${liveStateParam}`;
   }
   const allData = await get(liveUrl);
   if (allData && allData.signals) {
@@ -5374,8 +5494,9 @@ let currentChartSymbol = 'BTCUSDT';
 let currentSignalSymbol = 'ALL';
 let currentLiveSymbol = 'ALL';
 let currentChartStatusFilter = 'ALL';
-let currentSignalStatusFilter = 'ALL';
-let currentLiveStatusFilter = 'ALL';
+let currentSignalStatusFilters = ['COMPLETED', 'REJECTED', 'PENDING'];
+let currentLiveStatusFilters = ['COMPLETED', 'REJECTED', 'PENDING'];
+let currentSimPnlFilters = ['Executed', 'Filtered'];
 let idSortDirection = 'desc'; // 'desc' or 'asc'
 let activeSignalRow = null;
 let activeSignalId = null;
@@ -6143,42 +6264,137 @@ async function switchChartStatusFilter(status) {
     if (btn) btn.classList.add('active');
   }
   
-  // Synchronize dropdown selects in table headers
-  const fwdSelect = document.getElementById('fwdStatusFilter');
-  if (fwdSelect) fwdSelect.value = status;
-  const liveSelect = document.getElementById('liveStatusFilter');
-  if (liveSelect) liveSelect.value = status;
-
-  currentSignalStatusFilter = status;
-  currentLiveStatusFilter = status;
+  // Synchronize checkboxes in table headers
+  if (status === 'ALL') {
+    currentSignalStatusFilters = ['COMPLETED', 'REJECTED', 'PENDING'];
+    currentLiveStatusFilters = ['COMPLETED', 'REJECTED', 'PENDING'];
+  } else {
+    currentSignalStatusFilters = [status];
+    currentLiveStatusFilters = [status];
+  }
+  syncCheckboxUIFromFilters();
 
   await refresh();
 }
 
+function getStatusFilterStateParam(filters) {
+  if (!filters || filters.length === 0) {
+    return 'NONE';
+  }
+  if (filters.length === 3) {
+    return null; // fetch all (ALL)
+  }
+  let states = [];
+  if (filters.includes('COMPLETED')) {
+    states.push('COMPLETED');
+  }
+  if (filters.includes('REJECTED')) {
+    states.push('REJECTED,FAILED');
+  }
+  if (filters.includes('PENDING')) {
+    states.push('PENDING,ANALYZING,MACRO_PASSED,INGESTED');
+  }
+  return states.join(',');
+}
+
+function syncCheckboxUIFromFilters() {
+  document.querySelectorAll('#fwdStatusDropdown input[type="checkbox"]').forEach(cb => {
+    cb.checked = currentSignalStatusFilters.includes(cb.value);
+  });
+  document.querySelectorAll('#liveStatusDropdown input[type="checkbox"]').forEach(cb => {
+    cb.checked = currentLiveStatusFilters.includes(cb.value);
+  });
+  document.querySelectorAll('#fwdSimDropdown input[type="checkbox"]').forEach(cb => {
+    cb.checked = currentSimPnlFilters.includes(cb.value);
+  });
+}
+
+async function onStatusCheckboxChange(mode, cb) {
+  const checked = cb.checked;
+  const value = cb.value;
+  
+  if (mode === 'fwd') {
+    if (checked) {
+      if (!currentSignalStatusFilters.includes(value)) currentSignalStatusFilters.push(value);
+    } else {
+      currentSignalStatusFilters = currentSignalStatusFilters.filter(v => v !== value);
+    }
+    currentLiveStatusFilters = [...currentSignalStatusFilters];
+  } else {
+    if (checked) {
+      if (!currentLiveStatusFilters.includes(value)) currentLiveStatusFilters.push(value);
+    } else {
+      currentLiveStatusFilters = currentLiveStatusFilters.filter(v => v !== value);
+    }
+    currentSignalStatusFilters = [...currentLiveStatusFilters];
+  }
+  
+  syncCheckboxUIFromFilters();
+
+  const chartTabs = document.getElementById('chartStatusTabs');
+  if (chartTabs) {
+    chartTabs.querySelectorAll('.chart-sym-btn').forEach(b => b.classList.remove('active'));
+    let activeTabName = 'ALL';
+    if (currentSignalStatusFilters.length === 1) {
+      activeTabName = currentSignalStatusFilters[0];
+    }
+    const btn = [...chartTabs.querySelectorAll('.chart-sym-btn')].find(b => b.textContent.trim() === activeTabName);
+    if (btn) btn.classList.add('active');
+  }
+
+  await refresh();
+}
+
+async function onSimCheckboxChange() {
+  const activeFilters = [];
+  document.querySelectorAll('#fwdSimDropdown input[type="checkbox"]').forEach(cb => {
+    if (cb.checked) activeFilters.push(cb.value);
+  });
+  currentSimPnlFilters = activeFilters;
+  await refresh();
+}
+
 async function switchSignalStatusFilter(status) {
-  currentSignalStatusFilter = status;
-  // Sync chart tab highlight
+  if (status === 'ALL') {
+    currentSignalStatusFilters = ['COMPLETED', 'REJECTED', 'PENDING'];
+    currentLiveStatusFilters = ['COMPLETED', 'REJECTED', 'PENDING'];
+  } else {
+    currentSignalStatusFilters = [status];
+    currentLiveStatusFilters = [status];
+  }
+  
   const chartTabs = document.getElementById('chartStatusTabs');
   if (chartTabs) {
     chartTabs.querySelectorAll('.chart-sym-btn').forEach(b => b.classList.remove('active'));
     const btn = [...chartTabs.querySelectorAll('.chart-sym-btn')].find(b => b.textContent.trim() === status);
     if (btn) btn.classList.add('active');
   }
-  // Sync liveStatusFilter select dropdown
-  const liveSelect = document.getElementById('liveStatusFilter');
-  if (liveSelect) liveSelect.value = status;
-  const fwdSelect = document.getElementById('fwdStatusFilter');
-  if (fwdSelect) fwdSelect.value = status;
-
-  currentLiveStatusFilter = status;
-  currentChartStatusFilter = status;
-
+  
+  syncCheckboxUIFromFilters();
   await refresh();
 }
 
 async function switchLiveStatusFilter(status) {
   await switchSignalStatusFilter(status);
 }
+
+document.addEventListener('click', function(e) {
+  const dropdown = e.target.closest('.header-checkbox-dropdown');
+  if (dropdown) {
+    const trigger = e.target.closest('.dropdown-trigger');
+    if (trigger) {
+      document.querySelectorAll('.header-checkbox-dropdown').forEach(d => {
+        if (d !== dropdown) d.classList.remove('active');
+      });
+      dropdown.classList.toggle('active');
+      e.stopPropagation();
+    }
+  } else {
+    document.querySelectorAll('.header-checkbox-dropdown').forEach(d => {
+      d.classList.remove('active');
+    });
+  }
+});
 
 function switchSignalLimit(limit) {
   signalLimit = parseInt(limit) || 200;
@@ -6633,7 +6849,7 @@ function getParamsQueryString() {
 
 function getFilteredV22Trades() {
     const cache = (currentMode === "live") ? liveCache : fwdCache;
-    const filterVal = (currentMode === "live") ? currentLiveStatusFilter : currentSignalStatusFilter;
+    const filterVals = (currentMode === "live") ? currentLiveStatusFilters : currentSignalStatusFilters;
     const symbolFilter = (currentMode === "live") ? currentLiveSymbol : currentSignalSymbol;
     
     let filtered = cache || [];
@@ -6641,13 +6857,54 @@ function getFilteredV22Trades() {
         filtered = filtered.filter(s => (s.symbol || '').toUpperCase() === symbolFilter.toUpperCase());
     }
     
-    if (filterVal && filterVal !== 'ALL') {
+    if (filterVals) {
         filtered = filtered.filter(s => {
             const st = (s.state || '').toUpperCase();
-            if (filterVal === 'COMPLETED') return st === 'COMPLETED';
-            if (filterVal === 'REJECTED') return ['REJECTED', 'FAILED'].includes(st);
-            if (filterVal === 'PENDING') return ['PENDING', 'ANALYZING', 'MACRO_PASSED', 'INGESTED'].includes(st);
-            return st === filterVal;
+            let matches = false;
+            if (filterVals.includes('COMPLETED') && st === 'COMPLETED') matches = true;
+            if (filterVals.includes('REJECTED') && ['REJECTED', 'FAILED'].includes(st)) matches = true;
+            if (filterVals.includes('PENDING') && ['PENDING', 'ANALYZING', 'MACRO_PASSED', 'INGESTED'].includes(st)) matches = true;
+            return matches;
+        });
+    }
+    
+    if (currentMode !== 'live' && filtered.length > 0) {
+        const simFilters = currentSimPnlFilters;
+        const chk1 = document.getElementById("chk-s1")?.checked;
+        const chk2 = document.getElementById("chk-s2")?.checked;
+        const chk3 = document.getElementById("chk-s3")?.checked;
+        const chk4 = document.getElementById("chk-s4")?.checked;
+        const chk5 = document.getElementById("chk-s5")?.checked;
+        const chk6 = document.getElementById("chk-s6")?.checked;
+
+        const activeScenarios = [];
+        if (chk1) activeScenarios.push("S1");
+        if (chk2) activeScenarios.push("S2");
+        if (chk3) activeScenarios.push("S3");
+        if (chk4) activeScenarios.push("S4");
+        if (chk5) activeScenarios.push("S5");
+        if (chk6) activeScenarios.push("S6");
+
+        const logic = document.querySelector('input[name="sandbox-logic"]:checked')?.value || "AND";
+
+        filtered = filtered.filter(s => {
+            const sim = window.SANDBOX_SIMULATIONS_CACHE ? window.SANDBOX_SIMULATIONS_CACHE[s.id] : null;
+            if (sim && sim.market_context) {
+                let isExecuted = false;
+                if (activeScenarios.length > 0) {
+                    if (logic === "AND") {
+                        isExecuted = activeScenarios.every(sc => sim.scenarios[sc] && sim.scenarios[sc].executed);
+                    } else {
+                        isExecuted = activeScenarios.some(sc => sim.scenarios[sc] && sim.scenarios[sc].executed);
+                    }
+                }
+                if (isExecuted) {
+                    return simFilters.includes('Executed');
+                } else {
+                    return simFilters.includes('Filtered');
+                }
+            }
+            return simFilters.includes('Filtered');
         });
     }
     
@@ -7171,954 +7428,6 @@ function switchTradeScenario(vbsId, scenarioCode) {
     renderAnalysisCharts(vbsId);
 }
 
-const formatUtcTime = (ts) => {
-    if (!ts) return '';
-    const d = new Date(ts);
-    const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const da = String(d.getUTCDate()).padStart(2, '0');
-    const hr = String(d.getUTCHours()).padStart(2, '0');
-    const mi = String(d.getUTCMinutes()).padStart(2, '0');
-    return `${mo}-${da} ${hr}:${mi}`;
-};
-
-const formatUtcDateShort = (ts) => {
-    if (!ts) return '';
-    const d = new Date(ts);
-    const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const da = String(d.getUTCDate()).padStart(2, '0');
-    return `${mo}-${da}`;
-};
-
-const formatUtcDate = (ts) => {
-    if (!ts) return '';
-    const d = new Date(ts);
-    const yr = d.getUTCFullYear();
-    const mo = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const da = String(d.getUTCDate()).padStart(2, '0');
-    return `${yr}-${mo}-${da}`;
-};
-
-const entryExitLinesPlugin = {
-    id: 'entry_exit_lines',
-    afterDraw: (chart, args, options) => {
-        if (!options || !options.enabled) return;
-        const entryIdx = options.entryIdx;
-        const exitIdx = options.exitIdx;
-        const entryTime = options.entryTime;
-        const exitTime = options.exitTime;
-        
-        const ctx2d = chart.ctx;
-        const meta = chart.getDatasetMeta(0);
-        if (!meta || !meta.data || meta.data.length === 0) return;
-        
-        const yTop = chart.chartArea.top;
-        const yBottom = chart.chartArea.bottom;
-        
-        ctx2d.save();
-        
-        if (entryIdx !== undefined && entryIdx !== null && entryIdx >= 0 && entryIdx < meta.data.length) {
-            const el = meta.data[entryIdx];
-            if (el) {
-                const x = el.x;
-                ctx2d.beginPath();
-                ctx2d.moveTo(x, yTop);
-                ctx2d.lineTo(x, yBottom);
-                ctx2d.strokeStyle = 'rgba(38, 166, 154, 0.7)'; 
-                ctx2d.lineWidth = 1.5;
-                ctx2d.setLineDash([4, 3]);
-                ctx2d.stroke();
-                
-                ctx2d.fillStyle = 'rgba(38, 166, 154, 0.95)';
-                ctx2d.font = '8px JetBrains Mono, monospace';
-                ctx2d.textAlign = 'left';
-                ctx2d.fillText(`Entry: ${entryTime || ''}`, x + 4, yTop + 10);
-            }
-        }
-        
-        if (exitIdx !== undefined && exitIdx !== null && exitIdx >= 0 && exitIdx < meta.data.length) {
-            const el = meta.data[exitIdx];
-            if (el) {
-                const x = el.x;
-                ctx2d.beginPath();
-                ctx2d.moveTo(x, yTop);
-                ctx2d.lineTo(x, yBottom);
-                ctx2d.strokeStyle = 'rgba(239, 83, 80, 0.7)'; 
-                ctx2d.lineWidth = 1.5;
-                ctx2d.setLineDash([4, 3]);
-                ctx2d.stroke();
-                
-                ctx2d.fillStyle = 'rgba(239, 83, 80, 0.95)';
-                ctx2d.font = '8px JetBrains Mono, monospace';
-                
-                if (x > chart.width - 80) {
-                    ctx2d.textAlign = 'right';
-                    ctx2d.fillText(`Exit: ${exitTime || ''}`, x - 4, yTop + 22);
-                } else {
-                    ctx2d.textAlign = 'left';
-                    ctx2d.fillText(`Exit: ${exitTime || ''}`, x + 4, yTop + 22);
-                }
-            }
-        }
-        
-        ctx2d.restore();
-    }
-};
-
-function renderAnalysisCharts(vbsId) {
-    const data = TRADE_SIM_CACHE[vbsId];
-    if (!data) return;
-    
-    if (ANALYSIS_CHARTS[vbsId]) {
-        ANALYSIS_CHARTS[vbsId].forEach(c => {
-            try { c.destroy(); } catch (e) {}
-        });
-    }
-    ANALYSIS_CHARTS[vbsId] = [];
-    
-    const raw = data.candles;
-    const dailyRaw = data.daily_candles || [];
-    const scenarios = data.scenarios;
-    const info = data.signal_info;
-    const ctx_data = data.market_context;
-    
-    const selectedSc = SELECTED_TRADE_SCENARIO[vbsId] || SELECTED_SCENARIO || 'S4';
-    const scData = scenarios[selectedSc];
-
-    const c2Title = document.getElementById(`card2_title_${vbsId}`);
-    const c2ChartBox = document.getElementById(`card2_chart_box_${vbsId}`);
-    const c2CustomBox = document.getElementById(`card2_custom_box_${vbsId}`);
-    
-    const c3Title = document.getElementById(`card3_title_${vbsId}`);
-    const c3ChartBox = document.getElementById(`card3_chart_box_${vbsId}`);
-    const c3CustomBox = document.getElementById(`card3_custom_box_${vbsId}`);
-
-    if (c2ChartBox) c2ChartBox.style.display = 'block';
-    if (c2CustomBox) c2CustomBox.style.display = 'none';
-    if (c3ChartBox) c3ChartBox.style.display = 'block';
-    if (c3CustomBox) c3CustomBox.style.display = 'none';
-
-    const pnlCanvas = document.getElementById(`analysis_pnl_${vbsId}`);
-    if (pnlCanvas) {
-        const pnlCtx = pnlCanvas.getContext('2d');
-        const labels = [];
-        const pnlValues = [];
-        const bgColors = [];
-        const borderColors = [];
-        
-        for (const [code, sc] of Object.entries(scenarios)) {
-            labels.push(code);
-            if (sc.executed) {
-                const pnl = sc.pnl_pct * 100;
-                pnlValues.push(pnl);
-                bgColors.push(pnl >= 0 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)');
-                borderColors.push(pnl >= 0 ? '#26a69a' : '#ef5350');
-            } else {
-                pnlValues.push(0);
-                bgColors.push('rgba(100, 116, 139, 0.15)');
-                borderColors.push('rgba(100, 116, 139, 0.3)');
-            }
-        }
-        
-        const selectedIdx = labels.indexOf(selectedSc);
-        const highlightBorderWidths = labels.map((_, i) => i === selectedIdx ? 3 : 1.5);
-        const highlightBorderColors = borderColors.map((c, i) => {
-            if (i === selectedIdx) return '#FBBF24'; 
-            return c;
-        });
-        
-        const pnlChart = new Chart(pnlCtx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'P&L %',
-                    data: pnlValues,
-                    backgroundColor: bgColors,
-                    borderColor: highlightBorderColors,
-                    borderWidth: highlightBorderWidths,
-                    borderRadius: 4,
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                onClick: (event, elements) => {
-                    if (elements.length > 0) {
-                        const idx = elements[0].index;
-                        const clickedCode = labels[idx];
-                        switchTradeScenario(vbsId, clickedCode);
-                    }
-                },
-                onHover: (event, elements) => {
-                    event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
-                },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: 'rgba(13,18,31,0.95)',
-                        borderColor: 'rgba(255,255,255,0.08)',
-                        borderWidth: 1,
-                        titleColor: '#F8FAFC', bodyColor: '#94A3B8',
-                        callbacks: {
-                            title: (items) => {
-                                const code = items[0]?.label;
-                                const isActive = code === selectedSc;
-                                return `${code} ${isActive ? '(ACTIVE)' : '— Click to switch'}`;
-                            },
-                            label: (ctx) => {
-                                const sc = scenarios[ctx.label];
-                                if (!sc || !sc.executed) return 'FILTERED — scenario not triggered';
-                                return `${ctx.parsed.y >= 0 ? '+' : ''}${ctx.parsed.y.toFixed(2)}% (${sc.outcome})`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: { ticks: { color: '#64748B', font: { size: 9, family: 'JetBrains Mono' } }, grid: { display: false } },
-                    y: {
-                        ticks: { color: '#64748B', font: { size: 8 }, callback: v => `${v.toFixed(1)}%` },
-                        grid: { color: 'rgba(255,255,255,0.03)' }
-                    }
-                }
-            }
-        });
-        ANALYSIS_CHARTS[vbsId].push(pnlChart);
-    }
-
-    const isLong = info.action === 'BUY' || info.action === 'LONG';
-    const emaCanvas = document.getElementById(`analysis_ema_${vbsId}`);
-    const volCanvas = document.getElementById(`analysis_vol_${vbsId}`);
-
-    if (selectedSc === 'S1') {
-        if (c2Title) c2Title.innerHTML = '📈 EMA Overlay (20 / 50 / 200)';
-        if (c3Title) c3Title.innerHTML = '📉 Hourly Volume Profile';
-        drawEmaOverlayChart(vbsId, emaCanvas, raw, info, selectedSc, scData);
-        drawVolumeProfileChart(vbsId, volCanvas, raw, true, info, scData);
-    } 
-    else if (selectedSc === 'S2') {
-        if (c2Title) c2Title.innerHTML = '📋 Trend Template Checklist';
-        if (c3Title) c3Title.innerHTML = '📊 VCP Contraction Ratios';
-
-        if (c2ChartBox) c2ChartBox.style.display = 'none';
-        if (c2CustomBox) {
-            c2CustomBox.style.display = 'block';
-            const tt = ctx_data.tt_details || {};
-            const keys = isLong ? 
-                ['Price > SMA150 & SMA200', 'SMA150 > SMA200', 'SMA200 Slope Up', 'SMA50 > SMA150 & SMA200', 'Price > SMA50', 'Price >= Low52w + 30%', 'Price >= High52w - 25%', 'RS Ratio vs BTC > 1'] :
-                ['Price < SMA150 & SMA200', 'SMA150 < SMA200', 'SMA200 Slope Down', 'SMA50 < SMA150 & SMA200', 'Price < SMA50', 'Price <= High52w - 30%', 'Price <= Low52w + 25%', 'RS Ratio vs BTC < 1'];
-            
-            let ttHtml = '<div class="tt-list">';
-            for (let i = 1; i <= 8; i++) {
-                const passed = tt[`c${i}`];
-                const cls = passed ? 'pass' : 'fail';
-                const icon = passed ? '✓' : '✗';
-                ttHtml += `
-                    <div class="tt-item ${cls}">
-                        <span class="tt-icon ${cls}">${icon}</span>
-                        <span class="tt-text" title="${keys[i-1]}">${keys[i-1]}</span>
-                    </div>`;
-            }
-            ttHtml += '</div>';
-            c2CustomBox.innerHTML = ttHtml;
-        }
-
-        drawVcpContractionChart(vbsId, volCanvas, ctx_data);
-    } 
-    else if (selectedSc === 'S3') {
-        if (c2Title) c2Title.innerHTML = '📈 Daily EMA Stack (20 / 50 / 100)';
-        if (c3Title) c3Title.innerHTML = '📉 Daily Volume Profile';
-        drawDailyEmaStackChart(vbsId, emaCanvas, dailyRaw, info, scData);
-        drawVolumeProfileChart(vbsId, volCanvas, dailyRaw, false, info, scData);
-    } 
-    else if (selectedSc === 'S4') {
-        if (c2Title) c2Title.innerHTML = '📏 ATR Channels & Trailing Stop';
-        if (c3Title) c3Title.innerHTML = '📉 Hourly Volume Profile';
-        drawAtrTrailingChart(vbsId, emaCanvas, raw, info, scData);
-        drawVolumeProfileChart(vbsId, volCanvas, raw, true, info, scData);
-    } 
-    else if (selectedSc === 'S5') {
-        if (c2Title) c2Title.innerHTML = '📋 Dual Trend Alignment Checklist';
-        if (c3Title) c3Title.innerHTML = '📈 Hourly EMA Stack (20 / 50 / 200)';
-        
-        if (c2ChartBox) c2ChartBox.style.display = 'none';
-        if (c2CustomBox) {
-            c2CustomBox.style.display = 'block';
-            const startHour = raw[info.relative_entry_idx] || {};
-            const h_ema20 = startHour.ema20 || 0;
-            const h_ema50 = startHour.ema50 || 0;
-            const h_ema200 = startHour.ema200 || 0;
-            const h_aligned = isLong ? (h_ema20 > h_ema50 && h_ema50 > h_ema200) : (h_ema20 < h_ema50 && h_ema50 < h_ema200);
-
-            const tt_score_ok = ctx_data.tt_score >= 5;
-
-            let h_desc = isLong ? `EMA20 ($${Math.round(h_ema20)}) > EMA50 ($${Math.round(h_ema50)}) > EMA200 ($${Math.round(h_ema200)})` :
-                                 `EMA20 ($${Math.round(h_ema20)}) < EMA50 ($${Math.round(h_ema50)}) < EMA200 ($${Math.round(h_ema200)})`;
-
-            c2CustomBox.innerHTML = `
-                <div style="display: flex; flex-direction: column; gap: 10px; height: 100%; justify-content: center; padding: 4px 10px;">
-                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: ${tt_score_ok ? 'rgba(38,166,154,0.04)' : 'rgba(239,83,80,0.02)'}; border: 1px solid ${tt_score_ok ? 'rgba(38,166,154,0.2)' : 'rgba(239,83,80,0.12)'}; border-radius: 8px;">
-                        <span class="tt-icon ${tt_score_ok ? 'pass' : 'fail'}" style="font-size:16px;">${tt_score_ok ? '✓' : '✗'}</span>
-                        <div>
-                            <div style="font-weight:700; font-size:11px; color:#ffffff;">1. Daily Trend Template Score</div>
-                            <div style="font-size:10px; color:var(--text-muted);">Score is ${ctx_data.tt_score}/8 (requires >= 5)</div>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: ${h_aligned ? 'rgba(38,166,154,0.04)' : 'rgba(239,83,80,0.02)'}; border: 1px solid ${h_aligned ? 'rgba(38,166,154,0.2)' : 'rgba(239,83,80,0.12)'}; border-radius: 8px;">
-                        <span class="tt-icon ${h_aligned ? 'pass' : 'fail'}" style="font-size:16px;">${h_aligned ? '✓' : '✗'}</span>
-                        <div>
-                            <div style="font-weight:700; font-size:11px; color:#ffffff;">2. Hourly EMA Alignment</div>
-                            <div style="font-size:9px; color:var(--text-muted); line-height: 1.2;">${h_desc}</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        drawEmaOverlayChart(vbsId, volCanvas, raw, info, selectedSc, scData);
-    } 
-    else if (selectedSc === 'S6') {
-        if (c2Title) c2Title.innerHTML = '👁️ Daily RSI14 Chart';
-        if (c3Title) c3Title.innerHTML = '📊 Daily MACD Histogram';
-        drawDailyRsiChart(vbsId, emaCanvas, dailyRaw, ctx_data, info, scData);
-        drawDailyMacdChart(vbsId, volCanvas, dailyRaw, info, scData);
-    }
-}
-
-function drawEmaOverlayChart(vbsId, canvas, raw, info, selectedSc, sc) {
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const step = 1; 
-    const labels = [];
-    const closeData = [];
-    const ema20Data = [];
-    const ema50Data = [];
-    const ema200Data = [];
-    
-    for (let i = 0; i < raw.length; i += step) {
-        const c = raw[i];
-        const dt = new Date(c.timestamp);
-        labels.push(`${dt.getMonth()+1}/${dt.getDate()} ${dt.getHours()}h`);
-        closeData.push(c.close);
-        ema20Data.push(c.ema20 || null);
-        ema50Data.push(c.ema50 || null);
-        ema200Data.push(c.ema200 || null);
-    }
-    
-    const datasets = [
-        { label: 'Close', data: closeData, borderColor: '#d1d4dc', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
-    ];
-    if (ema20Data.some(v => v !== null)) datasets.push({ label: 'EMA20', data: ema20Data, borderColor: '#FBBF24', borderWidth: 1.2, pointRadius: 0, tension: 0.2, borderDash: [3, 2] });
-    if (ema50Data.some(v => v !== null)) datasets.push({ label: 'EMA50', data: ema50Data, borderColor: '#38BDF8', borderWidth: 1.2, pointRadius: 0, tension: 0.2, borderDash: [3, 2] });
-    if (ema200Data.some(v => v !== null)) datasets.push({ label: 'EMA200', data: ema200Data, borderColor: '#C084FC', borderWidth: 1.2, pointRadius: 0, tension: 0.2, borderDash: [5, 3] });
-    
-    datasets.push({
-        label: 'Entry',
-        data: Array(labels.length).fill(info.price),
-        borderColor: '#26a69a',
-        borderWidth: 1,
-        pointRadius: 0,
-        borderDash: [6, 4],
-    });
-    
-    if (sc && sc.executed) {
-        datasets.push({
-            label: `SL`,
-            data: Array(labels.length).fill(sc.sl),
-            borderColor: '#ef5350',
-            borderWidth: 1,
-            pointRadius: 0,
-            borderDash: [4, 3],
-        });
-        datasets.push({
-            label: `TP`,
-            data: Array(labels.length).fill(sc.tp),
-            borderColor: '#2962ff',
-            borderWidth: 1,
-            pointRadius: 0,
-            borderDash: [4, 3],
-        });
-    }
-    
-    const entryIdx = info.relative_entry_idx;
-    const exitIdx = sc && sc.executed ? entryIdx + sc.bars : null;
-    const entryTime = formatUtcTime(raw[entryIdx]?.timestamp);
-    const exitTime = sc && sc.executed ? formatUtcTime(raw[exitIdx]?.timestamp || sc.close_time_ms) : '';
-    
-    const chartInst = new Chart(ctx, {
-        type: 'line',
-        data: { labels, datasets },
-        plugins: [entryExitLinesPlugin],
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-                legend: { display: true, labels: { color: '#94A3B8', font: { size: 8, family: 'Inter' }, boxWidth: 10 } },
-                tooltip: {
-                    backgroundColor: 'rgba(13,18,31,0.95)',
-                    callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString(undefined, {maximumFractionDigits: 0})}` }
-                },
-                entry_exit_lines: {
-                    enabled: true,
-                    entryIdx: entryIdx,
-                    exitIdx: exitIdx,
-                    entryTime: entryTime,
-                    exitTime: exitTime
-                }
-            },
-            scales: {
-                x: { display: false },
-                y: {
-                    ticks: { color: '#64748B', font: { size: 8 }, callback: v => `$${(v/1000).toFixed(1)}k` },
-                    grid: { color: 'rgba(255,255,255,0.03)' }
-                }
-            }
-        }
-    });
-    ANALYSIS_CHARTS[vbsId].push(chartInst);
-}
-
-function drawVolumeProfileChart(vbsId, canvas, raw, isHourly, info, sc) {
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const step = 1; 
-    const labels = [];
-    const volData = [];
-    const volColors = [];
-    
-    for (let i = 0; i < raw.length; i += step) {
-        const c = raw[i];
-        const dt = new Date(c.timestamp);
-        labels.push(isHourly ? `${dt.getHours()}h` : `${dt.getMonth()+1}/${dt.getDate()}`);
-        volData.push(c.volume);
-        volColors.push(c.close >= c.open ? 'rgba(38, 166, 154, 0.35)' : 'rgba(239, 83, 80, 0.35)');
-    }
-    
-    let entryIdx = null;
-    let exitIdx = null;
-    let entryTime = '';
-    let exitTime = '';
-    
-    if (isHourly) {
-        if (info) {
-            entryIdx = info.relative_entry_idx;
-            entryTime = formatUtcTime(raw[entryIdx]?.timestamp);
-        }
-        if (sc && sc.executed && info) {
-            exitIdx = info.relative_entry_idx + sc.bars;
-            exitTime = formatUtcTime(raw[exitIdx]?.timestamp || sc.close_time_ms);
-        }
-    } else {
-        if (info) {
-            const entryHourTs = TRADE_SIM_CACHE[vbsId]?.candles[info.relative_entry_idx]?.timestamp;
-            if (entryHourTs) {
-                const entryDateStr = formatUtcDate(entryHourTs);
-                entryIdx = raw.findIndex(c => formatUtcDate(c.timestamp) === entryDateStr);
-                entryTime = formatUtcDateShort(entryHourTs);
-            }
-        }
-        if (sc && sc.executed && sc.close_time_ms) {
-            const exitDateStr = formatUtcDate(sc.close_time_ms);
-            exitIdx = raw.findIndex(c => formatUtcDate(c.timestamp) === exitDateStr);
-            exitTime = formatUtcDateShort(sc.close_time_ms);
-        }
-    }
-    
-    const chartInst = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Volume',
-                data: volData,
-                backgroundColor: volColors,
-                borderWidth: 0,
-                borderRadius: 2,
-            }]
-        },
-        plugins: [entryExitLinesPlugin],
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(13,18,31,0.95)',
-                    callbacks: { label: (ctx) => `Vol: ${ctx.parsed.y?.toLocaleString()}` }
-                },
-                entry_exit_lines: {
-                    enabled: true,
-                    entryIdx: entryIdx,
-                    exitIdx: exitIdx,
-                    entryTime: entryTime,
-                    exitTime: exitTime
-                }
-            },
-            scales: {
-                x: { display: false },
-                y: {
-                    ticks: { color: '#64748B', font: { size: 8 }, callback: v => `${(v/1e6).toFixed(1)}M` },
-                    grid: { color: 'rgba(255,255,255,0.03)' }
-                }
-            }
-        }
-    });
-    ANALYSIS_CHARTS[vbsId].push(chartInst);
-}
-
-function drawVcpContractionChart(vbsId, canvas, ctx_data) {
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    const vol_ratio = ctx_data.volume_ratio;
-    const range_ratio = ctx_data.range_ratio;
-    
-    const chartInst = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Volume Ratio', 'Range Ratio'],
-            datasets: [{
-                data: [vol_ratio, range_ratio],
-                backgroundColor: [
-                    vol_ratio < 0.5 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)',
-                    range_ratio < 0.5 ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
-                ],
-                borderColor: [
-                    vol_ratio < 0.5 ? '#26a69a' : '#ef5350',
-                    range_ratio < 0.5 ? '#26a69a' : '#ef5350'
-                ],
-                borderWidth: 1.5,
-                borderRadius: 6,
-                barPercentage: 0.5
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(13,18,31,0.95)',
-                    callbacks: {
-                        label: (c) => `${c.label}: ${c.parsed.y.toFixed(2)}x ${c.parsed.y < 0.5 ? '(CONTRACTED ✓)' : '(EXPANDED ✗)'}`
-                    }
-                }
-            },
-            scales: {
-                x: { ticks: { color: '#64748B', font: { size: 9, family: 'Inter' } }, grid: { display: false } },
-                y: {
-                    ticks: { color: '#64748B', font: { size: 8 } },
-                    grid: { color: 'rgba(255,255,255,0.03)' },
-                    suggestedMax: 1.0
-                }
-            }
-        },
-        plugins: [{
-            id: 'vcp_threshold_line',
-            afterDraw: (chart) => {
-                const yScale = chart.scales.y;
-                const yPos = yScale.getPixelForValue(0.5);
-                const ctx2d = chart.ctx;
-                ctx2d.save();
-                ctx2d.beginPath();
-                ctx2d.moveTo(chart.scales.x.left, yPos);
-                ctx2d.lineTo(chart.scales.x.right, yPos);
-                ctx2d.strokeStyle = 'rgba(255, 152, 0, 0.4)';
-                ctx2d.lineWidth = 1;
-                ctx2d.setLineDash([4, 4]);
-                ctx2d.stroke();
-                ctx2d.fillStyle = 'rgba(255, 152, 0, 0.7)';
-                ctx2d.font = '8px JetBrains Mono';
-                ctx2d.fillText('0.5 Limit', chart.scales.x.left + 5, yPos - 3);
-                ctx2d.restore();
-            }
-        }]
-    });
-    ANALYSIS_CHARTS[vbsId].push(chartInst);
-}
-
-function drawDailyEmaStackChart(vbsId, canvas, dailyRaw, info, sc) {
-    if (!canvas || dailyRaw.length === 0) return;
-    const ctx = canvas.getContext('2d');
-    
-    const labels = [];
-    const closeData = [];
-    const ema20Data = [];
-    const ema50Data = [];
-    const ema100Data = [];
-    
-    dailyRaw.forEach(c => {
-        const dt = new Date(c.timestamp);
-        labels.push(`${dt.getMonth()+1}/${dt.getDate()}`);
-        closeData.push(c.close);
-        ema20Data.push(c.ema20 || null);
-        ema50Data.push(c.ema50 || null);
-        ema100Data.push(c.ema100 || null);
-    });
-    
-    let entryIdx = null;
-    let exitIdx = null;
-    let entryTime = '';
-    let exitTime = '';
-    
-    const data = TRADE_SIM_CACHE[vbsId];
-    if (data && info) {
-        const entryHourTs = data.candles[info.relative_entry_idx]?.timestamp;
-        if (entryHourTs) {
-            const entryDateStr = formatUtcDate(entryHourTs);
-            entryIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === entryDateStr);
-            entryTime = formatUtcDateShort(entryHourTs);
-        }
-    }
-    if (sc && sc.executed && sc.close_time_ms) {
-        const exitDateStr = formatUtcDate(sc.close_time_ms);
-        exitIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === exitDateStr);
-        exitTime = formatUtcDateShort(sc.close_time_ms);
-    }
-    
-    const chartInst = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [
-                { label: 'Daily Close', data: closeData, borderColor: '#d1d4dc', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
-                { label: 'Daily EMA20', data: ema20Data, borderColor: '#FBBF24', borderWidth: 1.2, pointRadius: 0, tension: 0.2 },
-                { label: 'Daily EMA50', data: ema50Data, borderColor: '#38BDF8', borderWidth: 1.2, pointRadius: 0, tension: 0.2 },
-                { label: 'Daily EMA100', data: ema100Data, borderColor: '#C084FC', borderWidth: 1.2, pointRadius: 0, tension: 0.2, borderDash: [3, 2] }
-            ]
-        },
-        plugins: [entryExitLinesPlugin],
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-                legend: { display: true, labels: { color: '#94A3B8', font: { size: 8 }, boxWidth: 10 } },
-                tooltip: {
-                    backgroundColor: 'rgba(13,18,31,0.95)',
-                    callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString(undefined, {maximumFractionDigits: 0})}` }
-                },
-                entry_exit_lines: {
-                    enabled: true,
-                    entryIdx: entryIdx,
-                    exitIdx: exitIdx,
-                    entryTime: entryTime,
-                    exitTime: exitTime
-                }
-            },
-            scales: {
-                x: { display: false },
-                y: {
-                    ticks: { color: '#64748B', font: { size: 8 }, callback: v => `$${(v/1000).toFixed(1)}k` },
-                    grid: { color: 'rgba(255,255,255,0.03)' }
-                }
-            }
-        }
-    });
-    ANALYSIS_CHARTS[vbsId].push(chartInst);
-}
-
-function drawAtrTrailingChart(vbsId, canvas, raw, info, sc) {
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    const step = 1; 
-    const labels = [];
-    const closeData = [];
-    const trailData = [];
-    
-    const entry_idx = info.relative_entry_idx;
-    const trailHistory = sc ? sc.trailing_sl_history || [] : [];
-    
-    for (let i = 0; i < raw.length; i += step) {
-        const c = raw[i];
-        const dt = new Date(c.timestamp);
-        labels.push(`${dt.getMonth()+1}/${dt.getDate()} ${dt.getHours()}h`);
-        closeData.push(c.close);
-        
-        let trailVal = null;
-        if (i >= entry_idx) {
-            const hist_idx = i - entry_idx;
-            if (hist_idx < trailHistory.length) {
-                trailVal = trailHistory[hist_idx];
-            }
-        }
-        trailData.push(trailVal);
-    }
-    
-    const datasets = [
-        { label: 'Close', data: closeData, borderColor: '#d1d4dc', borderWidth: 1.5, pointRadius: 0, tension: 0.1 },
-        { label: 'Entry Price', data: Array(labels.length).fill(info.price), borderColor: '#26a69a', borderWidth: 1, pointRadius: 0, borderDash: [6, 4] }
-    ];
-    
-    if (trailHistory.length > 0) {
-        datasets.push({
-            label: 'Trailing Stop',
-            data: trailData,
-            borderColor: '#ff9800',
-            borderWidth: 1.5,
-            pointRadius: 0,
-            tension: 0.05,
-            borderDash: [2, 2]
-        });
-    } else if (sc && sc.sl) {
-        datasets.push({
-            label: 'Static SL',
-            data: Array(labels.length).fill(sc.sl),
-            borderColor: '#ef5350',
-            borderWidth: 1.2,
-            pointRadius: 0,
-            borderDash: [4, 3]
-        });
-    }
-    
-    if (sc && sc.tp) {
-        datasets.push({
-            label: 'TP',
-            data: Array(labels.length).fill(sc.tp),
-            borderColor: '#2962ff',
-            borderWidth: 1.2,
-            pointRadius: 0,
-            borderDash: [4, 3]
-        });
-    }
-    
-    const entryIdx = info.relative_entry_idx;
-    const exitIdx = sc && sc.executed ? entryIdx + sc.bars : null;
-    const entryTime = formatUtcTime(raw[entryIdx]?.timestamp);
-    const exitTime = sc && sc.executed ? formatUtcTime(raw[exitIdx]?.timestamp || sc.close_time_ms) : '';
-    
-    const chartInst = new Chart(ctx, {
-        type: 'line',
-        data: { labels, datasets },
-        plugins: [entryExitLinesPlugin],
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-                legend: { display: true, labels: { color: '#94A3B8', font: { size: 8 }, boxWidth: 10 } },
-                tooltip: {
-                    backgroundColor: 'rgba(13,18,31,0.95)',
-                    callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y?.toLocaleString(undefined, {maximumFractionDigits: 0})}` }
-                },
-                entry_exit_lines: {
-                    enabled: true,
-                    entryIdx: entryIdx,
-                    exitIdx: exitIdx,
-                    entryTime: entryTime,
-                    exitTime: exitTime
-                }
-            },
-            scales: {
-                x: { display: false },
-                y: {
-                    ticks: { color: '#64748B', font: { size: 8 }, callback: v => `$${(v/1000).toFixed(1)}k` },
-                    grid: { color: 'rgba(255,255,255,0.03)' }
-                }
-            }
-        }
-    });
-    ANALYSIS_CHARTS[vbsId].push(chartInst);
-}
-
-function drawDailyRsiChart(vbsId, canvas, dailyRaw, ctx_data, info, sc) {
-    if (!canvas || dailyRaw.length === 0) return;
-    const ctx = canvas.getContext('2d');
-    
-    const labels = [];
-    const rsiData = [];
-    
-    dailyRaw.forEach(c => {
-        const dt = new Date(c.timestamp);
-        labels.push(`${dt.getMonth()+1}/${dt.getDate()}`);
-        rsiData.push(c.rsi14 || null);
-    });
-    
-    let entryIdx = null;
-    let exitIdx = null;
-    let entryTime = '';
-    let exitTime = '';
-    
-    const data = TRADE_SIM_CACHE[vbsId];
-    if (data && info) {
-        const entryHourTs = data.candles[info.relative_entry_idx]?.timestamp;
-        if (entryHourTs) {
-            const entryDateStr = formatUtcDate(entryHourTs);
-            entryIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === entryDateStr);
-            entryTime = formatUtcDateShort(entryHourTs);
-        }
-    }
-    if (sc && sc.executed && sc.close_time_ms) {
-        const exitDateStr = formatUtcDate(sc.close_time_ms);
-        exitIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === exitDateStr);
-        exitTime = formatUtcDateShort(sc.close_time_ms);
-    }
-    
-    const chartInst = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Daily RSI14',
-                data: rsiData,
-                borderColor: '#c084fc',
-                borderWidth: 1.5,
-                pointRadius: 0,
-                tension: 0.1,
-                fill: false
-            }]
-        },
-        plugins: [entryExitLinesPlugin, {
-            id: 'rsi_threshold_line',
-            afterDraw: (chart) => {
-                const yScale = chart.scales.y;
-                const yPosThreshold = yScale.getPixelForValue(50.0);
-                const ctx2d = chart.ctx;
-                
-                ctx2d.save();
-                ctx2d.beginPath();
-                ctx2d.moveTo(chart.scales.x.left, yPosThreshold);
-                ctx2d.lineTo(chart.scales.x.right, yPosThreshold);
-                ctx2d.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-                ctx2d.lineWidth = 1;
-                ctx2d.stroke();
-                
-                ctx2d.fillStyle = 'rgba(255, 255, 255, 0.5)';
-                ctx2d.font = '8px JetBrains Mono';
-                ctx2d.fillText('50 Line', chart.scales.x.left + 5, yPosThreshold - 3);
-                ctx2d.restore();
-            }
-        }],
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(13,18,31,0.95)',
-                    callbacks: { label: (c) => `RSI: ${c.parsed.y.toFixed(2)}` }
-                },
-                entry_exit_lines: {
-                    enabled: true,
-                    entryIdx: entryIdx,
-                    exitIdx: exitIdx,
-                    entryTime: entryTime,
-                    exitTime: exitTime
-                }
-            },
-            scales: {
-                x: { display: false },
-                y: {
-                    ticks: { color: '#64748B', font: { size: 8 } },
-                    grid: { color: 'rgba(255,255,255,0.03)' },
-                    min: 0, max: 100
-                }
-            }
-        }
-    });
-    ANALYSIS_CHARTS[vbsId].push(chartInst);
-}
-
-function drawDailyMacdChart(vbsId, canvas, dailyRaw, info, sc) {
-    if (!canvas || dailyRaw.length === 0) return;
-    const ctx = canvas.getContext('2d');
-    
-    const labels = [];
-    const macdLine = [];
-    const macdSig = [];
-    const macdHist = [];
-    const histColors = [];
-    
-    dailyRaw.forEach(c => {
-        const dt = new Date(c.timestamp);
-        labels.push(`${dt.getMonth()+1}/${dt.getDate()}`);
-        macdLine.push(c.macd_line || null);
-        macdSig.push(c.macd_signal || null);
-        
-        const hist = (c.macd_line || 0) - (c.macd_signal || 0);
-        macdHist.push(hist);
-        histColors.push(hist >= 0 ? 'rgba(38, 166, 154, 0.4)' : 'rgba(239, 83, 80, 0.4)');
-    });
-    
-    let entryIdx = null;
-    let exitIdx = null;
-    let entryTime = '';
-    let exitTime = '';
-    
-    const data = TRADE_SIM_CACHE[vbsId];
-    if (data && info) {
-        const entryHourTs = data.candles[info.relative_entry_idx]?.timestamp;
-        if (entryHourTs) {
-            const entryDateStr = formatUtcDate(entryHourTs);
-            entryIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === entryDateStr);
-            entryTime = formatUtcDateShort(entryHourTs);
-        }
-    }
-    if (sc && sc.executed && sc.close_time_ms) {
-        const exitDateStr = formatUtcDate(sc.close_time_ms);
-        exitIdx = dailyRaw.findIndex(c => formatUtcDate(c.timestamp) === exitDateStr);
-        exitTime = formatUtcDateShort(sc.close_time_ms);
-    }
-    
-    const chartInst = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: 'Histogram',
-                    type: 'bar',
-                    data: macdHist,
-                    backgroundColor: histColors,
-                    borderWidth: 0,
-                    borderRadius: 2,
-                    order: 2
-                },
-                {
-                    label: 'MACD',
-                    type: 'line',
-                    data: macdLine,
-                    borderColor: '#38BDF8',
-                    borderWidth: 1.2,
-                    pointRadius: 0,
-                    tension: 0.1,
-                    fill: false,
-                    order: 1
-                },
-                {
-                    label: 'Signal',
-                    type: 'line',
-                    data: macdSig,
-                    borderColor: '#ff9800',
-                    borderWidth: 1.2,
-                    pointRadius: 0,
-                    tension: 0.1,
-                    fill: false,
-                    order: 1
-                }
-            ]
-        },
-        plugins: [entryExitLinesPlugin],
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-                legend: { display: true, labels: { color: '#94A3B8', font: { size: 8 }, boxWidth: 10 } },
-                tooltip: {
-                    backgroundColor: 'rgba(13,18,31,0.95)',
-                    callbacks: {
-                        label: (c) => `${c.dataset.label}: ${c.parsed.y?.toFixed(1)}`
-                    }
-                },
-                entry_exit_lines: {
-                    enabled: true,
-                    entryIdx: entryIdx,
-                    exitIdx: exitIdx,
-                    entryTime: entryTime,
-                    exitTime: exitTime
-                }
-            },
-            scales: {
-                x: { display: false },
-                y: {
-                    ticks: { color: '#64748B', font: { size: 8 } },
-                    grid: { color: 'rgba(255,255,255,0.03)' }
-                }
-            }
-        }
-    });
-    ANALYSIS_CHARTS[vbsId].push(chartInst);
-}
 
 // —"?—"? Boot —"?—"?—"?—"?—"?—"?—"?—"?—"?—"?
 set("footer-time", new Date().toISOString().substring(0,16).replace("T"," ")+" UTC");
