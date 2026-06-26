@@ -27,3 +27,18 @@ The following issues were identified, investigated, and successfully resolved:
 * **Symptom**: Selecting certain trade detail rows in the table caused a `TypeError` crash in `initMiniChart` when loading cached entries.
 * **Root Cause**: The caching logic failed to verify if `candles` data existed inside `TRADE_SIM_CACHE[signalId]` before attempting to render.
 * **Fix**: Added a guard condition to ensure `.candles` data is loaded before bypassing API calls.
+
+### 5. Row Expansion Stuck on Loading Spinner (JS Name Collision)
+* **Symptom**: Clicking on a forward-test signal row to expand it leaves the loading spinner displaying indefinitely.
+* **Root Cause**: Duplicate Javascript function declarations (`loadTradeDetailRow`, `renderStage1Data`, etc.) copied from the backtest tab silently overrode the signal-specific ones, attempting to query `expand_loading_${vbsId}` (which didn't exist in the signal table HTML structure) instead of `expand_sim_loading_${signalId}`, resulting in null reference aborts.
+* **Fix**: Renamed signal-specific functions to `loadSignalDetailRow`, `renderSignalStage1Data`, `toggleSignalStage2`, `initSignalMiniChart`, `updateSignalScenarioIndicator`, and `switchSignalScenario`, and updated all calling sites in the file.
+
+### 6. Signal Simulation Timestamp Outside Hourly Candle Range (Stale Candle Data)
+* **Symptom**: Expanding a forward test signal row failed with a `400: Signal timestamp is outside hourly candle range` error from the API.
+* **Root Cause**: The simulation endpoint `/api/simulate/{signal_id}` queried `scratch/vbs_replay.db` for daily/hourly candles, which only contains data up to `2026-06-23`. This failed for new, live forward-test signals with timestamps after that date.
+* **Fix**: Updated `run_single_simulation_main` in `main.py` to route queries for signals with ID >= 1,000,000 to read live-synced candles from the tables `ohlcv_1d` and `ohlcv_1h` in the main database `trades.db`.
+
+### 7. Flaky Integration Test Failure (Timeout)
+* **Symptom**: The integration test `test_event_ingestion` in `test_angati_integration.py` failed with an assertion error.
+* **Root Cause**: Subprocess launch of `angati.exe` for the first time took longer than the hardcoded 5-second polling timeout, causing the test to fail.
+* **Fix**: Increased the SQLite database polling timeout in `test_event_ingestion` to 15.0 seconds.

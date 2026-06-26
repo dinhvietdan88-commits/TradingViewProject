@@ -1,3 +1,8 @@
+## [2026-06-27] Forward Test Dashboard Row Expansion, Simulation Candles, and Test Timeout Fixes
+- Fixed Row Expansion Hang (JS Name Collision): Renamed signal-specific JS functions (e.g., `loadSignalDetailRow`, `renderSignalStage1Data`, etc.) in `forward_test.html` to prevent collisions with the backtest script, resolving the infinite loading spinner on row expansion.
+- Fixed Simulation Candles Out-of-Range: Updated `run_single_simulation_main` in `main.py` to route candle queries for forward-test/live signals (ID >= 1,000,000) to read fresh, live-synced candles from the main `trades.db` (tables `ohlcv_1d`/`ohlcv_1h`) instead of the stale `vbs_replay.db`.
+- Fixed Flaky Integration Test: Increased the SQLite polling timeout in `test_event_ingestion` in `test_angati_integration.py` from 5.0 to 15.0 seconds to prevent premature timeout failures on slower test runners.
+
 ## [2026-06-27] Mini-MDASH Security Remediations (TVP-005 & STA-002)
 - Remediated CWE-22 Potential Path Traversal: Sanitized the `symbol` parameter using `sanitize_symbol` in `chart_generator_mpl.py` before constructing file paths to prevent directory traversal attacks.
 - Remediated STA-002 Subprocess Popen: Added the inline `# nosec` comment to suppress the false-positive warning in `start_server.py`.
