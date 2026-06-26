@@ -3540,9 +3540,33 @@ async def run_single_simulation_main(signal_id: int, params: BacktestParams) -> 
                 pass
 
     # Load candles for specific symbol
-    df_1d = load_cached_candles(symbol, "1d")
-    df_1h = load_cached_candles(symbol, "1h")
-    df_btc_daily = load_cached_candles("BTCUSDT", "1d")
+    def load_live_candles(sym: str, timeframe: str):
+        import pandas as pd
+
+        table_name = "ohlcv_1d" if timeframe == "1d" else "ohlcv_1h"
+        db_file = config.DB_PATH
+        try:
+            conn = sqlite3.connect(str(db_file))
+            df = pd.read_sql_query(
+                f"SELECT timestamp, open, high, low, close, volume FROM {table_name} WHERE symbol = ? ORDER BY timestamp ASC",  # noqa: S608
+                conn,
+                params=(sym,),
+            )
+            conn.close()
+            if not df.empty:
+                return df
+        except Exception as ex:
+            log.warning(f"Failed to load live candles from trades.db for {sym}: {ex}")
+        return load_cached_candles(sym, timeframe)
+
+    if signal_id >= 1000000:
+        df_1d = load_live_candles(symbol, "1d")
+        df_1h = load_live_candles(symbol, "1h")
+        df_btc_daily = load_live_candles("BTCUSDT", "1d")
+    else:
+        df_1d = load_cached_candles(symbol, "1d")
+        df_1h = load_cached_candles(symbol, "1h")
+        df_btc_daily = load_cached_candles("BTCUSDT", "1d")
 
     if df_1d.empty or df_1h.empty or df_btc_daily.empty:
         raise HTTPException(
