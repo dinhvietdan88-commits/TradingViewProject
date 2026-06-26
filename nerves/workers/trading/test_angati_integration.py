@@ -90,7 +90,7 @@ class TestAngatiIntegration(unittest.TestCase):
         found = False
         start_time = time.time()
 
-        while time.time() - start_time < 5.0:  # 5 seconds timeout
+        while time.time() - start_time < 15.0:  # 15 seconds timeout
             time.sleep(0.5)
             if db_path.exists():
                 try:

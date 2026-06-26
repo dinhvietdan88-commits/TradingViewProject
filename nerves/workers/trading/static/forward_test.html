@@ -2873,7 +2873,7 @@ const entryExitLinesPlugin = {
     }
 };
 
-async function loadTradeDetailRow(signalId) {
+async function loadSignalDetailRow(signalId) {
   const loading = document.getElementById(`expand_sim_loading_${signalId}`);
   const content = document.getElementById(`expand_sim_content_${signalId}`);
   if (!loading || !content) return;
@@ -2898,7 +2898,7 @@ async function loadTradeDetailRow(signalId) {
           try { MINI_CHARTS[signalId].remove(); } catch(e){}
           MINI_CHARTS[signalId] = null;
         }
-        initMiniChart(signalId);
+        initSignalMiniChart(signalId);
         renderAnalysisCharts(signalId);
       }
     }
@@ -2907,7 +2907,7 @@ async function loadTradeDetailRow(signalId) {
   if (TRADE_SIM_CACHE[signalId] && TRADE_SIM_CACHE[signalId].candles) {
     loading.style.display = 'none';
     content.style.display = 'block';
-    renderStage1Data(signalId, TRADE_SIM_CACHE[signalId]);
+    renderSignalStage1Data(signalId, TRADE_SIM_CACHE[signalId]);
     restoreStates();
     return;
   }
@@ -2947,14 +2947,14 @@ async function loadTradeDetailRow(signalId) {
     
     loading.style.display = 'none';
     content.style.display = 'block';
-    renderStage1Data(signalId, data);
+    renderSignalStage1Data(signalId, data);
     restoreStates();
   } catch (e) {
     loading.innerHTML = `<span style="color:var(--danger-color); font-size:11px; font-weight:600;">Error: ${e.message}</span>`;
   }
 }
 
-function renderStage1Data(signalId, data) {
+function renderSignalStage1Data(signalId, data) {
     const miniExpand = document.getElementById(`mini_expand_${signalId}`);
     if (miniExpand) {
         const ctx = data.market_context;
@@ -3066,7 +3066,7 @@ function renderStage1Data(signalId, data) {
     `;
 }
 
-function toggleStage2(event, signalId) {
+function toggleSignalStage2(event, signalId) {
     if (event) {
         event.stopPropagation();
         event.preventDefault();
@@ -3084,12 +3084,12 @@ function toggleStage2(event, signalId) {
         container.style.display = 'flex';
         arrow.style.transform = 'rotate(180deg)';
         STAGE2_OPEN[signalId] = true;
-        initMiniChart(signalId);
+        initSignalMiniChart(signalId);
         renderAnalysisCharts(signalId);
     }
 }
 
-function initMiniChart(signalId, forceScenario) {
+function initSignalMiniChart(signalId, forceScenario) {
     const containerId = `mini_chart_container_${signalId}`;
     const chartDiv = document.getElementById(containerId);
     if (!chartDiv) return;
@@ -3227,10 +3227,10 @@ function initMiniChart(signalId, forceScenario) {
     MINI_CHARTS[signalId] = miniChart;
     MINI_CANDLE_SERIES[signalId] = miniCandlestickSeries;
     
-    updateScenarioIndicator(signalId, scCode, sc);
+    updateSignalScenarioIndicator(signalId, scCode, sc);
 }
 
-function updateScenarioIndicator(signalId, scCode, sc) {
+function updateSignalScenarioIndicator(signalId, scCode, sc) {
     const indicator = document.getElementById(`scenario_indicator_${signalId}`);
     if (!indicator) return;
     
@@ -3255,9 +3255,9 @@ function updateScenarioIndicator(signalId, scCode, sc) {
     }
 }
 
-function switchTradeScenario(signalId, scenarioCode) {
+function switchSignalScenario(signalId, scenarioCode) {
     SELECTED_TRADE_SCENARIO[signalId] = scenarioCode;
-    initMiniChart(signalId, scenarioCode);
+    initSignalMiniChart(signalId, scenarioCode);
     renderAnalysisCharts(signalId);
 }
 
@@ -3343,7 +3343,11 @@ function renderAnalysisCharts(signalId) {
                     if (elements.length > 0) {
                         const idx = elements[0].index;
                         const clickedCode = labels[idx];
-                        switchTradeScenario(signalId, clickedCode);
+                        if (signalId >= 1000000) {
+                            switchSignalScenario(signalId, clickedCode);
+                        } else {
+                            switchTradeScenario(signalId, clickedCode);
+                        }
                     }
                 },
                 onHover: (event, elements) => {
@@ -4220,7 +4224,7 @@ function generateSignalDetailHtml(s) {
 
         <!-- Divider with dynamic down arrow for Stage 2 -->
         <div class="expand-arrow-divider" style="display: flex; justify-content: center; align-items: center; border-top: 1px solid rgba(42, 58, 89, 0.2); padding-top: 10px; margin-top: 16px;">
-          <button class="arrow-btn" onclick="toggleStage2(event, ${s.id})">
+          <button class="arrow-btn" onclick="toggleSignalStage2(event, ${s.id})">
             <span>Show Hourly Candlestick Replay</span>
             <span class="arrow-icon" id="arrow_icon_${s.id}">▼</span>
           </button>
@@ -4546,7 +4550,7 @@ function renderRows(signals, tbodyId) {
     if (row) {
       row.classList.add('active-signal');
       activeSignalRow = row;
-      loadTradeDetailRow(activeSignalId);
+      loadSignalDetailRow(activeSignalId);
       const tableWrap = row.closest('.signal-table-wrap');
       if (tableWrap) tableWrap.classList.remove('collapsed-view');
     } else {
@@ -6466,7 +6470,7 @@ function onSignalRowClick(rowEl, signal) {
       const content = document.getElementById(`expand_content_${signalId}`);
       if (content) {
         content.innerHTML = generateSignalDetailHtml(signal);
-        loadTradeDetailRow(signalId);
+        loadSignalDetailRow(signalId);
       }
       
       const tableWrap = expandRow.closest('.signal-table-wrap');
