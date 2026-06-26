@@ -3,9 +3,9 @@
 ## 1. Description
 Strict Minervini SEPA rules: Daily Trend Template score >= 5, daily VCP filter met (vol_contracting < 50%, range_contracting < 50% ATR, near_boundary within 10% of 52w high/low). Representing the strict SEPA setup from MIS v12b.
 
-- **Total Signals Scanned**: 1015
-- **Executed Trades**: 150
-- **Filtered Signals (Skipped)**: 865
+- **Total Signals Scanned**: 1296
+- **Executed Trades**: 277
+- **Filtered Signals (Skipped)**: 1019
 
 ---
 
@@ -13,8 +13,8 @@ Strict Minervini SEPA rules: Daily Trend Template score >= 5, daily VCP filter m
 
 | Sizing Mode | Executed Trades | Final Equity (USDT) | Net Profit (USDT) | Win Rate (%) | Profit Factor | Max Drawdown (%) | Expectancy |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Fixed Sizing ($100)** | 150 | 9381.08 | -618.92 | 0.0% | 0.00 | 6.19% | -4.1262 |
-| **Dynamic Sizing (2% Risk)** | 150 | 2108.74 | -7891.26 | 0.0% | 0.00 | 78.91% | -52.6084 |
+| **Fixed Sizing ($100)** | 277 | 10376.63 | +376.63 | 93.5% | 4.31 | 1.13% | 1.3597 |
+| **Dynamic Sizing (2% Risk)** | 277 | 25474.88 | +15474.88 | 93.5% | 6.49 | 24.93% | 55.8660 |
 
 ---
 
@@ -26,6 +26,6 @@ The chart below illustrates the cumulative equity curve performance for both Fix
 ---
 
 ## 4. Scenario Breakdown Analysis
-- **Filter Restrictiveness**: This scenario filtered out 865 signals out of 1015 (Skip Rate: 85.2%).
-- **Compounding Sizing Effect**: Dynamic compounding sizing led to an equity of **$2108.74** compared to **$9381.08** in Fixed Sizing.
-- **Profitability Verdict**: UNPROFITABLE with a Profit Factor of **0.00** and expectancy **-52.6084** under Dynamic Sizing.
+- **Filter Restrictiveness**: This scenario filtered out 1019 signals out of 1296 (Skip Rate: 78.6%).
+- **Compounding Sizing Effect**: Dynamic compounding sizing led to an equity of **$25474.88** compared to **$10376.63** in Fixed Sizing.
+- **Profitability Verdict**: PROFITABLE with a Profit Factor of **6.49** and expectancy **55.8660** under Dynamic Sizing.

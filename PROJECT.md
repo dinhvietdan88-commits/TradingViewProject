@@ -22,8 +22,38 @@ Hệ thống giao dịch tự động tích hợp TradingView + Binance/WEEX v�
 | M6 | Back-test Signal Report | 1,100 signals — WR 55.55%, PF 2.138 | **DONE ✅** |
 | M7 | Forward-Test Sample Report | 28 paper trades — WR 64.29%, PF 3.147 | **DONE ✅** |
 | M8 | Test Suite | 930 tests unit/integration/stress — 100% PASSED | **DONE ✅** |
-| M9 | Forward Test Live Run | Kết nối Server A ➔ Server C. Cấu hình webhook routing `dev/infra/forward-test-gateway-routing` & chạy thử nghiệm `dev/infra/forward-test-live-validation` | **ACTIVE** |
-| M10 | Dashboard Dual-Mode | UI/API hiển thị LIVE + FORWARD song song. API layer `dev/infra/dashboard-dual-mode-api` & UI/UX `dev/ai/dashboard-dual-mode-ui` | **ACTIVE** |
+| M9 | Forward Test Live Run | Kết nối Server A ➔ Server C. Cấu hình webhook routing `dev/infra/forward-test-gateway-routing` & chạy thử nghiệm `dev/infra/forward-test-live-validation` | **DONE ✅** |
+| M10 | Dashboard Dual-Mode | UI/API hiển thị LIVE + FORWARD song song. API layer `dev/infra/dashboard-dual-mode-api` & UI/UX `dev/ai/dashboard-dual-mode-ui` | **DONE ✅** |
+| M11 | Telegram Dashboard Auth | Quick login via `/login` command, token-auth redirection. Branch: `dev/ai/easy-access-dashboard` | **ACTIVE 🔄** |
+| M12 | Core & Security Gates | Security scan hook in Go daemon, bot notifications. Branch: `dev/ai/server-c-ai-core` | **ACTIVE 🔄** |
+| M13 | FX Tactix Pine Generator | No-code strategy generator with multiple prompt levels. Branch: `dev/infra/fx-tactix` | **ACTIVE 🔄** |
+| M14 | Indicator Filters V1.006 | Slope, Volume, ATR-trail filters & backtest matrix. Branch: `dev/infra/v1.006-filters` | **ACTIVE 🔄** |
+| M15 | Regime Detection V1.007 | ADX + BB squeeze regime filters & combined strategies. Branch: `dev/infra/v1.007-regime` | **ACTIVE 🔄** |
+
+## Branch Development & Issue Management
+
+Để duy trì tính minh bạch và tránh xung đột khi làm việc trên nhiều nhánh tính năng đồng thời, các lỗi và thay đổi được quản lý và ghi nhận chi tiết theo từng nhánh phát triển tại thư mục `docs/branches/`:
+
+- **Telegram Auth**: [dev-ai-easy-access-dashboard.md](file:///c:/Users/pesil/working/mj_trading/TradingViewProject/docs/branches/dev-ai-easy-access-dashboard.md)
+- **AI Core & Security**: [dev-ai-server-c-ai-core.md](file:///c:/Users/pesil/working/mj_trading/TradingViewProject/docs/branches/dev-ai-server-c-ai-core.md)
+- **FX Tactix**: [dev-infra-fx-tactix.md](file:///c:/Users/pesil/working/mj_trading/TradingViewProject/docs/branches/dev-infra-fx-tactix.md)
+- **Filters V1.006**: [dev-infra-v1.006-filters.md](file:///c:/Users/pesil/working/mj_trading/TradingViewProject/docs/branches/dev-infra-v1.006-filters.md)
+- **Regime V1.007**: [dev-infra-v1.007-regime.md](file:///c:/Users/pesil/working/mj_trading/TradingViewProject/docs/branches/dev-infra-v1.007-regime.md)
+- **Forward Test Validation**: [dev-infra-forward-test-live-validation.md](file:///c:/Users/pesil/working/mj_trading/TradingViewProject/docs/branches/dev-infra-forward-test-live-validation.md)
+
+### Sử dụng `/git-commit-organizer` theo nhánh
+
+Khi làm việc trên một nhánh phát triển hoặc thư mục worktree tương ứng, luôn sử dụng kỹ năng `git-commit-organizer` để tự động hóa khâu gom nhóm và commit an toàn:
+
+1. **Phân tích thay đổi**:
+   ```bash
+   uv run python "C:\Users\pesil\.gemini\config\plugins\science\skills\git-commit-organizer\scripts\git_commit_organizer.py" analyze --output "scratch/proposal.json"
+   ```
+2. **Review và áp dụng**:
+   ```bash
+   uv run python "C:\Users\pesil\.gemini\config\plugins\science\skills\git-commit-organizer\scripts\git_commit_organizer.py" apply --input "scratch/proposal.json"
+   ```
+
 
 ## Interface Contracts
 

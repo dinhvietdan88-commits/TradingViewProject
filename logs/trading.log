@@ -4606,3 +4606,8 @@
 2026-06-07 13:18:52,119 [INFO] root:138 — Logging configured: level=INFO, file=logs/trading.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
 2026-06-07 13:18:52,126 [INFO] root:138 — Logging configured: level=INFO, file=logs/trading.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
 2026-06-07 13:18:52,128 [INFO] __main__:474 — [VpsAnalyzer] V2 Starting (consumer=server-c-analyzer, long_poll_timeout=30s, circuit_threshold=3)
+2026-06-25 03:57:35,387 [INFO] root:138 — Logging configured: level=INFO, file=logs/trading.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-26 00:46:54,554 [INFO] root:138 — Logging configured: level=INFO, file=logs/trading.log, rotation=10MB × 5 backups (max total: 60 MB), json=False
+2026-06-26 00:47:06,272 [INFO] processor.base_processor:31 — Processor 'MacroTrendProcessor': Grounding knowledge loaded from macro_regime_conditions.md
+2026-06-26 00:47:06,604 [WARNING] processor.base_processor:35 — Processor 'MinerviniSepaProcessor': Knowledge file not found at C:\Users\pesil\working\mj_trading\TradingViewProject\lobes\knowledge\sepa\minervini_sepa_rules.md
+2026-06-26 00:47:06,608 [WARNING] processor.base_processor:35 — Processor 'MeanReversionProcessor': Knowledge file not found at C:\Users\pesil\working\mj_trading\TradingViewProject\lobes\knowledge\mean_reversion\mean_reversion_rules.md
