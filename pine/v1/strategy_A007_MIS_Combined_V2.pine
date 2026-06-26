@@ -1,0 +1,326 @@
+// (c) TradingViewProject
+// V2 — A.007 + MIS v1 Combined (Auto Paper Trading)
+// Upgrades over V1:
+//   LONG TP : Partial 50% @ +1R, then tighten trail ATR×1.0 (was 2.5x)
+//   SHORT   : S1+S2 require BOTH = bull-exhaustion (RSI cross-down 70 + bearish bar)
+//             AND MA stack breakdown (mf cross under mm), within lookback window
+//   Date Range filter (start-time → end-time)
+//
+//@version=5
+strategy("A.007 + MIS v2 Combined (Auto Paper Trading)",
+     shorttitle="A007+MIS V2",
+     overlay=true,
+     initial_capital=100000,
+     default_qty_type=strategy.percent_of_equity,
+     default_qty_value=10,
+     commission_type=strategy.commission.percent,
+     commission_value=0.075,
+     slippage=2,
+     pyramiding=0,
+     calc_on_every_tick=false,
+     process_orders_on_close=true)
+
+// ─── Date Range Filter ─────────────────────────────────────────────────────
+grp_dr = "Date Range"
+use_dr   = input.bool(true, "Limit trading to date range", group=grp_dr)
+start_ts = input.time(timestamp("2024-01-01 00:00 +0000"), "Start time", group=grp_dr)
+end_ts   = input.time(timestamp("2026-12-31 23:59 +0000"), "End time",   group=grp_dr)
+in_window = not use_dr or (time >= start_ts and time <= end_ts)
+
+// ─── A.007 Profile / Sizing ────────────────────────────────────────────────
+grp_p = "A.007 Trading Profile"
+profile      = input.string("Futures", "Profile", options=["Spot","Margin","Futures"], group=grp_p)
+override_qty = input.bool(false, "Override qty %", group=grp_p)
+manual_qty   = input.float(10.0, "Manual qty %", minval=1.0, maxval=500.0, group=grp_p)
+
+// ─── A.007 MA / Filters ────────────────────────────────────────────────────
+grp_ma = "A.007 MA Settings"
+ma_type  = input.string("EMA", "Type", options=["SMA","EMA","WMA","HMA","DEMA","TEMA"], group=grp_ma)
+fast_len = input.int(20, "Fast", minval=5, group=grp_ma)
+med_len  = input.int(50, "Medium", minval=10, group=grp_ma)
+slow_len = input.int(100, "Slow", minval=20, group=grp_ma)
+
+grp_f6 = "A.007 V1.006 Filters"
+use_slope = input.bool(false, "Slope filter", group=grp_f6)
+slope_lb  = input.int(20, "Slope lookback", minval=5, group=grp_f6)
+use_trail = input.bool(true, "ATR trailing stop", group=grp_f6)
+atr_len   = input.int(14, "ATR length", minval=5, group=grp_f6)
+atr_mult  = input.float(2.5, "ATR mult (loose, before TP1)", minval=0.5, step=0.1, group=grp_f6)
+
+grp_f7 = "A.007 V1.007 Regime / Time"
+use_adx       = input.bool(true,  "ADX regime gate (block sideway)", group=grp_f7)
+adx_len       = input.int(14,    "ADX length", minval=5, group=grp_f7)
+adx_threshold = input.float(20,  "ADX threshold", minval=10, maxval=50, group=grp_f7)
+use_bb_sq     = input.bool(true,  "Block on BB squeeze", group=grp_f7)
+bb_len        = input.int(20,    "BB length", minval=5, group=grp_f7)
+bb_mult       = input.float(2.0, "BB stdev mult", minval=1, group=grp_f7)
+bb_sq_th      = input.float(5.0, "BB width % squeeze threshold", group=grp_f7)
+use_volexp    = input.bool(false, "Volatility expanding gate", group=grp_f7)
+volexp_lb     = input.int(20,    "Vol expand lookback", group=grp_f7)
+use_time_stop = input.bool(true,  "Time-based stop", group=grp_f7)
+max_hold_bars = input.int(20,    "Max bars hold without profit", minval=5, group=grp_f7)
+
+// ─── MIS v1 ────────────────────────────────────────────────────────────────
+grp_mis_ema  = "MIS EMA Settings"
+ema_fast = input.int(20,  "EMA Fast", minval=1, group=grp_mis_ema)
+ema_mid  = input.int(50,  "EMA Mid",  minval=1, group=grp_mis_ema)
+ema_slow = input.int(200, "EMA Slow", minval=1, group=grp_mis_ema)
+
+grp_mis_rsi = "MIS RSI Settings"
+rsi_len = input.int(14, "RSI Length", minval=1, group=grp_mis_rsi)
+rsi_ob  = input.int(70, "RSI Overbought", group=grp_mis_rsi)
+rsi_os  = input.int(30, "RSI Oversold",   group=grp_mis_rsi)
+
+grp_mis_macd = "MIS MACD Settings"
+macd_fast = input.int(12, "MACD Fast",   group=grp_mis_macd)
+macd_slow = input.int(26, "MACD Slow",   group=grp_mis_macd)
+macd_sig  = input.int(9,  "MACD Signal", group=grp_mis_macd)
+
+grp_mis_vol = "MIS Volume Settings"
+vol_ma_len = input.int(20,  "Volume MA Length", group=grp_mis_vol)
+vol_mult   = input.float(1.5, "Volume Multiplier", step=0.1, group=grp_mis_vol)
+
+grp_combine = "Combined Settings"
+require_both = input.bool(true, "Long: require BOTH A.007 & MIS", group=grp_combine)
+
+// ─── V2 NEW: Long Partial TP + Tighten Trail ──────────────────────────────
+grp_tp = "V2 Long: Partial TP @ +1R + Tight Trail"
+use_partial   = input.bool(true,  "Enable partial TP @ +1R",       group=grp_tp)
+init_sl_atr   = input.float(2.0,  "Initial SL = ATR × ?",  step=0.1, group=grp_tp)
+r_mult_tp1    = input.float(1.0,  "TP1 R-multiple (×initial risk)", step=0.1, group=grp_tp)
+partial_pct   = input.float(50.0, "TP1 close % of position", minval=10, maxval=90, group=grp_tp)
+trail_tight   = input.float(1.0,  "ATR trail mult AFTER TP1",      step=0.1, group=grp_tp)
+
+// ─── V2 NEW: SHORT Setup (S1 + S2 require BOTH) ───────────────────────────
+grp_sh = "V2 SHORT (S1+S2 require BOTH)"
+use_short      = input.bool(true,  "Enable shorts",                            group=grp_sh)
+bull_min_bars  = input.int(30,    "Min bull-zone bars before short eligible", minval=5, group=grp_sh)
+rsi_sh_th      = input.float(70,  "S1: RSI exhaustion threshold",             group=grp_sh)
+sh_lookback    = input.int(5,     "S1↔S2 confirmation lookback (bars)",       minval=1, group=grp_sh)
+sh_tp_atr      = input.float(2.0, "Short TP = ATR × ?",  step=0.1, group=grp_sh)
+sh_sl_atr      = input.float(1.5, "Short SL = ATR × ?",  step=0.1, group=grp_sh)
+sh_max_bars    = input.int(15,    "Short max hold bars", minval=3, group=grp_sh)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CORE INDICATORS
+// ═══════════════════════════════════════════════════════════════════════════
+ma(t, l) =>
+    switch t
+        "SMA"  => ta.sma(close, l)
+        "EMA"  => ta.ema(close, l)
+        "WMA"  => ta.wma(close, l)
+        "HMA"  => ta.hma(close, l)
+        "DEMA" => 2 * ta.ema(close, l) - ta.ema(ta.ema(close, l), l)
+        "TEMA" => 3 * (ta.ema(close, l) - ta.ema(ta.ema(close, l), l)) + ta.ema(ta.ema(ta.ema(close, l), l), l)
+        =>        ta.sma(close, l)
+
+mf = ma(ma_type, fast_len)
+mm = ma(ma_type, med_len)
+ms = ma(ma_type, slow_len)
+bull = mf > mm and mm > ms
+bull_start = bull and not bull[1]
+bull_end   = not bull and bull[1]
+
+up_move   = ta.change(high)
+down_move = -ta.change(low)
+plus_dm   = up_move   > down_move and up_move   > 0 ? up_move   : 0.0
+minus_dm  = down_move > up_move   and down_move > 0 ? down_move : 0.0
+atr_a     = ta.rma(ta.tr, adx_len)
+plus_di   = 100 * ta.rma(plus_dm,  adx_len) / atr_a
+minus_di  = 100 * ta.rma(minus_dm, adx_len) / atr_a
+dx        = 100 * math.abs(plus_di - minus_di) / (plus_di + minus_di)
+adx       = ta.rma(dx, adx_len)
+
+basis    = ta.sma(close, bb_len)
+dev      = bb_mult * ta.stdev(close, bb_len)
+bb_w_pct = 100 * (2 * dev) / basis
+
+atr_v   = ta.atr(atr_len)
+vol_exp = atr_v > atr_v[volexp_lb]
+
+slope_ok   = not use_slope  or mm > mm[slope_lb]
+trending   = not use_adx    or adx > adx_threshold
+no_squeeze = not use_bb_sq  or bb_w_pct >= bb_sq_th
+volexp_ok  = not use_volexp or vol_exp
+
+a007_entry_ok = bull_start and slope_ok and trending and no_squeeze and volexp_ok
+
+ema20  = ta.ema(close, ema_fast)
+ema50  = ta.ema(close, ema_mid)
+ema200 = ta.ema(close, ema_slow)
+
+rsi    = ta.rsi(close, rsi_len)
+[macd_line, signal_line, _] = ta.macd(close, macd_fast, macd_slow, macd_sig)
+macd_cross_up = ta.crossover(macd_line, signal_line)
+
+vol_ma   = ta.sma(volume, vol_ma_len)
+high_vol = volume > vol_ma * vol_mult
+
+mis_trend_up = ema20 > ema50 and ema50 > ema200
+mis_rsi_long = rsi > 50 and rsi < rsi_ob
+mis_entry_ok = mis_trend_up and mis_rsi_long and macd_cross_up and high_vol
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LONG ENTRY + V2 PARTIAL TP + TIGHTEN TRAIL
+// ═══════════════════════════════════════════════════════════════════════════
+in_long = strategy.position_size > 0
+
+long_entry_raw = require_both ? (a007_entry_ok and mis_entry_ok) : (a007_entry_ok or mis_entry_ok)
+long_entry = long_entry_raw and in_window and strategy.position_size <= 0
+
+var float long_entry_price = na
+var float init_sl_long     = na
+var float tp1_price        = na
+var bool  tp1_hit          = false
+var float trail_long       = na
+var int   long_entry_bar   = 0
+
+if long_entry
+    long_entry_price := close
+    init_sl_long     := close - atr_v * init_sl_atr
+    tp1_price        := close + (close - init_sl_long) * r_mult_tp1
+    tp1_hit          := false
+    trail_long       := na
+    long_entry_bar   := bar_index
+
+if in_long and not tp1_hit and high >= tp1_price
+    tp1_hit := true
+
+trail_mult_now = tp1_hit ? trail_tight : atr_mult
+if in_long
+    new_trail = close - trail_mult_now * atr_v
+    base = na(trail_long) ? math.max(init_sl_long, new_trail) : math.max(trail_long, new_trail)
+    trail_long := base
+else
+    trail_long := na
+
+trail_hit_long = use_trail and in_long and not na(trail_long) and low <= trail_long
+
+bars_held_long = in_long ? bar_index - long_entry_bar : 0
+time_stop_long = use_time_stop and in_long and bars_held_long >= max_hold_bars and close <= long_entry_price
+
+window_exit_long = use_dr and in_long and not in_window
+long_exit_full   = bull_end or trail_hit_long or time_stop_long or window_exit_long
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SHORT — S1 + S2 require BOTH (within lookback window)
+// ═══════════════════════════════════════════════════════════════════════════
+bull_bars      = ta.barssince(not bull)
+bull_long_enuf = not na(bull_bars) and bull_bars >= bull_min_bars
+
+// S1 — Exhaustion: RSI cross down threshold AND bearish bar
+rsi_cross_down = ta.crossunder(rsi, rsi_sh_th)
+bearish_bar    = close < open and close < high[1]
+s1_now         = bull_long_enuf and rsi_cross_down and bearish_bar
+
+// S2 — MA stack breakdown: fast cross under medium
+ma_breakdown   = ta.crossunder(mf, mm)
+s2_now         = bull_long_enuf and ma_breakdown
+
+var int s1_bar = na
+var int s2_bar = na
+if s1_now
+    s1_bar := bar_index
+if s2_now
+    s2_bar := bar_index
+
+s1_recent = not na(s1_bar) and (bar_index - s1_bar) <= sh_lookback
+s2_recent = not na(s2_bar) and (bar_index - s2_bar) <= sh_lookback
+both_confirmed = s1_recent and s2_recent and (s1_now or s2_now)  // trigger on the second confirmation
+
+short_entry = use_short and both_confirmed and in_window and strategy.position_size >= 0
+
+in_short = strategy.position_size < 0
+
+var float short_entry_price = na
+var int   short_entry_bar   = 0
+if short_entry
+    short_entry_price := close
+    short_entry_bar   := bar_index
+
+short_tp_price = not na(short_entry_price) ? short_entry_price - atr_v * sh_tp_atr : na
+short_sl_price = not na(short_entry_price) ? short_entry_price + atr_v * sh_sl_atr : na
+
+bars_held_short  = in_short ? bar_index - short_entry_bar : 0
+short_tp_hit     = in_short and not na(short_tp_price) and low  <= short_tp_price
+short_sl_hit     = in_short and not na(short_sl_price) and high >= short_sl_price
+short_time_stop  = in_short and bars_held_short >= sh_max_bars
+window_exit_short = use_dr and in_short and not in_window
+short_exit       = short_tp_hit or short_sl_hit or short_time_stop or window_exit_short
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SIZING + ORDERS
+// ═══════════════════════════════════════════════════════════════════════════
+spot_pct    = 10.0
+margin_pct  = 20.0
+futures_pct = 10.0
+qty_pct = override_qty ? manual_qty : (profile == "Spot" ? spot_pct : profile == "Margin" ? margin_pct : futures_pct)
+qc = (strategy.equity * qty_pct / 100.0) / close
+
+if long_entry
+    strategy.entry("LONG", strategy.long, qty=qc, comment="A007+MIS Long")
+    if use_partial
+        strategy.exit("TP1", from_entry="LONG", limit=tp1_price, qty_percent=partial_pct, comment="TP1 50%")
+
+if long_exit_full
+    strategy.close("LONG", comment="Long Exit")
+
+if short_entry
+    strategy.entry("SHORT", strategy.short, qty=qc, comment="S1+S2 Short")
+
+if short_exit
+    strategy.close("SHORT", comment="Short Exit")
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VISUALS
+// ═══════════════════════════════════════════════════════════════════════════
+p_f = plot(mf, color=color.new(color.blue, 50),   title="A.007 Fast")
+p_m = plot(mm, color=color.new(color.orange, 50), title="A.007 Medium")
+p_s = plot(ms, color=color.new(color.red, 50),    title="A.007 Slow", linewidth=2)
+
+plot(ema20,  "MIS EMA 20",  color=color.new(color.blue,   80), linewidth=1)
+plot(ema50,  "MIS EMA 50",  color=color.new(color.orange, 80), linewidth=1)
+plot(ema200, "MIS EMA 200", color=color.new(color.red,    80), linewidth=1)
+
+fill(p_f, p_s, color=bull ? color.new(color.green, 85) : na, title="A.007 Bull Zone")
+
+plot(in_long  and use_trail ? trail_long       : na, color=color.fuchsia, style=plot.style_linebr, linewidth=2, title="Long Trail")
+plot(in_long                ? tp1_price        : na, color=color.lime,    style=plot.style_circles, linewidth=2, title="TP1 Target")
+plot(in_short               ? short_tp_price   : na, color=color.aqua,    style=plot.style_circles, linewidth=2, title="Short TP")
+plot(in_short               ? short_sl_price   : na, color=color.red,     style=plot.style_circles, linewidth=2, title="Short SL")
+
+bgcolor(use_adx and adx <= adx_threshold ? color.new(color.yellow, 95) : na, title="Sideway warning")
+bgcolor(use_bb_sq and bb_w_pct < bb_sq_th ? color.new(color.aqua, 95)  : na, title="BB Squeeze warning")
+bgcolor(use_dr and not in_window ? color.new(color.gray, 92) : na, title="Out of date range")
+bgcolor(bull_long_enuf ? color.new(color.purple, 90) : na, title="Bull-extended (short eligible)")
+
+plotshape(long_entry,   title="LONG",      style=shape.triangleup,   location=location.belowbar, color=color.new(color.green, 0),   size=size.small, text="L")
+plotshape(tp1_hit and not tp1_hit[1], title="TP1 Hit", style=shape.circle, location=location.abovebar, color=color.new(color.lime, 0), size=size.tiny, text="TP1")
+plotshape(long_exit_full, title="LONG EXIT", style=shape.triangledown, location=location.abovebar, color=color.new(color.red, 0),   size=size.small, text="X")
+plotshape(short_entry,  title="SHORT",     style=shape.triangledown, location=location.abovebar, color=color.new(color.maroon, 0),  size=size.small, text="S")
+plotshape(short_exit,   title="SHORT EXIT",style=shape.triangleup,   location=location.belowbar, color=color.new(color.orange, 0),  size=size.small, text="x")
+
+var table info = table.new(position.top_right, 2, 11, border_width=1)
+if barstate.islast
+    table.cell(info, 0, 0, "MODE",       bgcolor=color.new(color.blue, 30), text_color=color.white)
+    table.cell(info, 1, 0, "A007+MIS V2",bgcolor=color.new(color.blue, 30), text_color=color.white)
+    table.cell(info, 0, 1, "Window")
+    table.cell(info, 1, 1, in_window ? "IN" : "OUT", bgcolor=in_window ? color.new(color.green, 60) : color.new(color.red, 60))
+    table.cell(info, 0, 2, "A.007")
+    table.cell(info, 1, 2, a007_entry_ok ? "READY" : (bull ? "BULL" : "BEAR"), bgcolor=a007_entry_ok ? color.new(color.green, 60) : color.new(color.gray, 60))
+    table.cell(info, 0, 3, "MIS v1")
+    table.cell(info, 1, 3, mis_entry_ok ? "READY" : (mis_trend_up ? "TREND" : "NOTREND"), bgcolor=mis_entry_ok ? color.new(color.green, 60) : color.new(color.gray, 60))
+    table.cell(info, 0, 4, "Long entry")
+    table.cell(info, 1, 4, long_entry ? "ENTER" : "WAIT", bgcolor=long_entry ? color.new(color.lime, 60) : color.new(color.gray, 60))
+    table.cell(info, 0, 5, "Position")
+    table.cell(info, 1, 5, in_long ? "LONG" : in_short ? "SHORT" : "FLAT", bgcolor=in_long ? color.new(color.green, 60) : in_short ? color.new(color.red, 60) : color.new(color.gray, 60))
+    table.cell(info, 0, 6, "TP1")
+    table.cell(info, 1, 6, tp1_hit ? "HIT (tight trail)" : in_long ? "pending" : "-")
+    table.cell(info, 0, 7, "Bull bars")
+    table.cell(info, 1, 7, str.tostring(bull_bars) + (bull_long_enuf ? " ✓" : ""))
+    table.cell(info, 0, 8, "S1 / S2")
+    table.cell(info, 1, 8, (s1_recent ? "S1✓" : "S1·") + " / " + (s2_recent ? "S2✓" : "S2·"))
+    table.cell(info, 0, 9, "ADX")
+    table.cell(info, 1, 9, str.tostring(math.round(adx)) + (trending ? " ok" : " no"))
+    table.cell(info, 0, 10, "RSI")
+    table.cell(info, 1, 10, str.tostring(math.round(rsi)))

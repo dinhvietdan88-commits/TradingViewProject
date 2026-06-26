@@ -1,0 +1,166 @@
+// (c) TradingViewProject
+// Strategy A.007 — Long Only + V1.006 filters + V1.007 regime detection
+//
+//@version=5
+strategy("strategy_MTT_v1.A007 (Long + Regime)",
+     shorttitle="A.007 L+R",
+     overlay=true,
+     initial_capital=100000,
+     default_qty_type=strategy.percent_of_equity,
+     default_qty_value=10,
+     commission_type=strategy.commission.percent,
+     commission_value=0.075,
+     slippage=2,
+     pyramiding=0,
+     calc_on_every_tick=false,
+     process_orders_on_close=true)
+
+// ----- INPUTS -----
+grp_p = "Trading Profile"
+profile  = input.string("Futures", "Profile", options=["Spot","Margin","Futures"], group=grp_p)
+override_qty = input.bool(false, "Override qty %", group=grp_p)
+manual_qty   = input.float(10.0, "Manual qty %", minval=1.0, maxval=500.0, group=grp_p)
+
+grp_ma = "MA"
+ma_type  = input.string("EMA", "Type", options=["SMA","EMA","WMA","HMA","DEMA","TEMA"], group=grp_ma)
+fast_len = input.int(20, "Fast", minval=5, group=grp_ma)
+med_len  = input.int(50, "Medium", minval=10, group=grp_ma)
+slow_len = input.int(100, "Slow", minval=20, group=grp_ma)
+
+grp_f6 = "V1.006 Filters"
+use_slope = input.bool(false, "Slope filter", group=grp_f6)
+slope_lb  = input.int(20, "Slope lookback", minval=5, group=grp_f6)
+use_trail = input.bool(true, "ATR trailing stop", group=grp_f6)
+atr_len   = input.int(14, "ATR length", minval=5, group=grp_f6)
+atr_mult  = input.float(2.5, "ATR mult", minval=1.0, step=0.1, group=grp_f6)
+
+grp_f7 = "V1.007 Regime / Time"
+use_adx       = input.bool(true,  "ADX regime gate (block sideway)", group=grp_f7)
+adx_len       = input.int(14,    "ADX length", minval=5, group=grp_f7)
+adx_threshold = input.float(20,  "ADX threshold", minval=10, maxval=50, group=grp_f7)
+use_bb_sq     = input.bool(true,  "Block on BB squeeze", group=grp_f7)
+bb_len        = input.int(20,    "BB length", minval=5, group=grp_f7)
+bb_mult       = input.float(2.0, "BB stdev mult", minval=1, group=grp_f7)
+bb_sq_th      = input.float(5.0, "BB width % squeeze threshold", group=grp_f7)
+use_volexp    = input.bool(false, "Volatility expanding gate", group=grp_f7)
+volexp_lb     = input.int(20,    "Vol expand lookback", group=grp_f7)
+use_time_stop = input.bool(true,  "Time-based stop", group=grp_f7)
+max_hold_bars = input.int(20,    "Max bars hold without profit", minval=5, group=grp_f7)
+
+// ----- MA -----
+ma(t, l) =>
+    switch t
+        "SMA"  => ta.sma(close, l)
+        "EMA"  => ta.ema(close, l)
+        "WMA"  => ta.wma(close, l)
+        "HMA"  => ta.hma(close, l)
+        "DEMA" => 2 * ta.ema(close, l) - ta.ema(ta.ema(close, l), l)
+        "TEMA" => 3 * (ta.ema(close, l) - ta.ema(ta.ema(close, l), l)) + ta.ema(ta.ema(ta.ema(close, l), l), l)
+        =>        ta.sma(close, l)
+
+mf = ma(ma_type, fast_len)
+mm = ma(ma_type, med_len)
+ms = ma(ma_type, slow_len)
+bull = mf > mm and mm > ms
+bull_start = bull and not bull[1]
+bull_end   = not bull and bull[1]
+
+// ----- ADX -----
+up_move   = ta.change(high)
+down_move = -ta.change(low)
+plus_dm   = up_move > down_move and up_move > 0 ? up_move : 0.0
+minus_dm  = down_move > up_move and down_move > 0 ? down_move : 0.0
+atr_a     = ta.rma(ta.tr, adx_len)
+plus_di   = 100 * ta.rma(plus_dm,  adx_len) / atr_a
+minus_di  = 100 * ta.rma(minus_dm, adx_len) / atr_a
+dx        = 100 * math.abs(plus_di - minus_di) / (plus_di + minus_di)
+adx       = ta.rma(dx, adx_len)
+
+// ----- BB squeeze -----
+basis = ta.sma(close, bb_len)
+dev   = bb_mult * ta.stdev(close, bb_len)
+bb_w_pct = 100 * (2 * dev) / basis
+
+// ----- Volatility expanding -----
+atr_v = ta.atr(atr_len)
+vol_exp = atr_v > atr_v[volexp_lb]
+
+// ----- Filter gates -----
+slope_ok    = not use_slope  or mm > mm[slope_lb]
+trending    = not use_adx    or adx > adx_threshold
+no_squeeze  = not use_bb_sq  or bb_w_pct >= bb_sq_th
+volexp_ok   = not use_volexp or vol_exp
+
+entry_ok = bull_start and slope_ok and trending and no_squeeze and volexp_ok
+
+// ----- ATR trailing -----
+in_pos = strategy.position_size > 0
+var float trail = na
+if in_pos
+    new_trail = close - atr_mult * atr_v
+    trail := na(trail) ? new_trail : math.max(trail, new_trail)
+else
+    trail := na
+trail_hit = use_trail and in_pos and not na(trail) and low <= trail
+
+// ----- Time-based stop -----
+var int entry_bar = 0
+var float entry_price = na
+if bull_start and entry_ok
+    entry_bar := bar_index
+    entry_price := close
+bars_held = in_pos ? bar_index - entry_bar : 0
+time_stop = use_time_stop and in_pos and bars_held >= max_hold_bars and close <= entry_price
+
+// ----- SIZING -----
+spot_pct    = 10.0
+margin_pct  = 20.0
+futures_pct = 10.0
+qty_pct = override_qty ? manual_qty : (profile == "Spot" ? spot_pct : profile == "Margin" ? margin_pct : futures_pct)
+qc = (strategy.equity * qty_pct / 100.0) / close
+
+// ----- ORDERS -----
+if entry_ok
+    strategy.entry("LONG", strategy.long, qty=qc, comment="Entry+Filters")
+if bull_end
+    strategy.close("LONG", comment="Bull End")
+if trail_hit
+    strategy.close("LONG", comment="ATR Trail")
+if time_stop
+    strategy.close("LONG", comment="Time Stop")
+
+// ----- VISUALS -----
+p_f = plot(mf, color=color.blue,   title="Fast")
+p_m = plot(mm, color=color.orange, title="Medium")
+p_s = plot(ms, color=color.red,    title="Slow", linewidth=2)
+fill(p_f, p_s, color=bull ? color.new(color.green, 80) : na, title="Bull Zone")
+plot(use_trail and in_pos ? trail : na, color=color.fuchsia, style=plot.style_linebr, linewidth=2, title="ATR Trail")
+
+// Regime warning
+bgcolor(use_adx and adx <= adx_threshold ? color.new(color.yellow, 92) : na, title="Sideway warning")
+bgcolor(use_bb_sq and bb_w_pct < bb_sq_th ? color.new(color.aqua, 92) : na, title="BB Squeeze warning")
+
+plotshape(entry_ok,   title="Entry",     style=shape.triangleup, location=location.belowbar, color=color.new(color.green,0),  size=size.tiny, text="L")
+plotshape(bull_start and not entry_ok, title="Filtered out", style=shape.xcross, location=location.belowbar, color=color.new(color.gray,0), size=size.tiny)
+plotshape(bull_end,   title="Bull End",  style=shape.xcross,    location=location.abovebar, color=color.new(color.green,30), size=size.tiny)
+plotshape(trail_hit,  title="Trail Hit", style=shape.diamond,   location=location.abovebar, color=color.new(color.fuchsia,0), size=size.small, text="T")
+plotshape(time_stop,  title="Time Stop", style=shape.diamond,   location=location.abovebar, color=color.new(color.orange,0),  size=size.small, text="TS")
+
+// Status table
+var table info = table.new(position.top_right, 2, 7, border_width=1)
+if barstate.islast
+    table.cell(info, 0, 0, "MODE",       bgcolor=color.new(color.green,30), text_color=color.white)
+    table.cell(info, 1, 0, "LONG+R+T",   bgcolor=color.new(color.green,30), text_color=color.white)
+    table.cell(info, 0, 1, "Profile/Qty")
+    table.cell(info, 1, 1, profile + " " + str.tostring(qty_pct) + "%")
+    table.cell(info, 0, 2, "Slope")
+    table.cell(info, 1, 2, use_slope ? (slope_ok ? "✓" : "✗") : "off")
+    table.cell(info, 0, 3, "ADX")
+    table.cell(info, 1, 3, str.tostring(math.round(adx)) + (trending ? " trend ✓" : " side ✗"))
+    table.cell(info, 0, 4, "BB width %")
+    table.cell(info, 1, 4, str.tostring(math.round(bb_w_pct, 1)) + (no_squeeze ? "" : " SQ ✗"))
+    table.cell(info, 0, 5, "ATR trail")
+    table.cell(info, 1, 5, use_trail ? (in_pos ? str.tostring(math.round(trail)) : "—") : "off")
+    table.cell(info, 0, 6, "Entry gate")
+    can_trade = (not use_adx or trending) and (not use_bb_sq or no_squeeze)
+    table.cell(info, 1, 6, can_trade ? "OPEN" : "BLOCKED", bgcolor=can_trade ? color.new(color.green, 60) : color.new(color.red, 60))

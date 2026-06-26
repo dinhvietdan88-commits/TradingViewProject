@@ -1,11 +1,10 @@
 // (c) TradingViewProject
-// Pine Library — Logic chung cho V1.005+ và V1.006
+// Pine Library — Logic chung V1.005 → V1.007
 //
-// V1.006 thêm:
-//   - slope_ok()        : SMA slope filter (≥ N bars)
-//   - volume_ok()       : Volume above SMA filter
-//   - atr_trail_long()  : ATR trailing stop cho long
-//   - atr_trail_short() : ATR trailing stop cho short
+// V1.005: ma(), stack_signals(), profile_qty_pct(), bear_to_neutral_breakout()
+// V1.006: slope_up/down(), volume_ok(), atr_trail_long/short()
+// V1.007: adx_value(), regime_trending(), bb_width_pct(), vol_expanding(),
+//         time_stop_hit(), dynamic_atr_mult()
 //
 //@version=5
 library("strategy_mtt_lib", overlay=true)
@@ -52,9 +51,7 @@ export slope_down(series float ma, simple int lookback) =>
 export volume_ok(simple int sma_len, simple float mult) =>
     volume > ta.sma(volume, sma_len) * mult
 
-// ATR trailing stop cho LONG
-// Khi có lệnh long mở, trailing = max(prev trail, close - mult*ATR)
-// Returns: [trail_level, hit_signal]
+// ATR trailing stop cho LONG. Returns [trail_level, hit_signal]
 export atr_trail_long(series bool in_position, simple int atr_len, simple float mult) =>
     var float trail = na
     atr = ta.atr(atr_len)
@@ -77,6 +74,55 @@ export atr_trail_short(series bool in_position, simple int atr_len, simple float
         trail := na
     hit = in_position and not na(trail) and high >= trail
     [trail, hit]
+
+// ============================================================================
+// V1.007 REGIME / VOLATILITY / TIME FILTERS
+// ============================================================================
+
+// ADX calculation (Wilder's)
+export adx_value(simple int len) =>
+    up_move    = ta.change(high)
+    down_move  = -ta.change(low)
+    plus_dm    = up_move > down_move and up_move > 0 ? up_move : 0.0
+    minus_dm   = down_move > up_move and down_move > 0 ? down_move : 0.0
+    tr         = ta.tr
+    atr_       = ta.rma(tr, len)
+    plus_di    = 100 * ta.rma(plus_dm,  len) / atr_
+    minus_di   = 100 * ta.rma(minus_dm, len) / atr_
+    dx         = 100 * math.abs(plus_di - minus_di) / (plus_di + minus_di)
+    ta.rma(dx, len)
+
+// Regime: trending nếu ADX > threshold (block entry khi sideway)
+export regime_trending(simple int adx_len, simple float adx_threshold) =>
+    adx_value(adx_len) > adx_threshold
+
+// Bollinger band width as % of basis (low = squeeze = sideway)
+export bb_width_pct(simple int bb_len, simple float bb_mult) =>
+    basis = ta.sma(close, bb_len)
+    dev   = bb_mult * ta.stdev(close, bb_len)
+    upper = basis + dev
+    lower = basis - dev
+    100 * (upper - lower) / basis
+
+// Volatility expanding: ATR hiện tại > ATR[lookback]
+export vol_expanding(simple int atr_len, simple int lookback) =>
+    atr_now = ta.atr(atr_len)
+    atr_now > atr_now[lookback]
+
+// Time-based stop: trả về true nếu đã hold > max_bars mà chưa profit
+export time_stop_hit(series bool in_position, series int entry_bar, simple int max_bars, series float entry_price) =>
+    bars_held = in_position ? bar_index - entry_bar : 0
+    not_profit = in_position and close <= entry_price  // long: chưa profit nếu close <= entry
+    in_position and bars_held >= max_bars and not_profit
+
+// Dynamic ATR multiplier: tăng mult khi DD rolling cao
+// (Khi đang trong DD lớn → trail wider để tránh bị shake out)
+export dynamic_atr_mult(simple float base_mult, simple float dd_threshold_pct, simple float dd_extra_mult) =>
+    eq = strategy.equity
+    var float peak_eq = eq
+    peak_eq := math.max(peak_eq, eq)
+    dd_pct = peak_eq > 0 ? 100 * (peak_eq - eq) / peak_eq : 0
+    dd_pct > dd_threshold_pct ? base_mult + dd_extra_mult : base_mult
 
 // ============================================================================
 // Profile sizing
