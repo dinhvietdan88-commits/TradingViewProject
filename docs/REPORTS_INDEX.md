@@ -1,7 +1,7 @@
 # 📚 Chỉ Mục Toàn Bộ Báo Cáo — Angati TradingView Project
 
 > Tài liệu này tổng hợp tất cả báo cáo phân tích, kiểm thử, và kiểm toán bảo mật của hệ thống Angati TradingView Webhook Server.
-> Cập nhật lần cuối: **2026-06-21** · Branch: `main`
+> Cập nhật lần cuối: **2026-06-26** · Branch: `dev/infra/forward-test-live-validation`
 
 ---
 
@@ -228,4 +228,4 @@ Get-ChildItem reports/ -Name
 
 ---
 
-*Chỉ mục được tạo tự động · Angati v7.0 · Branch: `main`*
+*Chỉ mục được tạo tự động · Angati v7.1 · Branch: `dev/infra/forward-test-live-validation`*

@@ -21,12 +21,19 @@ log = logging.getLogger(__name__)
 PUBLIC_PATHS = (
     "/webhook",  # TradingView webhook
     "/health",  # Health check
+    "/tv_health_check",  # TV health check (public)
     "/auth/",  # Auth flow itself
     "/static/",  # Static assets (CSS/JS/images)
     "/favicon.ico",
     "/docs",  # FastAPI Swagger
     "/openapi.json",
     "/redoc",
+    # ── Dashboard read-only endpoints (no auth needed for monitoring) ──
+    "/api/signals",  # Signal list for dashboard_live.html
+    "/trades/stats",  # Stats for dashboard_live.html
+    "/trades/equity",  # Equity curve for dashboard_live.html
+    "/api/forward/",  # Forward sync endpoints (public for integration/monitoring)
+    "/forward-test",  # Forward Test Dashboard page (same-origin, API endpoints already public)
 )
 
 # Paths that require authentication
@@ -54,6 +61,9 @@ def _is_api_request(request: Request) -> bool:
     accept = request.headers.get("accept", "")
     # Explicit JSON preference or API path
     if "application/json" in accept:
+        return True
+    # API paths should always be treated as API requests
+    if request.url.path.startswith("/api/"):
         return True
     # Fetch API requests
     if request.headers.get("x-requested-with", "").lower() == "xmlhttprequest":
@@ -84,6 +94,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         """Process each request through auth pipeline."""
         path = request.url.path
+
+        # ── CORS preflight: always pass through unconditionally ────
+        # OPTIONS requests must never be blocked — browser sends them before
+        # the real fetch() to negotiate CORS headers. Blocking them makes
+        # all cross-origin requests fail even when CORS middleware is present.
+        if request.method == "OPTIONS":
+            return await call_next(request)
 
         # ── Public paths: pass through ─────────────────────────────
         if _is_public_path(path):

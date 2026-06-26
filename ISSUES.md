@@ -1,3 +1,10 @@
+## [2026-06-26] UI Synchronization, Sticky Sidebar & Mini-Chart Load Fixes
+- Fixed Mini-Chart Crash: Resolved a `TypeError` in `initMiniChart` on row expansion by verifying that the cached simulation summary contains full `candles` data before skipping the API fetch.
+- Implemented Bi-directional Chart-Table Sync: Wired chart crosshair hover, visible time range changes, and marker clicks to dynamically highlight and auto-scroll corresponding table rows.
+- Refined Sticky Layout: Adjusted `.right-sticky-col` offset to `top: 86px` and `max-height: calc(100vh - 102px)` to prevent sidebar elements from scrolling behind the sticky header.
+- Handled Preset Buttons: Dynamic glow highlights preset groups on selection, clearing them automatically when individual scenario checkboxes are manually modified.
+- Test Environment Isolation: Overrode `FORWARD_TEST_ENABLED = "false"` in `tests/conftest.py` to isolate test runs from developer's `.env` files.
+
 ## [2026-06-06] QA Audit Fixes for Telegram WebP Chart
 - Fixed Pytest Collection Crash: Renamed test_reprocess.py to script_reprocess.py and updated imports.
 - Fixed PIL Import Bug: Moved PIL import inside WebP detection try-block in notifier.py to avoid crashes on systems lacking libwebp.

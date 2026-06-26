@@ -1011,12 +1011,12 @@ async def get_v22_trades(
 
 @app.get("/reports/trade_replay", response_class=HTMLResponse)
 def serve_trade_replay():
-    return FileResponse(str(PROJECT_ROOT / "reports" / "trade_replay.html"))
+    return FileResponse(str(PROJECT_ROOT / "statics-reports" / "trade_replay.html"))
 
 
 @app.get("/reports/monthly_pattern_analysis", response_class=HTMLResponse)
 def serve_monthly_pattern_analysis():
-    return FileResponse(str(PROJECT_ROOT / "reports" / "monthly_pattern_analysis.html"))
+    return FileResponse(str(PROJECT_ROOT / "statics-reports" / "monthly_pattern_analysis.html"))
 
 
 @app.get("/", response_class=HTMLResponse)

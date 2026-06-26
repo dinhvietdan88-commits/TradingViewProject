@@ -36,7 +36,7 @@ services:
              "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
       interval: 30s
       timeout: 5s
-      start-period: 15s
+      start_period: 15s
       retries: 3
 
     # Resource limits (adjust for your VPS)

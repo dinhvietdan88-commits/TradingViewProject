@@ -142,6 +142,7 @@ async def test_scenario_a_full_pipeline_high_confidence(pipeline_bus):
             # AI Config
             mock_ai_config.MCP_ENABLED = True
             mock_ai_config.RAG_ENABLED = False
+            mock_ai_config.FORWARD_TEST_ENABLED = False
 
             # MCP/Vision
             mock_mcp = AsyncMock()
@@ -264,6 +265,7 @@ async def test_scenario_b_medium_confidence_held_for_approval(pipeline_bus):
         ):
             mock_ai_config.MCP_ENABLED = True
             mock_ai_config.RAG_ENABLED = False
+            mock_ai_config.FORWARD_TEST_ENABLED = False
 
             mock_mcp = AsyncMock()
             mock_mcp.health_check = AsyncMock(return_value={"connected": True})
@@ -380,6 +382,7 @@ async def test_scenario_c_low_confidence_no_trade(pipeline_bus):
         ):
             mock_ai_config.MCP_ENABLED = True
             mock_ai_config.RAG_ENABLED = False
+            mock_ai_config.FORWARD_TEST_ENABLED = False
 
             mock_mcp = AsyncMock()
             mock_mcp.health_check = AsyncMock(return_value={"connected": True})

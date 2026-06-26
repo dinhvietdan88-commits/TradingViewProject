@@ -186,8 +186,8 @@ async def test_ohlcv_and_indicators_route_to_live_db():
         exchange="binance",
     )
 
-    # Verify indicator signal in live DB
-    async with aiosqlite.connect(config.DB_PATH) as db:
+    # Verify indicator signal in forward DB
+    async with aiosqlite.connect(config.FORWARD_DB_PATH) as db:
         async with db.execute(
             "SELECT signal_id, indicator_name, signal_type FROM indicator_signals WHERE id = ?",
             (ind_sig_id,),
@@ -198,8 +198,8 @@ async def test_ohlcv_and_indicators_route_to_live_db():
             assert row[1] == "RSI"
             assert row[2] == "BUY"
 
-    # Verify indicator signal NOT in forward DB
-    async with aiosqlite.connect(config.FORWARD_DB_PATH) as db:
+    # Verify indicator signal NOT in live DB
+    async with aiosqlite.connect(config.DB_PATH) as db:
         async with db.execute(
             "SELECT id FROM indicator_signals WHERE id = ?", (ind_sig_id,)
         ) as cur:
@@ -230,3 +230,39 @@ async def test_ohlcv_and_indicators_route_to_live_db():
         ) as cur:
             row = await cur.fetchone()
             assert row is None
+
+
+@pytest.mark.asyncio
+async def test_forward_test_enabled_routing_isolation():
+    """Verify that when FORWARD_TEST_ENABLED=true, signals with any mode (e.g. MTT/MIS) save to forward_trades.db."""
+    original_enabled = config.FORWARD_TEST_ENABLED
+    config.FORWARD_TEST_ENABLED = True
+    try:
+        sig_id = await database.insert_signal(
+            symbol="BTCUSDT",
+            action="buy",
+            price=60000.0,
+            quote_qty=100.0,
+            source_ip="127.0.0.1",
+            mode="MTT",
+        )
+
+        # Verify present in forward DB and NOT live DB
+        async with aiosqlite.connect(config.FORWARD_DB_PATH) as db:
+            async with db.execute(
+                "SELECT symbol, action, mode FROM signals WHERE id = ?", (sig_id,)
+            ) as cur:
+                row = await cur.fetchone()
+                assert row is not None
+                assert row[0] == "BTCUSDT"
+                assert row[1] == "buy"
+                assert row[2] == "MTT"
+
+        async with aiosqlite.connect(config.DB_PATH) as db:
+            async with db.execute(
+                "SELECT id FROM signals WHERE id = ?", (sig_id,)
+            ) as cur:
+                row = await cur.fetchone()
+                assert row is None
+    finally:
+        config.FORWARD_TEST_ENABLED = original_enabled

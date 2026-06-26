@@ -61,7 +61,7 @@ _processor = MinerviniSepaProcessor()
 @_default_bus.on(MacroValidated)
 async def process_minervini_sepa(event: MacroValidated) -> None:
     """Subscriber for MacroValidated event to run SEPA strategy filtering."""
-    if event.mode not in ("MTT", "", None):
+    if event.mode not in ("MTT", "", None, "FORWARD"):
         return
 
     # Allow bus override for testing

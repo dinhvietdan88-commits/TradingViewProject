@@ -239,66 +239,87 @@ async def test_server_a_c_integration_flow(test_db, worker):
     - Worker long-polls /consume-long, analyzes the signal, forwards to Server B (mocked), and ACKs.
     - Verify signal state transitions in VBS SQLite database.
     """
-    # 1. Ingest signal in parallel using VBS app client
-    payload = {
-        "symbol": "BTCUSDT",
-        "action": "buy",
-        "price": "60000.0",
-        "secret": "test-secret",
-        "source": "strategy",
-    }
+    import config as server_config
 
-    async with httpx.AsyncClient(
-        transport=ASGITransport(app=vbs_app), base_url="http://test"
-    ) as client:
-        resp = await client.post("/ingest", json=payload)
-        assert resp.status_code == 200
-        ingest_data = resp.json()
-        assert ingest_data["queued"] is True
-        queue_id = ingest_data["queue_id"]
+    original_enabled = getattr(server_config, "FORWARD_TEST_ENABLED", False)
+    server_config.FORWARD_TEST_ENABLED = True
+    try:
+        # 1. Ingest signal in parallel using VBS app client
+        payload = {
+            "symbol": "BTCUSDT",
+            "action": "buy",
+            "price": "60000.0",
+            "secret": "test-secret",
+            "source": "strategy",
+        }
 
-    # 2. Run the worker run method in a background task
-    # We will lower LONG_POLL_TIMEOUT to speed up exit (minimum accepted by VBS Query validation is 5)
-    worker.LONG_POLL_TIMEOUT = 5
+        async with httpx.AsyncClient(
+            transport=ASGITransport(app=vbs_app), base_url="http://test"
+        ) as client:
+            resp = await client.post("/ingest", json=payload)
+            assert resp.status_code == 200
+            ingest_data = resp.json()
+            assert ingest_data["queued"] is True
+            queue_id = ingest_data["queue_id"]
 
-    # Mock RAG/AI analysis to approve the signal and extract confidence
-    # (since we are in AI mode, is_available=True)
-    with (
-        patch("rag.init_vector_db", return_value=True),
-        patch("rag.build_rag_query", return_value="query"),
-        patch("rag.query_knowledge", return_value=[]),
-        patch(
-            "rag.generate_trading_advice",
-            new_callable=AsyncMock,
-            return_value="Strong BUY signal. approved",
-        ),
-        patch("workers.ai_circuit_breaker.llm_breaker.is_available", return_value=True),
-        patch("notifier.send_telegram_alert", new_callable=AsyncMock),
-        patch("capture_client.get_capture_client") as mock_get_capture,
-    ):
-        mock_capture = AsyncMock()
-        mock_capture.fetch_ohlcv.return_value = (
-            None  # Force error/skip pattern detection
-        )
-        mock_get_capture.return_value = mock_capture
+        # 2. Run the worker run method in a background task
+        # We will lower LONG_POLL_TIMEOUT to speed up exit (minimum accepted by VBS Query validation is 5)
+        worker.LONG_POLL_TIMEOUT = 5
 
-        run_task = asyncio.create_task(worker.run())
+        # Mock RAG/AI analysis to approve the signal and extract confidence
+        # (since we are in AI mode, is_available=True)
+        with (
+            patch("rag.init_vector_db", return_value=True),
+            patch("rag.build_rag_query", return_value="query"),
+            patch("rag.query_knowledge", return_value=[]),
+            patch(
+                "rag.generate_trading_advice",
+                new_callable=AsyncMock,
+                return_value="Strong BUY signal. approved",
+            ),
+            patch(
+                "workers.ai_circuit_breaker.llm_breaker.is_available", return_value=True
+            ),
+            patch("notifier.send_telegram_alert", new_callable=AsyncMock),
+            patch("capture_client.get_capture_client") as mock_get_capture,
+        ):
+            mock_capture = AsyncMock()
+            mock_capture.fetch_ohlcv.return_value = (
+                None  # Force error/skip pattern detection
+            )
+            mock_get_capture.return_value = mock_capture
 
-        # Wait up to 5 seconds for the signal to be processed
-        for _ in range(50):
-            status, ack_status = await get_signal_db_status(queue_id)
-            if status == "ACKED":
+            run_task = asyncio.create_task(worker.run())
+
+            # Wait up to 5 seconds for the signal to be processed
+            for _ in range(50):
+                status, ack_status = await get_signal_db_status(queue_id)
+                if status == "ACKED":
+                    break
+                await asyncio.sleep(0.1)
+
+            # Trigger shutdown
+            worker._shutdown_event.set()
+            await run_task
+
+        # 3. Verify the signal state transitions in VBS SQLite database
+        status, ack_status = await get_signal_db_status(queue_id)
+        assert status == "ACKED"
+        assert ack_status == "executed"
+
+        # 4. Verify Server C forwarded the trade with mode=FORWARD
+        assert len(worker._session.post_calls) > 0, "No trade forwarded to Server B"
+        trade_call = None
+        for call_url, call_json in worker._session.post_calls:
+            if "execute-trade" in call_url:
+                trade_call = call_json
                 break
-            await asyncio.sleep(0.1)
-
-        # Trigger shutdown
-        worker._shutdown_event.set()
-        await run_task
-
-    # 3. Verify the signal state transitions in VBS SQLite database
-    status, ack_status = await get_signal_db_status(queue_id)
-    assert status == "ACKED"
-    assert ack_status == "executed"
+        assert trade_call is not None, "execute-trade call not found"
+        assert trade_call.get("mode") == "FORWARD", (
+            f"Expected mode=FORWARD in forwarded trade, got {trade_call.get('mode')}"
+        )
+    finally:
+        server_config.FORWARD_TEST_ENABLED = original_enabled
 
 
 @pytest.mark.asyncio

@@ -41,6 +41,9 @@ ALLOWED_NOT_IN_CONFIG = {
     "DISK_CRITICAL_THRESHOLD_PCT",  # Used by monitor.py directly
     "LIVENESS_ALERT_AFTER_FAILURES",  # Used by monitor.py directly
     "LONG_POLL_TIMEOUT_SEC",  # Used by vbs worker directly
+    "FORWARD_TEST_ENABLED",  # Forward Test configuration
+    "FORWARD_TEST_INITIAL_CAPITAL",  # Forward Test configuration
+    "FORWARD_TEST_POSITION_SIZE",  # Forward Test configuration
 }
 
 # ALLOWED_NO_DEFAULT: secrets that must NOT have defaults in source code

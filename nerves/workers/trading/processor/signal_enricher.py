@@ -204,10 +204,35 @@ async def enrich_indicator_signal(event: IndicatorSignalValidated) -> None:
         sl, tp = _compute_sl_tp(event.price, metadata)
 
         if event.signal_type == "entry":
-            # Asynchronous background task for vision AI check
-            import asyncio
+            import config
+            import os
 
-            asyncio.create_task(_validate_vision_and_route(event, action, sl, tp))
+            # Fast-path for Forward Test / Sync / Replay to avoid slow Gemini Vision/Capture timeouts
+            if (
+                getattr(config, "FORWARD_TEST_ENABLED", False)
+                or os.getenv("BYPASS_VISION", "false").lower() == "true"
+            ):
+                log.info(
+                    f"SignalEnricher: Bypassing slow vision check for Forward Test entry signal #{event.signal_id}"
+                )
+                await _bus.emit(
+                    SignalValidated(
+                        signal_id=event.signal_id,
+                        symbol=event.symbol,
+                        action=action,
+                        price=event.price,
+                        quote_qty=10.0,
+                        sl=sl,
+                        tp=tp,
+                        exchange=event.exchange,
+                        mode="FORWARD",
+                    )
+                )
+            else:
+                # Asynchronous background task for vision AI check
+                import asyncio
+
+                asyncio.create_task(_validate_vision_and_route(event, action, sl, tp))
         else:
             # exit signal directly routes to execute
             await _bus.emit(

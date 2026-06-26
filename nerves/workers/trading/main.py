@@ -22,6 +22,7 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 import config
 import database
@@ -152,7 +153,60 @@ log = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).parent / "static"
 
 
-# ── Rate limiting state moved to gateway.webhook (Phase 5) ──
+async def precompute_all_forward_simulations():
+    """Background task to precompute and cache simulations for all forward signals."""
+    log.info("Starting background pre-computation of forward signal simulations...")
+    try:
+        import aiosqlite
+
+        # 1. Get all forward signal IDs
+        forward_signals = []
+        for db_path in [config.FORWARD_DB_PATH, config.DB_PATH]:
+            if not os.path.exists(db_path):
+                continue
+            try:
+                async with aiosqlite.connect(db_path) as db:
+                    query = """
+                        SELECT s.id FROM signals s
+                        LEFT JOIN signals_scenarios_cache c ON s.id = c.signal_id
+                        WHERE s.id >= 1000000 AND c.signal_id IS NULL
+                    """
+                    async with db.execute(query) as cursor:
+                        rows = await cursor.fetchall()
+                        for r in rows:
+                            forward_signals.append(r[0])
+            except Exception as e:
+                log.warning(f"Error querying uncached signals in {db_path}: {e}")
+
+        if not forward_signals:
+            log.info("All forward signal simulations are already cached (0 uncached).")
+            return
+
+        log.info(
+            f"Found {len(forward_signals)} uncached forward signals. Precomputing..."
+        )
+        params = BacktestParams()
+        success_count = 0
+        for signal_id in forward_signals:
+            try:
+                await simulate_signal(signal_id, params)
+                success_count += 1
+                if success_count % 50 == 0:
+                    log.info(
+                        f"Precomputed {success_count}/{len(forward_signals)} simulations..."
+                    )
+                await asyncio.sleep(0.01)
+            except Exception as sim_ex:
+                log.warning(
+                    f"Failed to precompute simulation for signal #{signal_id}: {sim_ex}"
+                )
+        log.info(
+            f"Background pre-computation complete. Cached {success_count}/{len(forward_signals)} signals successfully."
+        )
+    except Exception as ex:
+        log.error(f"Error in background pre-computation loop: {ex}")
+
+
 # ═══ LIFESPAN (startup/shutdown) ═════════════════════════════
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -162,6 +216,18 @@ async def lifespan(app: FastAPI):
 
     await database.init_db()
     log.info("Database ready.")
+
+    if not _is_pytest:
+        try:
+            from engine.paper_engine import run_paper_trading_simulation
+
+            log.info("Running paper trade simulation on startup...")
+            await run_paper_trading_simulation()
+            log.info("Paper trade simulation completed on startup.")
+        except Exception as startup_sim_err:
+            log.warning(
+                f"Failed to run paper trade simulation on startup: {startup_sim_err}"
+            )
 
     # ── Angati SRA Server Integration ─────────────────────────────────────────
     try:
@@ -234,6 +300,11 @@ async def lifespan(app: FastAPI):
     import analyzer.ai_analyzer  # noqa: F401 — @bus.on(AlertTriggered)
     import data.indicator_persistence  # noqa: F401 — @bus.on(IndicatorSignalReceived) DI-1
     import engine.trade_engine  # noqa: F401 — @bus.on(SignalValidated)
+
+    try:
+        import engine.paper_engine  # noqa: F401 — @bus.on(SignalReceived)
+    except ImportError:
+        log.warning("engine.paper_engine not available on this branch.")
     import hub.notification_hub  # noqa: F401 — @bus.on(SignalRejected)
     import processor.signal_enricher  # noqa: F401 — @bus.on(IndicatorSignalValidated)
     import processor.signal_processor  # noqa: F401 — @bus.on(SignalReceived)
@@ -377,9 +448,33 @@ async def lifespan(app: FastAPI):
         except Exception as vbs_err:
             log.exception(f"VPS Buffer Consumer: ⚠️ Initialization failed: {vbs_err}")
 
+    # ── Active Position Monitor (WebSocket Tracker) ────────────────
+    if not _is_pytest:
+        try:
+            from engine.active_position_monitor import active_position_monitor
+
+            await active_position_monitor.start()
+            app.state.active_position_monitor = active_position_monitor
+            log.info("Active Position Monitor: WebSocket tracking service started.")
+        except Exception as apm_err:
+            log.warning(
+                f"Active Position Monitor: Failed to start background tracker: {apm_err}"
+            )
+
+    if not _is_pytest:
+        asyncio.create_task(precompute_all_forward_simulations())
+
     yield
 
     # ── Shutdown ──────────────────────────────────────────────
+    # Stop Active Position Monitor WebSocket tracking service
+    if hasattr(app.state, "active_position_monitor"):
+        try:
+            await app.state.active_position_monitor.stop()
+            log.info("Active Position Monitor: WebSocket tracking service stopped.")
+        except Exception as apm_err:
+            log.warning(f"Active Position Monitor: Error stopping tracker: {apm_err}")
+
     # Stop VBS Consumer background task
     if hasattr(app.state, "vps_consumer_task"):
         app.state.vps_consumer_task.cancel()
@@ -421,12 +516,20 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
+# ── P10: AuthMiddleware (replaces legacy dashboard_auth_middleware) ───────────
+app.add_middleware(
+    AuthMiddleware, auth_service=getattr(app.state, "auth_service", None)
+)
+
 # ── CORS Middleware — allows dashboard_live.html (file:// origin) ────────────
+# NOTE: "*" does NOT match Origin: null (sent by file:// pages per the CORS spec).
+# We explicitly add "null" so Chrome/Edge allow fetch() from local HTML files.
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*", "null"],
+    allow_origin_regex=r".*",  # catch-all fallback for any local origin
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
@@ -437,11 +540,6 @@ app.include_router(_webhook_router)
 
 # ── P10: Auth router ─────────────────────────────────────────────────────────
 app.include_router(_auth_router)
-
-# ── P10: AuthMiddleware (replaces legacy dashboard_auth_middleware) ───────────
-app.add_middleware(
-    AuthMiddleware, auth_service=getattr(app.state, "auth_service", None)
-)
 
 
 # ── No-cache override for JS files — MUST be declared BEFORE app.mount ───────
@@ -578,8 +676,14 @@ async def studio():
 
 
 @app.get("/forward-test")
-async def forward_test():
-    """Serve Forward Test Performance Dashboard UI."""
+async def forward_test_dashboard():
+    """Forward Test Dashboard — migrated from port-8080 dashboard_live.html.
+
+    Replaces the standalone Python HTTP server (port 8080).
+    All API calls use same-origin relative URLs → no CORS needed.
+    Data is filtered to mode=FORWARD (forward_trades.db).
+    Access: http://localhost:5000/forward-test
+    """
     return FileResponse(str(STATIC_DIR / "forward_test.html"))
 
 
@@ -1180,6 +1284,747 @@ async def get_signals_endpoint(
             status_code=500,
             detail=f"Internal server error querying signals: {e}",
         ) from e
+
+
+@app.get("/api/forward/sync-settings")
+async def get_forward_sync_settings():
+    try:
+        import json
+
+        val = await database.get_setting("sync_settings", "{}")
+        settings = json.loads(val)
+        if "position_sizing_mode" not in settings:
+            settings["position_sizing_mode"] = "fixed"
+        if "position_sizing_value" not in settings:
+            settings["position_sizing_value"] = 100.0
+        return {"success": True, "settings": settings}
+    except Exception as e:
+        log.error(f"Error fetching sync settings: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/forward/sync-settings")
+async def post_forward_sync_settings(body: dict):
+    try:
+        import json
+
+        sizing_mode = body.get("position_sizing_mode", "fixed")
+        if sizing_mode not in ("fixed", "dynamic"):
+            sizing_mode = "fixed"
+        body["position_sizing_mode"] = sizing_mode
+
+        try:
+            sizing_val = float(body.get("position_sizing_value", 100.0))
+        except (ValueError, TypeError):
+            sizing_val = 100.0
+        body["position_sizing_value"] = sizing_val
+
+        settings_json = json.dumps(body)
+        await database.set_setting(
+            "sync_settings", settings_json, db_path=config.DB_PATH
+        )
+        await database.set_setting(
+            "sync_settings", settings_json, db_path=config.FORWARD_DB_PATH
+        )
+        return {"success": True}
+    except Exception as e:
+        log.error(f"Error saving sync settings: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/forward/run-paper-engine")
+async def run_paper_engine():
+    try:
+        from engine.paper_engine import run_paper_trading_simulation
+
+        res = await run_paper_trading_simulation()
+        return res
+    except Exception as e:
+        log.error(f"Error running paper trade simulation: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error running paper trade simulation: {e}",
+        ) from e
+
+
+@app.get("/api/forward/signals-simulations")
+async def get_forward_signals_simulations():
+    """Retrieve all precalculated scenario simulations from the cache table."""
+    try:
+        import aiosqlite
+        import json
+
+        simulations = {}
+        # We query forward_trades.db as the primary, and trades.db as fallback
+        for db_path in [config.FORWARD_DB_PATH, config.DB_PATH]:
+            if not os.path.exists(db_path):
+                continue
+            try:
+                async with aiosqlite.connect(db_path) as db:
+                    db.row_factory = aiosqlite.Row
+                    async with db.execute(
+                        "SELECT signal_id, json_remove(result_json, '$.candles', '$.daily_candles') AS result_json FROM signals_scenarios_cache"
+                    ) as cursor:
+                        rows = await cursor.fetchall()
+                        for r in rows:
+                            simulations[str(r["signal_id"])] = json.loads(
+                                r["result_json"]
+                            )
+            except Exception as e:
+                log.warning(f"Error querying simulations cache from {db_path}: {e}")
+        return {"success": True, "simulations": simulations}
+    except Exception as e:
+        log.error(f"Error fetching signals simulations: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/forward/production-signals")
+async def get_forward_production_signals(
+    symbol: str | None = Query(None, description="Filter by symbol, e.g., BTCUSDT"),
+    source: str | None = Query(
+        None, description="Filter by source inside signal payload"
+    ),
+    start_id: int | None = Query(
+        None, description="Filter by start signal ID (inclusive)"
+    ),
+    end_id: int | None = Query(None, description="Filter by end signal ID (inclusive)"),
+    limit: int = Query(100, ge=1, le=1000, description="Max signals to return"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+):
+    try:
+        import aiosqlite
+        import json
+
+        conditions = []
+        params = []
+
+        if symbol:
+            from security.sanitizers import sanitize_symbol
+
+            symbol = sanitize_symbol(symbol)
+            conditions.append("UPPER(symbol) = ?")
+            params.append(symbol.upper())
+
+        if source:
+            conditions.append("LOWER(json_extract(payload, '$.source')) = ?")
+            params.append(source.strip().lower())
+
+        if start_id is not None:
+            conditions.append("id >= ?")
+            params.append(start_id)
+
+        if end_id is not None:
+            conditions.append("id <= ?")
+            params.append(end_id)
+
+        where_clause = ""
+        if conditions:
+            where_clause = "WHERE " + " AND ".join(conditions)
+
+        limit = min(max(limit, 1), 1000)
+        offset = max(offset, 0)
+
+        async with aiosqlite.connect(config.DB_PATH) as db:
+            db.row_factory = aiosqlite.Row
+
+            # Get total count for pagination
+            count_query = "SELECT COUNT(*) as cnt FROM signals "
+            if where_clause:
+                count_query += where_clause
+            count_row = await db.execute_fetchall(count_query, params)
+            total = count_row[0][0] if count_row else 0
+
+            query = (
+                "SELECT id, created_at, symbol, action, price, quote_qty, "
+                "source_ip, payload, mode, processed, vbs_queue_id, state, "
+                "rejection_reason, analysis_features, raw_analysis_text "
+                "FROM signals "
+            )
+            if where_clause:
+                query += where_clause + " "
+            query += "ORDER BY id ASC LIMIT ? OFFSET ?"
+
+            rows = await db.execute_fetchall(query, params + [limit, offset])
+
+        signals = []
+        for r in rows:
+            d = dict(r)
+            if d.get("payload"):
+                try:
+                    d["payload"] = json.loads(d["payload"])
+                except Exception as e:
+                    log.debug(f"Failed to parse payload: {e}")
+            signals.append(d)
+
+        return {
+            "success": True,
+            "signals": signals,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+    except Exception as e:
+        log.error(f"Error fetching production signals: {e}")
+        return {"success": False, "error": str(e)}
+
+
+# ── Klines Multi-Layer Cache (P3) ─────────────────────────────────────────────
+# L1: In-memory TTL cache | L2: SQLite ohlcv | L3: Binance API (paginated)
+_klines_cache: dict[str, tuple] = {}  # key → (candles_list, expire_at)
+_KLINES_TTL_HISTORICAL = 300.0  # 5 min for completed candles
+_KLINES_TTL_LIVE = 30.0  # 30s for current/recent candles
+_KLINES_MAX_LOOKBACK_DAYS = 90  # Hard cap: never fetch more than 90 days
+_KLINES_MAX_REQUESTS = 3  # Max Binance API requests per chart load
+
+
+def _klines_cache_get(key: str):
+    """L1: Check in-memory TTL cache for klines."""
+    entry = _klines_cache.get(key)
+    if entry and _time.monotonic() < entry[1]:
+        return entry[0]
+    _klines_cache.pop(key, None)
+    return None
+
+
+def _klines_cache_set(key: str, candles: list, is_historical: bool = True) -> None:
+    """L1: Store klines in in-memory TTL cache."""
+    ttl = _KLINES_TTL_HISTORICAL if is_historical else _KLINES_TTL_LIVE
+    _klines_cache[key] = (candles, _time.monotonic() + ttl)
+    # Prune stale entries (keep cache small, max 200 entries)
+    if len(_klines_cache) > 200:
+        now = _time.monotonic()
+        for k in [k for k, (_, exp) in list(_klines_cache.items()) if exp < now]:
+            _klines_cache.pop(k, None)
+
+
+async def _klines_from_sqlite(
+    symbol: str, interval: str, start_time_ms: int | None, limit: int
+) -> list | None:
+    """L2: Try to fetch candles from local SQLite ohlcv tables.
+
+    Falls back to ohlcv_1d for daily data, and ohlcv_1h for hourly (if table exists).
+    Returns LightweightCharts-format candles or None if insufficient data.
+    """
+    # Map interval to table name
+    table_map = {"1d": "ohlcv_1d", "1h": "ohlcv_1h", "5m": "ohlcv_5m"}
+    table = table_map.get(interval)
+
+    tables_to_try = []
+    if table:
+        tables_to_try.append(table)
+
+    if not tables_to_try:
+        return None
+
+    try:
+        async with aiosqlite.connect(config.DB_PATH) as db:
+            for tbl in tables_to_try:
+                # Check if table exists
+                cur = await db.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                    (tbl,),
+                )
+                if not await cur.fetchone():
+                    continue
+
+                query = f"SELECT timestamp, open, high, low, close, volume FROM {tbl} WHERE symbol = ?"  # noqa: S608
+                params: list = [symbol]
+                if start_time_ms:
+                    query += " AND timestamp >= ?"
+                    params.append(start_time_ms)
+                query += " ORDER BY timestamp ASC LIMIT ?"
+                params.append(limit)
+
+                rows = await db.execute_fetchall(query, params)
+                if rows and len(rows) >= 5:  # Need at least 5 candles for useful chart
+                    candles = [
+                        {
+                            "time": int(r[0]) // 1000,
+                            "open": float(r[1]),
+                            "high": float(r[2]),
+                            "low": float(r[3]),
+                            "close": float(r[4]),
+                            "volume": float(r[5]),
+                        }
+                        for r in rows
+                    ]
+                    log.info(
+                        f"Klines L2 HIT: {symbol} {interval} → {tbl} returned {len(candles)} candles"
+                    )
+                    return candles
+    except Exception as e:
+        log.warning(f"Klines L2 SQLite error: {e}")
+    return None
+
+
+async def _klines_from_binance_paginated(
+    symbol: str,
+    interval: str,
+    start_time_ms: int | None,
+    end_time_ms: int | None,
+    limit: int,
+) -> list:
+    """L3: Fetch candles from Binance with pagination guard.
+
+    Max 3 requests per call (= 3000 candles ≈ 125 days for 1h).
+    Hard cap: 90 days lookback from now.
+    """
+    import httpx
+
+    now_ms = int(_time.time() * 1000)
+    max_lookback_ms = _KLINES_MAX_LOOKBACK_DAYS * 24 * 3600 * 1000
+
+    # Enforce hard lookback cap
+    if start_time_ms:
+        start_time_ms = max(start_time_ms, now_ms - max_lookback_ms)
+
+    all_candles: list = []
+    current_start = start_time_ms
+    requests_made = 0
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            while requests_made < _KLINES_MAX_REQUESTS:
+                params: dict = {
+                    "symbol": symbol,
+                    "interval": interval,
+                    "limit": 1000,
+                }
+                if current_start:
+                    params["startTime"] = current_start
+                if end_time_ms and requests_made == 0:
+                    params["endTime"] = end_time_ms
+
+                resp = await client.get(
+                    "https://api.binance.com/api/v3/klines", params=params
+                )
+                resp.raise_for_status()
+                raw = resp.json()
+                requests_made += 1
+
+                if not raw:
+                    break
+
+                batch = [
+                    {
+                        "time": int(k[0]) // 1000,
+                        "open": float(k[1]),
+                        "high": float(k[2]),
+                        "low": float(k[3]),
+                        "close": float(k[4]),
+                        "volume": float(k[5]),
+                    }
+                    for k in raw
+                ]
+                all_candles.extend(batch)
+
+                # Stop if this is the last page or we have enough
+                if len(raw) < 1000 or len(all_candles) >= limit:
+                    break
+
+                # Advance startTime for next page
+                current_start = int(raw[-1][0]) + 1
+
+        log.info(
+            f"Klines L3 Binance: {symbol} {interval} → {requests_made} requests, {len(all_candles)} candles"
+        )
+    except Exception as e:
+        log.error(f"Klines L3 Binance paginated error: {e}")
+
+    return all_candles[-limit:] if len(all_candles) > limit else all_candles
+
+
+async def _save_klines_to_sqlite(symbol: str, interval: str, candles: list) -> None:
+    """Background task: persist fetched candles to SQLite for future L2 cache hits."""
+    table_map = {"1h": "ohlcv_1h", "1d": "ohlcv_1d", "5m": "ohlcv_5m"}
+    table = table_map.get(interval)
+    if not table or not candles:
+        return
+
+    try:
+        async with aiosqlite.connect(config.DB_PATH) as db:
+            # Create table if not exists (same schema as ohlcv_5m/ohlcv_1d)
+            await db.execute(
+                f"""CREATE TABLE IF NOT EXISTS {table} (
+                    symbol TEXT NOT NULL,
+                    timestamp INTEGER NOT NULL,
+                    open REAL NOT NULL,
+                    high REAL NOT NULL,
+                    low REAL NOT NULL,
+                    close REAL NOT NULL,
+                    volume REAL NOT NULL,
+                    PRIMARY KEY (symbol, timestamp)
+                )"""
+            )
+
+            # Upsert candles (INSERT OR REPLACE)
+            sql = f"INSERT OR REPLACE INTO {table} (symbol, timestamp, open, high, low, close, volume) VALUES (?, ?, ?, ?, ?, ?, ?)"  # noqa: S608
+            await db.executemany(
+                sql,
+                [
+                    (
+                        symbol,
+                        c["time"] * 1000,  # back to ms
+                        c["open"],
+                        c["high"],
+                        c["low"],
+                        c["close"],
+                        c["volume"],
+                    )
+                    for c in candles
+                ],
+            )
+            await db.commit()
+            log.info(
+                f"Klines L2 SAVED: {symbol} {interval} → {len(candles)} candles to {table}"
+            )
+    except Exception as e:
+        log.warning(f"Klines L2 save error: {e}")
+
+
+@app.get("/api/klines")
+async def get_klines(
+    symbol: str = Query(..., description="Symbol e.g. BTCUSDT"),
+    interval: str = Query("1h", description="Kline interval: 1m,5m,15m,1h,4h,1d"),
+    start_time: int | None = Query(
+        None, alias="startTime", description="Start time ms"
+    ),
+    end_time: int | None = Query(None, alias="endTime", description="End time ms"),
+    limit: int = Query(1000, ge=1, le=3000, description="Max klines"),
+):
+    """Smart OHLCV endpoint with 3-layer cache: L1 Memory → L2 SQLite → L3 Binance.
+
+    Features:
+    - 90-day hard lookback cap to prevent Binance rate-limit abuse
+    - Max 3 paginated Binance requests per call (≈125 days for 1h)
+    - Automatic SQLite persistence for future cache hits
+    - In-memory TTL cache (5min historical, 30s live)
+    """
+    symbol_clean = symbol.upper().replace(":", "")
+    now_ms = int(_time.time() * 1000)
+
+    # Determine if this is a historical or live request
+    is_historical = bool(start_time and (now_ms - start_time) > 2 * 3600 * 1000)
+
+    # L1: Check in-memory cache
+    cache_key = f"kl:{symbol_clean}:{interval}:{start_time or 'latest'}:{limit}"
+    cached = _klines_cache_get(cache_key)
+    if cached:
+        return {
+            "success": True,
+            "candles": cached,
+            "symbol": symbol_clean,
+            "source": "memory_cache",
+            "count": len(cached),
+        }
+
+    # L2: Check SQLite ohlcv tables
+    db_candles = await _klines_from_sqlite(symbol_clean, interval, start_time, limit)
+    if db_candles:
+        _klines_cache_set(cache_key, db_candles, is_historical=is_historical)
+        return {
+            "success": True,
+            "candles": db_candles,
+            "symbol": symbol_clean,
+            "source": "db_cache",
+            "count": len(db_candles),
+        }
+
+    # L3: Fetch from Binance (paginated, with guards)
+    candles = await _klines_from_binance_paginated(
+        symbol_clean, interval, start_time, end_time, limit
+    )
+
+    if candles:
+        # Save to L1 memory cache
+        _klines_cache_set(cache_key, candles, is_historical=is_historical)
+        # Save to L2 SQLite in background (non-blocking)
+        asyncio.ensure_future(_save_klines_to_sqlite(symbol_clean, interval, candles))
+
+    return {
+        "success": bool(candles),
+        "candles": candles,
+        "symbol": symbol_clean,
+        "source": "binance_api",
+        "count": len(candles),
+    }
+
+
+class BacktestParams(BaseModel):
+    base_sl_pct: float = 8.0
+    base_tp_pct: float = 20.0
+    s4_sl_atr_mult: float = 1.5
+    s4_tp_atr_mult: float = 3.0
+    s4_trail_atr_mult: float = 2.5
+    s2_min_tt_score: int = 5
+    s5_min_tt_score: int = 5
+    s6_min_tt_score: int = 6
+    s6_min_rsi: float = 42.0
+    slippage_pct: float = 0.05
+    mta_mltf_weight_1h: float = 0.15
+    regime_volatility_window: int = 50
+    hil_min_threshold: float = 50.0
+    hil_max_threshold: float = 79.0
+    atr_sl_multiplier: float = 2.5
+    atr_tp_multiplier: float = 2.0
+    chandelier_trailing_multiplier: float = 3.5
+
+
+@app.post("/api/simulate/{signal_id}")
+async def simulate_signal(signal_id: int, params: BacktestParams):
+    """Run dynamic simulation for a specific signal ID (backtest or forward-test)."""
+    # 1. Backtest signals (id < 1000000) are proxied to port 9109
+    if signal_id < 1000000:
+        import httpx
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            try:
+                resp = await client.post(
+                    f"http://127.0.0.1:9109/api/simulate/{signal_id}",
+                    json=params.dict(),
+                )
+                if resp.status_code == 200:
+                    return resp.json()
+                else:
+                    raise HTTPException(status_code=resp.status_code, detail=resp.text)
+            except Exception as ex:
+                log.error(f"Backtest proxy error for signal {signal_id}: {ex}")
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"Failed to communicate with backtest server: {ex}",
+                ) from ex
+
+    # 2. Forward/live signals (id >= 1000000)
+    try:
+        res_dict = await run_single_simulation_main(signal_id, params)
+    except Exception as e:
+        log.exception(f"Simulation execution error: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"An internal error occurred during simulation: {e}"
+        ) from e
+
+    # Cache only if using default parameters to save space
+    if params.dict() == BacktestParams().dict():
+        found_db_path = None
+        for db_path in (config.FORWARD_DB_PATH, config.DB_PATH):
+            if os.path.exists(db_path):
+                found_db_path = db_path
+                break
+        if found_db_path:
+            import aiosqlite
+            import json
+
+            try:
+                async with aiosqlite.connect(found_db_path) as db:
+                    await db.execute(
+                        "INSERT OR REPLACE INTO signals_scenarios_cache (signal_id, result_json, updated_at) VALUES (?, ?, datetime('now'))",
+                        (signal_id, json.dumps(res_dict)),
+                    )
+                    await db.commit()
+                    log.info(
+                        f"Saved simulation results to cache for signal #{signal_id} in {found_db_path}"
+                    )
+            except Exception as cache_write_err:
+                log.warning(
+                    f"Failed to cache simulation for signal #{signal_id}: {cache_write_err}"
+                )
+
+    return res_dict
+
+
+@app.get("/api/forward/server-stats")
+async def get_forward_server_stats():
+    """Return signal counts from both trades.db and forward_trades.db."""
+    import aiosqlite
+
+    try:
+        stats = {}
+        async with aiosqlite.connect(config.DB_PATH) as db:
+            row = await db.execute_fetchall("SELECT COUNT(*) FROM signals")
+            stats["production_total"] = row[0][0] if row else 0
+            row2 = await db.execute_fetchall("SELECT MAX(id) FROM signals")
+            stats["production_max_id"] = row2[0][0] if row2 and row2[0][0] else 0
+            row3 = await db.execute_fetchall(
+                "SELECT COUNT(DISTINCT symbol) FROM signals"
+            )
+            stats["production_symbols"] = row3[0][0] if row3 else 0
+
+        async with aiosqlite.connect(config.FORWARD_DB_PATH) as fdb:
+            row = await fdb.execute_fetchall("SELECT COUNT(*) FROM signals")
+            stats["forward_total"] = row[0][0] if row else 0
+            row2 = await fdb.execute_fetchall("SELECT MAX(id) FROM signals")
+            stats["forward_max_id"] = row2[0][0] if row2 and row2[0][0] else 0
+
+        return {"success": True, **stats}
+    except Exception as e:
+        log.error(f"Server stats error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+async def _get_id_based_signals(ids: list, existing_ids: set) -> list:
+    import aiosqlite
+
+    ids_to_query = []
+    for i in ids:
+        try:
+            val = int(i)
+            if val not in existing_ids:
+                ids_to_query.append(val)
+        except (ValueError, TypeError):
+            continue
+
+    if not ids_to_query:
+        return []
+
+    placeholders = ",".join("?" for _ in ids_to_query)
+    query = (
+        "SELECT id, created_at, symbol, action, price, quote_qty, "
+        "source_ip, payload, processed, vbs_queue_id, state, "
+        "rejection_reason, analysis_features, raw_analysis_text "
+        "FROM signals WHERE id IN (" + placeholders + ")"
+    )
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(query, ids_to_query) as cursor:
+            db_rows = await cursor.fetchall()
+    return list(db_rows)
+
+
+async def _parse_sync_settings():
+    import json
+
+    settings_str = await database.get_setting("sync_settings", "{}")
+    settings = json.loads(settings_str)
+    symbols = [
+        s.strip().upper() for s in settings.get("symbols", "").split(",") if s.strip()
+    ]
+    sources = [
+        s.strip().lower() for s in settings.get("sources", "").split(",") if s.strip()
+    ]
+    start_id = settings.get("start_id")
+    end_id = settings.get("end_id")
+    start_id = (
+        int(start_id) if start_id is not None and str(start_id).strip() != "" else None
+    )
+    end_id = int(end_id) if end_id is not None and str(end_id).strip() != "" else None
+    return symbols, sources, start_id, end_id
+
+
+def _build_settings_sync_query(symbols, start_id, end_id):
+    query = (
+        "SELECT id, created_at, symbol, action, price, quote_qty, "
+        "source_ip, payload, processed, vbs_queue_id, state, "
+        "rejection_reason, analysis_features, raw_analysis_text "
+        "FROM signals WHERE 1=1"
+    )
+    params = []
+    if start_id:
+        query += " AND id >= ?"
+        params.append(start_id)
+    if end_id:
+        query += " AND id <= ?"
+        params.append(end_id)
+    if symbols:
+        placeholders = ",".join("?" for _ in symbols)
+        query += " AND UPPER(symbol) IN (" + placeholders + ")"
+        params.extend(symbols)
+    return query, params
+
+
+def _match_source_filter(r, sources) -> bool:
+    if not sources:
+        return True
+    import json
+
+    payload_str = r["payload"]
+    payload_dict = {}
+    if payload_str:
+        try:
+            payload_dict = json.loads(payload_str)
+        except Exception as e:
+            log.debug(f"Failed to parse payload: {e}")
+    sig_source = payload_dict.get("source", "").strip().lower()
+    return sig_source in sources
+
+
+async def _get_settings_based_signals(existing_ids: set) -> list:
+    import aiosqlite
+
+    symbols, sources, start_id, end_id = await _parse_sync_settings()
+    query, params = _build_settings_sync_query(symbols, start_id, end_id)
+
+    async with aiosqlite.connect(config.DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(query, params) as cursor:
+            db_rows = await cursor.fetchall()
+
+    signals_to_insert = []
+    for r in db_rows:
+        if r["id"] not in existing_ids and _match_source_filter(r, sources):
+            signals_to_insert.append(r)
+    return signals_to_insert
+
+
+async def _insert_forward_signals(signals_to_insert: list) -> int:
+    if not signals_to_insert:
+        return 0
+    import aiosqlite
+
+    synced_count = 0
+    async with aiosqlite.connect(config.FORWARD_DB_PATH) as f_db:
+        for sig in signals_to_insert:
+            await f_db.execute(
+                """INSERT OR IGNORE INTO signals
+                (id, created_at, symbol, action, price, quote_qty, source_ip, payload, mode, processed, vbs_queue_id, state, rejection_reason, analysis_features, raw_analysis_text)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    sig["id"],
+                    sig["created_at"],
+                    sig["symbol"],
+                    sig["action"],
+                    sig["price"],
+                    sig["quote_qty"],
+                    sig["source_ip"],
+                    sig["payload"],
+                    "FORWARD",
+                    sig["processed"],
+                    sig["vbs_queue_id"],
+                    sig["state"],
+                    sig["rejection_reason"],
+                    sig["analysis_features"],
+                    sig["raw_analysis_text"],
+                ),
+            )
+            synced_count += 1
+        await f_db.commit()
+    return synced_count
+
+
+@app.post("/api/forward/sync-now")
+async def post_forward_sync_now(body: dict | None = None):
+    try:
+        import aiosqlite
+
+        existing_ids = set()
+        async with aiosqlite.connect(config.FORWARD_DB_PATH) as f_db:
+            async with f_db.execute("SELECT id FROM signals") as cursor:
+                rows = await cursor.fetchall()
+                for r in rows:
+                    existing_ids.add(r[0])
+
+        body = body or {}
+        ids = body.get("ids")
+
+        if ids is not None:
+            signals_to_insert = await _get_id_based_signals(ids, existing_ids)
+        else:
+            signals_to_insert = await _get_settings_based_signals(existing_ids)
+
+        synced_count = await _insert_forward_signals(signals_to_insert)
+        return {"success": True, "synced_count": synced_count}
+    except Exception as e:
+        log.error(f"Error during manual sync: {e}")
+        return {"success": False, "error": str(e)}
 
 
 @app.get("/api/chart-markers")
@@ -2476,9 +3321,6 @@ async def sse_events(request: Request):
     )
 
 
-from pydantic import BaseModel  # noqa: E402
-
-
 class OverrideRequest(BaseModel):
     exchange: str
     action: str
@@ -2605,6 +3447,792 @@ async def update_risk_settings_endpoint(req: RiskSettingsUpdateRequest):
             status_code=500,
             detail="An internal server error occurred while updating risk settings.",
         ) from e
+
+
+@app.get("/reports/trade_replay", response_class=FileResponse)
+def serve_trade_replay():
+    # Dynamic path resolution to support local repository layout
+    project_root = Path(__file__).resolve().parent.parent.parent.parent
+    return FileResponse(str(project_root / "statics-reports" / "trade_replay.html"))
+
+
+@app.get("/reports/monthly_pattern_analysis", response_class=FileResponse)
+def serve_monthly_pattern_analysis():
+    project_root = Path(__file__).resolve().parent.parent.parent.parent
+    return FileResponse(
+        str(project_root / "statics-reports" / "monthly_pattern_analysis.html")
+    )
+
+
+class BacktestParams(BaseModel):
+    base_sl_pct: float = 8.0
+    base_tp_pct: float = 20.0
+    s4_sl_atr_mult: float = 1.5
+    s4_tp_atr_mult: float = 3.0
+    s4_trail_atr_mult: float = 2.5
+    s2_min_tt_score: int = 5
+    s5_min_tt_score: int = 5
+    s6_min_tt_score: int = 5
+    s6_min_rsi: float = 50.0
+    slippage_pct: float = 0.05
+    mta_mltf_weight_1h: float = 0.15
+    regime_volatility_window: int = 50
+    hil_min_threshold: float = 50.0
+    hil_max_threshold: float = 79.0
+    atr_sl_multiplier: float = 1.5
+    atr_tp_multiplier: float = 3.0
+    chandelier_trailing_multiplier: float = 2.5
+
+
+async def run_single_simulation_main(signal_id: int, params: BacktestParams) -> dict:
+    import sqlite3
+    import datetime
+    import json
+    from scripts.run_vbs_backtest_campaign import (
+        load_cached_candles,
+        calculate_daily_indicators,
+        calculate_hourly_indicators,
+        get_signal_start_index,
+        get_last_closed_candle,
+        simulate_trade_execution,
+    )
+
+    # 1. Load signal from databases
+    signal = None
+    for db_path in (config.FORWARD_DB_PATH, config.DB_PATH):
+        if not os.path.exists(db_path):
+            continue
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM signals WHERE id = ?", (signal_id,))
+        row = cur.fetchone()
+        conn.close()
+        if row:
+            signal = dict(row)
+            break
+
+    if not signal:
+        raise HTTPException(
+            status_code=404, detail=f"Signal #{signal_id} not found in DBs."
+        )
+
+    symbol = signal["symbol"]
+    action = signal["action"]
+    price = signal["price"]
+    created_at = signal["created_at"]
+    payload_raw = signal["payload"]
+
+    payload = {}
+    if payload_raw:
+        if isinstance(payload_raw, dict):
+            payload = payload_raw
+        else:
+            try:
+                payload = json.loads(payload_raw)
+            except Exception:  # noqa: S110
+                pass
+
+    # Load candles for specific symbol
+    df_1d = load_cached_candles(symbol, "1d")
+    df_1h = load_cached_candles(symbol, "1h")
+    df_btc_daily = load_cached_candles("BTCUSDT", "1d")
+
+    if df_1d.empty or df_1h.empty or df_btc_daily.empty:
+        raise HTTPException(
+            status_code=400, detail=f"No candle data available for symbol {symbol}."
+        )
+
+    # Calculate indicators on the fly
+    is_btc = symbol in ("BTCUSDT", "BTC/USDT")
+    df_1d_ind = calculate_daily_indicators(
+        df_1d, is_btc=is_btc, df_btc_daily=df_btc_daily
+    )
+    df_1h_ind = calculate_hourly_indicators(df_1h)
+
+    # Parse signal time
+    created_clean = created_at.replace("T", " ").split(".")[0].split("+")[0].strip()
+    dt_signal = datetime.datetime.strptime(created_clean, "%Y-%m-%d %H:%M:%S")
+    dt_signal = dt_signal.replace(tzinfo=datetime.timezone.utc)
+    signal_time_ms = int(dt_signal.timestamp() * 1000)
+
+    # Find signal hourly start index
+    start_idx = get_signal_start_index(df_1h_ind, signal_time_ms)
+    if start_idx == -1:
+        raise HTTPException(
+            status_code=400, detail="Signal timestamp is outside hourly candle range."
+        )
+
+    # Get daily indicators closed before signal
+    daily_row = get_last_closed_candle(df_1d_ind, signal_time_ms, 86400000)
+    daily_price = daily_row["close"]
+    daily_atr = daily_row["atr14"]
+    daily_volume = daily_row["volume"]
+    daily_volume_avg20 = daily_row["volume_avg20"]
+    daily_high = daily_row["high"]
+    daily_low = daily_row["low"]
+    daily_high52w = daily_row["high52w"]
+    daily_low52w = daily_row["low52w"]
+    daily_rsi = daily_row["rsi14"]
+    daily_macd = daily_row["macd_line"]
+    daily_macd_sig = daily_row["macd_signal"]
+    daily_ema20 = daily_row["ema20"]
+    daily_ema50 = daily_row["ema50"]
+    daily_ema100 = daily_row["ema100"]
+
+    is_long = action.lower() in ("buy", "long")
+    tt_score = daily_row["tt_score_long"] if is_long else daily_row["tt_score_short"]
+
+    # 1. 1H Trend (T1H) contribution
+    hourly_slice_before = df_1h_ind.iloc[max(0, start_idx - 30) : start_idx]
+    if len(hourly_slice_before) >= 20:
+        sma20 = hourly_slice_before["close"].rolling(window=20).mean().iloc[-1]
+        t_1h = 1.0 if price > sma20 else -1.0
+    else:
+        t_1h = 1.0
+
+    # 2. Combined Medium/Long-Term Trend Score (MLTS)
+    mta_weight = params.mta_mltf_weight_1h
+    mlts = tt_score + mta_weight * t_1h
+
+    # 3. Dynamic Volatility Regime (Trending vs Chop)
+    vol_window = params.regime_volatility_window
+    daily_row_idx = int(daily_row.name)
+    daily_slice_before = df_1d_ind.iloc[
+        max(0, daily_row_idx - vol_window + 1) : daily_row_idx + 1
+    ]
+    if len(daily_slice_before) >= 2:
+        closes_slice = daily_slice_before["close"].values
+        mean_price = closes_slice.mean()
+        std_dev = closes_slice.std()
+        coef_of_variation = std_dev / mean_price if mean_price > 0 else 0.0
+    else:
+        coef_of_variation = 0.05
+
+    latest_ema20 = daily_row["ema20"]
+    latest_ema50 = daily_row["ema50"]
+    latest_ema100 = daily_row["ema100"]
+
+    is_trending_up = latest_ema20 > latest_ema50 > latest_ema100
+    is_trending_down = latest_ema20 < latest_ema50 < latest_ema100
+    ema_aligned = is_trending_up or is_trending_down
+    spread = abs(latest_ema20 - latest_ema100) / daily_price if daily_price > 0 else 0.0
+
+    is_chop = coef_of_variation < 0.015 or (not ema_aligned and spread < 0.02)
+
+    # VCP verification
+    vcp_slice = df_1d_ind.iloc[max(0, daily_row_idx - 4) : daily_row_idx + 1]
+    vcp_window_met = False
+    for _, r in vcp_slice.iterrows():
+        r_vol = r["volume"]
+        r_vol_avg20 = r["volume_avg20"]
+        r_high = r["high"]
+        r_low = r["low"]
+        r_atr = r["atr14"]
+
+        r_vol_ratio = (r_vol / r_vol_avg20) if r_vol_avg20 and r_vol_avg20 > 0 else 1.0
+        r_range_ratio = ((r_high - r_low) / r_atr) if r_atr and r_atr > 0 else 1.0
+
+        if r_vol_ratio < 1.0 and r_range_ratio < 1.0:
+            vcp_window_met = True
+            break
+
+    if is_long:
+        near_boundary = (
+            (daily_price >= daily_high52w * 0.90) if daily_high52w else False
+        )
+    else:
+        near_boundary = (daily_price <= daily_low52w * 1.10) if daily_low52w else False
+    vcp_met = vcp_window_met and near_boundary
+
+    volume_ratio = (
+        (daily_volume / daily_volume_avg20)
+        if daily_volume_avg20 and daily_volume_avg20 > 0
+        else 1.0
+    )
+    range_ratio = (
+        ((daily_high - daily_low) / daily_atr) if daily_atr and daily_atr > 0 else 1.0
+    )
+
+    sl_val = payload.get("sl") or signal.get("sl")
+    tp_val = payload.get("tp") or signal.get("tp")
+
+    ai_confidence = payload.get("confidence_score") or payload.get("ai_confidence")
+    if ai_confidence is not None:
+        try:
+            ai_confidence = float(ai_confidence)
+        except (ValueError, TypeError):
+            ai_confidence = None
+
+    if not ai_confidence:
+        score = 60.0
+        score += (tt_score - 5) * 5.0
+        if vcp_met:
+            score += 10.0
+        if is_long:
+            if daily_rsi > 60:
+                score += 5.0
+            elif daily_rsi < 45:
+                score -= 10.0
+        else:
+            if daily_rsi < 40:
+                score += 5.0
+            elif daily_rsi > 55:
+                score -= 10.0
+        macd_aligned = (
+            (daily_macd > daily_macd_sig) if is_long else (daily_macd < daily_macd_sig)
+        )
+        if macd_aligned:
+            score += 5.0
+        else:
+            score -= 5.0
+        if is_chop:
+            score -= 20.0
+
+        ai_confidence = max(0.0, min(100.0, score))
+
+    hil_required = params.hil_min_threshold <= ai_confidence <= params.hil_max_threshold
+
+    if not sl_val or not tp_val:
+        if is_long:
+            base_sl = price * (1.0 - params.base_sl_pct / 100.0)
+            base_tp = price * (1.0 + params.base_tp_pct / 100.0)
+        else:
+            base_sl = price * (1.0 + params.base_sl_pct / 100.0)
+            base_tp = price * (1.0 - params.base_tp_pct / 100.0)
+    else:
+        try:
+            base_sl = float(sl_val)
+        except (ValueError, TypeError):
+            base_sl = (
+                price * (1.0 - params.base_sl_pct / 100.0)
+                if is_long
+                else price * (1.0 + params.base_sl_pct / 100.0)
+            )
+        try:
+            base_tp = float(tp_val)
+        except (ValueError, TypeError):
+            base_tp = (
+                price * (1.0 + params.base_tp_pct / 100.0)
+                if is_long
+                else price * (1.0 - params.base_tp_pct / 100.0)
+            )
+
+    scenarios_results = {}
+
+    # S1: Baseline
+    sim1 = simulate_trade_execution(
+        df_1h_ind,
+        start_idx,
+        action,
+        price,
+        base_sl,
+        base_tp,
+        slippage_pct=params.slippage_pct,
+    )
+    scenarios_results["S1"] = {
+        "executed": True,
+        "sl": base_sl,
+        "tp": base_tp,
+        "close_price": sim1["close_price"],
+        "close_time_ms": sim1["close_time_ms"],
+        "pnl_pct": sim1["pnl_pct"],
+        "outcome": sim1["close_reason"],
+        "bars": sim1["exit_idx"] - start_idx,
+        "exit_idx": sim1["exit_idx"],
+    }
+
+    # S2: Minervini
+    s2_ok = tt_score >= params.s2_min_tt_score and vcp_met
+    if s2_ok:
+        sim2 = simulate_trade_execution(
+            df_1h_ind,
+            start_idx,
+            action,
+            price,
+            base_sl,
+            base_tp,
+            slippage_pct=params.slippage_pct,
+        )
+        scenarios_results["S2"] = {
+            "executed": True,
+            "sl": base_sl,
+            "tp": base_tp,
+            "close_price": sim2["close_price"],
+            "close_time_ms": sim2["close_time_ms"],
+            "pnl_pct": sim2["pnl_pct"],
+            "outcome": sim2["close_reason"],
+            "bars": sim2["exit_idx"] - start_idx,
+            "exit_idx": sim2["exit_idx"],
+        }
+    else:
+        scenarios_results["S2"] = {
+            "executed": False,
+            "reason": f"Trend Template score = {tt_score}/8 (need >= {params.s2_min_tt_score}) or VCP filter met = {vcp_met} (need True)",
+        }
+
+    # S3: Short-term EMA Filter
+    ema_aligned = (
+        (daily_price > daily_ema20 > daily_ema50 > daily_ema100)
+        if is_long
+        else (daily_price < daily_ema20 < daily_ema50 < daily_ema100)
+    )
+    if ema_aligned:
+        sim3 = simulate_trade_execution(
+            df_1h_ind,
+            start_idx,
+            action,
+            price,
+            base_sl,
+            base_tp,
+            slippage_pct=params.slippage_pct,
+        )
+        scenarios_results["S3"] = {
+            "executed": True,
+            "sl": base_sl,
+            "tp": base_tp,
+            "close_price": sim3["close_price"],
+            "close_time_ms": sim3["close_time_ms"],
+            "pnl_pct": sim3["pnl_pct"],
+            "outcome": sim3["close_reason"],
+            "bars": sim3["exit_idx"] - start_idx,
+            "exit_idx": sim3["exit_idx"],
+        }
+    else:
+        scenarios_results["S3"] = {
+            "executed": False,
+            "reason": "Daily EMA trend stack is not aligned (Price > EMA20 > EMA50 > EMA100 for long, opposite for short)",
+        }
+
+    # S4: Tight SL / Trailing Stop
+    if daily_atr and daily_atr > 0:
+        if is_long:
+            tight_sl = price - (params.s4_sl_atr_mult * daily_atr)
+            tight_tp = price + (params.s4_tp_atr_mult * daily_atr)
+        else:
+            tight_sl = price + (params.s4_sl_atr_mult * daily_atr)
+            tight_tp = price - (params.s4_tp_atr_mult * daily_atr)
+
+        sim4 = simulate_trade_execution(
+            df_1h_ind,
+            start_idx,
+            action,
+            price,
+            tight_sl,
+            tight_tp,
+            is_trailing=True,
+            trailing_dist_atr=params.s4_trail_atr_mult,
+            daily_atr14=daily_atr,
+            slippage_pct=params.slippage_pct,
+        )
+        scenarios_results["S4"] = {
+            "executed": True,
+            "sl": tight_sl,
+            "tp": tight_tp,
+            "close_price": sim4["close_price"],
+            "close_time_ms": sim4["close_time_ms"],
+            "pnl_pct": sim4["pnl_pct"],
+            "outcome": sim4["close_reason"],
+            "bars": sim4["exit_idx"] - start_idx,
+            "exit_idx": sim4["exit_idx"],
+            "trailing_sl_history": sim4.get("trailing_sl_history", []),
+        }
+    else:
+        scenarios_results["S4"] = {
+            "executed": False,
+            "reason": "ATR14 is not available on daily candles",
+        }
+
+    # S5: Multi-Timeframe Validation
+    s5_ok = False
+    if mlts >= params.s5_min_tt_score:
+        hourly_row = get_last_closed_candle(df_1h_ind, signal_time_ms, 3600000)
+        h_ema20 = hourly_row["ema20"]
+        h_ema50 = hourly_row["ema50"]
+        h_ema200 = hourly_row["ema200"]
+        if is_long:
+            if h_ema20 > h_ema50 and h_ema50 > h_ema200:
+                s5_ok = True
+        else:
+            if h_ema20 < h_ema50 and h_ema50 < h_ema200:
+                s5_ok = True
+
+    if s5_ok:
+        if daily_atr and daily_atr > 0:
+            s5_sl = (
+                price - (params.atr_sl_multiplier * daily_atr)
+                if is_long
+                else price + (params.atr_sl_multiplier * daily_atr)
+            )
+            s5_tp = (
+                price + (params.atr_tp_multiplier * daily_atr)
+                if is_long
+                else price - (params.atr_tp_multiplier * daily_atr)
+            )
+        else:
+            s5_sl = base_sl
+            s5_tp = base_tp
+
+        sim5 = simulate_trade_execution(
+            df_1h_ind,
+            start_idx,
+            action,
+            price,
+            s5_sl,
+            s5_tp,
+            slippage_pct=params.slippage_pct,
+        )
+        scenarios_results["S5"] = {
+            "executed": True,
+            "sl": s5_sl,
+            "tp": s5_tp,
+            "close_price": sim5["close_price"],
+            "close_time_ms": sim5["close_time_ms"],
+            "pnl_pct": sim5["pnl_pct"],
+            "outcome": sim5["close_reason"],
+            "bars": sim5["exit_idx"] - start_idx,
+            "exit_idx": sim5["exit_idx"],
+        }
+    else:
+        scenarios_results["S5"] = {
+            "executed": False,
+            "reason": f"MLTS score = {mlts:.2f} (need >= {params.s5_min_tt_score}) or hourly EMA trend not aligned",
+        }
+
+    # S6: Optimized Hybrid Mode
+    s6_ok = False
+    if not is_chop and mlts >= params.s6_min_tt_score:
+        if is_long:
+            if daily_rsi >= params.s6_min_rsi and daily_macd > daily_macd_sig:
+                s6_ok = True
+        else:
+            if daily_rsi <= (100.0 - params.s6_min_rsi) and daily_macd < daily_macd_sig:
+                s6_ok = True
+
+    if s6_ok:
+        if daily_atr and daily_atr > 0:
+            s6_sl = (
+                price - (params.atr_sl_multiplier * daily_atr)
+                if is_long
+                else price + (params.atr_sl_multiplier * daily_atr)
+            )
+            s6_tp = (
+                price + (params.atr_tp_multiplier * daily_atr)
+                if is_long
+                else price - (params.atr_tp_multiplier * daily_atr)
+            )
+            sim6 = simulate_trade_execution(
+                df_1h_ind,
+                start_idx,
+                action,
+                price,
+                s6_sl,
+                s6_tp,
+                is_trailing=True,
+                trailing_dist_atr=params.chandelier_trailing_multiplier,
+                daily_atr14=daily_atr,
+                slippage_pct=params.slippage_pct,
+            )
+        else:
+            s6_sl = base_sl
+            s6_tp = base_tp
+            sim6 = simulate_trade_execution(
+                df_1h_ind,
+                start_idx,
+                action,
+                price,
+                s6_sl,
+                s6_tp,
+                slippage_pct=params.slippage_pct,
+            )
+
+        scenarios_results["S6"] = {
+            "executed": True,
+            "sl": s6_sl,
+            "tp": s6_tp,
+            "close_price": sim6["close_price"],
+            "close_time_ms": sim6["close_time_ms"],
+            "pnl_pct": sim6["pnl_pct"],
+            "outcome": sim6["close_reason"],
+            "bars": sim6["exit_idx"] - start_idx,
+            "exit_idx": sim6["exit_idx"],
+        }
+    else:
+        scenarios_results["S6"] = {
+            "executed": False,
+            "reason": f"Chop detected = {is_chop} or MLTS score = {mlts:.2f} (need >= {params.s6_min_tt_score}) or daily RSI/MACD not aligned",
+        }
+
+    sma50 = daily_row.get("sma50")
+    sma150 = daily_row.get("sma150")
+    sma200 = daily_row.get("sma200")
+    sma200_slope = daily_row.get("sma200_slope")
+    high52w = daily_row.get("high52w")
+    low52w = daily_row.get("low52w")
+    rs_ratio = daily_row.get("rs_ratio")
+
+    if is_long:
+        tt_details = {
+            "c1": bool(
+                daily_price > sma150 and daily_price > sma200
+                if sma150 and sma200
+                else False
+            ),
+            "c2": bool(sma150 > sma200 if sma150 and sma200 else False),
+            "c3": bool(sma200_slope > 0 if sma200_slope is not None else False),
+            "c4": bool(
+                sma50 > sma150 and sma50 > sma200
+                if sma50 and sma150 and sma200
+                else False
+            ),
+            "c5": bool(daily_price > sma50 if sma50 else False),
+            "c6": bool(daily_price >= low52w * 1.30 if low52w else False),
+            "c7": bool(daily_price >= high52w * 0.75 if high52w else False),
+            "c8": bool(rs_ratio > 1.0 if rs_ratio is not None else False),
+        }
+    else:
+        tt_details = {
+            "c1": bool(
+                daily_price < sma150 and daily_price < sma200
+                if sma150 and sma200
+                else False
+            ),
+            "c2": bool(sma150 < sma200 if sma150 < sma200 else False),
+            "c3": bool(sma200_slope < 0 if sma200_slope is not None else False),
+            "c4": bool(
+                sma50 < sma150 and sma50 < sma200
+                if sma50 and sma150 and sma200
+                else False
+            ),
+            "c5": bool(daily_price < sma50 if sma50 else False),
+            "c6": bool(daily_price <= high52w * 0.70 if high52w else False),
+            "c7": bool(daily_price <= low52w * 1.25 if low52w else False),
+            "c8": bool(rs_ratio < 1.0 if rs_ratio is not None else False),
+        }
+
+    max_exit_idx = start_idx
+    for sc in scenarios_results.values():
+        if sc.get("executed") and sc.get("exit_idx"):
+            max_exit_idx = max(max_exit_idx, sc["exit_idx"])
+
+    start_slice = max(0, start_idx - 30)
+    end_slice = min(max(start_idx + 90, max_exit_idx + 15), len(df_1h_ind))
+
+    candle_cols = ["timestamp", "open", "high", "low", "close", "volume"]
+    indicator_cols = []
+    for col in ["ema20", "ema50", "ema200"]:
+        if col in df_1h_ind.columns:
+            indicator_cols.append(col)
+
+    candles_slice = df_1h_ind.iloc[start_slice:end_slice][
+        candle_cols + indicator_cols
+    ].to_dict(orient="records")
+
+    for c in candles_slice:
+        for k, v in c.items():
+            if isinstance(v, float) and (v != v):
+                c[k] = None
+
+    daily_candles_slice = []
+    daily_row_ts = int(daily_row["timestamp"])
+    daily_matches = df_1d_ind[df_1d_ind["timestamp"] == daily_row_ts]
+    if len(daily_matches) > 0:
+        daily_idx = daily_matches.index[0]
+        daily_start_slice = max(0, daily_idx - 30)
+
+        max_close_time_ms = int(daily_row_ts)
+        for sc in scenarios_results.values():
+            if sc.get("executed") and sc.get("close_time_ms"):
+                max_close_time_ms = max(max_close_time_ms, sc["close_time_ms"])
+
+        daily_exit_matches = df_1d_ind[df_1d_ind["timestamp"] <= max_close_time_ms]
+        if len(daily_exit_matches) > 0:
+            daily_exit_idx = daily_exit_matches.index[-1]
+            daily_end_slice = min(
+                max(daily_idx + 10, daily_exit_idx + 5), len(df_1d_ind)
+            )
+        else:
+            daily_end_slice = min(daily_idx + 10, len(df_1d_ind))
+
+        daily_cols = [
+            "timestamp",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "ema20",
+            "ema50",
+            "ema100",
+            "rsi14",
+            "macd_line",
+            "macd_signal",
+        ]
+        valid_daily_cols = [col for col in daily_cols if col in df_1d_ind.columns]
+        daily_candles_slice = df_1d_ind.iloc[daily_start_slice:daily_end_slice][
+            valid_daily_cols
+        ].to_dict(orient="records")
+
+        for c in daily_candles_slice:
+            for k, v in c.items():
+                if isinstance(v, float) and (v != v):
+                    c[k] = None
+
+    return {
+        "signal_info": {
+            "vbs_id": signal_id,
+            "symbol": symbol,
+            "action": action.upper(),
+            "price": price,
+            "received_at": created_at,
+            "start_idx": start_idx,
+            "relative_entry_idx": start_idx - start_slice,
+        },
+        "market_context": {
+            "daily_close": float(daily_price),
+            "daily_atr": float(daily_atr) if daily_atr else 0,
+            "daily_rsi": float(daily_rsi),
+            "daily_macd": float(daily_macd),
+            "daily_macd_sig": float(daily_macd_sig),
+            "tt_score": int(tt_score),
+            "vcp_met": bool(vcp_met),
+            "volume_ratio": float(volume_ratio),
+            "range_ratio": float(range_ratio),
+            "tt_details": tt_details,
+            "t_1h": float(t_1h),
+            "mlts": float(mlts),
+            "coef_of_variation": float(coef_of_variation),
+            "is_chop": bool(is_chop),
+            "ai_confidence": float(ai_confidence),
+            "hil_required": bool(hil_required),
+        },
+        "scenarios": scenarios_results,
+        "candles": candles_slice,
+        "daily_candles": daily_candles_slice,
+    }
+
+
+@app.get("/api/v23/trade_replay/{signal_id}")
+@app.get("/api/v22/trade_replay/{signal_id}")
+async def get_v22_trade_replay(
+    signal_id: int,
+    scenario: str = "S4",
+    base_sl_pct: float = 8.0,
+    base_tp_pct: float = 20.0,
+    s4_sl_atr_mult: float = 1.5,
+    s4_tp_atr_mult: float = 3.0,
+    s4_trail_atr_mult: float = 2.5,
+    s2_min_tt_score: int = 5,
+    s5_min_tt_score: int = 5,
+    s6_min_tt_score: int = 5,
+    s6_min_rsi: float = 50.0,
+    slippage_pct: float = 0.05,
+    mta_mltf_weight_1h: float = 0.15,
+    regime_volatility_window: int = 50,
+    hil_min_threshold: float = 50.0,
+    hil_max_threshold: float = 79.0,
+    atr_sl_multiplier: float = 1.5,
+    atr_tp_multiplier: float = 3.0,
+    chandelier_trailing_multiplier: float = 2.5,
+):
+    """Simulate a specific trade in S1~S6 and return data structured for trade_replay.html."""
+    params = BacktestParams(
+        base_sl_pct=base_sl_pct,
+        base_tp_pct=base_tp_pct,
+        s4_sl_atr_mult=s4_sl_atr_mult,
+        s4_tp_atr_mult=s4_tp_atr_mult,
+        s4_trail_atr_mult=s4_trail_atr_mult,
+        s2_min_tt_score=s2_min_tt_score,
+        s5_min_tt_score=s5_min_tt_score,
+        s6_min_tt_score=s6_min_tt_score,
+        s6_min_rsi=s6_min_rsi,
+        slippage_pct=slippage_pct,
+        mta_mltf_weight_1h=mta_mltf_weight_1h,
+        regime_volatility_window=regime_volatility_window,
+        hil_min_threshold=hil_min_threshold,
+        hil_max_threshold=hil_max_threshold,
+        atr_sl_multiplier=atr_sl_multiplier,
+        atr_tp_multiplier=atr_tp_multiplier,
+        chandelier_trailing_multiplier=chandelier_trailing_multiplier,
+    )
+
+    res = await run_single_simulation_main(signal_id, params)
+
+    sc_code = scenario.upper()
+    if sc_code not in res["scenarios"]:
+        raise HTTPException(status_code=400, detail=f"Invalid scenario {scenario}")
+
+    sc_res = res["scenarios"][sc_code]
+    if not sc_res.get("executed", False):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Trade {signal_id} did not execute under scenario {scenario}: {sc_res.get('reason', 'Unknown reason')}",
+        )
+
+    candles = res["candles"]
+    mapped_bars = []
+    for c in candles:
+        mapped_bars.append(
+            {
+                "time": int(c["timestamp"]) // 1000,
+                "open": float(c["open"]),
+                "high": float(c["high"]),
+                "low": float(c["low"]),
+                "close": float(c["close"]),
+                "volume": float(c["volume"]),
+            }
+        )
+
+    action = res["signal_info"]["action"]
+    entry_price = res["signal_info"]["price"]
+    close_price = sc_res["close_price"]
+
+    exit_type_map = {
+        "TAKE_PROFIT": "TP",
+        "STOP_LOSS": "SL",
+        "TRAILING_STOP": "SL",
+        "TIMEOUT": "TO",
+    }
+    raw_outcome = sc_res["outcome"]
+    exit_type = exit_type_map.get(raw_outcome, "TO")
+
+    entry_ts = (
+        int(candles[res["signal_info"]["relative_entry_idx"]]["timestamp"]) // 1000
+    )
+    exit_ts = int(sc_res["close_time_ms"]) // 1000
+
+    import datetime
+
+    dt_entry = datetime.datetime.fromtimestamp(entry_ts, tz=datetime.timezone.utc)
+    dt_exit = datetime.datetime.fromtimestamp(exit_ts, tz=datetime.timezone.utc)
+
+    pnl_val = sc_res["pnl_pct"] * entry_price
+
+    trade_obj = {
+        "id": f"{sc_code}_{signal_id}",
+        "cfg": sc_code,
+        "side": "long" if action.lower() in ("buy", "long") else "short",
+        "outcome": "WIN" if sc_res["pnl_pct"] >= 0 else "LOSS",
+        "exit_type": exit_type,
+        "entry": entry_price,
+        "exit": close_price,
+        "sl": sc_res["sl"],
+        "tp": sc_res["tp"],
+        "pnl": pnl_val,
+        "pnl_pct": sc_res["pnl_pct"],
+        "bars_held": sc_res["bars"],
+        "entry_time": dt_entry.strftime("%Y-%m-%dT%H:%M:%S"),
+        "exit_time": dt_exit.strftime("%Y-%m-%dT%H:%M:%S"),
+        "entry_ts": entry_ts,
+        "exit_ts": exit_ts,
+        "rsi": res["market_context"]["daily_rsi"],
+        "adx": 30.0,
+        "atr": res["market_context"]["daily_atr"],
+        "ema200": None,
+        "bars": mapped_bars,
+    }
+
+    return trade_obj
 
 
 if __name__ == "__main__":

@@ -36,6 +36,8 @@ async def exec_client(tmp_path):
     config.BRIEF_ENABLED = False
     config.MCP_ENABLED = False
     config.RAG_ENABLED = False
+    original_forward_test = getattr(config, "FORWARD_TEST_ENABLED", False)
+    config.FORWARD_TEST_ENABLED = False
     os.environ["DB_PATH"] = config.DB_PATH
 
     await database.init_db()
@@ -45,7 +47,10 @@ async def exec_client(tmp_path):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
-        yield ac
+        try:
+            yield ac
+        finally:
+            config.FORWARD_TEST_ENABLED = original_forward_test
 
 
 # ─────────────────────────────────────────────────────────────────

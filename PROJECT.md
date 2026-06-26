@@ -22,8 +22,8 @@ Hệ thống giao dịch tự động tích hợp TradingView + Binance/WEEX v�
 | M6 | Back-test Signal Report | 1,100 signals — WR 55.55%, PF 2.138 | **DONE ✅** |
 | M7 | Forward-Test Sample Report | 28 paper trades — WR 64.29%, PF 3.147 | **DONE ✅** |
 | M8 | Test Suite | 930 tests unit/integration/stress — 100% PASSED | **DONE ✅** |
-| M9 | Forward Test Live Run | Kết nối Server A → FORWARD mode thực tế | **PLANNED** |
-| M10 | Dashboard Dual-Mode | UI hiển thị LIVE + FORWARD song song | **PLANNED** |
+| M9 | Forward Test Live Run | Kết nối Server A ➔ Server C. Cấu hình webhook routing `dev/infra/forward-test-gateway-routing` & chạy thử nghiệm `dev/infra/forward-test-live-validation` | **ACTIVE** |
+| M10 | Dashboard Dual-Mode | UI/API hiển thị LIVE + FORWARD song song. API layer `dev/infra/dashboard-dual-mode-api` & UI/UX `dev/ai/dashboard-dual-mode-ui` | **ACTIVE** |
 
 ## Interface Contracts
 

@@ -12,15 +12,12 @@
 name: CI/CD Production Pipeline
 
 on:
-  # Primary: fires AFTER ci.yml completes successfully on main
-  workflow_run:
-    workflows: ["CI Pull Request Pipeline"]
-    types: [completed]
-    branches: [main]
-  # Fallback: direct push with [force deploy] or merge commit
+  # Trigger production deploy only on tags matching v*
   push:
-    branches:
-      - main
+    tags:
+      - "v*"
+  # Fallback: manual trigger via GitHub UI
+  workflow_dispatch:
 
 concurrency:
   group: deploy-production
@@ -331,15 +328,30 @@ jobs:
           echo "${{ steps.hash.outputs.hash }}" > .build-passed-${{ matrix.name }}/hash.txt
           echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .build-passed-${{ matrix.name }}/timestamp.txt
 
+  # ── 1.5. MANUAL APPROVAL GATE ──────────────────────────────────────
+  approve-deploy:
+    name: "Approve Production Deployment"
+    needs: [changes, check-ci-gate, build-images]
+    runs-on: ubuntu-latest
+    environment: production
+    if: |
+      always() &&
+      (needs.check-ci-gate.result == 'success') &&
+      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
+    steps:
+      - name: Approved
+        run: echo "Production deployment approved and proceeding."
+
   # ── 2A. DEPLOY SERVER A (Gateway) ──────────────────────────────────
   deploy-server-a:
     name: "Deploy Server A (Gateway) [T${{ needs.changes.outputs.server_a_tier }}]"
-    needs: [changes, check-ci-gate, build-images]
+    needs: [changes, check-ci-gate, build-images, approve-deploy]
     if: |
       always() &&
       needs.changes.outputs.server_a_tier != '0' &&
       (needs.check-ci-gate.result == 'success') &&
-      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
+      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') &&
+      (needs.approve-deploy.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -503,12 +515,13 @@ jobs:
   # ── 2B. DEPLOY SERVER C (AI Core) ──────────────────────────────────
   deploy-server-c:
     name: "Deploy Server C (AI Core) [T${{ needs.changes.outputs.server_c_tier }}]"
-    needs: [changes, check-ci-gate, build-images]
+    needs: [changes, check-ci-gate, build-images, approve-deploy]
     if: |
       always() &&
       needs.changes.outputs.server_c_tier != '0' &&
       (needs.check-ci-gate.result == 'success') &&
-      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
+      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') &&
+      (needs.approve-deploy.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -764,12 +777,13 @@ jobs:
   # ── 2C. DEPLOY SERVER B (Execution Vault — Windows) ─────────────────
   deploy-server-b:
     name: "Deploy Server B (Execution Vault) [T${{ needs.changes.outputs.server_b_tier }}]"
-    needs: [changes, check-ci-gate, build-images]
+    needs: [changes, check-ci-gate, build-images, approve-deploy]
     if: |
       always() &&
       needs.changes.outputs.server_b_tier != '0' &&
       (needs.check-ci-gate.result == 'success') &&
-      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
+      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') &&
+      (needs.approve-deploy.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code

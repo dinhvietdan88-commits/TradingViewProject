@@ -105,6 +105,40 @@ async def process_validated_signal(event: SignalValidated) -> None:
     v6.0: AIAnalyzer does NOT enforce confidence thresholds.
     That responsibility belongs to NotificationHub (INV-5/6).
     """
+    import os
+
+    # Fast-path bypass for Forward Test / Replay to avoid slow Gemini Vision / screenshot timeouts
+    forward_test_enabled = getattr(config, "FORWARD_TEST_ENABLED", False)
+    if not isinstance(forward_test_enabled, bool):
+        forward_test_enabled = False
+
+    if forward_test_enabled or os.getenv("BYPASS_VISION", "false").lower() == "true":
+        log.info(
+            f"AIAnalyzer: Bypassing slow AI/Vision analysis for Forward Test signal #{event.signal_id}"
+        )
+        await _bus.emit(
+            AnalysisComplete(
+                signal_id=event.signal_id,
+                symbol=event.symbol,
+                action=event.action,
+                price=event.price,
+                quote_qty=event.quote_qty,
+                sl=event.sl,
+                tp=event.tp,
+                confidence=10,  # Auto-approve
+                analysis_text="Bypassed AI/Vision check for Forward Test mode.",
+                screenshot_path="",
+                should_trade=True,
+                interactive_required=False,
+                vision_result={"confidence": 10},
+                combined_score="10.0/10",
+                exchange=getattr(event, "exchange", "binance"),
+                is_recovered=event.is_recovered,
+                age_minutes=event.age_minutes,
+            )
+        )
+        return
+
     log.info(
         f"AIAnalyzer: Processing validated signal #{event.signal_id} for {event.symbol} (Action: {event.action})"
     )

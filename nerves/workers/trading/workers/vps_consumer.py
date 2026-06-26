@@ -210,8 +210,23 @@ class VpsSignalConsumer:
         action = signal["action"]
         payload = signal["payload"]
 
+        mode = (
+            payload.get("mode", "").strip().upper() if isinstance(payload, dict) else ""
+        )
+        mode_upper = mode.upper() if mode else ""
+        if getattr(config, "FORWARD_TEST_ENABLED", False) and mode_upper not in (
+            "LIVE",
+            "BACKTEST",
+        ):
+            mode = "FORWARD"
+            if isinstance(payload, dict):
+                payload["mode"] = "FORWARD"
+            else:
+                payload = {"mode": "FORWARD"}
+                signal["payload"] = payload
+
         log.info(
-            f"[VpsConsumer] Processing signal #{queue_id} for {symbol} {action.upper()} (age: {age_minutes}m)"
+            f"[VpsConsumer] Processing signal #{queue_id} for {symbol} {action.upper()} (age: {age_minutes}m) | mode: {mode}"
         )
 
         # 1. TTL / Stale check
@@ -233,7 +248,19 @@ class VpsSignalConsumer:
         # 2. Idempotency Check (Duplicate check)
         import aiosqlite
 
-        async with aiosqlite.connect(config.DB_PATH) as db:
+        mode_upper = mode.upper() if mode else ""
+        db_path = (
+            config.FORWARD_DB_PATH
+            if (
+                mode_upper == "FORWARD"
+                or (
+                    mode_upper not in ("LIVE", "BACKTEST")
+                    and getattr(config, "FORWARD_TEST_ENABLED", False)
+                )
+            )
+            else config.DB_PATH
+        )
+        async with aiosqlite.connect(db_path) as db:
             async with db.execute(
                 "SELECT id FROM signals WHERE vbs_queue_id = ?", (queue_id,)
             ) as cur:

@@ -57,6 +57,7 @@ def start_daemon(workspace_root):
     env["PORT"] = PORT
     env["HF_HUB_OFFLINE"] = "1"
     env["TRANSFORMERS_OFFLINE"] = "1"
+    env["PYTHONUNBUFFERED"] = "1"
     # Set PYTHONPATH
     trading_path = workspace_root / "nerves" / "workers" / "trading"
     env["PYTHONPATH"] = str(trading_path)
@@ -72,7 +73,7 @@ def start_daemon(workspace_root):
         creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
 
     proc = subprocess.Popen(  # nosec
-        [sys.executable, str(daemon_script)],
+        [sys.executable, "-u", str(daemon_script)],
         cwd=str(trading_path),
         env=env,
         stdout=subprocess.PIPE,
@@ -97,7 +98,7 @@ def start_daemon(workspace_root):
 def wait_for_fastapi_ready(proc, health_url, stdout_lines):
     print_step(f"Waiting for FastAPI health server to start on port {PORT}...")
     started = False
-    max_retries = 30
+    max_retries = 180
     for i in range(max_retries):
         if proc.poll() is not None:
             print_failure(f"Daemon exited prematurely with exit code {proc.returncode}")

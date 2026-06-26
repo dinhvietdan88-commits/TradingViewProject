@@ -31,6 +31,7 @@ FORWARD_TEST_INITIAL_CAPITAL = float(
 )
 FORWARD_TEST_POSITION_SIZE = float(os.getenv("FORWARD_TEST_POSITION_SIZE", "100.0"))
 DB_TIMEOUT = float(os.getenv("DB_TIMEOUT", "60.0"))
+FORWARD_TEST_ENABLED = os.getenv("FORWARD_TEST_ENABLED", "false").lower() == "true"
 
 # Rate Limiting & Concurrency (Stress Testing)
 DISABLE_RATE_LIMIT = os.getenv("DISABLE_RATE_LIMIT", "false").lower() == "true"
@@ -78,15 +79,16 @@ if ENVIRONMENT == "production" and not BINANCE_DRY_RUN:
 
 # Risk Management (Minervini SEPA rules)
 RISK_PER_TRADE = float(os.getenv("RISK_PER_TRADE", "0.02"))  # 2% per trade
+FEE_RATE = float(os.getenv("FEE_RATE", "0.0006"))
 STOP_LOSS_PCT = float(os.getenv("STOP_LOSS_PCT", "0.08"))  # 8% SL
 TAKE_PROFIT_PCT = float(os.getenv("TAKE_PROFIT_PCT", "0.20"))  # 20% TP → R:R ≥ 2.5
 MAX_QUOTE_QTY = float(os.getenv("MAX_QUOTE_QTY", "1000"))  # Max trade size limit
 
 # Strategy Crystallization Parameters (Sprint 7.6.3 / Gold Council Verdict)
-ATR_SL_MULTIPLIER = float(os.getenv("ATR_SL_MULTIPLIER", "1.5"))
-ATR_TP_MULTIPLIER = float(os.getenv("ATR_TP_MULTIPLIER", "3.0"))
+ATR_SL_MULTIPLIER = float(os.getenv("ATR_SL_MULTIPLIER", "2.5"))
+ATR_TP_MULTIPLIER = float(os.getenv("ATR_TP_MULTIPLIER", "2.0"))
 CHANDELIER_TRAILING_MULTIPLIER = float(
-    os.getenv("CHANDELIER_TRAILING_MULTIPLIER", "2.5")
+    os.getenv("CHANDELIER_TRAILING_MULTIPLIER", "3.5")
 )
 REGIME_VOLATILITY_WINDOW = int(os.getenv("REGIME_VOLATILITY_WINDOW", "50"))
 AI_CONFIDENCE_THRESHOLD_HIL_MIN = int(
@@ -96,8 +98,8 @@ AI_CONFIDENCE_THRESHOLD_HIL_MAX = int(
     os.getenv("AI_CONFIDENCE_THRESHOLD_HIL_MAX", "79")
 )
 S5_MIN_TT_SCORE = int(os.getenv("S5_MIN_TT_SCORE", "5"))
-S6_MIN_TT_SCORE = int(os.getenv("S6_MIN_TT_SCORE", "5"))
-S6_MIN_RSI = float(os.getenv("S6_MIN_RSI", "50.0"))
+S6_MIN_TT_SCORE = int(os.getenv("S6_MIN_TT_SCORE", "6"))
+S6_MIN_RSI = float(os.getenv("S6_MIN_RSI", "42.0"))
 
 # Notifications
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")

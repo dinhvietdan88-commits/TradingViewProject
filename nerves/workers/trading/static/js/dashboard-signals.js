@@ -1444,8 +1444,15 @@ async function loadWatchlist() {
   const el = document.getElementById('sigWatchlistList');
   if (!el) return;
 
+  const fetchFunc = typeof apiFetch === 'function' ? apiFetch : (window.apiFetch || null);
+  if (!fetchFunc) {
+    console.warn('[Signals] apiFetch not defined yet; deferring watchlist load');
+    setTimeout(loadWatchlist, 100);
+    return;
+  }
+
   try {
-    const res = await apiFetch('/api/watchlist');
+    const res = await fetchFunc('/api/watchlist');
     if (!res || !res.symbols) {
       el.innerHTML = '<div class="empty-state p-8" style="grid-column: span 3;"><p>Empty watchlist</p></div>';
       return;

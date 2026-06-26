@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Monthly Pattern Analysis — SuperTrend v1.2</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#0d1117;color:#e6edf3;padding:28px;max-width:1300px;margin:0 auto}
+h1{font-size:1.6rem;font-weight:700;text-align:center;margin-bottom:6px;
+    background:linear-gradient(135deg,#bc8cff,#f85149,#58a6ff);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sub{text-align:center;color:#8b949e;font-size:.82rem;margin-bottom:26px}
+h2{font-size:1.05rem;font-weight:600;margin:0 0 14px;}
+h2 .badge{font-size:.62rem;background:rgba(88,166,255,.15);color:#58a6ff;padding:2px 7px;border-radius:4px;margin-left:8px;font-weight:500;vertical-align:middle}
+.green{color:#3fb950}.red{color:#f85149}.blue{color:#58a6ff}.yellow{color:#e3b341}.purple{color:#bc8cff}
+/* ── Comparison table ── */
+.panel{background:#161b22;border:1px solid #30363d;border-radius:14px;padding:18px;margin-bottom:22px}
+.ptitle{font-size:.72rem;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+th{text-align:left;color:#8b949e;font-weight:500;padding:7px 10px;border-bottom:1px solid #21262d}
+td{padding:6px 10px;border-bottom:1px solid #1a1f27}
+.mini-table th{font-size:.68rem;padding:4px 6px}.mini-table td{font-size:.75rem;padding:3px 6px}
+/* ── Charts ── */
+.chart-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.chart-wrap{background:#161b22;border:1px solid #30363d;border-radius:14px;padding:14px}
+.ctitle{font-size:.68rem;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+/* ── Month section ── */
+.month-section{background:#161b22;border:1px solid #30363d;border-radius:14px;padding:20px;margin-bottom:20px}
+.kpi-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.mkpi{background:#0d1117;border-radius:8px;padding:8px 14px;text-align:center;min-width:90px}
+.mk-l{display:block;font-size:.58rem;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.mk-v{font-size:.9rem;font-weight:600}
+.cmp-grid2{display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:12px;margin-bottom:14px}
+.mini-cmp{background:#0d1117;border-radius:8px;padding:12px}
+.mc-title{font-size:.65rem;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.mc-row{display:flex;justify-content:space-between;font-size:.78rem;padding:3px 0;border-bottom:1px solid #161b22}
+.mc-k{color:#8b949e}.mc-v{font-weight:500}
+.delta{font-size:.62rem;padding:1px 5px;border-radius:3px;margin-left:4px}
+.delta-pos{background:rgba(63,185,80,.15);color:#3fb950}
+.delta-neg{background:rgba(248,81,73,.15);color:#f85149}
+/* ── Heatmap ── */
+.hm-panel{background:#0d1117;border-radius:8px;padding:10px}
+.heatmap{display:grid;gap:2px}.hm-24{grid-template-columns:repeat(12,1fr)}
+.hm-cell{text-align:center;padding:5px 1px;border-radius:4px;font-size:.65rem}
+.hm-wr{font-weight:700;font-size:.72rem}.hm-label{font-size:.55rem;color:#8b949e;margin-top:1px}
+/* ── Insight ── */
+.insight{background:linear-gradient(135deg,rgba(240,136,62,.08),rgba(188,140,255,.06));border:1px solid rgba(240,136,62,.25);border-radius:12px;padding:18px;margin-bottom:22px}
+.insight h3{color:#f0883e;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.insight ul{padding-left:18px;font-size:.82rem;line-height:1.8}.insight li strong{color:#58a6ff}
+</style>
+</head>
+<body>
+<h1>📊 Monthly Pattern Analysis</h1>
+<p class="sub">SuperTrend v1.2 | BTCUSDT 5m | 3-Month WF Config | 131 trades split by month</p>
+
+<div class="panel">
+  <div class="ptitle">Monthly Comparison Overview</div>
+  <table>
+    <tr><th>Month</th><th>Trades</th><th>WR</th><th>PF</th><th>PnL</th><th>L/S</th><th>L/S WR</th><th>Win ADX</th><th>Win Vol</th><th>Best Edge</th></tr>
+    <tr><td style="color:#bc8cff;font-weight:600">March 2025</td><td>42</td><td class="yellow">33.3%</td><td class="yellow">1.26</td><td class="green">$+2,319</td><td>26/16</td><td>30.8% / 37.5%</td><td>23.7</td><td>3.1x</td><td>Vol≥1.5x (PF=2.44)</td></tr>
+<tr><td style="color:#f85149;font-weight:600">April 2025</td><td>36</td><td class="green">41.7%</td><td class="green">1.91</td><td class="green">$+4,442</td><td>23/13</td><td>47.8% / 30.8%</td><td>27.3</td><td>1.82x</td><td>ADX≥28 (PF=4.91)</td></tr>
+<tr><td style="color:#58a6ff;font-weight:600">May 2025</td><td>1</td><td class="green">100.0%</td><td class="green">99</td><td class="green">$+342</td><td>0/1</td><td>0% / 100.0%</td><td>21.8</td><td>1.17x</td><td>— (PF=0)</td></tr>
+<tr><td style="color:#58a6ff;font-weight:600">May 2026</td><td>52</td><td class="yellow">38.5%</td><td class="yellow">1.49</td><td class="green">$+2,284</td><td>30/22</td><td>46.7% / 27.3%</td><td>27.1</td><td>1.51x</td><td>ADX≥30 (PF=7.74)</td></tr>
+<tr style="border-top:2px solid #58a6ff;font-weight:600"><td style="color:#58a6ff">TOTAL (3 months)</td><td>131</td><td class="yellow">38.2%</td><td class="green">1.5</td><td class="green">$+9,387</td><td>79/52</td><td>41.8% / 32.7%</td><td>26.1</td><td>2.04x</td><td>—</td></tr>
+
+  </table>
+</div>
+
+<div class="chart-grid">
+  <div class="chart-wrap"><div class="ctitle">Win Rate by Month</div><canvas id="wrChart" height="120"></canvas></div>
+  <div class="chart-wrap"><div class="ctitle">Profit Factor by Month</div><canvas id="pfChart" height="120"></canvas></div>
+  <div class="chart-wrap"><div class="ctitle">PnL by Month</div><canvas id="pnlChart" height="120"></canvas></div>
+</div>
+
+<div class="chart-grid" style="grid-template-columns:1fr 1fr">
+  <div class="chart-wrap"><div class="ctitle">Long vs Short WR by Month</div><canvas id="lsChart" height="100"></canvas></div>
+  <div class="chart-wrap"><div class="ctitle">Trades per Month</div><canvas id="countChart" height="100"></canvas></div>
+</div>
+
+
+<div class="month-section" style="border-left:3px solid #bc8cff">
+  <h2 style="color:#bc8cff">March 2025<span class="badge">42 trades</span></h2>
+  <div class="kpi-row">
+    <div class="mkpi"><span class="mk-l">WR</span><span class="mk-v yellow">33.3%</span></div>
+    <div class="mkpi"><span class="mk-l">PF</span><span class="mk-v yellow">1.26</span></div>
+    <div class="mkpi"><span class="mk-l">PnL</span><span class="mk-v green">$+2,319</span></div>
+    <div class="mkpi"><span class="mk-l">$/trade</span><span class="mk-v green">$+55</span></div>
+    <div class="mkpi"><span class="mk-l">Long</span><span class="mk-v">26 (30.8%)</span></div>
+    <div class="mkpi"><span class="mk-l">Short</span><span class="mk-v">16 (37.5%)</span></div>
+  </div>
+
+  <div class="cmp-grid2">
+    <div class="mini-cmp">
+      <div class="mc-title">Entry Indicators — Win vs Loss</div>
+      <div class="mc-row"><span class="mc-k">RSI</span><span class="mc-v"><span class="green">48.0</span> vs <span class="red">47.0</span> <span class="delta delta-pos">Δ1.0</span></span></div>
+      <div class="mc-row"><span class="mc-k">ADX</span><span class="mc-v"><span class="green">23.7</span> vs <span class="red">24.9</span> <span class="delta delta-neg">Δ1.2</span></span></div>
+      <div class="mc-row"><span class="mc-k">ATR</span><span class="mc-v"><span class="green">271.31</span> vs <span class="red">216.08</span></span></div>
+      <div class="mc-row"><span class="mc-k">EMA200 dist</span><span class="mc-v"><span class="green">0.643%</span> vs <span class="red">0.563%</span></span></div>
+    </div>
+    <div class="mini-cmp">
+      <div class="mc-title">Trade Behavior</div>
+      <div class="mc-row"><span class="mc-k">Bars held</span><span class="mc-v"><span class="green">18.1</span> vs <span class="red">16.6</span></span></div>
+      <div class="mc-row"><span class="mc-k">Vol ratio</span><span class="mc-v"><span class="green">3.1x</span> vs <span class="red">1.66x</span></span></div>
+      <div class="mc-row"><span class="mc-k">Momentum</span><span class="mc-v"><span class="green">0.0754%</span> vs <span class="red">0.1124%</span></span></div>
+      <div class="mc-row"><span class="mc-k">Avg Win $</span><span class="mc-v green">$+813.92</span></div>
+      <div class="mc-row"><span class="mc-k">Avg Loss $</span><span class="mc-v red">$-324.13</span></div>
+    </div>
+    <div class="mini-cmp">
+      <div class="mc-title">Best Edges</div>
+      <table class="mini-table">
+        <tr><th>Filter</th><th>PF</th><th>WR</th><th>PnL</th></tr>
+        <tr style="background:rgba(63,185,80,.06);"><td>Vol≥1.5x</td><td style="color:#3fb950;font-weight:600">2.44</td><td>47.6%</td><td>21</td><td style="color:#3fb950">$+5,327</td></tr>
+<tr style="background:rgba(63,185,80,.06);"><td>SHORT only</td><td style="color:#3fb950;font-weight:600">2.12</td><td>37.5%</td><td>16</td><td style="color:#3fb950">$+3,152</td></tr>
+<tr style="background:rgba(63,185,80,.06);"><td>Europe</td><td style="color:#3fb950;font-weight:600">1.65</td><td>36.4%</td><td>11</td><td style="color:#3fb950">$+714</td></tr>
+<tr style="background:rgba(63,185,80,.06);"><td>Vol≥1.0x</td><td style="color:#3fb950;font-weight:600">1.59</td><td>40.0%</td><td>30</td><td style="color:#3fb950">$+3,974</td></tr>
+<tr style="background:rgba(63,185,80,.06);"><td>US</td><td style="color:#3fb950;font-weight:600">1.57</td><td>50.0%</td><td>18</td><td style="color:#3fb950">$+3,027</td></tr>
+<tr style=""><td>ADX≥25</td><td style="color:#f85149;font-weight:600">1.09</td><td>30.8%</td><td>13</td><td style="color:#3fb950">$+353</td></tr>
+<tr style=""><td>ADX≥22</td><td style="color:#f85149;font-weight:600">1.07</td><td>28.0%</td><td>25</td><td style="color:#3fb950">$+366</td></tr>
+<tr style=""><td>ADX≥28</td><td style="color:#f85149;font-weight:600">1.03</td><td>33.3%</td><td>6</td><td style="color:#3fb950">$+55</td></tr>
+
+      </table>
+    </div>
+  </div>
+
+  <div class="hm-panel">
+    <div class="mc-title">Win Rate by Hour (UTC)</div>
+    <div class="heatmap hm-24"><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">00h(1)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.5)"><div class="hm-wr">100%</div><div class="hm-label">01h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">02h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">03h(2)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">04h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">05h(2)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">06h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">07h(5)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">08h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">09h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">10h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">11h(1)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.5)"><div class="hm-wr">100%</div><div class="hm-label">12h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">13h(3)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.5)"><div class="hm-wr">100%</div><div class="hm-label">14h(2)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.25)"><div class="hm-wr">50%</div><div class="hm-label">15h(2)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.165)"><div class="hm-wr">33%</div><div class="hm-label">16h(3)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">17h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">18h(0)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.25)"><div class="hm-wr">50%</div><div class="hm-label">19h(2)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.375)"><div class="hm-wr">75%</div><div class="hm-label">20h(4)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.5)"><div class="hm-wr">100%</div><div class="hm-label">21h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.2)"><div class="hm-wr">40%</div><div class="hm-label">22h(5)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.25)"><div class="hm-wr">50%</div><div class="hm-label">23h(2)</div></div></div>
+  </div>
+</div>
+
+<div class="month-section" style="border-left:3px solid #f85149">
+  <h2 style="color:#f85149">April 2025<span class="badge">36 trades</span></h2>
+  <div class="kpi-row">
+    <div class="mkpi"><span class="mk-l">WR</span><span class="mk-v green">41.7%</span></div>
+    <div class="mkpi"><span class="mk-l">PF</span><span class="mk-v green">1.91</span></div>
+    <div class="mkpi"><span class="mk-l">PnL</span><span class="mk-v green">$+4,442</span></div>
+    <div class="mkpi"><span class="mk-l">$/trade</span><span class="mk-v green">$+123</span></div>
+    <div class="mkpi"><span class="mk-l">Long</span><span class="mk-v">23 (47.8%)</span></div>
+    <div class="mkpi"><span class="mk-l">Short</span><span class="mk-v">13 (30.8%)</span></div>
+  </div>
+
+  <div class="cmp-grid2">
+    <div class="mini-cmp">
+      <div class="mc-title">Entry Indicators — Win vs Loss</div>
+      <div class="mc-row"><span class="mc-k">RSI</span><span class="mc-v"><span class="green">50.1</span> vs <span class="red">47.6</span> <span class="delta delta-pos">Δ2.3</span></span></div>
+      <div class="mc-row"><span class="mc-k">ADX</span><span class="mc-v"><span class="green">27.3</span> vs <span class="red">24.8</span> <span class="delta delta-pos">Δ2.5</span></span></div>
+      <div class="mc-row"><span class="mc-k">ATR</span><span class="mc-v"><span class="green">207.58</span> vs <span class="red">155.53</span></span></div>
+      <div class="mc-row"><span class="mc-k">EMA200 dist</span><span class="mc-v"><span class="green">0.467%</span> vs <span class="red">0.660%</span></span></div>
+    </div>
+    <div class="mini-cmp">
+      <div class="mc-title">Trade Behavior</div>
+      <div class="mc-row"><span class="mc-k">Bars held</span><span class="mc-v"><span class="green">31.4</span> vs <span class="red">8.7</span></span></div>
+      <div class="mc-row"><span class="mc-k">Vol ratio</span><span class="mc-v"><span class="green">1.82x</span> vs <span class="red">2.09x</span></span></div>
+      <div class="mc-row"><span class="mc-k">Momentum</span><span class="mc-v"><span class="green">0.0728%</span> vs <span class="red">-0.0254%</span></span></div>
+      <div class="mc-row"><span class="mc-k">Avg Win $</span><span class="mc-v green">$+622.74</span></div>
+      <div class="mc-row"><span class="mc-k">Avg Loss $</span><span class="mc-v red">$-233.30</span></div>
+    </div>
+    <div class="mini-cmp">
+      <div class="mc-title">Best Edges</div>
+      <table class="mini-table">
+        <tr><th>Filter</th><th>PF</th><th>WR</th><th>PnL</th></tr>
+        <tr style="background:rgba(63,185,80,.06);"><td>ADX≥28</td><td style="color:#3fb950;font-weight:600">4.91</td><td>66.7%</td><td>9</td><td style="color:#3fb950">$+3,370</td></tr>
+<tr style="background:rgba(63,185,80,.06);"><td>ADX≥25</td><td style="color:#3fb950;font-weight:600">4.05</td><td>64.3%</td><td>14</td><td style="color:#3fb950">$+3,924</td></tr>
+<tr style="background:rgba(63,185,80,.06);"><td>ADX≥30</td><td style="color:#3fb950;font-weight:600">3.87</td><td>57.1%</td><td>7</td><td style="color:#3fb950">$+2,466</td></tr>
+<tr style="background:rgba(63,185,80,.06);"><td>US</td><td style="color:#3fb950;font-weight:600">2.88</td><td>52.9%</td><td>17</td><td style="color:#3fb950">$+4,709</td></tr>
+<tr style="background:rgba(63,185,80,.06);"><td>ADX≥22</td><td style="color:#3fb950;font-weight:600">2.76</td><td>48.1%</td><td>27</td><td style="color:#3fb950">$+5,756</td></tr>
+<tr style="background:rgba(63,185,80,.06);"><td>LONG only</td><td style="color:#3fb950;font-weight:600">2.7</td><td>47.8%</td><td>23</td><td style="color:#3fb950">$+4,342</td></tr>
+<tr style=""><td>Vol≥1.5x</td><td style="color:#3fb950;font-weight:600">2.0</td><td>42.1%</td><td>19</td><td style="color:#3fb950">$+2,767</td></tr>
+<tr style=""><td>Europe</td><td style="color:#f85149;font-weight:600">1.69</td><td>50.0%</td><td>10</td><td style="color:#3fb950">$+752</td></tr>
+
+      </table>
+    </div>
+  </div>
+
+  <div class="hm-panel">
+    <div class="mc-title">Win Rate by Hour (UTC)</div>
+    <div class="heatmap hm-24"><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">00h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">01h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">02h(2)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">03h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">04h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">05h(2)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.25)"><div class="hm-wr">50%</div><div class="hm-label">06h(2)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">07h(1)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.335)"><div class="hm-wr">67%</div><div class="hm-label">08h(3)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">09h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">10h(1)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.25)"><div class="hm-wr">50%</div><div class="hm-label">11h(2)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">12h(2)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.5)"><div class="hm-wr">100%</div><div class="hm-label">13h(1)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.5)"><div class="hm-wr">100%</div><div class="hm-label">14h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">15h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">16h(0)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.335)"><div class="hm-wr">67%</div><div class="hm-label">17h(3)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">18h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.2)"><div class="hm-wr">40%</div><div class="hm-label">19h(5)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.165)"><div class="hm-wr">33%</div><div class="hm-label">20h(3)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.335)"><div class="hm-wr">67%</div><div class="hm-label">21h(3)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.5)"><div class="hm-wr">100%</div><div class="hm-label">22h(2)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">23h(0)</div></div></div>
+  </div>
+</div>
+
+<div class="month-section" style="border-left:3px solid #58a6ff">
+  <h2 style="color:#58a6ff">May 2025<span class="badge">1 trades</span></h2>
+  <div class="kpi-row">
+    <div class="mkpi"><span class="mk-l">WR</span><span class="mk-v green">100.0%</span></div>
+    <div class="mkpi"><span class="mk-l">PF</span><span class="mk-v green">99</span></div>
+    <div class="mkpi"><span class="mk-l">PnL</span><span class="mk-v green">$+342</span></div>
+    <div class="mkpi"><span class="mk-l">$/trade</span><span class="mk-v green">$+342</span></div>
+    <div class="mkpi"><span class="mk-l">Long</span><span class="mk-v">0 (0%)</span></div>
+    <div class="mkpi"><span class="mk-l">Short</span><span class="mk-v">1 (100.0%)</span></div>
+  </div>
+
+  <div class="cmp-grid2">
+    <div class="mini-cmp">
+      <div class="mc-title">Entry Indicators — Win vs Loss</div>
+      <div class="mc-row"><span class="mc-k">RSI</span><span class="mc-v"><span class="green">53.7</span> vs <span class="red">0</span> <span class="delta delta-pos">Δ46.3</span></span></div>
+      <div class="mc-row"><span class="mc-k">ADX</span><span class="mc-v"><span class="green">21.8</span> vs <span class="red">0</span> <span class="delta delta-pos">Δ21.8</span></span></div>
+      <div class="mc-row"><span class="mc-k">ATR</span><span class="mc-v"><span class="green">113.95</span> vs <span class="red">0</span></span></div>
+      <div class="mc-row"><span class="mc-k">EMA200 dist</span><span class="mc-v"><span class="green">0.146%</span> vs <span class="red">0.000%</span></span></div>
+    </div>
+    <div class="mini-cmp">
+      <div class="mc-title">Trade Behavior</div>
+      <div class="mc-row"><span class="mc-k">Bars held</span><span class="mc-v"><span class="green">18.0</span> vs <span class="red">0</span></span></div>
+      <div class="mc-row"><span class="mc-k">Vol ratio</span><span class="mc-v"><span class="green">1.17x</span> vs <span class="red">0x</span></span></div>
+      <div class="mc-row"><span class="mc-k">Momentum</span><span class="mc-v"><span class="green">-0.4323%</span> vs <span class="red">0.0000%</span></span></div>
+      <div class="mc-row"><span class="mc-k">Avg Win $</span><span class="mc-v green">$+341.84</span></div>
+      <div class="mc-row"><span class="mc-k">Avg Loss $</span><span class="mc-v red">$+0.00</span></div>
+    </div>
+    <div class="mini-cmp">
+      <div class="mc-title">Best Edges</div>
+      <table class="mini-table">
+        <tr><th>Filter</th><th>PF</th><th>WR</th><th>PnL</th></tr>
+
+      </table>
+    </div>
+  </div>
+
+  <div class="hm-panel">
+    <div class="mc-title">Win Rate by Hour (UTC)</div>
+    <div class="heatmap hm-24"><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">00h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">01h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">02h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">03h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">04h(0)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.5)"><div class="hm-wr">100%</div><div class="hm-label">05h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">06h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">07h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">08h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">09h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">10h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">11h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">12h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">13h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">14h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">15h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">16h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">17h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">18h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">19h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">20h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">21h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">22h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">23h(0)</div></div></div>
+  </div>
+</div>
+
+<div class="month-section" style="border-left:3px solid #58a6ff">
+  <h2 style="color:#58a6ff">May 2026<span class="badge">52 trades</span></h2>
+  <div class="kpi-row">
+    <div class="mkpi"><span class="mk-l">WR</span><span class="mk-v yellow">38.5%</span></div>
+    <div class="mkpi"><span class="mk-l">PF</span><span class="mk-v yellow">1.49</span></div>
+    <div class="mkpi"><span class="mk-l">PnL</span><span class="mk-v green">$+2,284</span></div>
+    <div class="mkpi"><span class="mk-l">$/trade</span><span class="mk-v green">$+44</span></div>
+    <div class="mkpi"><span class="mk-l">Long</span><span class="mk-v">30 (46.7%)</span></div>
+    <div class="mkpi"><span class="mk-l">Short</span><span class="mk-v">22 (27.3%)</span></div>
+  </div>
+
+  <div class="cmp-grid2">
+    <div class="mini-cmp">
+      <div class="mc-title">Entry Indicators — Win vs Loss</div>
+      <div class="mc-row"><span class="mc-k">RSI</span><span class="mc-v"><span class="green">45.5</span> vs <span class="red">50.2</span> <span class="delta delta-neg">Δ4.3</span></span></div>
+      <div class="mc-row"><span class="mc-k">ADX</span><span class="mc-v"><span class="green">27.1</span> vs <span class="red">24.7</span> <span class="delta delta-pos">Δ2.4</span></span></div>
+      <div class="mc-row"><span class="mc-k">ATR</span><span class="mc-v"><span class="green">115.13</span> vs <span class="red">96.32</span></span></div>
+      <div class="mc-row"><span class="mc-k">EMA200 dist</span><span class="mc-v"><span class="green">0.196%</span> vs <span class="red">0.278%</span></span></div>
+    </div>
+    <div class="mini-cmp">
+      <div class="mc-title">Trade Behavior</div>
+      <div class="mc-row"><span class="mc-k">Bars held</span><span class="mc-v"><span class="green">19.6</span> vs <span class="red">9.0</span></span></div>
+      <div class="mc-row"><span class="mc-k">Vol ratio</span><span class="mc-v"><span class="green">1.51x</span> vs <span class="red">1.66x</span></span></div>
+      <div class="mc-row"><span class="mc-k">Momentum</span><span class="mc-v"><span class="green">0.0687%</span> vs <span class="red">-0.0367%</span></span></div>
+      <div class="mc-row"><span class="mc-k">Avg Win $</span><span class="mc-v green">$+345.38</span></div>
+      <div class="mc-row"><span class="mc-k">Avg Loss $</span><span class="mc-v red">$-144.48</span></div>
+    </div>
+    <div class="mini-cmp">
+      <div class="mc-title">Best Edges</div>
+      <table class="mini-table">
+        <tr><th>Filter</th><th>PF</th><th>WR</th><th>PnL</th></tr>
+        <tr style="background:rgba(63,185,80,.06);"><td>ADX≥30</td><td style="color:#3fb950;font-weight:600">7.74</td><td>77.8%</td><td>9</td><td style="color:#3fb950">$+2,390</td></tr>
+<tr style="background:rgba(63,185,80,.06);"><td>ADX≥28</td><td style="color:#3fb950;font-weight:600">4.12</td><td>64.7%</td><td>17</td><td style="color:#3fb950">$+3,400</td></tr>
+<tr style="background:rgba(63,185,80,.06);"><td>ADX≥25</td><td style="color:#3fb950;font-weight:600">1.99</td><td>48.0%</td><td>25</td><td style="color:#3fb950">$+2,289</td></tr>
+<tr style="background:rgba(63,185,80,.06);"><td>LONG only</td><td style="color:#3fb950;font-weight:600">1.94</td><td>46.7%</td><td>30</td><td style="color:#3fb950">$+2,070</td></tr>
+<tr style="background:rgba(63,185,80,.06);"><td>US</td><td style="color:#3fb950;font-weight:600">1.86</td><td>42.1%</td><td>19</td><td style="color:#3fb950">$+1,546</td></tr>
+<tr style=""><td>ADX≥22</td><td style="color:#3fb950;font-weight:600">1.53</td><td>40.5%</td><td>37</td><td style="color:#3fb950">$+1,807</td></tr>
+<tr style=""><td>Europe</td><td style="color:#f85149;font-weight:600">1.35</td><td>38.5%</td><td>13</td><td style="color:#3fb950">$+309</td></tr>
+<tr style=""><td>Vol≥1.0x</td><td style="color:#f85149;font-weight:600">1.27</td><td>33.3%</td><td>33</td><td style="color:#3fb950">$+945</td></tr>
+
+      </table>
+    </div>
+  </div>
+
+  <div class="hm-panel">
+    <div class="mc-title">Win Rate by Hour (UTC)</div>
+    <div class="heatmap hm-24"><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">00h(0)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.25)"><div class="hm-wr">50%</div><div class="hm-label">01h(4)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">02h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">03h(3)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">04h(0)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.25)"><div class="hm-wr">50%</div><div class="hm-label">05h(6)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">06h(3)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.335)"><div class="hm-wr">67%</div><div class="hm-label">07h(3)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.335)"><div class="hm-wr">67%</div><div class="hm-label">08h(3)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">09h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">10h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">11h(0)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.25)"><div class="hm-wr">50%</div><div class="hm-label">12h(2)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">13h(1)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.125)"><div class="hm-wr">25%</div><div class="hm-label">14h(4)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.25)"><div class="hm-wr">50%</div><div class="hm-label">15h(2)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.165)"><div class="hm-wr">33%</div><div class="hm-label">16h(3)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">17h(2)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.1)"><div class="hm-wr">0%</div><div class="hm-label">18h(1)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.335)"><div class="hm-wr">67%</div><div class="hm-label">19h(3)</div></div><div class="hm-cell" style="background:rgba(63,185,80,0.375)"><div class="hm-wr">75%</div><div class="hm-label">20h(4)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.165)"><div class="hm-wr">33%</div><div class="hm-label">21h(6)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">22h(0)</div></div><div class="hm-cell" style="background:rgba(248,81,73,0.05)"><div class="hm-wr">0%</div><div class="hm-label">23h(0)</div></div></div>
+  </div>
+</div>
+
+
+<div class="insight">
+  <h3>🧠 Monthly Evolution Insights</h3>
+  <ul>
+    <li><span style="color:#bc8cff">March 2025:</span> Volume edge: winners 3.1x vs losers 1.66x · Best filter: <strong>Vol≥1.5x</strong> PF=2.44 (+94%)</li>
+    <li><span style="color:#f85149">April 2025:</span> <strong>Long dominant</strong> — WR 47.8% vs short 30.8% · ADX confirms: winners 27.3 vs losers 24.8 · Best filter: <strong>ADX≥28</strong> PF=4.91 (+157%)</li>
+    <li><span style="color:#58a6ff">May 2025:</span> <strong>Short dominant</strong> — WR 100.0% vs long 0% · ADX confirms: winners 21.8 vs losers 0 · Volume edge: winners 1.17x vs losers 0x</li>
+    <li><span style="color:#58a6ff">May 2026:</span> <strong>Long dominant</strong> — WR 46.7% vs short 27.3% · ADX confirms: winners 27.1 vs losers 24.7 · Best filter: <strong>ADX≥30</strong> PF=7.74 (+419%)</li>
+  </ul>
+</div>
+
+<script>
+const lbl=["March 2025", "April 2025", "May 2025", "May 2026"];
+const clr=["#bc8cff", "#f85149", "#58a6ff", "#58a6ff"];
+const opts=(yf)=>({responsive:true,plugins:{legend:{display:false}},
+  scales:{x:{ticks:{color:'#8b949e',font:{size:10}},grid:{color:'#21262d'}},
+           y:{ticks:{color:'#8b949e',callback:yf},grid:{color:'#21262d'}}}});
+
+new Chart(document.getElementById('wrChart'),{type:'bar',data:{labels:lbl,
+  datasets:[{data:[33.3, 41.7, 100.0, 38.5],backgroundColor:clr.map(c=>c+'99'),borderColor:clr,borderWidth:1.5}]},
+  options:opts(v=>v+'%')});
+new Chart(document.getElementById('pfChart'),{type:'bar',data:{labels:lbl,
+  datasets:[{data:[1.26, 1.91, 99, 1.49],backgroundColor:[1.26, 1.91, 99, 1.49].map(v=>v>=1.5?'rgba(63,185,80,.6)':v>=1?'rgba(227,179,65,.6)':'rgba(248,81,73,.6)'),
+    borderColor:[1.26, 1.91, 99, 1.49].map(v=>v>=1.5?'#3fb950':v>=1?'#e3b341':'#f85149'),borderWidth:1.5}]},
+  options:opts(v=>v.toFixed(2))});
+new Chart(document.getElementById('pnlChart'),{type:'bar',data:{labels:lbl,
+  datasets:[{data:[2319.39, 4441.93, 341.84, 2284.31],backgroundColor:[2319.39, 4441.93, 341.84, 2284.31].map(v=>v>=0?'rgba(63,185,80,.6)':'rgba(248,81,73,.6)'),
+    borderColor:[2319.39, 4441.93, 341.84, 2284.31].map(v=>v>=0?'#3fb950':'#f85149'),borderWidth:1.5}]},
+  options:opts(v=>'$'+v.toFixed(0))});
+new Chart(document.getElementById('lsChart'),{type:'bar',data:{labels:lbl,
+  datasets:[
+    {label:'Long WR',data:[30.8, 47.8, 0, 46.7],backgroundColor:'rgba(63,185,80,.5)',borderColor:'#3fb950',borderWidth:1},
+    {label:'Short WR',data:[37.5, 30.8, 100.0, 27.3],backgroundColor:'rgba(248,81,73,.5)',borderColor:'#f85149',borderWidth:1},
+  ]},options:{...opts(v=>v+'%'),plugins:{legend:{display:true,labels:{color:'#8b949e',font:{size:10}}}}}});
+new Chart(document.getElementById('countChart'),{type:'doughnut',data:{labels:lbl,
+  datasets:[{data:[42, 36, 1, 52],
+    backgroundColor:clr.map(c=>c+'88'),borderColor:clr,borderWidth:1.5}]},
+  options:{responsive:true,plugins:{legend:{labels:{color:'#8b949e',font:{size:10}}}}}});
+</script>
+</body>
+</html>
