@@ -6,7 +6,7 @@ Tài liệu này đúc kết toàn bộ các tham số tối ưu hóa ("Winning 
 
 ## 📊 Ma Trận Tham Số Cấu Hình Tối Ưu (Optimal Config Matrix)
 
-Dưới đây là bộ cấu hình mặc định đề xuất để cài đặt trực tiếp vào hệ thống Webhook Server và mã nguồn Pine Script:
+Dưới đây là bộ cấu hình mặc định đề xuất để cài đặt trực tiếp vào hệ thống Webhook Server và mã nguồn Pine Script ([minervini_strategy.pine](file:///C:/Users/pesil/working/mj_trading/TradingViewProject/pine/v2/minervini_strategy.pine)):
 
 | Tên Tham Số (Pine/API Variable) | Chế độ Daily MTT | Chế độ 1H MIS | Giải thích vai trò & Khuyến nghị vận hành |
 | :--- | :---: | :---: | :--- |

@@ -98,7 +98,7 @@ Dòng MTT được thiết kế cho các nhà giao dịch giữ lệnh trung-dà
 - **Tối ưu**: Sử dụng Chandelier trailing stop để bám sát xu hướng dài hạn mà không bị quét ra sớm bởi nhiễu thị trường.
 
 ### 3. MTT v1.A007 - *Lọc nhiễu Regime*
-- **Cải tiến**: Tích hợp các bộ lọc trạng thái thị trường nâng cao:
+- **Cải tiến**: Tích hợp các bộ lọc trạng thái thị trường nâng cao được phân tích cụ thể tại [strategy_MTT_v1.007_regime_detection_report.md](file:///C:/Users/pesil/working/mj_trading/TradingViewProject/docs/reports/strategy_MTT_v1.007_regime_detection_report.md):
   - Chặn đi ngang bằng ADX < 20.
   - Chặn các vùng nén Bollinger Bands Squeeze (BB width < 5.0%) - nơi giá dễ quét 2 đầu trước khi bùng nổ.
   - Time-based Stop: Tự động đóng lệnh sau 20 nến nếu vị thế không sinh lợi nhuận để giải phóng vốn.
@@ -107,11 +107,11 @@ Dòng MTT được thiết kế cho các nhà giao dịch giữ lệnh trung-dà
 
 ## 🤝 Sự Hợp Nhất: Mark Minervini SEPA Strategy V2
 
-Chiến lược V2 (minervini_strategy.pine) là đỉnh cao của sự hợp nhất hai dòng chiến lược:
+Chiến lược V2 ([minervini_strategy.pine](file:///C:/Users/pesil/working/mj_trading/TradingViewProject/pine/v2/minervini_strategy.pine)) là đỉnh cao của sự hợp nhất hai dòng chiến lược:
 1. **Daily Trend Follower (MTT v1.005-b/A007)**: Bám theo xu hướng dài hạn Daily EMA stack, phù hợp cho Spot/Hold.
 2. **1H SEPA / Momentum (MIS v1.6/v13C)**: Đột phá VCP ngắn hạn khung 1H, tối ưu hóa R:R, phù hợp cho giao dịch Futures đòn bẩy.
 
-### Ma Trận So Sánh Hiệu Suất Chiến Dịch (compounding 2% Risk)
+### Ma Trận So Sánh Hiệu Suất Chiến Dịch (compounding 2% Risk) - Xem thêm [BACKTEST_REPORTS_INDEX.md](file:///C:/Users/pesil/working/mj_trading/TradingViewProject/docs/reports/v2.1.0-7.6.3/BACKTEST_REPORTS_INDEX.md)
 
 | Kịch Bản | Mô Tả Chiến Thuật | Win Rate | Profit Factor | Drawdown | Net Profit |
 | :---: | :--- | :---: | :---: | :---: | :--- |
