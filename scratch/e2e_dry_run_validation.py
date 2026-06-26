@@ -33,6 +33,7 @@ vbs_env["PORT"] = "9099"
 vbs_env["DB_PATH"] = str(vbs_db_path)
 vbs_env["BUFFER_SECRET"] = "test-secret"  # noqa: S105
 vbs_env["TELEGRAM_BOT_ENABLED"] = "false"
+vbs_env["TELEGRAM_BOT_TOKEN"] = ""
 vbs_env["PYTHONPATH"] = str(PROJECT_ROOT / "vbs")
 
 # Start VBS subprocess
@@ -50,8 +51,6 @@ vbs_process = subprocess.Popen(
     ],
     cwd=str(PROJECT_ROOT / "vbs"),
     env=vbs_env,
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
     text=True,
 )
 
@@ -77,6 +76,8 @@ async def run_validation():
     config.VPS_BUFFER_URL = "http://127.0.0.1:9099"
     config.VPS_BUFFER_SECRET = "test-secret"  # noqa: S105
     config.VPS_CONSUMER_ID = "test-consumer"
+    config.VPS_BUFFER_SOURCE_FILTER = ""
+    config.VPS_BUFFER_EXCLUDE_FILTER = ""
 
     print("[E2E Validation] Initializing Server C databases...")
     await database.init_db()
