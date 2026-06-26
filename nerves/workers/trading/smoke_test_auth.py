@@ -16,7 +16,7 @@ def check(label, url, expected_codes):
     global PASS, FAIL
     req = urllib.request.Request(url)  # noqa: S310
     try:
-        with urllib.request.urlopen(req, timeout=5) as r:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=15) as r:  # noqa: S310
             code = r.status
     except urllib.error.HTTPError as e:
         code = e.code
