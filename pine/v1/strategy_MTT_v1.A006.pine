@@ -1,0 +1,117 @@
+// (c) TradingViewProject
+// Strategy A.006 — Long Only + 3 filters: slope + volume + ATR trailing
+//
+//@version=5
+strategy("strategy_MTT_v1.A006 (Long Only + Filters)",
+     shorttitle="A.006 L+F",
+     overlay=true,
+     initial_capital=100000,
+     default_qty_type=strategy.percent_of_equity,
+     default_qty_value=10,
+     commission_type=strategy.commission.percent,
+     commission_value=0.075,
+     slippage=2,
+     pyramiding=0,
+     calc_on_every_tick=false,
+     process_orders_on_close=true)
+
+// ----- INPUTS -----
+grp_p = "Trading Profile"
+profile  = input.string("Futures", "Profile", options=["Spot","Margin","Futures"], group=grp_p)
+override_qty = input.bool(false, "Override profile qty %", group=grp_p)
+manual_qty   = input.float(10.0, "Manual qty %", minval=1.0, maxval=500.0, group=grp_p)
+
+grp_ma = "MA"
+ma_type  = input.string("EMA", "Type", options=["SMA","EMA","WMA","HMA","DEMA","TEMA"], group=grp_ma)
+fast_len = input.int(20,  "Fast",   minval=5,  group=grp_ma)
+med_len  = input.int(50,  "Medium", minval=10, group=grp_ma)
+slow_len = input.int(100, "Slow",   minval=20, group=grp_ma)
+
+grp_f = "Filters (V1.006)"
+use_slope  = input.bool(true,  "Slope filter (mm[N] > mm[2N])", group=grp_f)
+slope_lb   = input.int(20,    "Slope lookback bars",  minval=5,  group=grp_f)
+use_volume = input.bool(true,  "Volume filter (vol > SMA50)", group=grp_f)
+vol_len    = input.int(50,    "Volume SMA len", minval=10, group=grp_f)
+vol_mult   = input.float(1.0, "Volume multiplier", minval=0.5, step=0.1, group=grp_f)
+use_trail  = input.bool(true,  "ATR trailing stop", group=grp_f)
+atr_len    = input.int(14,    "ATR length",  minval=5,  group=grp_f)
+atr_mult   = input.float(2.5, "ATR multiplier", minval=1.0, step=0.1, group=grp_f)
+
+// ----- MA -----
+ma(t, l) =>
+    switch t
+        "SMA"  => ta.sma(close, l)
+        "EMA"  => ta.ema(close, l)
+        "WMA"  => ta.wma(close, l)
+        "HMA"  => ta.hma(close, l)
+        "DEMA" => 2 * ta.ema(close, l) - ta.ema(ta.ema(close, l), l)
+        "TEMA" => 3 * (ta.ema(close, l) - ta.ema(ta.ema(close, l), l)) + ta.ema(ta.ema(ta.ema(close, l), l), l)
+        =>        ta.sma(close, l)
+
+mf = ma(ma_type, fast_len)
+mm = ma(ma_type, med_len)
+ms = ma(ma_type, slow_len)
+
+// ----- SIGNALS -----
+bull = mf > mm and mm > ms
+bull_start = bull and not bull[1]
+bull_end   = not bull and bull[1]
+
+// ----- V1.006 FILTERS -----
+slope_ok  = not use_slope  or mm > mm[slope_lb]
+vol_ok    = not use_volume or volume > ta.sma(volume, vol_len) * vol_mult
+entry_ok  = bull_start and slope_ok and vol_ok
+
+// ATR trailing stop
+atr = ta.atr(atr_len)
+in_pos = strategy.position_size > 0
+var float trail = na
+if in_pos
+    new_trail = close - atr_mult * atr
+    trail := na(trail) ? new_trail : math.max(trail, new_trail)
+else
+    trail := na
+trail_hit = use_trail and in_pos and not na(trail) and low <= trail
+
+// ----- SIZING -----
+spot_pct    = 10.0
+margin_pct  = 20.0
+futures_pct = 10.0
+qty_pct = override_qty ? manual_qty : (profile == "Spot" ? spot_pct : profile == "Margin" ? margin_pct : futures_pct)
+qc = (strategy.equity * qty_pct / 100.0) / close
+
+// ----- ORDERS -----
+if entry_ok
+    strategy.entry("LONG", strategy.long, qty=qc, comment="Bull+Filters")
+if bull_end
+    strategy.close("LONG", comment="Bull End")
+if trail_hit
+    strategy.close("LONG", comment="ATR Trail Hit")
+
+// ----- VISUALS -----
+p_f = plot(mf, color=color.blue,   title="Fast")
+p_m = plot(mm, color=color.orange, title="Medium")
+p_s = plot(ms, color=color.red,    title="Slow", linewidth=2)
+fill(p_f, p_s, color=bull ? color.new(color.green, 80) : na, title="Bull Zone")
+
+plot(use_trail and in_pos ? trail : na, color=color.fuchsia, style=plot.style_linebr, linewidth=2, title="ATR Trail")
+
+// Markers
+plotshape(entry_ok,  title="Entry",       style=shape.triangleup, location=location.belowbar, color=color.new(color.green,0),  size=size.tiny, text="L")
+plotshape(bull_start and not entry_ok, title="Filtered out", style=shape.xcross, location=location.belowbar, color=color.new(color.gray,0), size=size.tiny, text="filtered")
+plotshape(bull_end,  title="Bull End",    style=shape.xcross,     location=location.abovebar, color=color.new(color.green,30), size=size.tiny)
+plotshape(trail_hit, title="Trail Hit",   style=shape.diamond,    location=location.abovebar, color=color.new(color.fuchsia,0), size=size.small, text="T")
+
+// Status table
+var table info = table.new(position.top_right, 2, 5, border_width=1)
+if barstate.islast
+    table.cell(info, 0, 0, "MODE",       bgcolor=color.new(color.green,30), text_color=color.white)
+    table.cell(info, 1, 0, "LONG+FILTER", bgcolor=color.new(color.green,30), text_color=color.white)
+    table.cell(info, 0, 1, "Profile/Qty")
+    table.cell(info, 1, 1, profile + " " + str.tostring(qty_pct) + "%")
+    table.cell(info, 0, 2, "Slope")
+    table.cell(info, 1, 2, use_slope ? (slope_ok ? "UP ✓" : "DOWN ✗") : "off")
+    table.cell(info, 0, 3, "Volume")
+    table.cell(info, 1, 3, use_volume ? (vol_ok ? "OK ✓" : "weak ✗") : "off")
+    table.cell(info, 0, 4, "ATR trail")
+    table.cell(info, 1, 4, use_trail ? (in_pos ? str.tostring(math.round(trail)) : "—") : "off")

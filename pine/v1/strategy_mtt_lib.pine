@@ -1,14 +1,17 @@
 // (c) TradingViewProject
-// Pine Library — Logic chung cho V1.005+
-// Sau khi Publish on TradingView, import bằng:
-//   import TradingViewProject/strategy_mtt_lib/1 as mtt
+// Pine Library — Logic chung cho V1.005+ và V1.006
+//
+// V1.006 thêm:
+//   - slope_ok()        : SMA slope filter (≥ N bars)
+//   - volume_ok()       : Volume above SMA filter
+//   - atr_trail_long()  : ATR trailing stop cho long
+//   - atr_trail_short() : ATR trailing stop cho short
 //
 //@version=5
 library("strategy_mtt_lib", overlay=true)
 
 // ============================================================================
-// MA helper — chọn loại MA động
-// type: "SMA" | "EMA" | "WMA" | "HMA" | "DEMA" | "TEMA"
+// MA helper
 // ============================================================================
 export ma(simple string mtype, simple int len, series float src) =>
     switch mtype
@@ -21,8 +24,7 @@ export ma(simple string mtype, simple int len, series float src) =>
         =>        ta.sma(src, len)
 
 // ============================================================================
-// Stack signals — vùng xếp tầng MA
-// returns: [bull_stack, bear_stack, bull_start, bull_end, bear_start, bear_end]
+// Stack signals
 // ============================================================================
 export stack_signals(series float fast, series float med, series float slow) =>
     bull_stack = fast > med and med > slow
@@ -34,27 +36,62 @@ export stack_signals(series float fast, series float med, series float slow) =>
     [bull_stack, bear_stack, bull_start, bull_end, bear_start, bear_end]
 
 // ============================================================================
-// Profile sizing — qty% theo profile
-// profile: "Spot" | "Margin" | "Futures"
-// V1.005 default: Spot 10 / Margin 20 / Futures 10
+// V1.006 FILTERS
+// ============================================================================
+
+// Slope filter: MA hiện tại > MA cách `lookback` phiên trước
+// → loại bỏ vùng sideway (slope phẳng)
+export slope_up(series float ma, simple int lookback) =>
+    ma > ma[lookback]
+
+export slope_down(series float ma, simple int lookback) =>
+    ma < ma[lookback]
+
+// Volume filter: volume hiện tại > SMA(volume, len) × multiplier
+// → xác nhận break-out có lực
+export volume_ok(simple int sma_len, simple float mult) =>
+    volume > ta.sma(volume, sma_len) * mult
+
+// ATR trailing stop cho LONG
+// Khi có lệnh long mở, trailing = max(prev trail, close - mult*ATR)
+// Returns: [trail_level, hit_signal]
+export atr_trail_long(series bool in_position, simple int atr_len, simple float mult) =>
+    var float trail = na
+    atr = ta.atr(atr_len)
+    if in_position
+        new_trail = close - mult * atr
+        trail := na(trail) ? new_trail : math.max(trail, new_trail)
+    else
+        trail := na
+    hit = in_position and not na(trail) and low <= trail
+    [trail, hit]
+
+// ATR trailing stop cho SHORT
+export atr_trail_short(series bool in_position, simple int atr_len, simple float mult) =>
+    var float trail = na
+    atr = ta.atr(atr_len)
+    if in_position
+        new_trail = close + mult * atr
+        trail := na(trail) ? new_trail : math.min(trail, new_trail)
+    else
+        trail := na
+    hit = in_position and not na(trail) and high >= trail
+    [trail, hit]
+
+// ============================================================================
+// Profile sizing
 // ============================================================================
 export profile_qty_pct(simple string profile, simple float spot_pct, simple float margin_pct, simple float futures_pct) =>
     profile == "Spot"   ? spot_pct
      : profile == "Margin" ? margin_pct
      : futures_pct
 
-export profile_qty_default(simple string profile) =>
-    profile_qty_pct(profile, 10.0, 20.0, 10.0)
-
-// ============================================================================
-// Position sizing helper — số contract theo % equity
-// ============================================================================
 export size_by_pct(series float equity_now, simple float qty_pct, series float price) =>
     (equity_now * qty_pct / 100.0) / price
 
 // ============================================================================
 // Reusable signal: BREAK-OUT LONG khi bear stack vừa kết thúc
-// (phát hiện trong B4v2F — tín hiệu market flip từ downtrend → neutral/bull)
+// (phát hiện trong B4v2F)
 // ============================================================================
 export bear_to_neutral_breakout(series bool bear_stack) =>
     not bear_stack and bear_stack[1]
