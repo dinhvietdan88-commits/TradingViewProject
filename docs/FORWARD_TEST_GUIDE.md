@@ -11,9 +11,10 @@
 3. [Khởi Động Server](#3-khởi-động-server)
 4. [Gửi Tín Hiệu Forward Test](#4-gửi-tín-hiệu-forward-test)
 5. [Xem Kết Quả Qua API](#5-xem-kết-quả-qua-api)
-6. [Tạo Báo Cáo](#6-tạo-báo-cáo)
-7. [Kiến Trúc DB Routing](#7-kiến-trúc-db-routing)
-8. [Troubleshooting](#8-troubleshooting)
+6. [Giao Diện Dashboard (Interactive Sync & Sandbox)](#6-giao-diện-dashboard-interactive-sync--sandbox)
+7. [Tạo Báo Cáo](#7-tạo-báo-cáo)
+8. [Kiến Trúc DB Routing](#8-kiến-trúc-db-routing)
+9. [Troubleshooting](#9-troubleshooting)
 
 ---
 
@@ -235,9 +236,26 @@ GET /trades/equity?mode=FORWARD
 
 ---
 
-## 6. Tạo Báo Cáo
+## 6. Giao Diện Dashboard (Interactive Sync & Sandbox)
 
-### 6.1. Báo cáo Back-test (1,100+ signals)
+Dashboard hỗ trợ giám sát thời gian thực các tín hiệu Forward Test tại `/forward-test`. Các tính năng tương tác nâng cao bao gồm:
+
+### 6.1. Đồng bộ hóa Biểu đồ và Bảng (Bi-directional Sync)
+- **Highlight tín hiệu hiển thị**: Các tín hiệu đang hiển thị dạng mũi tên trên chart sẽ tự động highlight màu xanh dương nhạt trong bảng tín hiệu và bảng tự động cuộn (auto-scroll) đến tín hiệu đầu tiên.
+- **Rê chuột trên biểu đồ (Crosshair Move)**: Khi di chuyển con trỏ crosshair trên biểu đồ, hàng tương ứng trong bảng sẽ được highlight viền nét đứt (`.crosshair-highlight`) và tự động cuộn tới vị trí đó.
+- **Click chọn tín hiệu**: Click trực tiếp vào một marker tín hiệu trên biểu đồ sẽ tự động kích hoạt click mở chi tiết của hàng tín hiệu đó trong bảng.
+- **Đồng bộ hóa Replay/Cuộn biểu đồ**: Khi cuộn thang thời gian của biểu đồ, hàng tín hiệu gần nhất đang hiển thị sẽ tự động được chọn và cuộn vào tầm nhìn.
+
+### 6.2. Kịch bản Mô Phỏng & Preset Sandbox
+- **Preset Buttons**: Các nhóm thiết lập nhanh (Conservative, Aggressive, Trend Template, v.v.) hiển thị highlight sáng khi được chọn.
+- **Reset tự động**: Khi người dùng tự tay tích chọn các kịch bản (S1–S6) hoặc đổi logic bộ lọc (`AND`/`OR`), highlight của nút Preset sẽ tự động tắt để biểu thị trạng thái tùy biến.
+- **Sticky Sidebar**: Cột bên phải (biểu đồ và hộp cát Sandbox) được thiết kế sticky (dính) bên cạnh bảng tín hiệu dài khi xem trên màn hình máy tính desktop, giúp dễ dàng thao tác lọc kịch bản mà không bị trôi hay đè lên thanh header.
+
+---
+
+## 7. Tạo Báo Cáo
+
+### 7.1. Báo cáo Back-test (1,100+ signals)
 ```bash
 $env:PYTHONIOENCODING='utf-8'
 python scripts/generate_backtest_report.py
@@ -256,7 +274,7 @@ Output:
 | Expectancy | +3.27%/lệnh |
 | Total P&L | +3,592.89% |
 
-### 6.2. Báo cáo Forward-Test mẫu (28 paper trades)
+### 7.2. Báo cáo Forward-Test mẫu (28 paper trades)
 ```bash
 $env:PYTHONIOENCODING='utf-8'
 python scripts/generate_forward_test_report.py
@@ -267,7 +285,7 @@ Output:
 
 ---
 
-## 7. Kiến Trúc DB Routing
+## 8. Kiến Trúc DB Routing
 
 ### File: `nerves/workers/trading/data/routing.py`
 
@@ -297,7 +315,7 @@ Giống hệt `trades.db`, ngoại trừ:
 
 ---
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 ### Vấn đề: Tín hiệu FORWARD không xuất hiện trong `forward_trades.db`
 
@@ -351,4 +369,4 @@ python scripts/fix_forward_db_sequence.py
 
 ---
 
-*Tài liệu này được cập nhật lần cuối: 2026-06-21 · Angati v7.0 · Branch: `main`*
+*Tài liệu này được cập nhật lần cuối: 2026-06-26 · Angati v7.1 · Branch: `dev/infra/forward-test-live-validation`*

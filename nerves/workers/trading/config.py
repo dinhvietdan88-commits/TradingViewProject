@@ -80,10 +80,10 @@ TAKE_PROFIT_PCT = float(os.getenv("TAKE_PROFIT_PCT", "0.20"))  # 20% TP → R:R 
 MAX_QUOTE_QTY = float(os.getenv("MAX_QUOTE_QTY", "1000"))  # Max trade size limit
 
 # Strategy Crystallization Parameters (Sprint 7.6.3 / Gold Council Verdict)
-ATR_SL_MULTIPLIER = float(os.getenv("ATR_SL_MULTIPLIER", "1.5"))
-ATR_TP_MULTIPLIER = float(os.getenv("ATR_TP_MULTIPLIER", "3.0"))
+ATR_SL_MULTIPLIER = float(os.getenv("ATR_SL_MULTIPLIER", "2.5"))
+ATR_TP_MULTIPLIER = float(os.getenv("ATR_TP_MULTIPLIER", "2.0"))
 CHANDELIER_TRAILING_MULTIPLIER = float(
-    os.getenv("CHANDELIER_TRAILING_MULTIPLIER", "2.5")
+    os.getenv("CHANDELIER_TRAILING_MULTIPLIER", "3.5")
 )
 REGIME_VOLATILITY_WINDOW = int(os.getenv("REGIME_VOLATILITY_WINDOW", "50"))
 AI_CONFIDENCE_THRESHOLD_HIL_MIN = int(
@@ -93,8 +93,8 @@ AI_CONFIDENCE_THRESHOLD_HIL_MAX = int(
     os.getenv("AI_CONFIDENCE_THRESHOLD_HIL_MAX", "79")
 )
 S5_MIN_TT_SCORE = int(os.getenv("S5_MIN_TT_SCORE", "5"))
-S6_MIN_TT_SCORE = int(os.getenv("S6_MIN_TT_SCORE", "5"))
-S6_MIN_RSI = float(os.getenv("S6_MIN_RSI", "50.0"))
+S6_MIN_TT_SCORE = int(os.getenv("S6_MIN_TT_SCORE", "6"))
+S6_MIN_RSI = float(os.getenv("S6_MIN_RSI", "42.0"))
 
 # Notifications
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")

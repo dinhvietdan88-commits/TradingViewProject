@@ -793,11 +793,20 @@ class VpsAnalyzerWorker:
         payload = signal.get("payload", {})
         queue_id = signal.get("queue_id")
 
+        # Enforce mode=FORWARD routing if forward testing is globally enabled
         mode = ""
         if isinstance(payload, dict):
             mode = payload.get("mode") or signal.get("mode") or ""
         else:
             mode = signal.get("mode") or ""
+
+        if getattr(config, "FORWARD_TEST_ENABLED", False):
+            mode = "FORWARD"
+            if isinstance(payload, dict):
+                payload["mode"] = "FORWARD"
+            else:
+                payload = {"mode": "FORWARD"}
+                signal["payload"] = payload
 
         log.info(
             f"[VpsAnalyzer] Analysing #{queue_id}: {symbol} {action} @ {price} | mode: {mode}"

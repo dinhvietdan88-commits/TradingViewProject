@@ -117,11 +117,16 @@ def print_new_signal(row: tuple) -> None:
     """Print a newly detected signal."""
     sid, symbol, action, price, created_at, pnl, status = row
     ts = created_at[:16] if created_at else "?"
+    try:
+        price_val = float(price)
+        price_str = f"{price_val:,.2f}"
+    except (ValueError, TypeError):
+        price_str = str(price)
     print(
         f"\n{BOLD}  🆕 NEW SIGNAL [{sid}]{RESET}  "
         f"{CYAN}{symbol}{RESET}  "
         f"{color_action(action)}  "
-        f"@ {YELLOW}{float(price):,.2f}{RESET}  "
+        f"@ {YELLOW}{price_str}{RESET}  "
         f"{DIM}{ts}{RESET}"
     )
     if pnl is not None:
